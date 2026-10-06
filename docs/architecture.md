@@ -170,6 +170,45 @@ To be defined. Each integration must sit behind an appropriate port when used by
 
 To be decided. Docker support is reserved but not adopted.
 
+## Runtime environments
+
+### Development
+
+Development supports daily implementation with facilities such as hot reload, debugging, verbose logs, and local dependencies when the selected stack provides them. Development behavior is not evidence that production artifacts work correctly.
+
+### Preview
+
+Preview runs production builds in a local or temporary production-like environment before publication. It should exercise optimized artifacts, production-like environment-variable handling, real service boundaries, and Docker when applicable. Preview must use non-production secrets and remain distinct from the real production environment.
+
+### Production
+
+Production is the environment exposed to users or the jury. Its eventual public frontend, backend, APIs, and optional IoT entry points depend on validated requirements and accepted deployment decisions.
+
+## Deployment strategy
+
+The target validation flow is:
+
+```text
+Development
+     |
+     v
+Lint / Tests
+     |
+     v
+Build
+     |
+     v
+Local Production Preview
+     |
+     v
+Integration / E2E Validation
+     |
+     v
+Deployment
+```
+
+Concrete commands and hosting topology remain open until the frameworks and runtime components are selected. A deployment is not ready merely because development mode or a build succeeds. See [deployment documentation](deployment/README.md).
+
 ## 19. Observability
 
 To be defined.
@@ -196,7 +235,7 @@ Business rules and use cases must be testable without Docker, a real database, n
 
 ## 22. Technical decisions
 
-The backend framework, frontend framework, database, ORM, NestJS, FastAPI, any combined topology, Docker adoption, authentication, REST/GraphQL, WebSocket, deployment, AI integration, and monolith/services boundary remain open and require ADRs when decided. Clean/Hexagonal principles are a starting constraint rather than an open ADR.
+Python is confirmed for potential AI/ML components, while its libraries and framework remain open. The backend framework, frontend framework, database, ORM, NestJS, FastAPI, Python AI framework, any combined topology, Docker adoption, authentication, REST/GraphQL, WebSocket, frontend/backend/AI hosting, tunnel usage, database hosting, deployment topology, AI integration, and monolith/services boundary require ADRs when decided. Clean/Hexagonal principles are a starting constraint rather than an open ADR.
 
 ## 23. Open questions
 

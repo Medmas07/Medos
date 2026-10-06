@@ -7,3 +7,4 @@
 - [Decisions](decisions/README.md): Architecture Decision Records.
 - [Diagrams](diagrams/README.md): architecture and flow diagrams.
 - [Research](research/README.md): time-boxed findings and sources.
+- [Deployment](deployment/README.md): environment, preview, and deployment guidance.

@@ -1,0 +1,4 @@
+# Python dependencies for AI/ML components.
+#
+# Dependencies will be added once the AI requirements
+# and selected libraries are known.

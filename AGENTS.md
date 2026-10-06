@@ -17,6 +17,8 @@ Use, in order: validated functional requirements, accepted ADRs, `docs/architect
 - Keep primary business logic out of controllers, routes, and repositories.
 - Do not import infrastructure directly into the Domain.
 - Prefer simple boundaries suitable for a two-day hackathon.
+- Python is confirmed for potential AI components; no specific AI library or Python web framework is confirmed.
+- Preserve Clean/Hexagonal Architecture independently of the deployment strategy.
 
 ## Dependency rules
 
@@ -34,6 +36,12 @@ Place applications in `apps/`, justified specialized services in `services/`, re
 - Do not create a layer only to resemble a diagram.
 - Introduce an abstraction only when it protects the core from an external detail or clearly improves testability.
 - Avoid speculative CQRS, event sourcing, generic repositories, factories, and artificial domain events.
+- Keep development, preview, and production behavior conceptually distinct.
+- Validate a production build before deployment when the selected stack supports builds.
+- Do not treat a passing build alone as proof that a deployment is valid; perform applicable integration and runtime validation.
+- Never configure a cloud platform automatically without an explicit decision.
+- Never create or expose a network tunnel without explicit authorization, and never store tunnel tokens in the repository.
+- Never deploy automatically from Codex without explicit authorization.
 
 ## Issue workflow
 
@@ -69,11 +77,11 @@ Update documentation with behavior or architecture changes. Record consequential
 
 ## Security and secrets
 
-Never commit credentials, tokens, patient data, personal data, production data, or populated environment files. Use `.env.example` with non-sensitive placeholders. Treat healthcare data as sensitive and document security/privacy assumptions once requirements are known.
+Never commit credentials, tokens, patient data, personal data, production data, or populated environment files. This includes API keys, database passwords, JWT secrets, tunnel tokens, hosting-provider credentials, Wi-Fi passwords, AI-provider keys, and private certificates. Use `.env.example` only with empty or explicitly fictitious values, and add variables only when the corresponding service exists. Treat healthcare data as sensitive and document security/privacy assumptions once requirements are known.
 
 ## Dependency management
 
-Add dependencies only for an implemented requirement. Prefer maintained, minimal packages; pin or lock versions using the chosen ecosystem; review licenses and security implications. Do not install a framework merely to prepare the repository.
+Add dependencies only for an implemented requirement. Prefer maintained, minimal packages; pin or lock versions using the chosen ecosystem; review licenses and security implications. Do not install a framework merely to prepare the repository. Python is the confirmed language for potential AI/ML components, but add no AI or Python library until a concrete requirement justifies it. An autonomous Python component may own its dependency file when its boundary becomes real.
 
 ## Definition of Done
 

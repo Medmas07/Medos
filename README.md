@@ -19,12 +19,13 @@ Future business applications and services must follow Clean Architecture or Hexa
 - `iot/`: optional embedded or connected-device component, if the challenge requires one.
 - `packages/`: shared code and types, when real reuse exists.
 - `infrastructure/`: deployment and infrastructure assets.
+- `production/`: local production-like validation guidance and reserved configuration areas.
 - `docs/`: product, architecture, API, research, and decision documentation.
 - `tests/`: cross-application integration and end-to-end tests.
 
 ## Getting started
 
-No framework or dependency has been selected. Setup instructions will be added with the corresponding architecture decision.
+Python is confirmed for potential AI/ML components, but no Python library or AI framework has been selected. All other setup instructions will be added with the corresponding architecture decisions.
 
 ## Documentation
 
