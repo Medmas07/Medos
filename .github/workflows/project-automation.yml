@@ -222,4 +222,5 @@ jobs:
       - name: Explain why no branch was created
         if: steps.metadata.outputs.linked_count != '0'
         shell: bash
-        run: echo "Issue #$ISSUE_NUMBER already has a linked branch."
+        run: |
+          echo "Issue #$ISSUE_NUMBER already has a linked branch."
