@@ -1,14 +1,225 @@
-name: Project automation
+name: Create linked branch on self-assignment
 
 on:
-  workflow_dispatch:
+  issues:
+    types: [assigned]
 
 permissions:
-  contents: read
+  contents: write
+  issues: write
+
+concurrency:
+  group: issue-branch-${{ github.event.issue.number }}
+  cancel-in-progress: false
 
 jobs:
-  placeholder:
+  create-linked-branch:
+    # Assignment by another person remains a planning action and creates no branch.
+    if: >-
+      github.event.issue.state == 'open' &&
+      github.actor == github.event.assignee.login
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    env:
+      GH_TOKEN: ${{ github.token }}
+      OWNER: ${{ github.repository_owner }}
+      REPO_NAME: ${{ github.event.repository.name }}
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
+
     steps:
-      - name: Explain placeholder
-        run: echo "Project automation requires an authorized remote Project configuration."
+      - name: Read issue and repository metadata
+        id: metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          query_result="$(
+            gh api graphql \
+              -f query='
+                query($owner: String!, $name: String!, $number: Int!) {
+                  repository(owner: $owner, name: $name) {
+                    id
+                    defaultBranchRef {
+                      name
+                      target { ... on Commit { oid } }
+                    }
+                    issue(number: $number) {
+                      id
+                      title
+                      labels(first: 50) { nodes { name } }
+                      linkedBranches(first: 20) { totalCount }
+                    }
+                  }
+                }
+              ' \
+              -F owner="$OWNER" \
+              -F name="$REPO_NAME" \
+              -F number="$ISSUE_NUMBER"
+          )"
+
+          repository_id="$(jq -r '.data.repository.id' <<< "$query_result")"
+          issue_id="$(jq -r '.data.repository.issue.id' <<< "$query_result")"
+          base_branch="$(jq -r '.data.repository.defaultBranchRef.name' <<< "$query_result")"
+          base_oid="$(jq -r '.data.repository.defaultBranchRef.target.oid' <<< "$query_result")"
+          linked_count="$(jq -r '.data.repository.issue.linkedBranches.totalCount' <<< "$query_result")"
+
+          if [[ -z "$repository_id" || "$repository_id" == "null" ||
+                -z "$issue_id" || "$issue_id" == "null" ||
+                -z "$base_oid" || "$base_oid" == "null" ]]; then
+            echo "::error::Could not resolve the issue or default branch metadata."
+            exit 1
+          fi
+
+          {
+            echo "repository_id=$repository_id"
+            echo "issue_id=$issue_id"
+            echo "base_branch=$base_branch"
+            echo "base_oid=$base_oid"
+            echo "linked_count=$linked_count"
+            echo "issue_title<<EOF"
+            jq -r '.data.repository.issue.title' <<< "$query_result"
+            echo "EOF"
+            echo "labels_json<<EOF"
+            jq -c '.data.repository.issue.labels.nodes' <<< "$query_result"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Determine branch name
+        id: branch
+        if: steps.metadata.outputs.linked_count == '0'
+        shell: bash
+        env:
+          ISSUE_TITLE: ${{ steps.metadata.outputs.issue_title }}
+          LABELS_JSON: ${{ steps.metadata.outputs.labels_json }}
+        run: |
+          set -euo pipefail
+
+          prefix="issue"
+          mapfile -t type_labels < <(
+            jq -r '.[].name | select(startswith("type:"))' <<< "$LABELS_JSON"
+          )
+
+          if [[ "${#type_labels[@]}" -eq 1 ]]; then
+            case "${type_labels[0]}" in
+              type:bug) prefix="fix" ;;
+              type:feature) prefix="feat" ;;
+              type:research) prefix="research" ;;
+              type:architecture) prefix="architecture" ;;
+              type:test) prefix="test" ;;
+              type:docs) prefix="docs" ;;
+              type:devops) prefix="devops" ;;
+              type:design) prefix="design" ;;
+            esac
+          elif [[ "$ISSUE_TITLE" == "[Test]"* ]]; then
+            # The repository currently uses a title prefix for test tickets.
+            prefix="test"
+          fi
+
+          slug="$(
+            python3 - <<'PY'
+          import os
+          import re
+          import unicodedata
+
+          title = re.sub(r"^\s*\[[^]]+\]\s*", "", os.environ["ISSUE_TITLE"])
+          title = unicodedata.normalize("NFKD", title)
+          title = title.encode("ascii", "ignore").decode("ascii").lower()
+          slug = re.sub(r"[^a-z0-9]+", "-", title).strip("-")
+          print(slug[:60].rstrip("-") or "issue")
+          PY
+          )"
+
+          echo "name=${prefix}/${ISSUE_NUMBER}-${slug}" >> "$GITHUB_OUTPUT"
+
+      - name: Check branch-name collision
+        id: collision
+        if: steps.metadata.outputs.linked_count == '0'
+        shell: bash
+        env:
+          BRANCH_NAME: ${{ steps.branch.outputs.name }}
+        run: |
+          set -euo pipefail
+
+          existing_ref="$(
+            gh api graphql \
+              -f query='
+                query($owner: String!, $name: String!, $qualifiedName: String!) {
+                  repository(owner: $owner, name: $name) {
+                    ref(qualifiedName: $qualifiedName) { name }
+                  }
+                }
+              ' \
+              -F owner="$OWNER" \
+              -F name="$REPO_NAME" \
+              -F qualifiedName="refs/heads/$BRANCH_NAME" \
+              --jq '.data.repository.ref.name // ""'
+          )"
+
+          if [[ -n "$existing_ref" ]]; then
+            echo "::warning::Branch '$BRANCH_NAME' already exists and was not linked automatically."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create and link branch
+        if: >-
+          steps.metadata.outputs.linked_count == '0' &&
+          steps.collision.outputs.exists != 'true'
+        shell: bash
+        env:
+          ISSUE_ID: ${{ steps.metadata.outputs.issue_id }}
+          REPOSITORY_ID: ${{ steps.metadata.outputs.repository_id }}
+          BASE_OID: ${{ steps.metadata.outputs.base_oid }}
+          BASE_BRANCH: ${{ steps.metadata.outputs.base_branch }}
+          BRANCH_NAME: ${{ steps.branch.outputs.name }}
+        run: |
+          set -euo pipefail
+
+          created_branch="$(
+            gh api graphql \
+              -f query='
+                mutation(
+                  $issueId: ID!,
+                  $repositoryId: ID!,
+                  $oid: GitObjectID!,
+                  $branchName: String!
+                ) {
+                  createLinkedBranch(
+                    input: {
+                      issueId: $issueId,
+                      repositoryId: $repositoryId,
+                      oid: $oid,
+                      name: $branchName
+                    }
+                  ) {
+                    linkedBranch { ref { name } }
+                  }
+                }
+              ' \
+              -F issueId="$ISSUE_ID" \
+              -F repositoryId="$REPOSITORY_ID" \
+              -F oid="$BASE_OID" \
+              -F branchName="$BRANCH_NAME" \
+              --jq '.data.createLinkedBranch.linkedBranch.ref.name'
+          )"
+
+          if [[ -z "$created_branch" || "$created_branch" == "null" ]]; then
+            echo "::error::GitHub did not return the created linked branch."
+            exit 1
+          fi
+
+          {
+            echo "## Linked branch created"
+            echo
+            echo "- Issue: #$ISSUE_NUMBER"
+            echo "- Branch: \`$created_branch\`"
+            echo "- Base: \`$BASE_BRANCH\`"
+            echo "- Trigger: @$GITHUB_ACTOR self-assignment"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Explain why no branch was created
+        if: steps.metadata.outputs.linked_count != '0'
+        shell: bash
+        run: echo "Issue #$ISSUE_NUMBER already has a linked branch."
