@@ -224,3 +224,126 @@ jobs:
         shell: bash
         run: |
           echo "Issue #$ISSUE_NUMBER already has a linked branch."
+
+      - name: Move issue to In Progress
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.HACKCURE_PROJECT_AUTOMATION }}
+          PROJECT_OWNER: Medmas07
+          PROJECT_NUMBER: 2
+          ISSUE_ID: ${{ steps.metadata.outputs.issue_id }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$GH_TOKEN" ]]; then
+            echo "::error::Repository secret HACKCURE_PROJECT_AUTOMATION is not configured."
+            exit 1
+          fi
+
+          project_data="$(
+            gh api graphql \
+              -f query='
+                query($owner: String!, $projectNumber: Int!, $issueNumber: Int!, $repoOwner: String!, $repoName: String!) {
+                  user(login: $owner) {
+                    projectV2(number: $projectNumber) {
+                      id
+                      fields(first: 50) {
+                        nodes {
+                          ... on ProjectV2SingleSelectField {
+                            id
+                            name
+                            options { id name }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  repository(owner: $repoOwner, name: $repoName) {
+                    issue(number: $issueNumber) {
+                      projectItems(first: 50) {
+                        nodes { id project { id } }
+                      }
+                    }
+                  }
+                }
+              ' \
+              -f owner="$PROJECT_OWNER" \
+              -F projectNumber="$PROJECT_NUMBER" \
+              -F issueNumber="$ISSUE_NUMBER" \
+              -f repoOwner="$OWNER" \
+              -f repoName="$REPO_NAME"
+          )"
+
+          project_id="$(jq -r '.data.user.projectV2.id // empty' <<< "$project_data")"
+          status_field_id="$(
+            jq -r '
+              .data.user.projectV2.fields.nodes[]
+              | select(.name == "Status")
+              | .id
+            ' <<< "$project_data"
+          )"
+          in_progress_option_id="$(
+            jq -r '
+              .data.user.projectV2.fields.nodes[]
+              | select(.name == "Status")
+              | .options[]
+              | select(.name == "In Progress")
+              | .id
+            ' <<< "$project_data"
+          )"
+          item_id="$(
+            jq -r --arg project_id "$project_id" '
+              .data.repository.issue.projectItems.nodes[]
+              | select(.project.id == $project_id)
+              | .id
+            ' <<< "$project_data"
+          )"
+
+          if [[ -z "$project_id" || -z "$status_field_id" || -z "$in_progress_option_id" ]]; then
+            echo "::error::Could not resolve Project #$PROJECT_NUMBER, its Status field, or the In Progress option."
+            exit 1
+          fi
+
+          if [[ -z "$item_id" ]]; then
+            item_id="$(
+              gh api graphql \
+                -f query='
+                  mutation($projectId: ID!, $contentId: ID!) {
+                    addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
+                      item { id }
+                    }
+                  }
+                ' \
+                -f projectId="$project_id" \
+                -f contentId="$ISSUE_ID" \
+                --jq '.data.addProjectV2ItemById.item.id'
+            )"
+          fi
+
+          gh api graphql \
+            -f query='
+              mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                updateProjectV2ItemFieldValue(
+                  input: {
+                    projectId: $projectId
+                    itemId: $itemId
+                    fieldId: $fieldId
+                    value: {singleSelectOptionId: $optionId}
+                  }
+                ) {
+                  projectV2Item { id }
+                }
+              }
+            ' \
+            -f projectId="$project_id" \
+            -f itemId="$item_id" \
+            -f fieldId="$status_field_id" \
+            -f optionId="$in_progress_option_id" \
+            --silent
+
+          {
+            echo
+            echo "## Project updated"
+            echo
+            echo "Issue #$ISSUE_NUMBER moved to **In Progress** in Project #$PROJECT_NUMBER."
+          } >> "$GITHUB_STEP_SUMMARY"
