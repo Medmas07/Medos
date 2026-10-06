@@ -1,0 +1,25 @@
+name: Research
+description: Time-box an unknown before making a decision.
+title: "[Research]: "
+labels: ["research"]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Research question
+    validations:
+      required: true
+  - type: input
+    id: timebox
+    attributes:
+      label: Time box
+      placeholder: e.g. 2 hours
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Expected output
+      description: Define evidence, sources, and recommendation format.
+    validations:
+      required: true

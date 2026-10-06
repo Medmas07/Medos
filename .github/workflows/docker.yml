@@ -1,0 +1,14 @@
+name: Docker
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  placeholder:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Explain placeholder
+        run: echo "Docker checks will be configured only if Docker is adopted."

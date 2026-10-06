@@ -1,0 +1,25 @@
+name: Architecture
+description: Propose or evaluate a significant technical decision.
+title: "[Architecture]: "
+labels: ["architecture"]
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints
+      description: Include effects on Clean/Hexagonal boundaries.
+    validations:
+      required: true
+  - type: textarea
+    id: decision
+    attributes:
+      label: Decision required
+      description: List options to assess; link an ADR when available.
+    validations:
+      required: true

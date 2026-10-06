@@ -1,0 +1,14 @@
+name: Project automation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  placeholder:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Explain placeholder
+        run: echo "Project automation requires an authorized remote Project configuration."

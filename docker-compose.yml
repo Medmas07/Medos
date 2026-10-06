@@ -1,0 +1,4 @@
+name: hackathon
+
+# Docker is reserved as an option. Add services only after an ADR adopts it.
+services: {}
