@@ -51,6 +51,18 @@ Link the issue, explain scope and architecture impact, provide verification evid
 
 Prioritize Domain tests, then Application/use-case tests, integration tests, and E2E tests. Domain and use cases must be testable without Docker, a real database, network access, or a running web server. Use fakes or test doubles at ports. Add no speculative business tests before requirements exist.
 
+## IoT and embedded systems
+
+- Treat `iot/` as optional until an IoT requirement is confirmed.
+- Do not select a board before the available hardware is known.
+- Do not select Arduino, ESP-IDF, or another embedded framework without an explicit decision.
+- Do not invent sensors or a device/backend protocol.
+- Isolate hardware-specific code when doing so remains reasonable.
+- Avoid over-engineering simple hackathon firmware.
+- Never put Wi-Fi credentials, tokens, or secrets in firmware.
+- Use local configuration ignored by Git if embedded secrets become necessary.
+- Document actual hardware constraints and every dependency on specific hardware.
+
 ## Documentation rules
 
 Update documentation with behavior or architecture changes. Record consequential choices as ADRs. Mark unknowns explicitly; never present an unvalidated technology choice as final. Keep Markdown links relative and valid.

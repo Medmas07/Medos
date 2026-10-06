@@ -16,6 +16,7 @@ Future business applications and services must follow Clean Architecture or Hexa
 
 - `apps/`: application entry points reserved for web, mobile, and API applications.
 - `services/`: optional specialized services, if justified later.
+- `iot/`: optional embedded or connected-device component, if the challenge requires one.
 - `packages/`: shared code and types, when real reuse exists.
 - `infrastructure/`: deployment and infrastructure assets.
 - `docs/`: product, architecture, API, research, and decision documentation.

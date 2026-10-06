@@ -104,6 +104,12 @@ src/
 
 This is a boundary model, not a mandate to create every directory.
 
+## IoT / Edge components
+
+An IoT component may be added if the challenge requires one; it is not a mandatory part of the current system. Any embedded code will live in `iot/`, where PlatformIO is prepared as the intended development tooling. The target hardware, embedded framework, and device/backend communication protocol remain undetermined.
+
+When it provides real value, firmware should preserve Clean/Hexagonal boundaries between application logic and hardware-specific code. A simple firmware may use a lightweight structure rather than creating speculative layers. Hardware APIs and SDKs should be isolated behind adapters or infrastructure when a small separation keeps application logic testable.
+
 ## 7. Domain layer
 
 Domain contains business entities, value objects, domain services, events, errors, and rules only. It contains no HTTP or JSON-specific logic, ORM models, database queries, framework decorators, environment access, Docker logic, or external SDKs.
