@@ -21,7 +21,7 @@ Constraints that drive the choice:
 - **Python is CONFIRMED for AI.** Compute-to-Data also points to Python: the product vision describes a Python notebook environment and a Python research API (`health.query(...)`, `experiment.run(...)`), and the hospital-side research execution agent (HC-183) runs that code inside the Hospital Node boundary.
 - **Clean / Hexagonal Architecture is mandatory.** The framework must be a delivery detail that stays out of Domain and Application.
 - **Autonomous trust boundaries:** each Hospital Node and the Governance Node are separately deployable and expected to be containerized (HC-220, HC-224). The demo needs several Hospital Nodes (A, B, C) with separate data.
-- **Explicit, versionable contracts** under `contracts/`. The web portals are React + TypeScript SPAs (ADR-0001, from HC-001 [#24](https://github.com/Medmas07/Hackcure_hackathon/issues/24)) and need typed API clients.
+- **Explicit, versionable contracts** under `contracts/`. The web portals are React + TypeScript SPAs ([ADR-0001](ADR-0001-web-frontend-technology.md)) and need typed API clients.
 - **No generic backend, shared database, or speculative microservices.**
 - **The DMI Adapter path `instances/hospital-node/adapters/dmi/` is CONFIRMED** by the product vision and architecture, so the code layout must keep it.
 
