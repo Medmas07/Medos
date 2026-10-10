@@ -1,0 +1,52 @@
+{
+  "fictional": true,
+  "notice": "Dossiers fictifs détenus par le nœud du Cabinet médical Dr Hatem Bouzid. Ils ne quittent ce nœud que par une vue autorisée.",
+  "heldBy": "org-private-practice",
+  "encounters": [
+    {
+      "id": "enc-pp-2025-leila",
+      "patientId": "pat-a",
+      "type": "consultation",
+      "startedAt": "2025-06-12T17:15:00+01:00",
+      "clinicianId": "clin-hatem",
+      "title": "Suivi tensionnel",
+      "reason": "Céphalées matinales et chiffres tensionnels élevés à domicile.",
+      "summary": "Hypertension artérielle confirmée sur plusieurs mesures. Traitement instauré, contrôle dans 3 mois."
+    },
+    {
+      "id": "enc-pp-2026-nour",
+      "patientId": "pat-c",
+      "type": "consultation",
+      "startedAt": "2026-02-03T11:00:00+01:00",
+      "clinicianId": "clin-hatem",
+      "title": "Gêne respiratoire",
+      "reason": "Toux sèche et sifflements après l'effort.",
+      "summary": "Crise d'asthme légère. Traitement inhalé de secours prescrit et plan d'action expliqué."
+    }
+  ],
+  "medications": [
+    {
+      "id": "med-pp-leila-tensiorel",
+      "patientId": "pat-a",
+      "medicationCode": "MED-TENSIOREL",
+      "dosage": "10 mg, 1 fois par jour",
+      "prescribedById": "clin-hatem",
+      "encounterId": "enc-pp-2025-leila",
+      "startDate": "2025-06-12",
+      "endDate": null,
+      "status": "active"
+    },
+    {
+      "id": "med-pp-nour-bronchair",
+      "patientId": "pat-c",
+      "medicationCode": "MED-BRONCHAIR",
+      "dosage": "2 bouffées si besoin",
+      "prescribedById": "clin-hatem",
+      "encounterId": "enc-pp-2026-nour",
+      "startDate": "2026-02-03",
+      "endDate": null,
+      "status": "active"
+    }
+  ],
+  "labReports": []
+}

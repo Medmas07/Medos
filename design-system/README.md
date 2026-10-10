@@ -16,7 +16,7 @@ Shared visual foundation for the three web portals ([Hospital](../apps/web/hospi
 
 ## Non-responsibilities
 
-The design system holds no domain logic, data fetching, API clients, routing, authentication, or fixtures. Portals map their own statuses (for example "Pending review") to a `Tone`. Canonical demo data belongs to HC-005, not here; [`showcase/placeholder-data.ts`](showcase/placeholder-data.ts) is showcase-only placeholder text.
+The design system holds no domain logic, data fetching, API clients, routing, authentication, or fixtures. Portals map their own statuses (for example "Pending review") to a `Tone`. Canonical demo data lives in [`demo-data/`](../demo-data/README.md); [`showcase/placeholder-data.ts`](showcase/placeholder-data.ts) is showcase-only placeholder text.
 
 ## Commands
 

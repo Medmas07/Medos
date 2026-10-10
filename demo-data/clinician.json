@@ -1,0 +1,134 @@
+{
+  "fictional": true,
+  "notice": "Vue clinicien fictive. Priorités déterministes simulées (MOCKED) : elles ne constituent pas un triage clinique. La transcription et l'extraction sont des sorties d'IA simulées à valider par le clinicien.",
+  "appointments": [
+    {
+      "id": "appt-a-2026-10-10",
+      "patientId": "pat-a",
+      "clinicianId": "clin-x",
+      "organizationId": "org-hospital-a",
+      "scheduledAt": "2026-10-10T10:30:00+01:00",
+      "reason": "Douleur du genou droit et contrôle cardiologique",
+      "status": "scheduled"
+    },
+    {
+      "id": "appt-b-2026-10-10",
+      "patientId": "pat-b",
+      "clinicianId": "clin-x",
+      "organizationId": "org-hospital-a",
+      "scheduledAt": "2026-10-10T11:30:00+01:00",
+      "reason": "Restitution du bilan de suivi du diabète",
+      "status": "scheduled"
+    }
+  ],
+  "alerts": [
+    {
+      "id": "alert-b-hba1c",
+      "clinicianId": "clin-x",
+      "patientId": "pat-b",
+      "type": "abnormal_lab",
+      "severity": "high",
+      "title": "HbA1c au-dessus de la plage de référence",
+      "detail": "HbA1c 8,9 % (référence 4,0-6,0 %), prélevé le 30/09/2026.",
+      "sourceRecordId": "lab-a-2026-karim",
+      "createdAt": "2026-09-30T16:00:00+01:00",
+      "status": "unresolved"
+    },
+    {
+      "id": "alert-b-followup",
+      "clinicianId": "clin-x",
+      "patientId": "pat-b",
+      "type": "missed_follow_up",
+      "severity": "medium",
+      "title": "Suivi en retard",
+      "detail": "Contrôle prévu à 12 mois non réalisé dans les délais.",
+      "sourceRecordId": "enc-a-2025-karim",
+      "createdAt": "2026-09-16T08:00:00+01:00",
+      "status": "unresolved"
+    },
+    {
+      "id": "alert-a-external",
+      "clinicianId": "clin-x",
+      "patientId": "pat-a",
+      "type": "new_external_consultation",
+      "severity": "low",
+      "title": "Nouvelle consultation externe",
+      "detail": "Consultation de médecine interne à l'Hôpital Régional Oued Zitoun, avec instauration d'un traitement.",
+      "sourceRecordId": "enc-b-2026-leila",
+      "createdAt": "2026-10-10T09:01:00+01:00",
+      "status": "unresolved"
+    }
+  ],
+  "priorityQueue": [
+    {
+      "id": "queue-clin-x-1",
+      "clinicianId": "clin-x",
+      "patientId": "pat-b",
+      "rank": 1,
+      "priority": "high",
+      "score": 82,
+      "reasons": ["Résultat biologique anormal non revu", "Suivi en retard"],
+      "alertIds": ["alert-b-hba1c", "alert-b-followup"]
+    },
+    {
+      "id": "queue-clin-x-2",
+      "clinicianId": "clin-x",
+      "patientId": "pat-a",
+      "rank": 2,
+      "priority": "medium",
+      "score": 55,
+      "reasons": ["Nouvelle consultation externe", "Traitement anticoagulant actif"],
+      "alertIds": ["alert-a-external"]
+    }
+  ],
+  "priorityMethod": {
+    "type": "deterministic_mock",
+    "description": "Score = somme de poids fixes par type d'alerte non résolue. Méthode de démonstration, non validée cliniquement, qui ne remplace pas le jugement clinique."
+  },
+  "consultationScripts": [
+    {
+      "id": "script-a-2026-10-10",
+      "appointmentId": "appt-a-2026-10-10",
+      "patientId": "pat-a",
+      "clinicianId": "clin-x",
+      "organizationId": "org-hospital-a",
+      "recordingConsent": "accepted",
+      "transcript": {
+        "mocked": true,
+        "segments": [
+          { "id": "seg-1", "speaker": "clinician", "text": "Bonjour Madame Mansouri, qu'est-ce qui vous amène aujourd'hui ?" },
+          { "id": "seg-2", "speaker": "patient", "text": "J'ai mal au genou droit depuis une semaine, surtout le matin, et il est un peu gonflé." },
+          { "id": "seg-3", "speaker": "clinician", "text": "Vous avez pris quelque chose pour la douleur ?" },
+          { "id": "seg-4", "speaker": "patient", "text": "Non, rien. Je prends seulement mon traitement pour la tension." },
+          { "id": "seg-5", "speaker": "clinician", "text": "Votre tension est à 148 sur 92 aujourd'hui. Le genou est chaud, la mobilité est un peu réduite." }
+        ]
+      },
+      "extractionDraft": {
+        "mocked": true,
+        "status": "pending_clinician_review",
+        "symptoms": [
+          { "id": "ext-s1", "label": "Douleur du genou droit", "detail": "Depuis une semaine, prédominance matinale" },
+          { "id": "ext-s2", "label": "Gonflement du genou droit", "detail": null }
+        ],
+        "observations": [
+          { "id": "ext-o1", "label": "Genou droit chaud, mobilité réduite" }
+        ],
+        "values": [
+          { "id": "ext-v1", "label": "Pression artérielle", "value": "148/92", "unit": "mmHg", "flag": "high" }
+        ],
+        "medicationsMentioned": [
+          { "id": "ext-m1", "label": "Traitement pour la tension", "medicationCode": "MED-TENSIOREL", "note": "Rapproché de l'historique fédéré" }
+        ],
+        "missingInformation": [
+          "Intensité de la douleur (échelle 0-10)",
+          "Traumatisme récent",
+          "Traitement anticoagulant non mentionné par la patiente alors qu'il figure dans l'historique fédéré"
+        ]
+      },
+      "plannedPrescription": {
+        "medicationCode": "MED-DOLORANE",
+        "dosage": "400 mg, 3 fois par jour pendant 5 jours"
+      }
+    }
+  ]
+}

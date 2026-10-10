@@ -1,0 +1,115 @@
+{
+  "fictional": true,
+  "notice": "Projets, exécutions et résultats de recherche fictifs. L'exécution compute-to-data et les résultats SciAgents sont des fixtures statiques (MOCKED).",
+  "projects": [
+    {
+      "id": "proj-001",
+      "title": "Facteurs de risque cardiométaboliques chez l'adulte",
+      "principalInvestigatorId": "usr-aymen",
+      "organizationId": "org-research-lab",
+      "status": "approved",
+      "createdAt": "2026-06-20T09:00:00+01:00",
+      "summary": "Décrire la fréquence du mauvais contrôle glycémique selon l'âge chez les adultes suivis pour un risque cardiométabolique.",
+      "population": "Adultes de 40 à 79 ans ayant au moins une consultation entre 2024 et 2026.",
+      "variables": ["Tranche d'âge", "Sexe", "HbA1c", "Hypertension traitée"],
+      "participatingOrganizationIds": ["org-hospital-a", "org-hospital-b"],
+      "protocolDocument": { "id": "doc-proj-001-protocole", "title": "Protocole_v2.pdf" },
+      "researchAccessRequestId": "rar-001"
+    },
+    {
+      "id": "proj-002",
+      "title": "Asthme de l'adulte jeune et saisonnalité",
+      "principalInvestigatorId": "usr-aymen",
+      "organizationId": "org-research-lab",
+      "status": "under_review",
+      "createdAt": "2026-09-25T14:00:00+01:00",
+      "summary": "Étudier la variation saisonnière des consultations pour asthme chez les 18-30 ans.",
+      "population": "Adultes de 18 à 30 ans avec au moins une consultation pour asthme.",
+      "variables": ["Mois de consultation", "Tranche d'âge", "Passage aux urgences"],
+      "participatingOrganizationIds": ["org-hospital-b", "org-private-practice"],
+      "protocolDocument": { "id": "doc-proj-002-protocole", "title": "Protocole_asthme_v1.pdf" },
+      "researchAccessRequestId": "rar-002"
+    }
+  ],
+  "notebooks": [
+    {
+      "id": "nb-001",
+      "projectId": "proj-001",
+      "title": "Contrôle glycémique par tranche d'âge",
+      "cells": [
+        {
+          "id": "nb-001-cell-1",
+          "type": "markdown",
+          "source": "## Contrôle glycémique par tranche d'âge\nLe code est envoyé aux nœuds hospitaliers autorisés ; seules des statistiques agrégées reviennent."
+        },
+        {
+          "id": "nb-001-cell-2",
+          "type": "code",
+          "language": "python",
+          "source": "cohort = ctd.cohort(age_min=40, age_max=79)\nresult = (\n    cohort.group_by(\"age_band\")\n    .agg(participants=\"count\", hba1c_above_7_pct=ctd.share(\"hba1c\", above=7.0))\n)\nctd.release(result, min_cell_size=10)"
+        }
+      ]
+    }
+  ],
+  "computeJobs": [
+    {
+      "id": "job-001",
+      "projectId": "proj-001",
+      "notebookId": "nb-001",
+      "authorizationDecisionId": "dec-rar-001",
+      "submittedById": "usr-aymen",
+      "submittedAt": "2026-09-12T10:00:00+01:00",
+      "status": "completed",
+      "stages": [
+        { "id": "job-001-auth", "stage": "authorization_check", "organizationId": "org-governance", "status": "completed", "completedAt": "2026-09-12T10:00:20+01:00" },
+        { "id": "job-001-exec-a", "stage": "execution", "organizationId": "org-hospital-a", "status": "completed", "completedAt": "2026-09-12T10:03:10+01:00" },
+        { "id": "job-001-exec-b", "stage": "execution", "organizationId": "org-hospital-b", "status": "completed", "completedAt": "2026-09-12T10:04:45+01:00" },
+        { "id": "job-001-agg", "stage": "aggregation", "organizationId": "org-platform", "status": "completed", "completedAt": "2026-09-12T10:05:00+01:00" },
+        { "id": "job-001-validation", "stage": "output_validation", "organizationId": "org-platform", "status": "completed", "completedAt": "2026-09-12T10:05:30+01:00" }
+      ],
+      "controlledResultId": "res-001"
+    }
+  ],
+  "controlledResults": [
+    {
+      "id": "res-001",
+      "jobId": "job-001",
+      "title": "Part des participants avec HbA1c > 7 % par tranche d'âge",
+      "minimumCellSize": 10,
+      "disclosureCheck": "passed",
+      "columns": ["Tranche d'âge", "Participants", "HbA1c > 7 % (%)"],
+      "rows": [
+        ["40-49 ans", 212, 18.4],
+        ["50-59 ans", 305, 26.9],
+        ["60-69 ans", 274, 31.0],
+        ["70-79 ans", 131, 29.8]
+      ],
+      "provenance": "Agrégé à partir des exécutions sur HU Bab Ennour et HR Oued Zitoun. Aucune donnée individuelle n'a quitté les nœuds."
+    }
+  ],
+  "sciAgentsInvestigations": [
+    {
+      "id": "inv-001",
+      "projectId": "proj-001",
+      "question": "Quels facteurs pourraient expliquer la part plus élevée de mauvais contrôle glycémique après 60 ans ?",
+      "status": "completed",
+      "mocked": true,
+      "provenance": "Fixture statique en attendant l'intégration SciAgents (HC-150 à HC-152). Ce n'est pas une sortie réelle de SciAgents.",
+      "hypotheses": [
+        { "id": "inv-001-h1", "statement": "Une moindre observance liée à la polymédication.", "confidence": "moderate" },
+        { "id": "inv-001-h2", "statement": "Un dépistage plus tardif chez les patients sans suivi régulier.", "confidence": "low" }
+      ],
+      "evidence": [
+        { "id": "inv-001-e1", "summary": "Les résultats agrégés montrent une hausse nette entre 50-59 et 60-69 ans.", "citationIds": ["inv-001-c1"] },
+        { "id": "inv-001-e2", "summary": "Une publication fictive associe le nombre de traitements à un moins bon équilibre.", "citationIds": ["inv-001-c2"] }
+      ],
+      "contradictions": [
+        { "id": "inv-001-x1", "summary": "La tranche 70-79 ans ne prolonge pas la hausse, ce qui affaiblit l'hypothèse liée à l'âge seul.", "citationIds": ["inv-001-c1"] }
+      ],
+      "citations": [
+        { "id": "inv-001-c1", "title": "Résultat contrôlé res-001", "source": "Résultat interne de démonstration" },
+        { "id": "inv-001-c2", "title": "Polymédication et équilibre glycémique : une revue (référence fictive)", "source": "Référence inventée pour la démonstration" }
+      ]
+    }
+  ]
+}

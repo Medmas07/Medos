@@ -38,6 +38,7 @@ Status is based on repository inspection, not product intent. Use the [shared vo
 
 ## Mocked behavior
 
+- **Canonical demo data — MOCKED (D1):** `demo-data/` holds fictional JSON for three hospitals, a private practice, the Governance / Ethics Authority, three patients, clinicians, encounters, medications, labs, access grants, synchronization and research requests, decisions, audit events, simulated ledger proofs, research jobs, a SciAgents fixture, alerts, and notifications ([ADR-0005](decisions/ADR-0005-canonical-demo-data.md)). `python demo-data/check_fixtures.py` passes. Medicines and the interaction rule are invented and not validated. No product reads the data yet.
 - **AI clinical extraction — MOCKED (D1):** `POST /v1/clinical-extractions` in [`services/ai/`](../services/ai/README.md) implements the HC-152 contract with a deterministic fixture extractor. It recognises one fictional demo transcript (Patient A) and returns a fixed draft; any other text returns an empty draft. Every response is labelled `provenance.mocked: true` and `review_status: pending_clinician_review`. Its responses are checked against the contract by automated tests. This is not clinical intelligence.
 - **AI provider — MOCKED (D1):** `DeterministicMockAiProvider` (HC-151) returns fixed `[MOCK]` templates and never echoes input. It is not AI and not validated intelligence.
 

@@ -16,3 +16,4 @@ Clean/Hexagonal principles are an initial project constraint and do not require 
 | [ADR-0002](ADR-0002-web-design-system.md) | Location and styling of the web design system | Accepted |
 | [ADR-0003](ADR-0003-backend-runtime-strategy.md) | Backend runtime strategy for Nodes and company services | Accepted |
 | [ADR-0004](ADR-0004-mobile-technology.md) | Mobile technology for Patient App and Clinician App | Accepted |
+| [ADR-0005](ADR-0005-canonical-demo-data.md) | Location and format of the canonical demo data | Accepted |

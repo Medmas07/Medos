@@ -1,0 +1,25 @@
+{
+  "fictional": true,
+  "notice": "Médicaments et règle d'interaction INVENTÉS pour la démonstration. Ce n'est pas une source pharmacologique validée et cela ne doit jamais guider une décision clinique.",
+  "medications": [
+    { "code": "MED-COAGULIX", "name": "Coagulix", "therapeuticClass": "Anticoagulant (fictif)", "fictional": true },
+    { "code": "MED-DOLORANE", "name": "Dolorane", "therapeuticClass": "Anti-inflammatoire (fictif)", "fictional": true },
+    { "code": "MED-TENSIOREL", "name": "Tensiorel", "therapeuticClass": "Antihypertenseur (fictif)", "fictional": true },
+    { "code": "MED-GLUCOREL", "name": "Glucorel", "therapeuticClass": "Antidiabétique oral (fictif)", "fictional": true },
+    { "code": "MED-BRONCHAIR", "name": "Bronchair", "therapeuticClass": "Bronchodilatateur inhalé (fictif)", "fictional": true }
+  ],
+  "interactionRules": [
+    {
+      "id": "rule-coagulix-dolorane",
+      "medicationCodes": ["MED-COAGULIX", "MED-DOLORANE"],
+      "severity": "major",
+      "effect": "Risque hémorragique accru.",
+      "recommendation": "Envisager une alternative à Dolorane et vérifier le traitement en cours avec le prescripteur. Décision à valider par le clinicien.",
+      "source": {
+        "type": "demo_rule",
+        "label": "Règle déterministe fictive de démonstration",
+        "validated": false
+      }
+    }
+  ]
+}

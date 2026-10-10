@@ -1,0 +1,40 @@
+{
+  "fictional": true,
+  "notice": "FICTIONAL DEMO DATA / DONNÉES FICTIVES DE DÉMONSTRATION. Not real people, organizations, medicines, or clinical guidance. Never use for clinical decisions.",
+  "datasetVersion": "1.0.0",
+  "scenario": "docs/planning/demo-scenario.md",
+  "referenceDate": "2026-10-10",
+  "utcOffset": "+01:00",
+  "displayLocale": "fr-TN",
+  "files": [
+    "organizations.json",
+    "people.json",
+    "medication-rules.json",
+    "records/hospital-a.json",
+    "records/hospital-b.json",
+    "records/private-practice.json",
+    "access.json",
+    "governance.json",
+    "research.json",
+    "clinician.json",
+    "notifications.json"
+  ],
+  "scenarioRoles": {
+    "Hospital A": "org-hospital-a",
+    "Hospital B": "org-hospital-b",
+    "New hospital (onboarding)": "org-hospital-c",
+    "Private doctor": "clin-hatem",
+    "Governance / Ethics Authority": "org-governance",
+    "Patient A": "pat-a",
+    "Dr. X": "clin-x",
+    "Medication A": "MED-COAGULIX",
+    "Medication B": "MED-DOLORANE",
+    "Synchronization request (step 20)": "sync-001",
+    "Consultation script (steps 7-14)": "script-a-2026-10-10",
+    "Researcher": "usr-aymen",
+    "Governance reviewer": "usr-olfa",
+    "Approved research project": "proj-001",
+    "Compute-to-data job": "job-001",
+    "SciAgents investigation": "inv-001"
+  }
+}
