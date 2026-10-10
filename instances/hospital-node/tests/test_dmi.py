@@ -11,6 +11,7 @@ from domain.dmi import (
     PatientIdentity,
     RecordType,
     RejectedEntry,
+    RejectionReason,
 )
 
 AT = datetime.fromisoformat("2026-10-10T10:00:00+01:00")
@@ -22,7 +23,8 @@ ENCOUNTER = Encounter(
     started_at=datetime.fromisoformat("2024-03-09T22:40:00+01:00"),
     clinician_ref="clin-rania",
 )
-REJECTED = RejectedEntry("RX-77812", RecordType.MEDICATIONS, "unmapped_code")
+UNMAPPED = RejectionReason.UNMAPPED_CODE
+REJECTED = RejectedEntry("RX-77812", RecordType.MEDICATIONS, UNMAPPED)
 EXTRACT = DmiExtract("pat-a", PatientRecords(encounters=(ENCOUNTER,)), (REJECTED,), AT)
 
 
@@ -48,9 +50,10 @@ def test_invalid_extracts(changes):
 @pytest.mark.parametrize(
     "build",
     [
-        lambda: RejectedEntry("", RecordType.MEDICATIONS, "unmapped_code"),
-        lambda: RejectedEntry("RX-1\n", RecordType.MEDICATIONS, "unmapped_code"),
-        lambda: RejectedEntry("RX-1", RecordType.MEDICATIONS, "Unmapped code"),
+        lambda: RejectedEntry("", RecordType.MEDICATIONS, UNMAPPED),
+        lambda: RejectedEntry("RX-1\n", RecordType.MEDICATIONS, UNMAPPED),
+        # Only the shared vocabulary (HC-122), never a free-form code.
+        lambda: RejectedEntry("RX-1", RecordType.MEDICATIONS, "unmapped_code"),
         lambda: DmiDescriptor(" ", frozenset({RecordType.ENCOUNTERS}), True),
         lambda: DmiDescriptor("Fictional DMI", frozenset(), True),
         lambda: PatientIdentity("pat a", "BEN-2024-08812"),

@@ -12,12 +12,12 @@ What it simulates of a real DMI:
 - It is read on every extraction, as a live DMI would be. A source that cannot be read,
   is not marked fictional, or is held by another organization raises DmiUnavailable;
   the Node does not need its DMI to construct the adapter.
-- An entry it cannot read is listed as rejected, by reference and reason code
-  (`missing_field`, `invalid_value`), and the patient's other records are still returned.
+- An entry it cannot read is rejected by the mapping strategy's map_entry (HC-122), by
+  reference and RejectionReason, and the patient's other records are still returned.
 
-The simulated DMI keeps the demo-data fixture shape, which is not a real DMI format:
-mapping a legacy format to the canonical model is HC-122, and a hospital-specific adapter
-is HC-123. Read-only; nothing is written back.
+The simulated DMI keeps the demo-data fixture shape, which is not a real DMI format: its
+codes are already canonical, so it maps with no CodeMap. A legacy format with local codes
+is a hospital-specific adapter's (HC-123). Read-only; nothing is written back.
 """
 
 import json
@@ -26,6 +26,7 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
+from adapters.dmi.mapping import map_entry, source_ref
 from adapters.outbound.fixture_clinical_repository import (
     encounter_from_fixture,
     lab_report_from_fixture,
@@ -95,20 +96,15 @@ class MockLocalDmi:
                 # An entry without this patient's DMI id is not this patient's.
                 if dmi_patient is None or entry.get("patientId") != dmi_patient:
                     continue
-                try:
-                    record = parse(entry)
-                except KeyError:
-                    reason = "missing_field"
-                except (TypeError, ValueError):
-                    reason = "invalid_value"
-                else:
-                    found[kind].append(replace(record, patient_ref=patient.patient_ref))
-                    continue
-                rejected.append(
-                    RejectedEntry(
-                        _source_ref(entry, collection, position), kind, reason
-                    )
+                result = map_entry(
+                    lambda: replace(parse(entry), patient_ref=patient.patient_ref),
+                    source_ref(entry.get("id"), collection, position),
+                    kind,
                 )
+                if isinstance(result, RejectedEntry):
+                    rejected.append(result)
+                else:
+                    found[kind].append(result)
 
         return DmiExtract(
             patient_ref=patient.patient_ref,
@@ -144,11 +140,3 @@ class MockLocalDmi:
         if not isinstance(document, dict) or document.get("fictional") is not True:
             raise DmiUnavailable(f"{path} is not marked fictional.")
         return document
-
-
-def _source_ref(entry: dict, collection: str, position: int) -> str:
-    """The entry's DMI id, or its position when the id itself is unusable."""
-    ref = entry.get("id")
-    if isinstance(ref, str) and 0 < len(ref) <= 128 and ref.isprintable():
-        return ref
-    return f"{collection}[{position}]"

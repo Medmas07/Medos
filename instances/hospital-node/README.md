@@ -215,7 +215,7 @@ instances/hospital-node/
 ├── adapters/inbound/http/      # health, Federation, audit, access-grant, and research-execution routers
 ├── adapters/outbound/          # fixture repositories/verifiers, installed aggregate, and in-memory stores
 ├── infrastructure/             # configuration loading and validation
-├── adapters/dmi/               # hospital-local DMI Adapters (port defined, HC-120; MOCKED local adapter, HC-121)
+├── adapters/dmi/               # hospital-local DMI Adapters (port, HC-120; MOCKED local adapter, HC-121; mapping strategy, HC-122)
 ├── contracts/                  # reserved for Node-local contract documents
 └── tests/                      # domain, use case, adapter, app, and layer-boundary tests
 ```
@@ -228,7 +228,7 @@ DEFINED at D1. The Node owns `DmiSource` ([`application/dmi_source.py`](applicat
 
 The only implementation is the **MOCKED** local DMI adapter (HC-121, D2, [`adapters/dmi/mock_local_dmi.py`](adapters/dmi/mock_local_dmi.py)): a simulated DMI built from this hospital's fictional records file and the local identifiers its organization gives patients in [`people.json`](../../demo-data/people.json). It passes the port conformance check for all three demo nodes; see the [adapter README](adapters/dmi/README.md#mock-local-dmi-adapter-hc-121).
 
-Nothing calls the port at runtime yet: `main.py` does not build the adapter, no real DMI is connected, `/health` is unchanged, and the Node's records still come from the MOCKED fixture repository. When extraction runs and where its results go are OPEN. The mapping strategy (HC-122) and a sample hospital-specific adapter (HC-123) build on it. No central service implements or calls it.
+Nothing calls the port at runtime yet: `main.py` does not build the adapter, no real DMI is connected, `/health` is unchanged, and the Node's records still come from the MOCKED fixture repository. When extraction runs and where its results go are OPEN. The [mapping strategy](adapters/dmi/README.md#mapping-strategy-hc-122) (HC-122, D2) defines how an adapter maps local codes to the canonical model and the shared rejection reasons (`missing_field`, `invalid_value`, `unmapped_code`); no hospital has mapping tables yet. A sample hospital-specific adapter (HC-123) builds on both. No central service implements or calls it.
 
 ## Responsibilities and owned concepts
 
