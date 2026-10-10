@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-SciAgents exists externally. This repository owns only its integration. The repository-side communication contract is IMPLEMENTED as [`scientific-investigation.v1.yaml`](../../contracts/api/sciagents/scientific-investigation.v1.yaml) (HC-170), and the server-side HTTP client adapter is IMPLEMENTED at D2 under [`src/sciagents_adapter/`](src/sciagents_adapter/) (HC-171). It is a Python library boundary per [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md), not a separate speculative service. The Research Portal connection remains PLANNED (HC-172).
+SciAgents exists externally. This repository owns only its integration. The repository-side communication contract is IMPLEMENTED as [`scientific-investigation.v1.yaml`](../../contracts/api/sciagents/scientific-investigation.v1.yaml) (HC-170), the server-side client adapter is IMPLEMENTED at D2 under [`src/sciagents_adapter/`](src/sciagents_adapter/) (HC-171), and `main.py` exposes that contract to the Research Portal (HC-172). The browser never calls SciAgents directly.
 
 ## Responsibilities and owned concepts
 
@@ -33,7 +33,7 @@ The external code inspected for HC-171 exposes an open FastAPI API. `POST /hypot
 
 There is no upstream user authentication, workspace boundary, free-form question field, language field, or controlled-result input. Runs are global and the upstream version reports `0.0.0`. HC-171 therefore keeps SciAgents server-side, normalizes inline and queued execution, maps errors and polling progress, applies timeouts, and preserves provenance without claiming production authentication. Confidence stays `null`; Critic prose is not turned into a contradiction automatically.
 
-The adapter keeps the Hackcure investigation UUID to upstream `run_id` correlation in process memory. A restart loses that correlation, and concurrent replicas do not share it. It does not expose an HTTP route, consume SSE yet, authenticate SciAgents, retry calls, or provide durable storage; those are explicit D2 limits. Tests use `httpx.MockTransport` only and are not delivered as a mock integration. A real configured SciAgents endpoint is required for live use.
+The adapter keeps the Hackcure investigation UUID to upstream `run_id` correlation in process memory. A restart loses that correlation, and concurrent replicas do not share it. HC-172 exposes `POST /v1/investigations` and `GET /v1/investigations/{id}` on the integration runtime, with CORS restricted to the configured Research Portal origin. It does not consume SSE, authenticate callers or SciAgents, retry calls, or provide durable storage; those are explicit D2 limits. Tests use HTTP test doubles only and are not delivered as a mock integration. Without `SCIAGENTS_URL`, health is `degraded` and submission fails explicitly with `503`; there is no fixture fallback.
 
 ## Development
 
@@ -41,4 +41,7 @@ The adapter keeps the Hackcure investigation UUID to upstream `run_id` correlati
 $env:PYTHONPATH = "src"
 python -m pytest
 python -m ruff check .
+python -m uvicorn main:app --port 8800
 ```
+
+Copy only the safe variable names from [`.env.example`](.env.example). Configure the Portal with `VITE_SCIAGENTS_API_URL=http://localhost:8800`.
