@@ -1,8 +1,10 @@
+import accessFixtures from '../../../../../demo-data/access.json'
 import governanceFixtures from '../../../../../demo-data/governance.json'
 import notificationsFixtures from '../../../../../demo-data/notifications.json'
 import organizationsFixtures from '../../../../../demo-data/organizations.json'
 import peopleFixtures from '../../../../../demo-data/people.json'
 import type {
+  AccessGrantInfo,
   GovernanceAuditEvent,
   GovernanceDecision,
   GovernanceNotification,
@@ -33,6 +35,8 @@ const typedPatients = (peopleFixtures.patients ?? []) as unknown as PatientInfo[
 
 const typedNotifications = (notificationsFixtures.notifications ?? []) as unknown as GovernanceNotification[]
 
+const typedAccessGrants = (accessFixtures.accessGrants ?? []) as unknown as AccessGrantInfo[]
+
 const allStaffAndClinicians = [
   ...((peopleFixtures.staff ?? []) as unknown as PersonInfo[]),
   ...((peopleFixtures.clinicians ?? []) as unknown as PersonInfo[]),
@@ -47,6 +51,19 @@ export const governanceService = {
 
   getSynchronizationRequests(): SynchronizationRequest[] {
     return typedGovernance.synchronizationRequests
+  },
+
+  getSynchronizationRequest(id: string): SynchronizationRequest | undefined {
+    return this.getSynchronizationRequests().find((s) => s.id === id)
+  },
+
+  getAccessGrants(): AccessGrantInfo[] {
+    return typedAccessGrants
+  },
+
+  getAccessGrant(id: string | null): AccessGrantInfo | undefined {
+    if (!id) return undefined
+    return typedAccessGrants.find((g) => g.id === id)
   },
 
   getResearchAccessRequests(): ResearchAccessRequest[] {

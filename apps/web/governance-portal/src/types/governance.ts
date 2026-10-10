@@ -54,6 +54,23 @@ export interface HospitalApplication {
   decisionId: string | null
 }
 
+export interface PatientLocalIdentifier {
+  organizationId: string
+  value: string
+}
+
+export interface AccessGrantInfo {
+  id: string
+  patientId: string
+  granteeId: string
+  scope: string[]
+  purpose: string
+  status: 'active' | 'expired' | 'revoked'
+  grantedAt: string
+  expiresAt: string
+  revokedAt: string | null
+}
+
 export interface ConsentInfo {
   basis: 'patient_grant' | 'signed_consent_form' | 'emergency_override' | 'none'
   accessGrantId: string | null
@@ -160,6 +177,9 @@ export interface PatientInfo {
   firstName: string
   lastName: string
   city: string
+  birthDate?: string
+  sex?: 'male' | 'female' | 'other'
+  localIdentifiers?: PatientLocalIdentifier[]
 }
 
 export interface GovernanceNotification {
