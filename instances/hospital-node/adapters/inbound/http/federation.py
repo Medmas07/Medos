@@ -21,6 +21,7 @@ from pydantic import (
     ValidationError,
 )
 
+from application.audit_log import AuditLog
 from application.authorization_verifier import AuthorizationVerifier
 from application.clinical_repository import ClinicalRepository
 from application.get_patient_history import AuthorizationDenied, get_patient_history
@@ -201,6 +202,7 @@ def create_router(
     identity: NodeIdentity,
     repository: ClinicalRepository,
     verifier: AuthorizationVerifier,
+    audit_log: AuditLog,
     clock: Callable[[], datetime],
 ) -> APIRouter:
     router = APIRouter(prefix="/v1/federation", tags=["federation"])
@@ -234,7 +236,7 @@ def create_router(
         except InvalidHistoryQuery as error:
             return _invalid({str(error).split(" ")[0]})
         try:
-            history = get_patient_history(query, repository, verifier, clock)
+            history = get_patient_history(query, repository, verifier, audit_log, clock)
         except AuthorizationDenied:
             return _problem(
                 403,

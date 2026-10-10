@@ -3,6 +3,7 @@ from datetime import date, datetime
 import pytest
 
 from application.get_patient_history import AuthorizationDenied, get_patient_history
+from domain.audit_event import AuditAction, AuditOutcome, AuditQuery
 from domain.clinical_record import (
     Encounter,
     LabReport,
@@ -71,9 +72,30 @@ class StubVerifier:
         return self._allows
 
 
-def history(q: HistoryQuery, allows: bool = True, repository=None):
+class SpyAuditLog:
+    durable = False
+
+    def __init__(self, fails: bool = False) -> None:
+        self.recorded = []
+        self._fails = fails
+
+    def record(self, event) -> None:
+        if self._fails:
+            raise OSError("audit trail unavailable")
+        self.recorded.append(event)
+
+    def events(self, query: AuditQuery):
+        return tuple(self.recorded)
+
+
+def history(q: HistoryQuery, allows: bool = True, repository=None, audit_log=None):
     return get_patient_history(
-        q, repository or StubRepository(), StubVerifier(allows), lambda: DEMO_NOW
+        q,
+        repository or StubRepository(),
+        StubVerifier(allows),
+        audit_log if audit_log is not None else SpyAuditLog(),
+        lambda: DEMO_NOW,
+        new_event_id=lambda: "6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b",
     )
 
 
@@ -105,9 +127,55 @@ def test_refusal_reads_no_record():
 def test_verifier_is_asked_at_the_clock_time():
     verifier = StubVerifier(True)
 
-    get_patient_history(query(), StubRepository(), verifier, lambda: DEMO_NOW)
+    get_patient_history(
+        query(), StubRepository(), verifier, SpyAuditLog(), lambda: DEMO_NOW
+    )
 
     assert verifier.checked_at == DEMO_NOW
+
+
+def test_disclosure_is_audited_with_the_disclosed_references_only():
+    audit_log = SpyAuditLog()
+
+    history(query(scope=frozenset({ScopeItem.MEDICATIONS})), audit_log=audit_log)
+
+    [event] = audit_log.recorded
+    assert event.action is AuditAction.PATIENT_HISTORY_QUERY
+    assert event.outcome is AuditOutcome.DISCLOSED
+    assert event.disclosed_entry_refs == ("med-1",)
+    assert (event.query_id, event.patient_ref, event.recorded_at) == (
+        query().query_id,
+        "pat-1",
+        DEMO_NOW,
+    )
+    assert (event.authorization_basis, event.authorization_ref) == (
+        query().authorization.basis,
+        "grant-1",
+    )
+
+
+def test_refusal_is_audited_without_disclosure():
+    audit_log = SpyAuditLog()
+
+    with pytest.raises(AuthorizationDenied):
+        history(query(), allows=False, audit_log=audit_log)
+
+    [event] = audit_log.recorded
+    assert (event.outcome, event.disclosed_entry_refs) == (AuditOutcome.DENIED, ())
+
+
+def test_empty_answer_is_audited_too():
+    audit_log = SpyAuditLog()
+
+    history(query(patient_ref="pat-unknown"), audit_log=audit_log)
+
+    [event] = audit_log.recorded
+    assert (event.outcome, event.disclosed_entry_refs) == (AuditOutcome.DISCLOSED, ())
+
+
+def test_nothing_is_disclosed_when_the_audit_cannot_be_recorded():
+    with pytest.raises(OSError):
+        history(query(), audit_log=SpyAuditLog(fails=True))
 
 
 @pytest.mark.parametrize(
