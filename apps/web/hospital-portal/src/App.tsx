@@ -22,10 +22,13 @@ import {
 } from './services/onboardingService'
 import type { OnboardingSnapshot, StepId } from './types/onboarding'
 import { AgreementsView } from './views/AgreementsView'
+import { AutomatedReviewView } from './views/AutomatedReviewView'
+import { DmiView } from './views/DmiView'
 import { DocumentsView } from './views/DocumentsView'
 import { OverviewView } from './views/OverviewView'
 import { ProfileView } from './views/ProfileView'
 import { RegistrationView } from './views/RegistrationView'
+import { TechnicalView } from './views/TechnicalView'
 import { StepPlaceholderView } from './views/StepPlaceholderView'
 
 type ViewId = 'overview' | StepId
@@ -169,6 +172,36 @@ export default function App() {
         <AgreementsView
           snapshot={load.snapshot}
           consumeSimulatedFailure={failureOnce('agreement-failure')}
+          onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
+          onNavigate={navigateTo}
+        />
+      )
+    }
+    if (currentView === 'technical') {
+      return (
+        <TechnicalView
+          snapshot={load.snapshot}
+          consumeSimulatedFailure={failureOnce('technical-failure')}
+          onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
+          onNavigate={navigateTo}
+        />
+      )
+    }
+    if (currentView === 'dmi') {
+      return (
+        <DmiView
+          snapshot={load.snapshot}
+          consumeSimulatedFailure={failureOnce('dmi-failure')}
+          onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
+          onNavigate={navigateTo}
+        />
+      )
+    }
+    if (currentView === 'automated-review') {
+      return (
+        <AutomatedReviewView
+          snapshot={load.snapshot}
+          consumeSimulatedFailure={failureOnce('submission-failure')}
           onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
           onNavigate={navigateTo}
         />

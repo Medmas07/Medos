@@ -2,8 +2,8 @@
 
 ## Purpose and status
 
-- **IMPLEMENTED (D1):** Governance Portal shell (HC-070, [#71](https://github.com/Medmas07/Hackcure_hackathon/issues/71)), Governance dashboard (HC-071, [#72](https://github.com/Medmas07/Hackcure_hackathon/issues/72)), pending hospital approval list (HC-072, [#73](https://github.com/Medmas07/Hackcure_hackathon/issues/73)), hospital approval review (HC-073, [#74](https://github.com/Medmas07/Hackcure_hackathon/issues/74)), synchronization request list (HC-074, [#75](https://github.com/Medmas07/Hackcure_hackathon/issues/75)), approve/reject synchronization request (HC-076, [#77](https://github.com/Medmas07/Hackcure_hackathon/issues/77)), research access request list (HC-077, [#78](https://github.com/Medmas07/Hackcure_hackathon/issues/78)), research access request review (HC-078, [#79](https://github.com/Medmas07/Hackcure_hackathon/issues/79)), and governance audit timeline (HC-079, [#80](https://github.com/Medmas07/Hackcure_hackathon/issues/80)) at initial depth D1. Built with React 19 + TypeScript + Vite SPA as decided in [ADR-0001](../../../docs/decisions/ADR-0001-web-frontend-technology.md) and styled with Tailwind CSS v4 and the shared [design system](../../../design-system/README.md) ([ADR-0002](../../../docs/decisions/ADR-0002-web-design-system.md)).
-- **Checked on 2026-10-10:** `npm run build`, `npm run lint`, and `npm test` (Vitest suite covering canonical demo-data loading, the pending hospital approval list, dashboard metrics calculation, federated nodes status, hash verification, state behavior, the hospital review rules, the synchronization list rules, the synchronization review rules, the research access request list rules, the research review rules, and the audit timeline rules) all pass. The three review flows, the synchronization list, and the audit timeline were also driven in headless Chrome. Fixed dev port is `5174`.
+- **IMPLEMENTED (D1):** Governance Portal shell (HC-070, [#71](https://github.com/Medmas07/Hackcure_hackathon/issues/71)), Governance dashboard (HC-071, [#72](https://github.com/Medmas07/Hackcure_hackathon/issues/72)), pending hospital approval list (HC-072, [#73](https://github.com/Medmas07/Hackcure_hackathon/issues/73)), hospital approval review (HC-073, [#74](https://github.com/Medmas07/Hackcure_hackathon/issues/74)), synchronization request list (HC-074, [#75](https://github.com/Medmas07/Hackcure_hackathon/issues/75)), synchronization request detail (HC-075, [#76](https://github.com/Medmas07/Hackcure_hackathon/issues/76)), approve/reject synchronization request (HC-076, [#77](https://github.com/Medmas07/Hackcure_hackathon/issues/77)), research access request list (HC-077, [#78](https://github.com/Medmas07/Hackcure_hackathon/issues/78)), research access request review (HC-078, [#79](https://github.com/Medmas07/Hackcure_hackathon/issues/79)), governance audit timeline (HC-079, [#80](https://github.com/Medmas07/Hackcure_hackathon/issues/80)), and blockchain proof explorer (HC-080, [#81](https://github.com/Medmas07/Hackcure_hackathon/issues/81)) at initial depth D1. Built with React 19 + TypeScript + Vite SPA as decided in [ADR-0001](../../../docs/decisions/ADR-0001-web-frontend-technology.md) and styled with Tailwind CSS v4 and the shared [design system](../../../design-system/README.md) ([ADR-0002](../../../docs/decisions/ADR-0002-web-design-system.md)).
+- **Checked on 2026-10-10:** `npm run build`, `npm run lint`, and `npm test` (Vitest suite covering canonical demo-data loading, the pending hospital approval list, dashboard metrics calculation, federated nodes status, hash verification, state behavior, the hospital review rules, the synchronization list rules, synchronization request detail verification, the synchronization review rules, the research access request list rules, the research review rules, the audit timeline rules, and the proof verification rules) all pass. The three review flows, the synchronization list, the audit timeline, and the proof explorer were also driven in headless Chrome. Fixed dev port is `5174`.
 - **Mocking strategy:** Consumes canonical fictional fixtures from `demo-data/` ([ADR-0005](../../../docs/decisions/ADR-0005-canonical-demo-data.md)). Simulated local ledger proofs (SHA-256) and advisory AI annotations are explicitly marked with `DemoBanner` and `DemoBadge`. No direct access to hospital clinical databases.
 
 ## Pending hospital approval list (HC-072)
@@ -34,7 +34,19 @@ IMPLEMENTED at D1, read-only, from the canonical fixtures. **Synchronisations So
 
 Requests are ordered pending first, then authorized, expired, and rejected, newest first within each. Filters by status show their counts, and a filter with no result shows an empty state with a way back to all requests. The rules live in `src/services/syncRequestList.ts` and are unit-tested; statuses use the browser clock, evaluated when the page opens. In the demo data, `sync-002` (approved until 2026-03-12) therefore shows as expired, and the detail panel says so too.
 
-The request detail is a separate ticket (HC-075).
+## Synchronization request detail (HC-075)
+
+IMPLEMENTED at initial depth D1. In **Synchronisations Inter-Hospitalières**, selecting any synchronization request displays its complete detail dossier (`SyncRequestDetail`):
+
+1. **Source & target hospitals:** Identifies requester and custodian hospitals (`reqOrg`, `tgtOrg`), city, federated node status (`online`/`degraded`), DMI adapter connection state, and local patient record identifiers (IPP/MRN) mapped across establishments. Invariant emphasized: target hospital retains exclusive sovereignty over its source clinical data; no direct SQL or centralized extraction.
+2. **Clinical purpose & justification:** Displays declared clinical purpose, submission date, and ethical review classification (continuity of care vs unauthorized research request).
+3. **Patient identity & data scope:** Resolved federated patient identity (`FED-PAT-0001`, demographics) and clinical categories in scope (`medications`, `labReports`, `encounters`) with descriptive labels and minimization principle indicator.
+4. **Duration & timeframe:** Requested duration in consecutive days, timestamp, and proportionality assessment based on care episode.
+5. **Consent state & authorization basis:**
+   - Active patient grant (`patient_grant`): Linked to `access.json` (`grant-a-drx`), showing attending practitioner grantee (`Dr Youssef Gharbi`), expiration date, and scope alignment check.
+   - Signed consent form (`signed_consent_form`): Physical paper consent documented at emergency intake.
+   - Missing consent (`none`): Flagged with violation alert, demonstrating federation invariant prohibiting unconsented data transfer.
+6. **Governance decision & cryptographic proof:** Displays outcome, rationale, conditions, reviewer (`usr-olfa`), and anchored SHA-256 fingerprint for decided requests, or instruction notice for pending requests.
 
 ## Approve or reject a synchronization request (HC-076)
 
@@ -102,6 +114,22 @@ The rules live in `src/services/auditTimeline.ts` and are unit-tested, including
 The dashboard's "Dernières Actions" card now uses the same newest-first order; it previously showed the six oldest events.
 
 Not done at D1: events come from fixtures and local state, not from the Governance Node audit API (HC-134 is PLANNED); simulated decisions get no ledger proof.
+
+## Blockchain proof explorer (HC-080) — MOCKED BLOCKCHAIN
+
+IMPLEMENTED at D1 against a **MOCKED BLOCKCHAIN**: the "ledger" is the simulated proof list in `demo-data/governance.json`. There is no chain, network, consensus, or real anchoring; the explorer, its badge, and its banner say so. The `AuditLedgerPort` and a simulated or real ledger are PLANNED (HC-190 to HC-194).
+
+**Piste d’Audit & Registre** lists each proof with its event type in plain language (`Décision : accès recherche approuvée`), proof and event ids, hash, organizations, anchoring time, and its verification state. That state is **recomputed in the browser**, not read from the fixture's own `verificationStatus` claim:
+
+- **Vérifiée:** the SHA-256 of the canonical payload matches the recorded hash, the payload names the proof's audit event and that event exists, and the payload holds only the allowed minimized fields (`eventId`, `decisionId`, `outcome`, `decidedAt`, `organizationIds`, `version`, the same set as `check_fixtures.py`).
+- **Altérée:** the recomputed hash differs.
+- **Incohérente:** the hash matches, but the proof points to another or a missing event, or anchors a forbidden field such as a diagnosis.
+
+Selecting a proof shows the recorded and recomputed hashes, each check, the anchored payload, a warning if the fixture's claimed status disagrees with the recomputation, and a link that opens it in the interactive verifier. Verification is asynchronous (Web Crypto), with a loading state, and an error state when Web Crypto is unavailable (outside HTTPS or localhost).
+
+The rules live in `src/services/proofExplorer.ts` and are unit-tested. Its `canonicalJson` reproduces Python's `json.dumps(sort_keys=True, separators=(',', ':'))` byte for byte, sorting keys at every depth and escaping non-ASCII. The previous shared implementation dropped the keys of nested objects, so a change inside a nested object went undetected; the verifier and `governanceService` now use the corrected one.
+
+Simulated decisions recorded in the session (HC-073, HC-076, HC-078) get no proof; the timeline shows them as not anchored.
 
 ## Responsibilities and owned concepts
 

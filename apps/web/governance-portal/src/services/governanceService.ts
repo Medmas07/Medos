@@ -18,6 +18,7 @@ import type {
   ResearchProjectInfo,
   SynchronizationRequest,
 } from '../types/governance'
+import { canonicalJson, sha256Hex } from './proofExplorer'
 import { reviewStore } from './reviewStore'
 
 const typedGovernance = governanceFixtures as unknown as {
@@ -68,6 +69,14 @@ export const governanceService = {
   getSynchronizationRequests(): SynchronizationRequest[] {
     const simulated = reviewStore.getSnapshot().synchronizationRequests
     return typedGovernance.synchronizationRequests.map((req) => simulated[req.id] ?? req)
+  },
+
+  getSynchronizationRequest(id: string): SynchronizationRequest | undefined {
+    return this.getSynchronizationRequests().find((s) => s.id === id)
+  },
+
+  getAccessGrants(): AccessGrant[] {
+    return typedAccessGrants
   },
 
   getAccessGrant(id: string | null): AccessGrant | undefined {
@@ -182,23 +191,16 @@ export const governanceService = {
     }
   },
 
-  /**
-   * Deterministic client-side SHA-256 hash calculation using Web Crypto API.
-   * Produces the exact hexadecimal representation.
-   */
+  /** SHA-256 of a string, in hexadecimal (Web Crypto). */
   async computeSha256(data: string): Promise<string> {
-    const encoder = new TextEncoder()
-    const buffer = encoder.encode(data)
-    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer)
-    const hashArray = Array.from(new Uint8Array(hashBuffer))
-    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+    return sha256Hex(data)
   },
 
   /**
-   * Canonical JSON stringifier matching Python check_fixtures.py format:
-   * json.dumps(payload, sort_keys=True, separators=(',', ':'))
+   * Canonical JSON matching check_fixtures.py: json.dumps(payload, sort_keys=True,
+   * separators=(',', ':')), keys sorted at every depth (HC-080).
    */
   canonicalJson(obj: unknown): string {
-    return JSON.stringify(obj, Object.keys(obj as object).sort())
+    return canonicalJson(obj)
   },
 }

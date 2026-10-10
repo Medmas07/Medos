@@ -91,17 +91,19 @@ function agreementsState(application: HospitalApplication): StepState {
 }
 
 function automatedReviewState(application: HospitalApplication): StepState {
-  const automated = application.reviewSteps.filter(
-    (s) => s.step === 'completeness_check' || s.step === 'assisted_review',
-  )
-  if (automated.length === 0 || automated.some((s) => s.status === 'pending')) {
+  const completeness = application.reviewSteps.find((s) => s.step === 'completeness_check')
+  const assisted = application.reviewSteps.find((s) => s.step === 'assisted_review')
+  if (!completeness || completeness.status === 'pending') {
     return { status: 'pending', detail: 'Vérifications automatiques non lancées.' }
   }
-  const findings = automated.reduce((sum, s) => sum + s.findings.length, 0)
-  if (findings > 0) {
-    return { status: 'attention', detail: `Terminée avec ${plural(findings, 'remarque')} (indicatives).` }
+  // Only completeness findings require action; assisted-review remarks are advisory.
+  if (completeness.findings.length > 0) {
+    return { status: 'attention', detail: `Complétude : ${plural(completeness.findings.length, 'point')} à corriger.` }
   }
-  return { status: 'completed', detail: 'Terminée sans remarque.' }
+  const remarks = assisted?.findings.length ?? 0
+  return remarks > 0
+    ? { status: 'completed', detail: `Dossier complet ; ${plural(remarks, 'remarque')} indicative(s).` }
+    : { status: 'completed', detail: 'Dossier complet, sans remarque.' }
 }
 
 function humanReviewState(application: HospitalApplication): StepState {
@@ -172,7 +174,7 @@ export function deriveSteps(
     )
     states.set(
       'dmi',
-      questionnaire?.dmiSystem
+      questionnaire?.dmiSystem && questionnaire.integrationMethods?.length
         ? { status: 'completed', detail: `DMI déclaré : ${questionnaire.dmiSystem}.` }
         : { status: 'pending', detail: 'DMI / SIH non décrit.' },
     )
@@ -197,10 +199,11 @@ export function deriveSteps(
 
 /**
  * Demo scenarios, selected with `?demo=vide`, `?demo=erreur`,
- * `?demo=echec-inscription`, `?demo=echec-profil`, `?demo=echec-document`, or
- * `?demo=echec-accord` in the URL. The registration, profile, and agreement
- * failure scenarios start like `empty`; the document failure scenario starts
- * like `nominal`. Each makes the first matching submission fail.
+ * `?demo=echec-inscription`, `?demo=echec-profil`, `?demo=echec-document`,
+ * `?demo=echec-accord`, `?demo=echec-technique`, `?demo=echec-dmi`, or
+ * `?demo=echec-soumission` in the URL. The document failure scenario starts
+ * like `nominal`; the other failure scenarios start like `empty`. Each makes the
+ * first matching submission fail.
  */
 export type DemoScenario =
   | 'nominal'
@@ -210,6 +213,9 @@ export type DemoScenario =
   | 'profile-failure'
   | 'document-failure'
   | 'agreement-failure'
+  | 'technical-failure'
+  | 'dmi-failure'
+  | 'submission-failure'
 
 export function scenarioFromSearch(search: string): DemoScenario {
   const value = new URLSearchParams(search).get('demo')
@@ -219,6 +225,9 @@ export function scenarioFromSearch(search: string): DemoScenario {
   if (value === 'echec-profil') return 'profile-failure'
   if (value === 'echec-document') return 'document-failure'
   if (value === 'echec-accord') return 'agreement-failure'
+  if (value === 'echec-technique') return 'technical-failure'
+  if (value === 'echec-dmi') return 'dmi-failure'
+  if (value === 'echec-soumission') return 'submission-failure'
   return 'nominal'
 }
 
@@ -248,7 +257,10 @@ export async function loadOnboardingSnapshot(
     scenario === 'empty' ||
     scenario === 'registration-failure' ||
     scenario === 'profile-failure' ||
-    scenario === 'agreement-failure'
+    scenario === 'agreement-failure' ||
+    scenario === 'technical-failure' ||
+    scenario === 'dmi-failure' ||
+    scenario === 'submission-failure'
       ? null
       : (applications.find((a) => a.organizationId === organizationId) ?? null)
 

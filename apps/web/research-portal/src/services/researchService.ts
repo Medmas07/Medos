@@ -100,7 +100,7 @@ export function derivePages(summaries: ProjectSummary[], now: Date): PortalPage[
     dashboard: `${plural(summaries.length, 'projet')} de recherche.`,
     'new-project': "Création d'un projet de recherche.",
     protocol: `${plural(summaries.filter((s) => s.project.protocolDocument).length, 'protocole')} déposé(s).`,
-    population: `${plural(summaries.length, 'population')} décrite(s).`,
+    population: `${plural(summaries.filter((s) => s.project.population.trim()).length, 'population')} décrite(s).`,
     variables: `${plural(summaries.reduce((n, s) => n + s.project.variables.length, 0), 'variable')} demandée(s).`,
     hospitals: `${plural(new Set(summaries.flatMap((s) => s.project.participatingOrganizationIds)).size, 'établissement')} sollicité(s).`,
     'submit-request': `${plural(submitted.length, 'demande')} soumise(s) à l'Autorité de gouvernance.`,
@@ -142,13 +142,17 @@ function summarize(project: ResearchProject, now: Date): ProjectSummary {
   return { ...summary, authorized: isAuthorized(summary, now) }
 }
 
-/** Demo scenarios, selected with `?demo=vide` or `?demo=erreur` in the URL. */
-export type DemoScenario = 'nominal' | 'empty' | 'error'
+/**
+ * Demo scenarios, selected with `?demo=vide`, `?demo=erreur`, or `?demo=echec-depot`
+ * (the first document upload of the page load is interrupted) in the URL.
+ */
+export type DemoScenario = 'nominal' | 'empty' | 'error' | 'upload-failure'
 
 export function scenarioFromSearch(search: string): DemoScenario {
   const value = new URLSearchParams(search).get('demo')
   if (value === 'vide') return 'empty'
   if (value === 'erreur') return 'error'
+  if (value === 'echec-depot') return 'upload-failure'
   return 'nominal'
 }
 

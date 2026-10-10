@@ -4,7 +4,6 @@ import {
   Badge,
   Button,
   Card,
-  DemoBadge,
   EmptyState,
   PageHeader,
   Table,
@@ -26,6 +25,7 @@ import {
   type SyncListStatus,
 } from '../../services/syncRequestList'
 import { SyncReviewForm } from '../review/SyncReviewForm'
+import { SyncRequestDetail } from '../sync/SyncRequestDetail'
 
 /** The reviewer signed in to this demo portal (fictional, HC-005). */
 const REVIEWER_ID = 'usr-olfa'
@@ -43,6 +43,7 @@ export function DataSyncView() {
   // Re-render when a simulated decision is recorded or the demo is reset (HC-076).
   const reviewState = useSyncExternalStore(reviewStore.subscribe, reviewStore.getSnapshot)
   const simulatedSyncCount = Object.keys(reviewState.synchronizationRequests).length
+
   // Statuses are evaluated once per visit: an authorization that has lapsed shows as expired.
   const [now] = useState(() => new Date())
   const rows = syncListRows(
@@ -61,9 +62,6 @@ export function DataSyncView() {
   const reqOrg = selectedSync ? governanceService.getOrganization(selectedSync.requesterOrganizationId) : undefined
   const tgtOrg = selectedSync ? governanceService.getOrganization(selectedSync.targetOrganizationId) : undefined
   const decision = selectedSync ? governanceService.getDecision(selectedSync.decisionId) : undefined
-  const proof = decision ? governanceService.getProofForEvent(
-    governanceService.getAuditEvents().find((e) => e.subjectId === decision.id)?.id ?? ''
-  ) : undefined
 
   return (
     <div className="space-y-6">
@@ -79,28 +77,29 @@ export function DataSyncView() {
               </Button>
             )}
             <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrer par statut">
-            {SYNC_FILTERS.map((f) => (
-              <Button
-                key={f}
-                variant={filter === f ? 'primary' : 'secondary'}
-                size="sm"
-                aria-pressed={filter === f}
-                onClick={() => setFilter(f)}
-              >
-                {SYNC_FILTER_LABELS[f]} ({counts[f]})
-              </Button>
-            ))}
+              {SYNC_FILTERS.map((f) => (
+                <Button
+                  key={f}
+                  variant={filter === f ? 'primary' : 'secondary'}
+                  size="sm"
+                  aria-pressed={filter === f}
+                  onClick={() => setFilter(f)}
+                >
+                  {SYNC_FILTER_LABELS[f]} ({counts[f]})
+                </Button>
+              ))}
             </div>
           </div>
         }
       />
 
-      <Alert tone="info" title="Contrôle de finalité">
+      <Alert tone="info" title="Contrôle de finalité & Souveraineté hospitalière">
         Chaque synchronisation exige une finalité clinique explicite, une base d'autorisation vérifiée et une durée strictement délimitée. Aucun accès SQL direct entre serveurs hospitaliers n'est autorisé.
       </Alert>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        <div className="lg:col-span-7">
+        {/* Table of synchronization requests */}
+        <div className="lg:col-span-5">
           <Card title="File des Demandes de Synchronisation" flush>
             {filteredRows.length === 0 ? (
               <EmptyState
@@ -153,7 +152,7 @@ export function DataSyncView() {
                             {consentLabel(request.consent.basis)}
                           </Badge>
                         </div>
-                        <div className="text-slate-500">Durée demandée : {request.durationDays} jours</div>
+                        <div className="text-slate-500">Durée : {request.durationDays} j</div>
                       </div>
                     ),
                   },
@@ -164,7 +163,7 @@ export function DataSyncView() {
                       <div className="space-y-0.5 text-xs">
                         <Badge tone={STATUS_TONES[status]} dot>{SYNC_STATUS_LABELS[status]}</Badge>
                         {validUntil && (
-                          <div className="text-slate-500">
+                          <div className="text-slate-500 text-[10px]">
                             {status === 'expired' ? 'Expirée le' : "Jusqu'au"} {formatDate(validUntil)}
                           </div>
                         )}
@@ -193,114 +192,31 @@ export function DataSyncView() {
           </Card>
         </div>
 
-        <div className="lg:col-span-5">
+        {/* Detailed view of selected request */}
+        <div className="lg:col-span-7">
           {selectedSync ? (
-            <Card title={`Détail : ${selectedSync.id}`} className="space-y-4">
-              <div className="space-y-2 text-xs">
-                <div>
-                  <span className="font-semibold text-slate-700">Finalité déclarée :</span>
-                  <p className="mt-0.5 rounded bg-slate-50 p-2 text-slate-800">{selectedSync.purpose}</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 pt-2">
-                  <div className="rounded bg-slate-50 p-2">
-                    <span className="text-slate-500">Demandeur :</span>
-                    <p className="font-medium text-slate-800">{reqOrg?.name}</p>
-                  </div>
-                  <div className="rounded bg-slate-50 p-2">
-                    <span className="text-slate-500">Détenteur des données :</span>
-                    <p className="font-medium text-slate-800">{tgtOrg?.name}</p>
-                  </div>
-                </div>
-
-                <div className="rounded bg-slate-50 p-2">
-                  <span className="text-slate-500">Base d'autorisation :</span>
-                  <div className="mt-1 flex items-center gap-2">
-                    <Badge tone={selectedSync.consent.basis === 'none' ? 'danger' : 'info'}>
-                      {selectedSync.consent.basis === 'patient_grant' && 'Autorisation patiente active'}
-                      {selectedSync.consent.basis === 'signed_consent_form' && 'Formulaire signé vérifié'}
-                      {selectedSync.consent.basis === 'none' && 'Aucune autorisation fournie'}
-                    </Badge>
-                    {selectedSync.consent.accessGrantId && (
-                      <span className="font-mono text-slate-600">Réf: {selectedSync.consent.accessGrantId}</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Decision details */}
-              {decision ? (
-                <div
-                  className={`rounded-md border p-3 text-xs ${
-                    selectedRow?.status === 'expired'
-                      ? 'border-slate-200 bg-slate-50 text-slate-800'
-                      : decision.outcome === 'approved'
-                      ? 'border-success-200 bg-success-50 text-success-800'
-                      : 'border-danger-200 bg-danger-50 text-danger-800'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-semibold">
-                      Décision d'arbitrage : {decision.outcome === 'approved' ? 'Autorisée' : 'Refusée'}
-                      {selectedRow?.status === 'expired' && ' — expirée'}
-                    </span>
-                    {decision.simulated && <DemoBadge>Simulée — non persistée</DemoBadge>}
-                  </div>
-                  <p className="mt-1">« {decision.rationale} »</p>
-                  {selectedRow?.status === 'active' && selectedRow.validUntil && (
-                    <p className="mt-1 font-medium">
-                      Autorisation temporaire valable jusqu'au {formatDate(selectedRow.validUntil)}.
-                    </p>
-                  )}
-                  {selectedRow?.status === 'expired' && selectedRow.validUntil && (
-                    <p className="mt-1 font-medium text-slate-700">
-                      Autorisation expirée le {formatDate(selectedRow.validUntil)} : elle ne permet plus aucun échange.
-                    </p>
-                  )}
-                  {decision.conditions.length > 0 && (
-                    <div className="mt-2">
-                      <span className="font-medium">Conditions imposées :</span>
-                      <ul className="mt-1 list-disc pl-4">
-                        {decision.conditions.map((c, i) => (
-                          <li key={i}>{c}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {decision.simulated && (
-                    <p className="mt-2 text-slate-600">
-                      Décidée par {governanceService.getPersonName(decision.decidedById)} le {formatDate(decision.decidedAt)}. Enregistrée dans l'état local du portail uniquement : l'API de synchronisation du Nœud de Gouvernance (HC-132) est planifiée, aucun nœud hospitalier n'en est informé et aucune preuve n'est ancrée.
-                    </p>
-                  )}
-                  {proof && (
-                    <div className="mt-2 flex items-center gap-1.5 border-t border-success-200/60 pt-2 font-mono text-[11px]">
-                      <span className="text-slate-600">Empreinte ancrée :</span>
-                      <span className="truncate">{proof.hash}</span>
-                    </div>
-                  )}
-                </div>
-              ) : selectedSync.status === 'pending' ? (
-                <SyncReviewForm
-                  key={selectedSync.id}
-                  context={{
-                    request: selectedSync,
-                    requester: reqOrg,
-                    target: tgtOrg,
-                    grant: governanceService.getAccessGrant(selectedSync.consent.accessGrantId),
-                  }}
-                  reviewer={governanceService.getPerson(REVIEWER_ID)}
-                  reviewerName={governanceService.getPersonName(REVIEWER_ID)}
-                />
-              ) : (
-                <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
-                  Aucune décision n'est associée à cette demande.
-                </div>
-              )}
-            </Card>
+            <SyncRequestDetail
+              request={selectedSync}
+              reviewForm={
+                !decision && selectedSync.status === 'pending' ? (
+                  <SyncReviewForm
+                    key={selectedSync.id}
+                    context={{
+                      request: selectedSync,
+                      requester: reqOrg,
+                      target: tgtOrg,
+                      grant: governanceService.getAccessGrant(selectedSync.consent.accessGrantId),
+                    }}
+                    reviewer={governanceService.getPerson(REVIEWER_ID)}
+                    reviewerName={governanceService.getPersonName(REVIEWER_ID)}
+                  />
+                ) : undefined
+              }
+            />
           ) : (
             <Card>
-              <div className="py-8 text-center text-xs text-slate-500">
-                Sélectionnez une demande pour examiner ses détails.
+              <div className="py-12 text-center text-xs text-slate-500">
+                Sélectionnez une demande dans la liste pour examiner ses détails.
               </div>
             </Card>
           )}
