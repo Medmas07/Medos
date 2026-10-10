@@ -14,7 +14,9 @@ info:
       organization belongs to the Governance Node. Each registration must
       cite the Governance approval decision it relies on
       (`approval.decision_ref`). In v1 the Federation Service cannot check
-      that reference, because no Governance approval API exists yet (HC-131).
+      that reference: the Governance Node serves getHospitalApproval
+      (contracts/api/governance/hospital-approval.v1.yaml, HC-131), but the
+      Federation Service does not call it yet.
       Responses say so with `approval.verified: false`. Consumers must not
       present a registration as a Governance approval.
     - **No clinical data.** A registration holds node identity, routing,
