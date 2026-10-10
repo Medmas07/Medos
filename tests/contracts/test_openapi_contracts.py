@@ -7,7 +7,11 @@ from openapi_spec_validator import validate
 from conftest import CONTRACTS, EVENTS, FEDERATION, validator
 
 CONTRACT_FILES = sorted(
-    [*CONTRACTS.rglob("*.v*.yaml"), *FEDERATION.rglob("*.v*.yaml"), *EVENTS.rglob("*.v*.yaml")]
+    [
+        *CONTRACTS.rglob("*.v*.yaml"),
+        *FEDERATION.rglob("*.v*.yaml"),
+        *EVENTS.rglob("*.v*.yaml"),
+    ]
 )
 
 
