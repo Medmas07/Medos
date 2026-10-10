@@ -2,7 +2,7 @@
 
 These questions are OPEN. Do not answer them through implementation without the required evidence and ADR.
 
-- Which web framework and build tool will serve all three web portals?
+- Where will the HC-004 web design system live so all three portals can reuse it without a generic `shared/` folder or a non-product entry under `apps/`? (The web framework itself is decided by [ADR-0001](decisions/ADR-0001-web-frontend-technology.md).)
 - Which mobile framework will serve both mobile products, and what is the Android development path?
 - Which runtimes and frameworks will serve the Hospital Node, Governance Node, and company services?
 - What canonical clinical model, FHIR version, profiles, terminology, and validation strategy are required?

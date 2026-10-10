@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-PLANNED web product for the Governance / Ethics Authority. No frontend framework or UI code exists.
+PLANNED web product for the Governance / Ethics Authority. Its technology (React + TypeScript + Vite SPA) is CONFIRMED by [ADR-0001](../../../docs/decisions/ADR-0001-web-frontend-technology.md); no UI code exists yet, and scaffolding belongs to HC-070. Development commands (`npm run dev`, `npm run build`, `npm run lint`, `npm run preview`) and the scaffold procedure are recorded in that ADR.
 
 ## Responsibilities and owned concepts
 
