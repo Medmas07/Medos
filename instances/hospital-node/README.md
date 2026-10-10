@@ -59,7 +59,7 @@ MOCKED at D2. `application/clinical_repository.py` defines the `ClinicalReposito
 - It is read-only. Nothing is written to `storage_dir` or back to `demo-data/`.
 - Patient references are the dataset's ids (`pat-a`), as in the Federation contract; per-hospital local identifiers are not mapped.
 
-This is not real clinical storage and not a DMI integration: the DMI Adapter (HC-120+) is PLANNED and persistence is OPEN.
+This is not real clinical storage and not a DMI integration: the [DMI port](#dmi-port-hc-120) is defined (HC-120) but no DMI adapter exists yet (HC-121+), and persistence is OPEN.
 
 | Node | Encounters | Medications | Lab reports |
 |---|---|---|---|
@@ -211,21 +211,27 @@ instances/hospital-node/
 ├── main.py                     # composition root: loads configuration, builds the FastAPI app
 ├── config/                     # fictional per-hospital demo configurations
 ├── domain/                     # Node identity/status, clinical records, access/audit, and research execution values — stdlib only
-├── application/                # Hospital use cases and their repository, authorization, audit, grant, and research ports
+├── application/                # Hospital use cases and their repository, authorization, audit, grant, research, and DMI ports
 ├── adapters/inbound/http/      # health, Federation, audit, access-grant, and research-execution routers
 ├── adapters/outbound/          # fixture repositories/verifiers, installed aggregate, and in-memory stores
 ├── infrastructure/             # configuration loading and validation
-├── adapters/dmi/               # PLANNED hospital-local DMI Adapter (HC-120+)
+├── adapters/dmi/               # hospital-local DMI Adapters (port defined, HC-120; no adapter yet, HC-121+)
 ├── contracts/                  # reserved for Node-local contract documents
 └── tests/                      # domain, use case, adapter, app, and layer-boundary tests
 ```
 
 `tests/test_layer_boundaries.py` fails if `domain/` or `application/` imports anything other than inner layers or the standard library.
 
+## DMI port (HC-120)
+
+DEFINED at D1. The Node owns `DmiSource` ([`application/dmi_source.py`](application/dmi_source.py)): `describe()` and `extract_patient(PatientIdentity)`, returning a `DmiExtract` ([`domain/dmi.py`](domain/dmi.py)) of one patient's records in this Node's canonical model plus the entries the adapter could not map. Each hospital's adapter implements it under [`adapters/dmi/`](adapters/dmi/README.md), which documents the rules every adapter keeps and the conformance check ([`tests/dmi_port_contract.py`](tests/dmi_port_contract.py)) its tests must pass.
+
+Nothing implements or calls the port at runtime yet: no DMI is connected, `/health` is unchanged, and records still come from the MOCKED fixture repository. The mock local DMI adapter (HC-121), the mapping strategy (HC-122), and a sample hospital-specific adapter (HC-123) build on it. No central service implements or calls it.
+
 ## Responsibilities and owned concepts
 
 - Local clinical integration and canonical/FHIR representation.
-- Hospital-specific DMI Adapter boundary at `adapters/dmi/`.
+- Hospital-specific DMI Adapter boundary at `adapters/dmi/`, behind the Node-owned [DMI port](#dmi-port-hc-120).
 - Local storage and clinical source-data control.
 - Consent/authorization enforcement at the local boundary.
 - Local audit generation and Federation interface.
@@ -247,6 +253,6 @@ It also provides [`hospital-audit-events.v1.yaml`](../../contracts/api/hospital-
 
 The D1 research execution contract at [`contracts/api/research/research-node-execution.v1.yaml`](../../contracts/api/research/research-node-execution.v1.yaml) is IMPLEMENTED by the HC-183 agent for the bounded installed aggregate and extended by HC-186 with sandbox evidence. Authenticated Governance verification, general code execution, container-grade isolation, package distribution, durable state, research audit, and production disclosure review remain PLANNED or OPEN.
 
-PLANNED local clinical API, DMI port, consent/authorization, and health contracts. `/health` is Node-local and has no versioned contract.
+PLANNED local clinical API, consent/authorization, and health contracts. The DMI port (HC-120) is a Node-internal `typing.Protocol`, not a contract document. `/health` is Node-local and has no versioned contract.
 
 The Federation Service calls this runtime over real HTTP at the `base_url` it has in the node registry: `GET /v1/federation/node` for capability discovery (HC-143) and `POST /v1/federation/queries` for federated queries (HC-145). This runtime serves both, so a running node is `discovered` and answers queries. The demo ports in `config/` (8101, 8102, 8104) match the Federation Service's [`registry-seed.demo.json`](../../services/federation/registry-seed.demo.json).

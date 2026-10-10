@@ -6,7 +6,7 @@ PLANNED location for contracts owned internally by the Hospital Node boundary. N
 
 ## Responsibilities and communication boundaries
 
-Future local adapter ports and canonical-model translation boundaries may live here. Cross-component API, event, schema, and Federation definitions remain in repository-level `/contracts`.
+Future Node-local contract documents may live here. Ports are code owned by `application/` ([ADR-0003](../../../docs/decisions/ADR-0003-backend-runtime-strategy.md)): the DMI port is [`application/dmi_source.py`](../application/dmi_source.py) (HC-120), not a document here. Cross-component API, event, schema, and Federation definitions remain in repository-level `/contracts`.
 
 ## Non-responsibilities
 
