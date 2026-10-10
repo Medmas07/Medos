@@ -41,12 +41,12 @@ const investigations = (
   > &
     SciAgentsInvestigation['result'] & { mocked: boolean; provenance: string })[]
 ).map(
-  ({ hypotheses, evidence, contradictions, citations, mocked, provenance, ...investigation }): SciAgentsInvestigation => ({
+  ({ outcome, hypotheses, evidence, contradictions, citations, mocked, provenance, ...investigation }): SciAgentsInvestigation => ({
     ...investigation,
     clinicalUse: 'not_for_clinical_decisions',
-    result: investigation.status === 'completed' ? { hypotheses, evidence, contradictions, citations } : null,
+    result: investigation.status === 'completed' ? { outcome, hypotheses, evidence, contradictions, citations } : null,
     error: null,
-    // The contract's demo adapter name; no adapter exists yet (HC-171).
+    // The fixture stays visibly mocked; HC-171 exists but HC-172 does not connect this portal to it.
     provenance: {
       provider: { name: 'SciAgents', version: null },
       adapter: { name: 'demo-sciagents-adapter', version: '1.0.0' },

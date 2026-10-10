@@ -102,6 +102,7 @@
       "requestedById": "usr-aymen",
       "question": "Quels facteurs pourraient expliquer la part plus élevée de mauvais contrôle glycémique après 60 ans ?",
       "language": "fr",
+      "concepts": [{ "label": "Metformin" }, { "label": "Diabetes" }],
       "controlledResultContext": [
         { "controlledResultId": "res-001", "summary": "Résultat agrégé fictif : la part de mauvais contrôle glycémique augmente entre 50-59 et 60-69 ans, sans hausse supplémentaire entre 70-79 ans." }
       ],
@@ -110,6 +111,7 @@
       "updatedAt": "2026-09-14T09:31:05+01:00",
       "mocked": true,
       "provenance": "Fixture statique en attendant l'intégration SciAgents (adaptateur HC-171, connexion du portail HC-172). Ce n'est pas une sortie réelle de SciAgents.",
+      "outcome": "findings",
       "hypotheses": [
         { "id": "inv-001-h1", "statement": "Une moindre observance liée à la polymédication.", "confidence": "moderate", "evidenceIds": ["inv-001-e2"], "contradictionIds": [] },
         { "id": "inv-001-h2", "statement": "Un dépistage plus tardif chez les patients sans suivi régulier.", "confidence": "low", "evidenceIds": ["inv-001-e1"], "contradictionIds": ["inv-001-x1"] }
