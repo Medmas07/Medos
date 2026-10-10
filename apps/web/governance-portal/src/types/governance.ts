@@ -145,6 +145,19 @@ export interface OrganizationInfo {
   } | null
 }
 
+/** A patient's access grant (demo-data/access.json), referenced by a synchronization's consent. */
+export interface AccessGrant {
+  id: string
+  patientId: string
+  granteeId: string
+  scope: string[]
+  purpose: string
+  status: 'active' | 'expired' | 'revoked'
+  grantedAt: string
+  expiresAt: string
+  revokedAt: string | null
+}
+
 export interface PersonInfo {
   id: string
   title?: string | null
