@@ -1,9 +1,7 @@
-from fastapi.testclient import TestClient
-
 from adapters.inbound.http.ai_provider import PROVIDER_NOTICE
-from main import app
+from tests.conftest import fixture_client
 
-client = TestClient(app)
+client = fixture_client()
 
 
 def test_ai_provider_reports_the_mock_explicitly():

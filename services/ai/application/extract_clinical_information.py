@@ -18,12 +18,16 @@ from domain.clinical_extraction import (
 class ExtractorOutput:
     items: tuple[ExtractedItem, ...]
     missing_information: tuple[MissingInformation, ...]
+    # Who produced this output; with provider fallback it can differ from call to call.
+    info: ExtractorInfo
+
+
+class ExtractionUnavailable(Exception):
+    """No extractor could produce a usable draft. Maps to 503 in the contract."""
 
 
 class ClinicalExtractor(Protocol):
-    """Port for whatever turns source text into items: fixtures now, a model later (HC-153)."""
-
-    info: ExtractorInfo
+    """Port for whatever turns source text into items: fixtures or a model (HC-153)."""
 
     def extract(self, source: ExtractionSource) -> ExtractorOutput: ...
 
@@ -58,7 +62,7 @@ class ExtractClinicalInformation:
             items=output.items,
             missing_information=output.missing_information,
             provenance=Provenance(
-                extractor=self._extractor.info,
+                extractor=output.info,
                 generated_at=self._clock(),
                 source_type=request.source.type,
             ),

@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from application.extract_clinical_information import (
     ExtractClinicalInformation,
     ExtractionRequest,
+    ExtractionUnavailable,
 )
 from domain.clinical_extraction import (
     MAX_SOURCE_LENGTH,
@@ -148,16 +149,17 @@ def _to_body(draft: ExtractionDraft) -> ExtractionDraftBody:
     )
 
 
-def _problem(detail: str) -> JSONResponse:
+def _problem(
+    detail: str,
+    status: int = 400,
+    title: str = "Invalid clinical extraction request",
+    code: Literal["invalid_request", "extraction_unavailable"] = "invalid_request",
+) -> JSONResponse:
     problem = ProblemBody(
-        type="about:blank",
-        title="Invalid clinical extraction request",
-        status=400,
-        detail=detail,
-        code="invalid_request",
+        type="about:blank", title=title, status=status, detail=detail, code=code
     )
     return JSONResponse(
-        problem.model_dump(), status_code=400, media_type="application/problem+json"
+        problem.model_dump(), status_code=status, media_type="application/problem+json"
     )
 
 
@@ -186,6 +188,13 @@ def create_router(extract: ExtractClinicalInformation) -> APIRouter:
             )
         except InvalidExtraction as error:
             return _problem(str(error))
+        except ExtractionUnavailable as error:
+            return _problem(
+                str(error),
+                status=503,
+                title="Clinical extraction unavailable",
+                code="extraction_unavailable",
+            )
         exclude = {"encounter_ref"} if draft.encounter_ref is None else set()
         return JSONResponse(_to_body(draft).model_dump(mode="json", exclude=exclude))
 
