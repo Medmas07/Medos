@@ -4,7 +4,9 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 from typing import Protocol
 
+from application.result_aggregation import ControlledResultAggregator
 from domain.research_job import (
+    AggregationStatus,
     AuthorizationDecision,
     ExecutionStatus,
     JobError,
@@ -59,10 +61,12 @@ class ResearchOrchestrator:
         authorization: GovernanceAuthorizationPort,
         executions: HospitalExecutionPort,
         store: JobStore | None = None,
+        aggregator: ControlledResultAggregator | None = None,
     ) -> None:
         self.authorization = authorization
         self.executions = executions
         self.store = store or InMemoryJobStore()
+        self.aggregator = aggregator or ControlledResultAggregator()
 
     def submit(self, job: ResearchJob) -> ResearchJob:
         existing = self.store.get(job.job_ref)
@@ -81,6 +85,7 @@ class ResearchOrchestrator:
                 "Governance authorization could not be verified.",
                 True,
             )
+            self._aggregate(job)
             self.store.put(job)
             return job
 
@@ -95,6 +100,7 @@ class ResearchOrchestrator:
             or not requested_variables <= approved_variables
         ):
             job.mark_denied(decision.reason_code)
+            self._aggregate(job)
             self.store.put(job)
             return job
         try:
@@ -103,6 +109,7 @@ class ResearchOrchestrator:
                 raise ValueError
         except ValueError:
             job.mark_denied("authorization_expired")
+            self._aggregate(job)
             self.store.put(job)
             return job
 
@@ -126,6 +133,7 @@ class ResearchOrchestrator:
                     )
                 )
         job.refresh_status()
+        self._aggregate(job)
         self.store.put(job)
         return job
 
@@ -135,6 +143,7 @@ class ResearchOrchestrator:
             return job
         job.executions = [self._refresh(execution) for execution in job.executions]
         job.refresh_status()
+        self._aggregate(job)
         self.store.put(job)
         return job
 
@@ -159,7 +168,30 @@ class ResearchOrchestrator:
                     "The Hospital Node execution status could not be read.",
                     True,
                 ),
+                mocked=execution.mocked,
             )
+
+    def _aggregate(self, job: ResearchJob) -> None:
+        if job.status is not JobStatus.COMPLETED:
+            if job.status in {JobStatus.DENIED, JobStatus.FAILED}:
+                job.aggregation = job.aggregation.__class__(
+                    AggregationStatus.NOT_AVAILABLE,
+                    error=job.error,
+                )
+            return
+        job.aggregation = self.aggregator.aggregate(job)
+        if job.aggregation.status is AggregationStatus.FAILED:
+            job.status = JobStatus.FAILED
+            job.error = job.aggregation.error
+            for execution in job.executions:
+                if execution.result is not None:
+                    execution.status = ExecutionStatus.FAILED
+                    execution.result = None
+                    execution.error = JobError(
+                        "output_rejected",
+                        "The Hospital Node output failed controlled-result validation.",
+                        False,
+                    )
 
 
 def serialize(job: ResearchJob) -> dict:
@@ -170,6 +202,11 @@ def serialize(job: ResearchJob) -> dict:
         for optional in ("result", "error"):
             if execution[optional] is None:
                 del execution[optional]
+    aggregation = document["aggregation"]
+    aggregation["status"] = aggregation["status"].value
+    for optional in ("disclosure", "provenance", "error"):
+        if aggregation[optional] is None:
+            del aggregation[optional]
     if document["error"] is None:
         del document["error"]
     document["mocked"] = False

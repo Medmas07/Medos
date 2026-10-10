@@ -60,3 +60,29 @@ def test_governance_decision_carries_scope_and_expiry():
         "valid_until": "2026-12-31T23:59:59+01:00",
     }
     assert schema.is_valid(decision)
+
+
+def test_controlled_aggregation_exposes_coverage_without_patient_rows():
+    schema = validator(ORCHESTRATION, "#/components/schemas/ControlledAggregation")
+    aggregation = {
+        "status": "partial",
+        "columns": ["participant_count", "hba1c_above_7_pct"],
+        "rows": [[42, 25.0]],
+        "included_organization_refs": ["org-hospital-a"],
+        "excluded_organization_refs": ["org-hospital-b"],
+        "disclosure": {
+            "status": "partial",
+            "minimum_cell_size": 10,
+            "suppressed_organization_count": 1,
+        },
+        "provenance": {
+            "algorithm_sha256": "7da3c4f53384d2c0bf4e50f736e6e0242e57a77cf18720f62e16c13c49d79801",
+            "authorization_decision_ref": "dec-rar-001",
+            "source_organization_refs": ["org-hospital-a"],
+            "excluded_organization_refs": ["org-hospital-b"],
+        },
+        "mocked": True,
+    }
+    assert schema.is_valid(aggregation)
+    aggregation["patient_refs"] = ["pat-a"]
+    assert not schema.is_valid(aggregation)
