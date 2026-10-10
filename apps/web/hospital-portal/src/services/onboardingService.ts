@@ -197,10 +197,10 @@ export function deriveSteps(
 
 /**
  * Demo scenarios, selected with `?demo=vide`, `?demo=erreur`,
- * `?demo=echec-inscription`, `?demo=echec-profil`, `?demo=echec-document`, or
- * `?demo=echec-accord` in the URL. The registration, profile, and agreement
- * failure scenarios start like `empty`; the document failure scenario starts
- * like `nominal`. Each makes the first matching submission fail.
+ * `?demo=echec-inscription`, `?demo=echec-profil`, `?demo=echec-document`,
+ * `?demo=echec-accord`, or `?demo=echec-technique` in the URL. The document
+ * failure scenario starts like `nominal`; the other failure scenarios start like
+ * `empty`. Each makes the first matching submission fail.
  */
 export type DemoScenario =
   | 'nominal'
@@ -210,6 +210,7 @@ export type DemoScenario =
   | 'profile-failure'
   | 'document-failure'
   | 'agreement-failure'
+  | 'technical-failure'
 
 export function scenarioFromSearch(search: string): DemoScenario {
   const value = new URLSearchParams(search).get('demo')
@@ -219,6 +220,7 @@ export function scenarioFromSearch(search: string): DemoScenario {
   if (value === 'echec-profil') return 'profile-failure'
   if (value === 'echec-document') return 'document-failure'
   if (value === 'echec-accord') return 'agreement-failure'
+  if (value === 'echec-technique') return 'technical-failure'
   return 'nominal'
 }
 
@@ -248,7 +250,8 @@ export async function loadOnboardingSnapshot(
     scenario === 'empty' ||
     scenario === 'registration-failure' ||
     scenario === 'profile-failure' ||
-    scenario === 'agreement-failure'
+    scenario === 'agreement-failure' ||
+    scenario === 'technical-failure'
       ? null
       : (applications.find((a) => a.organizationId === organizationId) ?? null)
 

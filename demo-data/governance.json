@@ -36,7 +36,16 @@
         "updatedAt": "2026-10-06T15:05:00+01:00"
       },
       "technicalQuestionnaire": {
+        "hostingType": "virtual_machine",
         "operatingSystem": "Ubuntu Server 22.04",
+        "cpuCores": 8,
+        "memoryGb": 32,
+        "storageGb": 500,
+        "bandwidthMbps": 100,
+        "dmzAvailable": true,
+        "outboundHttpsAllowed": true,
+        "containerRuntimeAvailable": true,
+        "backupsInPlace": true,
         "dmiSystem": "MediDossier v7 (logiciel fictif)",
         "database": "PostgreSQL 13",
         "network": "Lien fibre 100 Mb/s, zone démilitarisée disponible",

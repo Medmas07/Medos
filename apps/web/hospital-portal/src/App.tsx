@@ -26,6 +26,7 @@ import { DocumentsView } from './views/DocumentsView'
 import { OverviewView } from './views/OverviewView'
 import { ProfileView } from './views/ProfileView'
 import { RegistrationView } from './views/RegistrationView'
+import { TechnicalView } from './views/TechnicalView'
 import { StepPlaceholderView } from './views/StepPlaceholderView'
 
 type ViewId = 'overview' | StepId
@@ -169,6 +170,16 @@ export default function App() {
         <AgreementsView
           snapshot={load.snapshot}
           consumeSimulatedFailure={failureOnce('agreement-failure')}
+          onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
+          onNavigate={navigateTo}
+        />
+      )
+    }
+    if (currentView === 'technical') {
+      return (
+        <TechnicalView
+          snapshot={load.snapshot}
+          consumeSimulatedFailure={failureOnce('technical-failure')}
           onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
           onNavigate={navigateTo}
         />
