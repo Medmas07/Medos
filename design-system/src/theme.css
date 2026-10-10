@@ -1,0 +1,102 @@
+/*
+ * Design tokens and base typography shared by the web portals.
+ *
+ * Consumers import Tailwind first, then this file:
+ *   @import "tailwindcss";
+ *   @import "@hackcure/design-system/theme.css";
+ *
+ * Neutrals use Tailwind's default `slate` scale and spacing uses Tailwind's
+ * default 4px scale (`--spacing: 0.25rem`). Only brand and status tones are
+ * defined here so they can change in one place.
+ */
+
+/* Generate the utility classes used inside the design-system components. */
+@source "./components";
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "SFMono-Regular", Menlo, Consolas, monospace;
+
+  /* Brand: primary actions, current navigation, focus rings. */
+  --color-brand-50: #f0fdfa;
+  --color-brand-100: #ccfbf1;
+  --color-brand-200: #99f6e4;
+  --color-brand-500: #14b8a6;
+  --color-brand-600: #0d9488;
+  --color-brand-700: #0f766e;
+  --color-brand-800: #115e59;
+  --color-brand-900: #134e4a;
+
+  /*
+   * Status tones. 50 = background, 200 = border, 600 = marker/icon,
+   * 700 = text, 800 = strong text. Never rely on colour alone: every
+   * toned component also carries text or an icon.
+   */
+  --color-info-50: #eff6ff;
+  --color-info-100: #dbeafe;
+  --color-info-200: #bfdbfe;
+  --color-info-600: #2563eb;
+  --color-info-700: #1d4ed8;
+  --color-info-800: #1e40af;
+
+  --color-success-50: #ecfdf5;
+  --color-success-100: #d1fae5;
+  --color-success-200: #a7f3d0;
+  --color-success-600: #059669;
+  --color-success-700: #047857;
+  --color-success-800: #065f46;
+
+  --color-warning-50: #fffbeb;
+  --color-warning-100: #fef3c7;
+  --color-warning-200: #fde68a;
+  --color-warning-600: #d97706;
+  --color-warning-700: #b45309;
+  --color-warning-800: #92400e;
+
+  --color-danger-50: #fef2f2;
+  --color-danger-100: #fee2e2;
+  --color-danger-200: #fecaca;
+  --color-danger-600: #dc2626;
+  --color-danger-700: #b91c1c;
+  --color-danger-800: #991b1b;
+
+  /* Demo tone: reserved for MOCKED / fictional-data labelling. */
+  --color-demo-50: #f5f3ff;
+  --color-demo-100: #ede9fe;
+  --color-demo-200: #ddd6fe;
+  --color-demo-600: #7c3aed;
+  --color-demo-700: #6d28d9;
+  --color-demo-800: #5b21b6;
+}
+
+@layer base {
+  body {
+    @apply bg-slate-50 font-sans text-sm leading-6 text-slate-800 antialiased;
+  }
+
+  h1 {
+    @apply text-2xl leading-8 font-semibold tracking-tight text-slate-900;
+  }
+
+  h2 {
+    @apply text-lg leading-7 font-semibold text-slate-900;
+  }
+
+  h3 {
+    @apply text-base leading-6 font-semibold text-slate-900;
+  }
+
+  h4 {
+    @apply text-xs leading-5 font-semibold tracking-wide text-slate-500 uppercase;
+  }
+
+  code,
+  kbd,
+  samp {
+    @apply font-mono text-[0.85em];
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-600;
+  }
+}

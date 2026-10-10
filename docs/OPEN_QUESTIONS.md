@@ -2,7 +2,7 @@
 
 These questions are OPEN. Do not answer them through implementation without the required evidence and ADR.
 
-- Where will the HC-004 web design system live so all three portals can reuse it without a generic `shared/` folder or a non-product entry under `apps/`? (The web framework itself is decided by [ADR-0001](decisions/ADR-0001-web-frontend-technology.md).)
+- How will the Flutter mobile apps reuse or translate the web design-system tokens without depending on the React package ([ADR-0002](decisions/ADR-0002-web-design-system.md), [ADR-0004](decisions/ADR-0004-mobile-technology.md))?
 - How will one Hospital Node codebase load per-hospital configuration (identity, port, storage) for several demo hospitals? (The runtime itself is decided by [ADR-0003](decisions/ADR-0003-backend-runtime-strategy.md).)
 - What canonical clinical model, FHIR version, profiles, terminology, and validation strategy are required?
 - Which persistence technologies and data models fit each bounded context?

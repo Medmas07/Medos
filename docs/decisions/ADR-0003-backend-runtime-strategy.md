@@ -159,7 +159,7 @@ This validates the toolchain and layout only. No runtime was implemented in the 
 
 - **HC-110 / HC-130 / HC-150:** create each runtime with the layout and commands above, pin dependencies, and add the first framework-free Domain/Application tests.
 - **HC-112:** define how one Hospital Node codebase loads per-hospital configuration (node ID, port, storage location) for demo hospitals A/B/C.
-- **HC-150:** move AI dependencies into `services/ai/requirements*.txt` and retire or redirect the root [`requirements.txt`](../../requirements.txt) placeholder.
+- **HC-150:** move AI dependencies into `services/ai/requirements*.txt` and retire or redirect the root `requirements.txt` placeholder (retired by HC-150).
 - **Not decided here, left to their own ADRs or tickets:** persistence and ORM per bounded context, FHIR strategy and libraries, authentication and Node identity, Federation transport, event/broker technology, container runtime and images, hosting, and AI provider/model.
 - **Boundary enforcement:** add an automated import-direction check for `domain/` and `application/` once the first runtime exists.
 - **After the first runtime exists:** replace the placeholder lint/test CI workflows with real `pip install -r requirements-dev.txt`, `ruff`, and `pytest` steps.

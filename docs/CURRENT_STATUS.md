@@ -10,13 +10,16 @@ Status is based on repository inspection, not product intent. Use the [shared vo
 - **GitHub governance — IMPLEMENTED:** issue/PR templates, CODEOWNERS placeholder, Dependabot placeholder, and workflow files exist.
 - **Workflow behavior — IMPLEMENTED but limited:** project automation exists; CI, lint, tests, and Docker workflows are manual placeholders rather than product validation pipelines.
 - **PlatformIO preparation — IMPLEMENTED placeholder:** `platformio.ini` and empty firmware directories exist.
+- **Web design system — IMPLEMENTED (D1):** `design-system/` contains Tailwind CSS v4 tokens, base typography, presentational React components (buttons, form fields, cards, tables, badges, alerts, navigation/shell, loading/empty/error states, timeline), explicit demo labelling, and a showcase page ([ADR-0002](decisions/ADR-0002-web-design-system.md)). Build, lint, showcase rendering, and consumption by a throwaway portal outside the repository were checked; no portal in the repository uses it yet, and no automated component tests exist. Mobile reuse is OPEN.
 - **Deployment/production preparation — IMPLEMENTED documentation/placeholders:** no deployed runtime or selected provider is implied.
+
+- **AI Services runtime skeleton — VALIDATED (local):** [`services/ai/`](../services/ai/README.md) is a FastAPI service with `GET /health`, framework-free Domain/Application layers, and pytest tests (use case, HTTP, layer boundaries). Its tests, ruff checks, and local `fastapi dev`/`fastapi run` servers were verified. It exposes no AI capability and is not deployed.
 
 ## Not implemented
 
 - **Web products — PLANNED:** Hospital Portal, Governance Portal, and Research Portal contain documentation only. Their technology (React + TypeScript + Vite SPA) is CONFIRMED by [ADR-0001](decisions/ADR-0001-web-frontend-technology.md), but no portal has been scaffolded.
-- **Mobile products — PLANNED:** Patient App and Clinician App contain documentation only. Flutter + Dart and the Android development path are CONFIRMED by [ADR-0002](decisions/ADR-0002-mobile-technology.md); no dependencies, application code, or generated platform project exists.
-- **Backend runtime strategy — CONFIRMED, not implemented:** [ADR-0003](decisions/ADR-0003-backend-runtime-strategy.md) selects Python + FastAPI for every Node and service. No backend runtime has been created in the repository.
+- **Mobile products — PLANNED:** Patient App and Clinician App contain documentation only. Flutter + Dart and the Android development path are CONFIRMED by [ADR-0004](decisions/ADR-0004-mobile-technology.md); no dependencies, application code, or generated platform project exists.
+- **Backend runtime strategy — CONFIRMED:** [ADR-0003](decisions/ADR-0003-backend-runtime-strategy.md) selects Python + FastAPI for every Node and service. Only the AI Services skeleton exists so far (see Implemented); no Node or other service runtime has been created.
 - **Hospital Node — PLANNED:** no runtime, local API, storage, identity, consent, audit, health endpoint, or Federation implementation.
 - **Governance Node — PLANNED:** no runtime, policy engine, authorization, audit persistence, or ledger adapter.
 - **DMI Adapter — PLANNED:** its Hospital Node-local boundary exists, but no port, mapping, configuration, fixture, or implementation.
@@ -24,7 +27,7 @@ Status is based on repository inspection, not product intent. Use the [shared vo
 - **Notification Service — PLANNED:** no provider, transport, event processing, or delivery code.
 - **Research Service and Compute-to-Data — PLANNED:** no orchestrator, sandbox, Hospital Node agent, execution, or controlled-output validation.
 - **SciAgents Integration — PLANNED:** SciAgents exists externally, but this repository has no connector or contract implementation.
-- **AI Services — PLANNED:** Python is CONFIRMED, but no AI framework, provider, model, endpoint, extraction, or clinical validation code exists.
+- **AI capabilities — PLANNED:** no AI library, provider, model, extraction, explanation, or clinical validation code exists. Only the runtime skeleton is implemented.
 - **Blockchain / Immutable Audit Ledger — OPTIONAL / PLANNED:** no `AuditLedgerPort`, adapter, simulated ledger, or real ledger exists.
 - **Authentication, authorization, RBAC, and organization identity — PLANNED:** no production or demo implementation exists.
 - **Persistence and canonical/FHIR model — PLANNED:** no database, ORM, schema, FHIR server, or profile is selected.
