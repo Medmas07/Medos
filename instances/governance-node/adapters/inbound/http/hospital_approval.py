@@ -5,7 +5,6 @@ approval decision. Requests are parsed strictly; anything outside the contract i
 400 invalid_request. Callers are not authenticated: reviewer_ref is declared.
 """
 
-import re
 from collections.abc import Callable
 from datetime import datetime
 from typing import Annotated, Literal
@@ -13,6 +12,8 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, ValidationError
+
+from adapters.inbound.http.problems import OPAQUE_REF, first_error, problem
 
 from application.hospital_approval import (
     ApplicationNotFound,
@@ -33,8 +34,6 @@ from domain.hospital_approval import (
     ReviewerNotAllowed,
 )
 
-_REF = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
-
 NOTICE = (
     "Fictional demo applications, held in memory by the Governance Node: decisions "
     "are lost on restart, and requests are not authenticated."
@@ -44,7 +43,7 @@ NOTICE = (
 class DecisionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    reviewer_ref: Annotated[str, Field(pattern=_REF.pattern)]
+    reviewer_ref: Annotated[str, Field(pattern=OPAQUE_REF.pattern)]
     outcome: Literal["approved", "rejected"]
     rationale: Annotated[str, Field(max_length=2000)]
     conditions: Annotated[
@@ -53,29 +52,12 @@ class DecisionRequest(BaseModel):
     findings_acknowledged: StrictBool
 
 
-def _problem(
-    status: int, title: str, code: str, detail: str, **extra: object
-) -> JSONResponse:
-    return JSONResponse(
-        status_code=status,
-        media_type="application/problem+json",
-        content={
-            "type": "about:blank",
-            "title": title,
-            "status": status,
-            "detail": detail,
-            "code": code,
-            **extra,
-        },
-    )
-
-
 def _invalid(detail: str) -> JSONResponse:
-    return _problem(400, "Invalid request", "invalid_request", detail)
+    return problem(400, "Invalid request", "invalid_request", detail)
 
 
 def _application_not_found(application_ref: str) -> JSONResponse:
-    return _problem(
+    return problem(
         404,
         "Application not found",
         "application_not_found",
@@ -164,9 +146,7 @@ def create_router(
         try:
             body = DecisionRequest.model_validate_json(await request.body())
         except ValidationError as error:
-            first = error.errors()[0]
-            where = ".".join(map(str, first["loc"])) or "body"
-            return _invalid(f"{where}: {first['msg']}")
+            return _invalid(first_error(error))
         draft = DecisionDraft(
             outcome=Outcome(body.outcome),
             rationale=body.rationale,
@@ -180,15 +160,15 @@ def create_router(
         except ApplicationNotFound:
             return _application_not_found(application_ref)
         except NotAwaitingReview as error:
-            return _problem(
+            return problem(
                 409, "Not awaiting review", "not_awaiting_review", str(error)
             )
         except ReviewerNotAllowed as error:
-            return _problem(
+            return problem(
                 403, "Reviewer not allowed", "reviewer_not_allowed", str(error)
             )
         except InvalidDecision as error:
-            return _problem(
+            return problem(
                 422,
                 "Invalid decision",
                 "invalid_decision",
@@ -201,7 +181,7 @@ def create_router(
     def get_approval(decision_ref: str) -> JSONResponse:
         decision = get_hospital_approval(decision_ref, store)
         if decision is None:
-            return _problem(
+            return problem(
                 404,
                 "Decision not found",
                 "decision_not_found",

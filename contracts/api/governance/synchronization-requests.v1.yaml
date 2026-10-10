@@ -1,0 +1,685 @@
+openapi: 3.1.0
+info:
+  title: Governance Node Synchronization Requests
+  version: 1.0.0
+  description: |
+    Contract HC-132, version 1. The Governance / Ethics Authority's
+    synchronization request interface: a hospital submits a request to
+    exchange one patient's records with another hospital, a governance
+    reviewer reads it with the Governance Node's checks, and records the
+    decision. An approval is a temporary authorization; the Federation
+    Service checks it before each exchange with
+    contracts/federation/sync-authorization-check.v1.yaml, which the same
+    Node serves.
+
+    Boundary rules carried by this contract:
+
+    - **Governance decides; nobody else does.** Hospitals and portals may
+      submit and display requests. Only a person with the
+      `governance_reviewer` role, outside both the requesting and the
+      target organization, may decide, and only on a `pending` request.
+      A decision cannot be changed or recorded twice.
+    - **Approval requires every check.** The Node checks that both
+      organizations are distinct and approved by the Authority
+      (hospital-approval.v1.yaml), the consent basis, and the duration.
+      While a check fails, only a rejection is possible. A basis the Node
+      cannot verify itself (`signed_consent_form`, `emergency_override`)
+      must be confirmed by the reviewer.
+    - **Temporary by construction.** An approval lasts `approved_days`
+      from the decision, at most the requested duration and never beyond
+      the patient grant it relies on. `status` is evaluated when
+      answering: an approved request whose authorization has ended is
+      `expired`.
+    - **No clinical data.** Requests and decisions hold opaque references
+      (the patient is a pseudonymous reference), a purpose, a scope of
+      record categories, durations, review text, and times. No record is
+      ever sent to the Governance Node; the exchange itself happens
+      between Hospital Nodes.
+
+    Not decided by this version, and OPEN: who may call it (authentication:
+    `submitted_by_ref` and `reviewer_ref` are declared by the caller, not
+    authenticated), how the Governance Node learns of patient grants held
+    by Hospital Nodes (consent governance, HC-136), how a Hospital Node
+    verifies a decision with the Governance Node, revoking or extending an
+    approval, and recording decisions in the governance audit trail
+    (HC-134) or a ledger.
+
+    Status: implemented by the Governance Node runtime (HC-132) over an
+    in-memory store seeded from fictional demo data; requests and
+    decisions are lost on restart. The patient grant check reads the
+    fictional demo grants (MOCKED). Requests are not authenticated.
+paths:
+  /v1/synchronization-requests:
+    get:
+      operationId: listSynchronizationRequests
+      summary: List synchronization requests, pending first.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Only requests with this status today.
+          schema:
+            $ref: "#/components/schemas/RequestStatus"
+      responses:
+        "200":
+          description: |
+            The requests held by the Governance Node with their status when
+            answering, ordered `pending`, `active`, `expired`, `rejected`,
+            then newest submission first. Empty when none matches.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequestList"
+              examples:
+                demo:
+                  summary: Fictional demo — the three requests on the demo date.
+                  value:
+                    notice: >-
+                      Fictional demo synchronization requests, held in
+                      memory by the Governance Node: requests and decisions
+                      are lost on restart, requests are not authenticated,
+                      and patient grants are checked against fictional demo
+                      grants (MOCKED).
+                    requests:
+                      - request_ref: sync-001
+                        requester_organization_ref: org-hospital-a
+                        target_organization_ref: org-hospital-b
+                        patient_ref: pat-a
+                        status: pending
+                        submitted_at: "2026-10-10T09:05:00+01:00"
+                        decision_ref: null
+                        valid_until: null
+                      - request_ref: sync-002
+                        requester_organization_ref: org-private-practice
+                        target_organization_ref: org-hospital-b
+                        patient_ref: pat-c
+                        status: expired
+                        submitted_at: "2025-12-12T09:00:00+01:00"
+                        decision_ref: dec-sync-002
+                        valid_until: "2026-03-12T14:30:00+01:00"
+                      - request_ref: sync-003
+                        requester_organization_ref: org-hospital-b
+                        target_organization_ref: org-hospital-a
+                        patient_ref: pat-b
+                        status: rejected
+                        submitted_at: "2026-08-02T11:00:00+01:00"
+                        decision_ref: dec-sync-003
+                        valid_until: null
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+    post:
+      operationId: submitSynchronizationRequest
+      summary: Submit a synchronization request for a governance decision.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewRequest"
+            examples:
+              hospitalBAsksHospitalA:
+                summary: >-
+                  Fictional demo — Hospital B asks Hospital A for Patient B's
+                  lab reports, under Patient B's grant to Dr. X.
+                value:
+                  requester_organization_ref: org-hospital-b
+                  submitted_by_ref: clin-ines
+                  target_organization_ref: org-hospital-a
+                  patient_ref: pat-b
+                  purpose: Suivi du diabète
+                  scope: [lab_reports]
+                  duration_days: 30
+                  consent:
+                    basis: patient_grant
+                    access_grant_ref: grant-b-drx
+      responses:
+        "201":
+          description: The request was recorded as `pending`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequestDetail"
+              examples:
+                submitted:
+                  value:
+                    request_ref: sync-004
+                    requester_organization_ref: org-hospital-b
+                    target_organization_ref: org-hospital-a
+                    patient_ref: pat-b
+                    status: pending
+                    submitted_at: "2026-10-10T10:00:00+01:00"
+                    decision_ref: null
+                    valid_until: null
+                    submitted_by_ref: clin-ines
+                    purpose: Suivi du diabète
+                    scope: [lab_reports]
+                    duration_days: 30
+                    consent:
+                      basis: patient_grant
+                      access_grant_ref: grant-b-drx
+                    checks:
+                      - check: organizations
+                        state: pass
+                        detail: org-hospital-b and org-hospital-a are distinct organizations approved by the Authority.
+                      - check: consent
+                        state: pass
+                        detail: grant-b-drx is active until 2026-12-31T23:59:00+01:00 and covers the requested scope.
+                      - check: duration
+                        state: pass
+                        detail: 30 days requested.
+                    max_approved_days: 30
+                    decision: null
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+  /v1/synchronization-requests/{request_ref}:
+    parameters:
+      - $ref: "#/components/parameters/RequestRef"
+    get:
+      operationId: getSynchronizationRequest
+      summary: Read one request with the Governance Node's checks and its decision.
+      description: |
+        The checks are evaluated when answering. They are informative once
+        the request is decided; the decision is what counts.
+      responses:
+        "200":
+          description: The request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequestDetail"
+              examples:
+                sync001:
+                  summary: >-
+                    Fictional demo — sync-001 on the demo date. Patient A's
+                    grant ends in 13 days, which caps the approval.
+                  value:
+                    request_ref: sync-001
+                    requester_organization_ref: org-hospital-a
+                    target_organization_ref: org-hospital-b
+                    patient_ref: pat-a
+                    status: pending
+                    submitted_at: "2026-10-10T09:05:00+01:00"
+                    decision_ref: null
+                    valid_until: null
+                    submitted_by_ref: null
+                    purpose: "Continuité des soins : consultation de cardiologie"
+                    scope: [medications, lab_reports]
+                    duration_days: 30
+                    consent:
+                      basis: patient_grant
+                      access_grant_ref: grant-a-drx
+                    checks:
+                      - check: organizations
+                        state: pass
+                        detail: org-hospital-a and org-hospital-b are distinct organizations approved by the Authority.
+                      - check: consent
+                        state: pass
+                        detail: grant-a-drx is active until 2026-10-24T09:00:00+01:00 and covers the requested scope.
+                      - check: duration
+                        state: pass
+                        detail: 30 days requested, limited to 13 days by the end of the patient grant.
+                    max_approved_days: 13
+                    decision: null
+        "404":
+          $ref: "#/components/responses/RequestNotFound"
+  /v1/synchronization-requests/{request_ref}/decision:
+    parameters:
+      - $ref: "#/components/parameters/RequestRef"
+    post:
+      operationId: decideSynchronizationRequest
+      summary: Record the reviewer's decision to approve or reject a request.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DecisionRequest"
+            examples:
+              approveSync001:
+                summary: Fictional demo step 20 — Pr Olfa Hamdi approves sync-001 for 13 days.
+                value:
+                  reviewer_ref: usr-olfa
+                  outcome: approved
+                  rationale: Finalité de soins, périmètre limité, autorisation du patient active.
+                  conditions: []
+                  approved_days: 13
+                  manual_checks_confirmed: false
+      responses:
+        "201":
+          description: The decision was recorded; an approval is a temporary authorization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SynchronizationDecision"
+              examples:
+                approved:
+                  value:
+                    decision_ref: dec-sync-001
+                    request_ref: sync-001
+                    outcome: approved
+                    decided_by_ref: usr-olfa
+                    decided_at: "2026-10-10T10:00:00+01:00"
+                    rationale: Finalité de soins, périmètre limité, autorisation du patient active.
+                    conditions: []
+                    approved_days: 13
+                    valid_until: "2026-10-23T10:00:00+01:00"
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "403":
+          description: |
+            The reviewer may not decide: unknown here, not a governance
+            reviewer, or a member of the requesting or target organization.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                involvedClinician:
+                  summary: Fictional demo — Dr. X, of the requesting hospital, tries to decide.
+                  value:
+                    type: about:blank
+                    title: Reviewer not allowed
+                    status: 403
+                    detail: Only a governance reviewer may decide.
+                    code: reviewer_not_allowed
+        "404":
+          $ref: "#/components/responses/RequestNotFound"
+        "409":
+          description: The request is not pending.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                alreadyDecided:
+                  value:
+                    type: about:blank
+                    title: Not pending
+                    status: 409
+                    detail: Request sync-003 is rejected and already has decision dec-sync-003.
+                    code: not_pending
+        "422":
+          description: |
+            The decision breaks a review rule. Every broken rule is listed,
+            so a form can show them all at once.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                tooLong:
+                  summary: Fictional demo — approving sync-001 for the 30 days requested.
+                  value:
+                    type: about:blank
+                    title: Invalid decision
+                    status: 422
+                    detail: The decision breaks 1 review rule(s).
+                    code: invalid_decision
+                    issues:
+                      - field: approved_days
+                        message: The approved duration must be between 1 and 13 days.
+components:
+  parameters:
+    RequestRef:
+      name: request_ref
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/OpaqueRef"
+  responses:
+    InvalidRequest:
+      description: The request is malformed.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          examples:
+            invalid:
+              value:
+                type: about:blank
+                title: Invalid request
+                status: 400
+                detail: "duration_days: Input should be less than or equal to 365"
+                code: invalid_request
+    RequestNotFound:
+      description: No synchronization request has this reference.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          examples:
+            notFound:
+              value:
+                type: about:blank
+                title: Request not found
+                status: 404
+                detail: No synchronization request sync-999.
+                code: request_not_found
+  schemas:
+    OpaqueRef:
+      description: Opaque identifier. Must not contain a name or other direct identifier.
+      type: string
+      pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    Timestamp:
+      type: string
+      format: date-time
+      pattern: "(Z|[+-][0-9]{2}:[0-9]{2})$"
+    RequestStatus:
+      type: string
+      description: |
+        `pending`: awaiting a decision. `active`: approved and its
+        authorization has not ended. `expired`: approved, but its
+        authorization has ended. `rejected`: refused.
+      enum: [pending, active, expired, rejected]
+    ScopeItem:
+      type: string
+      enum: [encounters, medications, lab_reports]
+    Scope:
+      type: array
+      minItems: 1
+      uniqueItems: true
+      items:
+        $ref: "#/components/schemas/ScopeItem"
+    Consent:
+      type: object
+      additionalProperties: false
+      required: [basis, access_grant_ref]
+      properties:
+        basis:
+          description: |
+            `patient_grant`: an access grant of the patient, named by
+            `access_grant_ref`. `signed_consent_form` and
+            `emergency_override` cannot be verified by the Node and must
+            be confirmed by the reviewer. `none` cannot be approved.
+          type: string
+          enum: [patient_grant, signed_consent_form, emergency_override, none]
+        access_grant_ref:
+          description: Required for `patient_grant`, null otherwise.
+          oneOf:
+            - $ref: "#/components/schemas/OpaqueRef"
+            - type: "null"
+    NewRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - requester_organization_ref
+        - submitted_by_ref
+        - target_organization_ref
+        - patient_ref
+        - purpose
+        - scope
+        - duration_days
+        - consent
+      properties:
+        requester_organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        submitted_by_ref:
+          description: The accountable person submitting the request.
+          allOf:
+            - $ref: "#/components/schemas/OpaqueRef"
+        target_organization_ref:
+          description: The organization holding the records; distinct from the requester.
+          allOf:
+            - $ref: "#/components/schemas/OpaqueRef"
+        patient_ref:
+          description: Pseudonymous patient reference, never a name.
+          allOf:
+            - $ref: "#/components/schemas/OpaqueRef"
+        purpose:
+          type: string
+          minLength: 1
+          maxLength: 200
+        scope:
+          $ref: "#/components/schemas/Scope"
+        duration_days:
+          type: integer
+          minimum: 1
+          maximum: 365
+        consent:
+          $ref: "#/components/schemas/Consent"
+    RequestList:
+      type: object
+      additionalProperties: false
+      required: [notice, requests]
+      properties:
+        notice:
+          type: string
+        requests:
+          type: array
+          items:
+            $ref: "#/components/schemas/RequestSummary"
+    RequestSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - request_ref
+        - requester_organization_ref
+        - target_organization_ref
+        - patient_ref
+        - status
+        - submitted_at
+        - decision_ref
+        - valid_until
+      properties:
+        request_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        requester_organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        target_organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        patient_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        status:
+          $ref: "#/components/schemas/RequestStatus"
+        submitted_at:
+          $ref: "#/components/schemas/Timestamp"
+        decision_ref:
+          oneOf:
+            - $ref: "#/components/schemas/OpaqueRef"
+            - type: "null"
+        valid_until:
+          description: End of the authorization of an approved request; null otherwise.
+          oneOf:
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
+    RequestDetail:
+      description: A `RequestSummary` with the request's content, checks, and decision.
+      type: object
+      additionalProperties: false
+      required:
+        - request_ref
+        - requester_organization_ref
+        - target_organization_ref
+        - patient_ref
+        - status
+        - submitted_at
+        - decision_ref
+        - valid_until
+        - submitted_by_ref
+        - purpose
+        - scope
+        - duration_days
+        - consent
+        - checks
+        - max_approved_days
+        - decision
+      properties:
+        request_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        requester_organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        target_organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        patient_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        status:
+          $ref: "#/components/schemas/RequestStatus"
+        submitted_at:
+          $ref: "#/components/schemas/Timestamp"
+        decision_ref:
+          oneOf:
+            - $ref: "#/components/schemas/OpaqueRef"
+            - type: "null"
+        valid_until:
+          oneOf:
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
+        submitted_by_ref:
+          description: Null for the seeded demo requests, which do not name one.
+          oneOf:
+            - $ref: "#/components/schemas/OpaqueRef"
+            - type: "null"
+        purpose:
+          type: string
+        scope:
+          $ref: "#/components/schemas/Scope"
+        duration_days:
+          type: integer
+          minimum: 1
+        consent:
+          $ref: "#/components/schemas/Consent"
+        checks:
+          description: The Governance Node's checks, in this order, evaluated when answering.
+          type: array
+          minItems: 3
+          maxItems: 3
+          items:
+            $ref: "#/components/schemas/Check"
+        max_approved_days:
+          description: |
+            The longest approval possible now: the requested duration,
+            never beyond the patient grant. 0 when none is possible.
+          type: integer
+          minimum: 0
+        decision:
+          oneOf:
+            - $ref: "#/components/schemas/SynchronizationDecision"
+            - type: "null"
+    Check:
+      type: object
+      additionalProperties: false
+      required: [check, state, detail]
+      properties:
+        check:
+          type: string
+          enum: [organizations, consent, duration]
+        state:
+          description: "`manual`: the Node cannot verify it; the reviewer must confirm it."
+          type: string
+          enum: [pass, fail, manual]
+        detail:
+          type: string
+    DecisionRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - reviewer_ref
+        - outcome
+        - rationale
+        - conditions
+        - approved_days
+        - manual_checks_confirmed
+      properties:
+        reviewer_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        outcome:
+          type: string
+          enum: [approved, rejected]
+        rationale:
+          description: At least 20 characters once trimmed.
+          type: string
+          maxLength: 2000
+        conditions:
+          description: |
+            Conditions of an approval, one per entry. Blank entries are
+            ignored; a rejection must have none.
+          type: array
+          maxItems: 10
+          items:
+            type: string
+            maxLength: 500
+        approved_days:
+          description: |
+            Required for an approval: from 1 to `max_approved_days`. Null
+            for a rejection.
+          oneOf:
+            - type: integer
+            - type: "null"
+        manual_checks_confirmed:
+          description: The reviewer verified, outside the Node, the checks in state `manual`.
+          type: boolean
+    SynchronizationDecision:
+      type: object
+      additionalProperties: false
+      required:
+        - decision_ref
+        - request_ref
+        - outcome
+        - decided_by_ref
+        - decided_at
+        - rationale
+        - conditions
+        - approved_days
+        - valid_until
+      properties:
+        decision_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        request_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        outcome:
+          type: string
+          enum: [approved, rejected]
+        decided_by_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        decided_at:
+          $ref: "#/components/schemas/Timestamp"
+        rationale:
+          type: string
+        conditions:
+          type: array
+          items:
+            type: string
+        approved_days:
+          oneOf:
+            - type: integer
+              minimum: 1
+            - type: "null"
+        valid_until:
+          description: End of the temporary authorization; null for a rejection.
+          oneOf:
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
+    Problem:
+      description: RFC 9457 problem details.
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+          enum:
+            - invalid_request
+            - request_not_found
+            - reviewer_not_allowed
+            - not_pending
+            - invalid_decision
+        issues:
+          description: Every broken review rule, for `invalid_decision`.
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [field, message]
+            properties:
+              field:
+                type: string
+                enum: [rationale, conditions, checks, manual_checks_confirmed, approved_days]
+              message:
+                type: string
