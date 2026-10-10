@@ -445,31 +445,87 @@ class _TimelineEventCard extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(event.date, style: const TextStyle(color: PatientColors.muted)),
-                    const SizedBox(height: 4),
-                    Text(event.title, style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 4),
-                    Text(event.organization, style: const TextStyle(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 8),
-                    Text(event.summary),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        _StatusPill(label: event.kind),
-                        const SizedBox(width: 8),
-                        const _StatusPill(label: 'AUTORISÉ'),
-                      ],
-                    ),
-                  ],
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () => _showEventDetail(context),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(event.date, style: const TextStyle(color: PatientColors.muted)),
+                      const SizedBox(height: 4),
+                      Text(event.title, style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 4),
+                      Text(event.organization, style: const TextStyle(fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 8),
+                      Text(event.summary),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          _StatusPill(label: event.kind),
+                          const SizedBox(width: 8),
+                          const _StatusPill(label: 'AUTORISÉ'),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  void _showEventDetail(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+          children: [
+            Text(event.title, style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: 8),
+            Text(event.date, style: const TextStyle(color: PatientColors.muted)),
+            const SizedBox(height: 20),
+            _DetailRow(label: 'Organisation', value: event.organization),
+            _DetailRow(label: 'Type', value: event.kind),
+            _DetailRow(label: 'Resume', value: event.summary),
+            const SizedBox(height: 12),
+            const Row(
+              children: [
+                _StatusPill(label: 'AUTORISÉ'),
+                SizedBox(width: 8),
+                _StatusPill(label: 'DÉMO D1'),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(color: PatientColors.muted)),
+          const SizedBox(height: 3),
+          Text(value, style: Theme.of(context).textTheme.titleMedium),
         ],
       ),
     );

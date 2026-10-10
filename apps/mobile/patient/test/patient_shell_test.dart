@@ -43,6 +43,12 @@ void main() {
     expect(find.text('Hôpital Carthage'), findsOneWidget);
     expect(find.text('Laboratoire El Amal'), findsOneWidget);
     expect(find.text('AUTORISÉ'), findsNWidgets(3));
+
+    await tester.tap(find.text('Consultation de suivi'));
+    await tester.pumpAndSettle();
+    expect(find.text('Organisation'), findsOneWidget);
+    expect(find.text('Hôpital Carthage'), findsNWidgets(2));
+    expect(find.text('DÉMO D1'), findsOneWidget);
   });
 
   testWidgets('navigates between shell destinations', (tester) async {
