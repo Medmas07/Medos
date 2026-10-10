@@ -9,6 +9,7 @@ node_modules/
 venv/
 
 # Build, test, and tool output
+__pycache__/
 dist/
 build/
 coverage/

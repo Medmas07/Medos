@@ -56,7 +56,7 @@ Availability, pricing, capacity, and security must be verified at decision time.
 
 ### AI services
 
-Python is confirmed for potential AI/ML components, but no framework or independent service is selected. If an AI service becomes necessary, normal topology keeps its internal details behind the primary backend. Do not initialize FastAPI or another framework without a validated need and ADR.
+AI Services run as their own Python + FastAPI service in `services/ai/` ([ADR-0003](../docs/decisions/ADR-0003-backend-runtime-strategy.md)). Preview it with `fastapi run main.py --port 8600` from that directory. AI libraries, providers, and hosting remain OPEN.
 
 ### IoT
 
