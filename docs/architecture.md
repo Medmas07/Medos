@@ -4,7 +4,7 @@ This document uses the shared [status vocabulary](README.md#status-vocabulary). 
 
 ## 1. Architecture status
 
-The federated model, trust boundaries, local data control, Clean / Hexagonal dependency rule, contract-based communication, local DMI placement, Governance-owned authorization, external SciAgents Integration, and advisory AI role are CONFIRMED constraints. Runtime stacks, databases, protocols, hosting, providers, and concrete implementations remain OPEN. Most capabilities below are PLANNED, not implemented.
+The federated model, trust boundaries, local data control, Clean / Hexagonal dependency rule, contract-based communication, local DMI placement, Governance-owned authorization, external SciAgents Integration, and advisory AI role are CONFIRMED constraints. The web portal technology is CONFIRMED by [ADR-0001](decisions/ADR-0001-web-frontend-technology.md). Other runtime stacks, databases, protocols, hosting, providers, and concrete implementations remain OPEN. Most capabilities below are PLANNED, not implemented.
 
 ## 2. Product context
 
@@ -145,7 +145,7 @@ Cross-component communication uses explicit, versionable APIs, events, Federatio
 
 ## 15. Runtime and deployment model
 
-Hospital Nodes and the Governance Node are distinct deployable trust boundaries. Hospital Nodes are expected to become containerized, but container/runtime choices are OPEN pending ADRs. Web/mobile stacks, service runtimes, persistence, hosting, and topology are likewise OPEN.
+Hospital Nodes and the Governance Node are distinct deployable trust boundaries. Hospital Nodes are expected to become containerized, but container/runtime choices are OPEN pending ADRs. The web portals use React + TypeScript + Vite as client-side SPAs with static build output ([ADR-0001](decisions/ADR-0001-web-frontend-technology.md)). Mobile stacks, service runtimes, persistence, hosting, and topology remain OPEN.
 
 ## 16. Development / preview / production
 
@@ -171,9 +171,9 @@ AI is advisory, replaceable through ports, and subject to appropriate human revi
 | Documentation and planning | IMPLEMENTED | Product vision, architecture, plans, templates, and guidance exist. |
 | Patient App | PLANNED | No framework or application code. |
 | Clinician App | PLANNED | No framework or application code. |
-| Hospital Portal | PLANNED | No UI code. |
-| Governance Portal | PLANNED | No UI code. |
-| Research Portal | PLANNED | No UI code or notebook execution. |
+| Hospital Portal | PLANNED | No UI code; stack decided by ADR-0001. |
+| Governance Portal | PLANNED | No UI code; stack decided by ADR-0001. |
+| Research Portal | PLANNED | No UI code or notebook execution; stack decided by ADR-0001. |
 | Hospital Node | PLANNED | Boundary documented; runtime not implemented. |
 | Governance Node | PLANNED | Boundary documented; runtime not implemented. |
 | DMI Adapter | PLANNED | Hospital-local boundary documented; no adapter. |

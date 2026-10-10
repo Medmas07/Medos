@@ -7,3 +7,9 @@ Use an ADR for consequential choices including the frontend framework, mobile fr
 An ADR records a real proposed or accepted decision; it must not be created merely to make an OPEN choice look settled. Use the shared [status vocabulary](../README.md#status-vocabulary) in surrounding documentation and link the evidence that supports the decision.
 
 Clean/Hexagonal principles are an initial project constraint and do not require a new decision record.
+
+## Index
+
+| ADR | Title | Status |
+|---|---|---|
+| [ADR-0001](ADR-0001-web-frontend-technology.md) | Web frontend technology for the three web portals | Accepted |
