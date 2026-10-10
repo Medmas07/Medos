@@ -121,5 +121,36 @@ describe('Governance Service & Canonical Fixtures', () => {
     expect(bouzid?.node?.status).toBe('degraded')
     expect(bouzid?.node?.dmiState).toBe('disconnected')
   })
-})
 
+  it('filters and accesses pending hospital applications for HC-072', () => {
+    const pendingApps = governanceService.getPendingHospitalApplications()
+    expect(pendingApps.length).toBe(1)
+
+    const capAzur = pendingApps[0]
+    expect(capAzur.id).toBe('app-hospital-c')
+    expect(capAzur.status).toBe('human_review')
+    expect(capAzur.organizationId).toBe('org-hospital-c')
+
+    // Document checklist verification
+    const missingDocs = capAzur.documents.filter((d) => d.status === 'missing')
+    expect(missingDocs.length).toBe(1)
+    expect(missingDocs[0].id).toBe('doc-c-assurance')
+
+    // Technical questionnaire
+    expect(capAzur.technicalQuestionnaire).toBeDefined()
+    expect(capAzur.technicalQuestionnaire?.operatingSystem).toBe('Ubuntu Server 22.04')
+    expect(capAzur.technicalQuestionnaire?.dmiSystem).toContain('MediDossier')
+
+    // AI advisory observations
+    const aiReview = capAzur.reviewSteps.find((s) => s.step === 'assisted_review')
+    expect(aiReview?.advisory).toBe(true)
+    expect(aiReview?.mocked).toBe(true)
+    expect(aiReview?.findings.length).toBe(2)
+
+    // Lookup by id
+    const found = governanceService.getHospitalApplication('app-hospital-c')
+    expect(found).toEqual(capAzur)
+    const notFound = governanceService.getHospitalApplication('app-unknown')
+    expect(notFound).toBeUndefined()
+  })
+})

@@ -49,6 +49,17 @@ export const governanceService = {
     return typedGovernance.hospitalApplications.map((app) => simulated[app.id] ?? app)
   },
 
+  // Read through getHospitalApplications so simulated decisions (HC-073) leave the queue.
+  getPendingHospitalApplications(): HospitalApplication[] {
+    return this.getHospitalApplications().filter(
+      (app) => app.status === 'human_review' || app.status === 'pending'
+    )
+  },
+
+  getHospitalApplication(id: string): HospitalApplication | undefined {
+    return this.getHospitalApplications().find((app) => app.id === id)
+  },
+
   // Fixtures merged with the SIMULATED decisions recorded in this session (HC-076).
   getSynchronizationRequests(): SynchronizationRequest[] {
     const simulated = reviewStore.getSnapshot().synchronizationRequests
