@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-CONFIRMED autonomous hospital-controlled boundary. Its stack (Python + FastAPI, one process per hospital from one codebase, flat layer layout that keeps `adapters/dmi/`) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED (HC-110): a FastAPI app with Clean/Hexagonal layers, pinned dependencies, and tests. Per-hospital configuration loading is IMPLEMENTED at D2 (HC-112). Its clinical repository is **MOCKED** at D2 (HC-113): fictional demo records, read-only, in memory. It serves `GET /health` (HC-111, IMPLEMENTED at D2) and the [patient history API](#patient-history-api-hc-114) (HC-114, IMPLEMENTED at D2): its side of the Federation contract, whose authorization check is **MOCKED** against fictional grants and decisions. Every query it answers or refuses is recorded in its own [audit trail](#audit-event-api-hc-116) (HC-116, IMPLEMENTED at D2), kept **in memory only** and readable through an unauthenticated API. The consent/access API (HC-115) is PLANNED. It is expected to become a separately packaged/containerized instance; container choices remain OPEN.
+CONFIRMED autonomous hospital-controlled boundary. Its stack (Python + FastAPI, one process per hospital from one codebase, flat layer layout that keeps `adapters/dmi/`) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED (HC-110): a FastAPI app with Clean/Hexagonal layers, pinned dependencies, and tests. Per-hospital configuration loading is IMPLEMENTED at D2 (HC-112). Its clinical repository is **MOCKED** at D2 (HC-113): fictional demo records, read-only, in memory. It serves `GET /health` (HC-111, IMPLEMENTED at D2) and the [patient history API](#patient-history-api-hc-114) (HC-114, IMPLEMENTED at D2): its side of the Federation contract, whose authorization check is **MOCKED** against fictional grants and decisions. Every query it answers or refuses is recorded in its own [audit trail](#audit-event-api-hc-116) (HC-116, IMPLEMENTED at D2), kept **in memory only** and readable through an unauthenticated API. The [access grants API](#access-grants-api-hc-115) (HC-115, IMPLEMENTED at D2) lists, records, and revokes a patient's grants on this node, which then enforces them; its grant store is **MOCKED** (in memory, seeded from fictional grants) and its callers are not authenticated. It is expected to become a separately packaged/containerized instance; container choices remain OPEN.
 
 ## Running locally
 
@@ -31,7 +31,7 @@ One codebase runs as one process per hospital ([ADR-0003](../../docs/decisions/A
 | `port` | Local port, 1024–65535. |
 | `storage_dir` | This hospital's local storage directory. A relative path is resolved against the configuration file. Nothing reads or writes it yet: persistence is OPEN, so the mock repository stays in memory. `.storage/` is git-ignored. |
 | `mock_clinical_records` | This hospital's fictional records file for the [mock clinical repository](#mock-clinical-repository-hc-113), resolved like `storage_dir`. The demo configurations point to their own file in [`demo-data/records/`](../../demo-data/records/). |
-| `mock_access_grants` | Fictional patient access grants for the [MOCKED authorization check](#patient-history-api-hc-114), resolved like `storage_dir`. The demo configurations point to [`demo-data/access.json`](../../demo-data/access.json). |
+| `mock_access_grants` | Fictional patient access grants that seed the [access grant store](#access-grants-api-hc-115) used by the [MOCKED authorization check](#patient-history-api-hc-114), resolved like `storage_dir`. The demo configurations point to [`demo-data/access.json`](../../demo-data/access.json). |
 | `mock_governance_decisions` | Fictional Governance decisions and synchronization requests for the same check. The demo configurations point to [`demo-data/governance.json`](../../demo-data/governance.json). |
 | `notice` | Optional free-text note. |
 
@@ -83,9 +83,9 @@ How a query is answered (`application/get_patient_history.py`):
 3. Only the record types in `scope` are returned, each naming this node and organization as its `source`. A patient this node does not hold gets `entries: []`, the same as nothing inside the scope.
 4. `provenance.mocked` is the repository's flag (`true`), and `answered_at` is the node's clock.
 
-`adapters/outbound/fixture_authorization_verifier.py` is the only verifier, and it is MOCKED. How a node verifies a basis with the Governance Node is OPEN, and no Governance Node runs, so it reads the fictional [`access.json`](../../demo-data/access.json) and [`governance.json`](../../demo-data/governance.json) at startup, read-only, and refuses to start if either is not marked fictional. It applies the same rules as the Federation Service's simulated nodes (HC-141):
+`adapters/outbound/fixture_authorization_verifier.py` is the only verifier, and it is MOCKED. How a node verifies a basis with the Governance Node is OPEN, and no Governance Node runs, so it reads the fictional [`governance.json`](../../demo-data/governance.json) at startup, read-only, and looks grants up in this node's [access grant store](#access-grants-api-hc-115), seeded from the fictional [`access.json`](../../demo-data/access.json). The node refuses to start if either file is not marked fictional. It applies the same rules as the Federation Service's simulated nodes (HC-141):
 
-- **Patient access grant:** active, not revoked, not expired at the node's clock, for this patient, issued to the requesting actor, same purpose, and a scope at least as wide as the query's.
+- **Patient access grant** (`domain/access_grant.py`): active, not revoked, not expired at the node's clock, for this patient, issued to the requesting actor, same purpose, and a scope at least as wide as the query's.
 - **Synchronization decision:** an approved decision on a synchronization request, still valid, that targets **this** node's organization, from the requesting organization, for this patient and purpose, with a wide enough scope.
 
 The node trusts its own copy of each basis, never the `expires_at` stated in the request. This is not real authorization and not production security.
@@ -111,6 +111,39 @@ curl -s -X POST localhost:8102/v1/federation/queries -H 'content-type: applicati
 ```
 
 `grant-a-drx` expires on 2026-10-24. The node uses the real clock, so this request is refused with `403` after that date unless the fixtures are updated.
+
+## Access grants API (HC-115)
+
+IMPLEMENTED at D2 over a **MOCKED** grant store. The node serves [`patient-access-grants.v1.yaml`](../../contracts/api/patient-access/patient-access-grants.v1.yaml): the grants a patient gives one person, usually a clinician, to query their records held by this node, for a purpose, inside a scope, until a time.
+
+| Operation | Behavior |
+|---|---|
+| `GET /v1/patients/{patient_ref}/access-grants` | `200`: every grant this node records for the patient, newest first, including expired and revoked ones. `status` is evaluated at the node's clock: `revoked` once revoked, `expired` from `expires_at` on, otherwise `active`. An unknown patient gets `grants: []`. |
+| `POST /v1/patients/{patient_ref}/access-grants` | `201`: records a new active grant (`grantee_ref`, `scope`, `purpose`, `expires_at`) with a generated opaque `grant_ref` (`grant-<32 hex>`) and `granted_at` set to now. `400 invalid_request` when the body is outside the contract or `expires_at` is not in the future. |
+| `POST /v1/patients/{patient_ref}/access-grants/{grant_ref}/revocation` | `200`: the grant with `revoked_at` set to now. Idempotent: a second revocation keeps the first time. An expired grant can still be revoked. `404 grant_not_found` when the grant is unknown here or belongs to another patient; both look the same. |
+
+Every response names this node and carries `mocked: true`. Errors use `application/problem+json`; a non-opaque path reference is a `400`.
+
+The node enforces what this API records. The [patient history API](#patient-history-api-hc-114) checks grants in the same store, so a grant counts as soon as it is recorded and a query citing it is refused from its revocation on; both queries appear in the [audit trail](#audit-event-api-hc-116).
+
+The rules (status, revocation, validity, what a grant allows) live in `domain/access_grant.py`, the use cases in `application/manage_access_grants.py` behind an `AccessGrantStore` port, and the wire mapping in `adapters/inbound/http/access_grants.py`. `adapters/outbound/in_memory_access_grant_store.py` is MOCKED:
+
+- It is seeded at startup from the fictional `access.json` and refuses to start on a file not marked fictional or a malformed grant. Changes live in memory only: they are lost on restart and never written to `demo-data/` or `storage_dir`. Persistence is OPEN.
+- Each node keeps its own copy. A grant recorded on Hospital B is unknown to Hospital A, and a revocation on one node does not reach the others. How one patient's consent reaches every node holding their records, and what Governance consent governance records, are OPEN (HC-136, [open questions](../../docs/OPEN_QUESTIONS.md)).
+- **Callers are not authenticated.** Anyone who can reach the node can list, record, or revoke any patient's grants. Who may call it (the patient, a delegate, the Patient App) is OPEN. This is not production consent management.
+- Recording and revoking a grant are not audit events: the audit-event contract (HC-116) covers queries only.
+- Delegations to relatives, restriction or erasure requests, grants without an expiry, and checking the grantee against a people registry are not served. No Patient App calls this API yet.
+
+Demo, on Hospital B (port 8102), checked with Hospital A and B running side by side: `GET /v1/patients/pat-a/access-grants` lists `grant-a-drx` (active) and `grant-a-ines` (expired). Patient A records the contract's `patientAGrantsInes` grant; Dr. Ines's query for Patient A's medications under it returns `med-b-leila-coagulix` on Hospital B, is refused on Hospital A, and is refused on Hospital B after revocation:
+
+```bash
+curl -s localhost:8102/v1/patients/pat-a/access-grants
+curl -s -X POST localhost:8102/v1/patients/pat-a/access-grants -H 'content-type: application/json' -d '{
+  "grantee_ref": "clin-ines", "scope": ["medications"],
+  "purpose": "Consultation de médecine interne", "expires_at": "2026-11-10T10:00:00+01:00"
+}'
+curl -s -X POST localhost:8102/v1/patients/pat-a/access-grants/<grant_ref>/revocation
+```
 
 ## Audit event API (HC-116)
 
@@ -142,15 +175,15 @@ Hospital B lists two events, newest first: `denied` for the other purpose with n
 
 ## Health endpoint (HC-111)
 
-`GET /health` is a liveness check. It returns `200` with the node kind, version, the configured `node_ref` and `organization_ref`, its `capabilities` (`patient_history`, `audit_events`), the clinical repository's record counts and `mocked` flag, and a notice stating that the identity comes from fictional demo configuration, that the repository and authorization are MOCKED, that the audit trail is in memory and its readers are not authenticated, and that it is not a production health check:
+`GET /health` is a liveness check. It returns `200` with the node kind, version, the configured `node_ref` and `organization_ref`, its `capabilities` (`patient_history`, `audit_events`, `access_grants`), the clinical repository's record counts and `mocked` flag, and a notice stating that the identity comes from fictional demo configuration, that the repository and authorization are MOCKED, that the audit trail is in memory and its readers are not authenticated, and that it is not a production health check:
 
 ```json
-{"status": "ok", "node": "hospital-node", "version": "0.1.0", "node_ref": "node-hospital-a", "organization_ref": "org-hospital-a", "capabilities": ["patient_history", "audit_events"], "clinical_records": {"mocked": true, "encounters": 3, "medications": 1, "lab_reports": 2}, "notice": "Hospital Node (HC-111 to HC-114, HC-116). ..."}
+{"status": "ok", "node": "hospital-node", "version": "0.1.0", "node_ref": "node-hospital-a", "organization_ref": "org-hospital-a", "capabilities": ["patient_history", "audit_events", "access_grants"], "clinical_records": {"mocked": true, "encounters": 3, "medications": 1, "lab_reports": 2}, "notice": "Hospital Node (HC-111 to HC-114, HC-116). ..."}
 ```
 
 The counts contain no patient data.
 
-It does not check storage, DMI connectivity, or Federation reachability; none exists yet. Deployment health checks are PLANNED in HC-223. Besides `/health`, the two Federation operations, and `/v1/audit/events`, only FastAPI's generated `/openapi.json` and `/docs` are served.
+It does not check storage, DMI connectivity, or Federation reachability; none exists yet. Deployment health checks are PLANNED in HC-223. Besides `/health`, the two Federation operations, `/v1/audit/events`, and the access grants paths, only FastAPI's generated `/openapi.json` and `/docs` are served.
 
 ## Layout
 
@@ -158,10 +191,10 @@ It does not check storage, DMI connectivity, or Federation reachability; none ex
 instances/hospital-node/
 ├── main.py                     # composition root: loads configuration, builds the FastAPI app
 ├── config/                     # fictional per-hospital demo configurations
-├── domain/                     # NodeIdentity, NodeStatus, clinical records, history query, audit event — stdlib only
-├── application/                # get_node_status, get_patient_history, list_audit_events use cases; ClinicalRepository, AuthorizationVerifier, AuditLog ports; imports only domain
-├── adapters/inbound/http/      # /health, /v1/federation, and /v1/audit routers, Pydantic wire models
-├── adapters/outbound/          # MOCKED fixture clinical repository (HC-113) and authorization verifier (HC-114); in-memory audit log (HC-116)
+├── domain/                     # NodeIdentity, NodeStatus, clinical records, history query, access grant, audit event — stdlib only
+├── application/                # get_node_status, get_patient_history, list_audit_events, manage_access_grants use cases; ClinicalRepository, AuthorizationVerifier, AuditLog, AccessGrantStore ports; imports only domain
+├── adapters/inbound/http/      # /health, /v1/federation, /v1/audit, and access grants routers, Pydantic wire models
+├── adapters/outbound/          # MOCKED fixture clinical repository (HC-113) and authorization verifier (HC-114); in-memory audit log (HC-116) and access grant store (HC-115, MOCKED)
 ├── infrastructure/             # configuration loading and validation
 ├── adapters/dmi/               # PLANNED hospital-local DMI Adapter (HC-120+)
 ├── contracts/                  # reserved for Node-local contract documents
@@ -177,7 +210,7 @@ instances/hospital-node/
 - Local storage and clinical source-data control.
 - Consent/authorization enforcement at the local boundary.
 - Local audit generation and Federation interface.
-- Per-hospital configuration loading, liveness health check, patient history API, and in-memory audit trail (IMPLEMENTED); clinical repository and authorization check (MOCKED); future consent/access API, durable audit storage, authenticated identity/RBAC, and events.
+- Per-hospital configuration loading, liveness health check, patient history API, in-memory audit trail, and access grants API (IMPLEMENTED); clinical repository, authorization check, and grant store (MOCKED); future delegations, durable audit storage, authenticated identity/RBAC, and events.
 
 ## Communication boundaries
 
@@ -191,8 +224,8 @@ The Hospital Node does not own ethics approval, global research approval, compan
 
 Each Hospital Node must provide [`hospital-node-federation.v1.yaml`](../../contracts/federation/hospital-node-federation.v1.yaml) (HC-140): a node descriptor and authorized, scoped patient queries that the node enforces itself. This runtime serves both operations (HC-114) with MOCKED records and MOCKED authorization, and audits every query (HC-116).
 
-It also provides [`hospital-audit-events.v1.yaml`](../../contracts/api/hospital-audit/hospital-audit-events.v1.yaml) (HC-116): its own audit trail of those queries.
+It also provides [`hospital-audit-events.v1.yaml`](../../contracts/api/hospital-audit/hospital-audit-events.v1.yaml) (HC-116): its own audit trail of those queries; and [`patient-access-grants.v1.yaml`](../../contracts/api/patient-access/patient-access-grants.v1.yaml) (HC-115): the patient access grants it records and enforces.
 
-PLANNED local clinical API, DMI port, consent/authorization, audit-event, and research-execution contracts. `/health` is Node-local and has no versioned contract.
+PLANNED local clinical API, DMI port, and research-execution contracts. `/health` is Node-local and has no versioned contract.
 
 The Federation Service calls this runtime over real HTTP at the `base_url` it has in the node registry: `GET /v1/federation/node` for capability discovery (HC-143) and `POST /v1/federation/queries` for federated queries (HC-145). This runtime serves both, so a running node is `discovered` and answers queries. The demo ports in `config/` (8101, 8102, 8104) match the Federation Service's [`registry-seed.demo.json`](../../services/federation/registry-seed.demo.json).
