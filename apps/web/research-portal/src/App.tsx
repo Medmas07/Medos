@@ -20,6 +20,7 @@ import {
 } from './services/researchService'
 import type { PageId, ResearchSnapshot } from './types/research'
 import { DashboardView } from './views/DashboardView'
+import { ExecutionsView } from './views/ExecutionsView'
 import { HomeView } from './views/HomeView'
 import { HospitalsView } from './views/HospitalsView'
 import { NewProjectView } from './views/NewProjectView'
@@ -218,6 +219,9 @@ export default function App() {
           onNavigate={navigateTo}
         />
       )
+    }
+    if (currentView === 'execution') {
+      return <ExecutionsView snapshot={load.snapshot} onNavigate={navigateTo} />
     }
     const page = load.snapshot.pages.find((p) => p.id === currentView)!
     const section = PAGE_DEFINITIONS.find((d) => d.id === currentView)!.section
