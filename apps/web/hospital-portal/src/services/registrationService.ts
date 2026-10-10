@@ -61,8 +61,8 @@ export const REGISTRATION_STEPS: readonly RegistrationStep[] = [
   { id: 'confirmation', label: 'Vérification et envoi', fields: ['attestsAccuracy', 'acknowledgesGovernance'] },
 ]
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const PHONE_PATTERN = /^\+?[0-9 ]{8,20}$/
+export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+export const PHONE_PATTERN = /^\+?[0-9 ]{8,20}$/
 
 function checkField(field: RegistrationField, input: RegistrationInput): string | undefined {
   const value = input[field]

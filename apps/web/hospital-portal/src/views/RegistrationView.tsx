@@ -29,8 +29,8 @@ import type { OnboardingSnapshot, StepId } from '../types/onboarding'
 
 interface RegistrationViewProps {
   snapshot: OnboardingSnapshot
-  /** First submission fails, to demonstrate the error state. */
-  failFirstSubmission: boolean
+  /** Returns true once when the demo scenario should make this submission fail. */
+  consumeSimulatedFailure: () => boolean
   onRegistered: (snapshot: OnboardingSnapshot) => void
   onNavigate: (step: StepId) => void
 }
@@ -43,7 +43,7 @@ const typeOptions = (Object.keys(ORGANIZATION_TYPE_LABELS) as OrganizationType[]
 const GOVERNANCE_NOTICE =
   "L'inscription crée le dossier de votre établissement. Elle ne vaut pas approbation : seule l'Autorité de gouvernance et d'éthique décide de l'adhésion, après les vérifications et la revue humaine."
 
-export function RegistrationView({ snapshot, failFirstSubmission, onRegistered, onNavigate }: RegistrationViewProps) {
+export function RegistrationView({ snapshot, consumeSimulatedFailure, onRegistered, onNavigate }: RegistrationViewProps) {
   return (
     <>
       <PageHeader
@@ -55,7 +55,11 @@ export function RegistrationView({ snapshot, failFirstSubmission, onRegistered, 
       {snapshot.application ? (
         <RegistrationSummary snapshot={snapshot} onNavigate={onNavigate} />
       ) : (
-        <RegistrationForm snapshot={snapshot} failFirstSubmission={failFirstSubmission} onRegistered={onRegistered} />
+        <RegistrationForm
+          snapshot={snapshot}
+          consumeSimulatedFailure={consumeSimulatedFailure}
+          onRegistered={onRegistered}
+        />
       )}
     </>
   )
@@ -119,14 +123,13 @@ type Submission = { kind: 'idle' } | { kind: 'submitting' } | { kind: 'failed'; 
 
 function RegistrationForm({
   snapshot,
-  failFirstSubmission,
+  consumeSimulatedFailure,
   onRegistered,
-}: Pick<RegistrationViewProps, 'snapshot' | 'failFirstSubmission' | 'onRegistered'>) {
+}: Pick<RegistrationViewProps, 'snapshot' | 'consumeSimulatedFailure' | 'onRegistered'>) {
   const [input, setInput] = useState<RegistrationInput>(EMPTY_REGISTRATION)
   const [errors, setErrors] = useState<RegistrationErrors>({})
   const [stepIndex, setStepIndex] = useState(0)
   const [submission, setSubmission] = useState<Submission>({ kind: 'idle' })
-  const [attempts, setAttempts] = useState(0)
 
   const step = REGISTRATION_STEPS[stepIndex]
   const isLast = stepIndex === REGISTRATION_STEPS.length - 1
@@ -152,11 +155,9 @@ function RegistrationForm({
       setStepIndex(firstStepWithError(all))
       return
     }
-    const attempt = attempts + 1
-    setAttempts(attempt)
     setSubmission({ kind: 'submitting' })
     try {
-      const result = await submitRegistration(input, { simulateFailure: failFirstSubmission && attempt === 1 })
+      const result = await submitRegistration(input, { simulateFailure: consumeSimulatedFailure() })
       if (result.kind === 'rejected') {
         setErrors(result.errors)
         setStepIndex(Math.max(0, firstStepWithError(result.errors)))
