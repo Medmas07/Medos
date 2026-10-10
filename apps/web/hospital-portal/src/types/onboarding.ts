@@ -177,9 +177,10 @@ export type StepId =
 
 /**
  * Display state of one onboarding step, derived from fixtures.
- * `locked` means the step cannot start before a Governance decision.
+ * `locked` means the step cannot start before a Governance decision, or can no
+ * longer change after a rejection; `rejected` marks the rejected decision itself.
  */
-export type StepStatus = 'completed' | 'attention' | 'in_progress' | 'pending' | 'locked'
+export type StepStatus = 'completed' | 'attention' | 'in_progress' | 'pending' | 'locked' | 'rejected'
 
 export interface OnboardingStep {
   id: StepId
@@ -190,11 +191,28 @@ export interface OnboardingStep {
   detail: string
 }
 
+/** A decision of the Governance / Ethics Authority, as published to the hospital (HC-059). */
+export interface GovernanceDecision {
+  id: string
+  subjectType: 'hospital_application'
+  subjectId: string
+  outcome: 'approved' | 'rejected'
+  decidedById: string
+  decidedAt: string
+  rationale: string
+  conditions: string[]
+  validUntil: string | null
+  /** Set on decisions created by a demo scenario rather than read from the fixtures. */
+  simulated?: boolean
+}
+
 export interface OnboardingSnapshot {
   organization: Organization
   manager: StaffMember
   /** `null` when the organization has not submitted an application yet. */
   application: HospitalApplication | null
+  /** The Governance decision on the application, once published. */
+  decision: GovernanceDecision | null
   steps: OnboardingStep[]
   notifications: PortalNotification[]
 }
