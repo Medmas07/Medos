@@ -22,6 +22,7 @@ import {
 } from './services/onboardingService'
 import type { OnboardingSnapshot, StepId } from './types/onboarding'
 import { AgreementsView } from './views/AgreementsView'
+import { AutomatedReviewView } from './views/AutomatedReviewView'
 import { DmiView } from './views/DmiView'
 import { DocumentsView } from './views/DocumentsView'
 import { OverviewView } from './views/OverviewView'
@@ -191,6 +192,16 @@ export default function App() {
         <DmiView
           snapshot={load.snapshot}
           consumeSimulatedFailure={failureOnce('dmi-failure')}
+          onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
+          onNavigate={navigateTo}
+        />
+      )
+    }
+    if (currentView === 'automated-review') {
+      return (
+        <AutomatedReviewView
+          snapshot={load.snapshot}
+          consumeSimulatedFailure={failureOnce('submission-failure')}
           onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
           onNavigate={navigateTo}
         />

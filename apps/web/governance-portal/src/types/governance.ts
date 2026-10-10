@@ -209,6 +209,7 @@ export interface PersonInfo {
   firstName: string
   lastName: string
   role?: string
+  specialty?: string | null
   organizationId?: string
 }
 

@@ -206,7 +206,6 @@ export function DataSyncView() {
                       requester: reqOrg,
                       target: tgtOrg,
                       grant: governanceService.getAccessGrant(selectedSync.consent.accessGrantId),
-                      now,
                     }}
                     reviewer={governanceService.getPerson(REVIEWER_ID)}
                     reviewerName={governanceService.getPersonName(REVIEWER_ID)}
