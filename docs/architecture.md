@@ -179,7 +179,7 @@ AI is advisory, replaceable through ports, and subject to appropriate human revi
 |---|---|---|
 | Repository structure | IMPLEMENTED | Boundary folders and README documentation exist. |
 | Documentation and planning | IMPLEMENTED | Product vision, architecture, plans, templates, and guidance exist. |
-| Patient App | PLANNED | Stack decided by ADR-0004; no dependencies, generated native project, or application code. |
+| Patient App | IMPLEMENTED (D1 shell) | Flutter Android shell, fictional local identity, navigation, and explicit UI states; feature data/contracts remain PLANNED. |
 | Clinician App | PLANNED | Stack decided by ADR-0004; no dependencies, generated native project, or application code. |
 | Hospital Portal | IMPLEMENTED (shell, D1) | HC-050 shell with MOCKED fixture-backed onboarding dashboard; onboarding pages (HC-051 to HC-063) and onboarding contracts PLANNED. |
 | Governance Portal | PLANNED | No UI code; stack decided by ADR-0001. |
