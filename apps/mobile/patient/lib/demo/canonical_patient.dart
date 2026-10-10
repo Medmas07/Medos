@@ -198,3 +198,36 @@ const demoCareHistory = <CanonicalCareEncounter>[
     summary: 'Consultation de suivi avec le médecin traitant.',
   ),
 ];
+
+class CanonicalAccessGrant {
+  const CanonicalAccessGrant({
+    required this.grantee,
+    required this.purpose,
+    required this.scope,
+    required this.status,
+    required this.expiresAt,
+  });
+
+  final String grantee;
+  final String purpose;
+  final String scope;
+  final String status;
+  final String expiresAt;
+}
+
+const demoAccessGrants = <CanonicalAccessGrant>[
+  CanonicalAccessGrant(
+    grantee: 'Dr Youssef Gharbi',
+    purpose: 'Consultation de cardiologie',
+    scope: 'Parcours, médicaments, laboratoires',
+    status: 'Actif',
+    expiresAt: 'Expire le 24 octobre 2026',
+  ),
+  CanonicalAccessGrant(
+    grantee: 'Dr Inès Chaabane',
+    purpose: 'Consultation de médecine interne',
+    scope: 'Parcours, médicaments',
+    status: 'Expiré',
+    expiresAt: 'Expiré le 20 août 2026',
+  ),
+];

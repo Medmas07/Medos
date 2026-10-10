@@ -50,6 +50,24 @@ void main() {
     expect(find.text('Cabinet médical Dr Hatem Bouzid'), findsOneWidget);
   });
 
+  testWidgets('shows consent grants and supports local revocation', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const PatientApp());
+
+    await tester.tap(find.text('Accès'));
+    await tester.pumpAndSettle();
+    expect(find.text('Mes accès'), findsOneWidget);
+    expect(find.text('Dr Youssef Gharbi'), findsOneWidget);
+    expect(find.text('Dr Inès Chaabane'), findsOneWidget);
+    expect(find.text('Révoquer cet accès'), findsOneWidget);
+
+    await tester.tap(find.text('Révoquer cet accès'));
+    await tester.pumpAndSettle();
+    expect(find.text('RÉVOQUÉ'), findsOneWidget);
+    expect(find.text('Révoquer cet accès'), findsNothing);
+  });
+
   testWidgets('renders the federated authorized timeline fixtures', (
     tester,
   ) async {

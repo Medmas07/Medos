@@ -159,12 +159,7 @@ class _ContentView extends StatelessWidget {
     final content = switch (index) {
       0 => const _DashboardContent(),
       1 => const _TimelineContent(),
-      2 => const _PlannedContent(
-        icon: Icons.shield_outlined,
-        title: 'Consentements et accès',
-        message:
-            'La gestion des accès sera livrée par HC-017 à HC-021. Aucun consentement réel n’est modifié ici.',
-      ),
+      2 => const _AccessContent(),
       _ => const _ProfileContent(),
     };
 
@@ -401,6 +396,124 @@ class _CareHistorySection extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _AccessContent extends StatefulWidget {
+  const _AccessContent();
+
+  @override
+  State<_AccessContent> createState() => _AccessContentState();
+}
+
+class _AccessContentState extends State<_AccessContent> {
+  late final Set<String> _revoked = {};
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Mes accès', style: Theme.of(context).textTheme.headlineSmall),
+        const SizedBox(height: 6),
+        const Text(
+          'Contrôlez les autorisations visibles dans votre vue patient.',
+          style: TextStyle(color: PatientColors.muted, fontSize: 16),
+        ),
+        const SizedBox(height: 18),
+        const _AccessNotice(),
+        const SizedBox(height: 12),
+        for (final grant in demoAccessGrants)
+          _AccessGrantCard(
+            grant: grant,
+            revoked: _revoked.contains(grant.grantee),
+            onRevoke: () => setState(() => _revoked.add(grant.grantee)),
+          ),
+      ],
+    );
+  }
+}
+
+class _AccessNotice extends StatelessWidget {
+  const _AccessNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: PatientColors.brandSoft,
+      child: const Padding(
+        padding: EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Icon(Icons.lock_outline_rounded, color: PatientColors.brand),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Vous choisissez quelles sources peuvent partager une vue autorisée.',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AccessGrantCard extends StatelessWidget {
+  const _AccessGrantCard({
+    required this.grant,
+    required this.revoked,
+    required this.onRevoke,
+  });
+
+  final CanonicalAccessGrant grant;
+  final bool revoked;
+  final VoidCallback onRevoke;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = grant.status == 'Actif' && !revoked;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.person_outline_rounded, color: PatientColors.brand),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    grant.grantee,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                _StatusPill(label: revoked ? 'RÉVOQUÉ' : grant.status.toUpperCase()),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(grant.purpose),
+            const SizedBox(height: 4),
+            Text(grant.scope, style: const TextStyle(color: PatientColors.muted)),
+            const SizedBox(height: 4),
+            Text(grant.expiresAt, style: const TextStyle(color: PatientColors.muted)),
+            if (active) ...[
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: onRevoke,
+                icon: const Icon(Icons.block_outlined),
+                label: const Text('Révoquer cet accès'),
+              ),
+            ],
+            const Align(
+              alignment: Alignment.centerRight,
+              child: _StatusPill(label: 'DÉMO D1'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
