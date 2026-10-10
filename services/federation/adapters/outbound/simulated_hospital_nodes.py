@@ -17,9 +17,9 @@ from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
-from adapters.outbound.hospital_node_contract import entries_from_wire, query_to_wire
-from application.federate_patient_query import NodeDenied, NodeUnavailable
-from domain.federated_query import Entry, NodeQuery, NodeRef
+from adapters.outbound.hospital_node_contract import answer_from_wire, query_to_wire
+from application.federate_patient_query import NodeAnswer, NodeDenied, NodeUnavailable
+from domain.federated_query import NodeQuery, NodeRef
 
 DEMO_DATA = Path(__file__).resolve().parents[4] / "demo-data"
 
@@ -215,7 +215,7 @@ class SimulatedHospitalNodes:
             if o["node"] and o["id"] in records_by_holder
         }
 
-    def query(self, node: NodeRef, query: NodeQuery) -> tuple[Entry, ...]:
+    def query(self, node: NodeRef, query: NodeQuery) -> NodeAnswer:
         simulated = self.nodes.get(node.organization_ref)
         if simulated is None or simulated.node_ref != node.node_ref:
             raise NodeUnavailable(f"No node {node.node_ref} is running.")
@@ -224,4 +224,4 @@ class SimulatedHospitalNodes:
             raise NodeDenied(body["code"])
         if status != 200:
             raise NodeUnavailable(body["code"])
-        return entries_from_wire(node, body)
+        return answer_from_wire(node, query, body)

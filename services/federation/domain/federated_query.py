@@ -91,6 +91,8 @@ class NodeResult:
     status: NodeStatus
     entries: tuple[Entry, ...] = ()
     problem_code: str | None = None
+    # True when the node said it answered from fixtures rather than real local data.
+    mocked: bool = False
 
     def __post_init__(self) -> None:
         if self.status is NodeStatus.OK:
