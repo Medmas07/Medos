@@ -3,5 +3,6 @@
   "node_ref": "node-private-practice",
   "organization_ref": "org-private-practice",
   "port": 8104,
-  "storage_dir": "../.storage/private-practice"
+  "storage_dir": "../.storage/private-practice",
+  "mock_clinical_records": "../../../demo-data/records/private-practice.json"
 }
