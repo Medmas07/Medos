@@ -49,11 +49,17 @@ from domain.synchronization import (
     SynchronizationRequest,
 )
 
-NOTICE = (
+_NOTICE = (
     "Fictional demo synchronization requests, held in memory by the Governance Node: "
     "requests and decisions are lost on restart, requests are not authenticated, and "
-    "patient grants are checked against fictional demo grants (MOCKED)."
 )
+# How patient grants are checked, by grant source (HC-136).
+NOTICES = {
+    "fixture": _NOTICE
+    + "patient grants are checked against fictional demo grants (MOCKED).",
+    "http": _NOTICE
+    + "patient grants are checked with the Hospital Node holding them, over HTTP.",
+}
 
 Ref = Annotated[str, Field(pattern=OPAQUE_REF.pattern)]
 
@@ -202,7 +208,10 @@ def create_router(
             return _invalid(f"status must be one of: {allowed}")
         rows = list_requests(store, clock(), wanted)
         return JSONResponse(
-            {"notice": NOTICE, "requests": [_summary(*row) for row in rows]}
+            {
+                "notice": NOTICES.get(grants.mode, NOTICES["http"]),
+                "requests": [_summary(*row) for row in rows],
+            }
         )
 
     @router.post("")

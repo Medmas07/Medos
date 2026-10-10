@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Synchronization Authorization Check
-  version: 1.0.0
+  version: 1.1.0
   description: |
     Contract HC-144, version 1. Provided by the Governance Node. Before the
     Federation Service asks any Hospital Node on the basis of a
@@ -27,6 +27,13 @@ info:
       only those organizations' nodes, never every registered node.
     - **Deny by default.** If the Governance Node cannot be reached or
       answers outside this contract, the Federation Service asks no node.
+    - **Consent still holds (since 1.1.0, HC-136).** When an approval
+      relies on a patient grant, the Governance Node re-verifies that grant
+      with the Hospital Node of the target organization, which holds and
+      enforces it (patient-access-grants.v1.yaml), once every other check
+      passes. A grant revoked, expired, or unknown there is `denied` with
+      reason `revoked`. If that node cannot answer within its contract, the
+      answer is `503 consent_unavailable` and nothing is authorized.
     - **Minimised.** The request carries opaque references only. Nothing
       clinical is sent to the Governance Node.
 
@@ -44,9 +51,10 @@ info:
     Every answer, authorized or denied, is recorded with `actor_ref` in the
     Node's governance audit trail before it is given
     (contracts/api/governance/governance-audit-events.v1.yaml, HC-134);
-    the patient, scope, and purpose are not recorded there. The `revoked`
-    reason is never returned
-    while decisions cannot be revoked.
+    the patient, scope, and purpose are not recorded there. `revoked` is
+    returned when the patient grant an approval relies on is withdrawn at
+    the Hospital Node holding it (HC-136); a decision itself cannot be
+    revoked yet. A `503` is audited as a denial (`consent_unavailable`).
 paths:
   /v1/synchronization-authorizations/{decision_ref}/checks:
     parameters:
@@ -110,6 +118,20 @@ paths:
                     purpose: null
                     valid_until: "2026-03-12T14:30:00+01:00"
                     checked_at: "2026-10-10T10:30:00+01:00"
+                grantRevoked:
+                  summary: >-
+                    Fictional demo — after dec-sync-001, Patient A revokes
+                    grant-a-drx on Hospital B (patient-access-grants.v1.yaml):
+                    the next check is denied.
+                  value:
+                    decision_ref: dec-sync-001
+                    outcome: denied
+                    reason: revoked
+                    target_organization_refs: []
+                    scope: []
+                    purpose: null
+                    valid_until: "2026-10-23T10:00:00+01:00"
+                    checked_at: "2026-10-10T10:30:00+01:00"
                 rejected:
                   summary: Fictional demo — dec-sync-003 rejected sync-003.
                   value:
@@ -135,6 +157,24 @@ paths:
                     status: 400
                     detail: "Invalid or missing fields: scope"
                     code: invalid_request
+        "503":
+          description: |
+            The approval relies on a patient grant, and the Hospital Node
+            holding it could not be asked or answered outside its contract.
+            Nothing is authorized; the Federation Service asks no node.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                consentUnavailable:
+                  summary: Fictional demo — Hospital B is not running.
+                  value:
+                    type: about:blank
+                    title: Consent unavailable
+                    status: 503
+                    detail: "The patient grant could not be re-verified: the Hospital Node of org-hospital-b could not be reached."
+                    code: consent_unavailable
 components:
   schemas:
     CheckRequest:
@@ -271,4 +311,4 @@ components:
           type: string
         code:
           type: string
-          enum: [invalid_request]
+          enum: [invalid_request, consent_unavailable]
