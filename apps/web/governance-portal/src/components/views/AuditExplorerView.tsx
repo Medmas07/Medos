@@ -1,22 +1,89 @@
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import {
   Alert,
   Badge,
   Button,
   Card,
   DemoBadge,
+  EmptyState,
   PageHeader,
+  SelectField,
   Table,
+  Timeline,
+  type TimelineItem,
+  type Tone,
 } from '@hackcure/design-system'
+import {
+  AUDIT_DOMAIN_FILTERS,
+  AUDIT_DOMAIN_LABELS,
+  auditTimeline,
+  countByDomain,
+  filterTimeline,
+  involvedOrganizationIds,
+  type AuditDomainFilter,
+  type AuditTimelineEntry,
+} from '../../services/auditTimeline'
 import { governanceService } from '../../services/governanceService'
-import type { GovernanceAuditEvent, LedgerProof } from '../../types/governance'
+import { reviewStore } from '../../services/reviewStore'
+import type { LedgerProof } from '../../types/governance'
+
+const formatDateTime = (iso: string) =>
+  new Date(iso).toLocaleString('fr-TN', { dateStyle: 'medium', timeStyle: 'short', hourCycle: 'h23' })
 
 interface AuditExplorerViewProps {
   onInspectProof?: (proofId: string) => void
 }
 
 export function AuditExplorerView({ onInspectProof }: AuditExplorerViewProps) {
-  const auditEvents = governanceService.getAuditEvents()
+  // Re-render when a simulated decision adds an event or the demo is reset.
+  useSyncExternalStore(reviewStore.subscribe, reviewStore.getSnapshot)
+  const [domain, setDomain] = useState<AuditDomainFilter>('all')
+  const [organizationId, setOrganizationId] = useState<string | null>(null)
+
+  const entries = auditTimeline(governanceService.getAuditEvents(), {
+    decision: (id) => governanceService.getDecision(id),
+    proofForEvent: (id) => governanceService.getProofForEvent(id),
+  })
+  const counts = countByDomain(entries)
+  const visible = filterTimeline(entries, { domain, organizationId })
+  const orgName = (id: string) => governanceService.getOrganization(id)?.shortName ?? id
+
+  const toItem = (entry: AuditTimelineEntry): TimelineItem => ({
+    id: entry.event.id,
+    title: entry.title,
+    timestamp: formatDateTime(entry.event.at),
+    dateTime: entry.event.at,
+    tone: (entry.simulated ? 'demo' : entry.tone) as Tone,
+    description: (
+      <span className="text-xs">
+        <span className="font-mono text-slate-800">{entry.subjectRef}</span>
+        {' • '}
+        {entry.event.actorId ? `par ${governanceService.getPersonName(entry.event.actorId)}` : 'reçue automatiquement'}
+        <span className="font-mono text-slate-400"> • {entry.event.id}</span>
+      </span>
+    ),
+    meta: (
+      <>
+        {entry.event.organizationIds.map((id) => (
+          <Badge key={id} tone="neutral">{orgName(id)}</Badge>
+        ))}
+        {entry.simulated ? (
+          <DemoBadge>Simulé — non persisté</DemoBadge>
+        ) : entry.proof ? (
+          <>
+            <Badge tone="success" dot>Preuve ancrée {entry.proof.id}</Badge>
+            {onInspectProof && (
+              <Button size="sm" variant="ghost" onClick={() => onInspectProof(entry.proof!.id)}>
+                Vérifier
+              </Button>
+            )}
+          </>
+        ) : (
+          <span className="text-xs text-slate-400">Non ancré</span>
+        )}
+      </>
+    ),
+  })
   const ledgerProofs = governanceService.getLedgerProofs()
   const [selectedProofId, setSelectedProofId] = useState<string>('proof-003')
 
@@ -140,75 +207,61 @@ export function AuditExplorerView({ onInspectProof }: AuditExplorerViewProps) {
         )}
       </Card>
 
-      {/* Audit Events Table */}
-      <Card title="Journal Exhaustif des Événements d'Audit" flush>
-        <Table<GovernanceAuditEvent>
-          caption="Journal complet des événements d'audit"
-          columns={[
-            {
-              key: 'timestamp',
-              header: 'Horodatage',
-              render: (evt) => (
-                <span className="font-mono text-xs text-slate-600">
-                  {new Date(evt.at).toLocaleString('fr-TN', { dateStyle: 'short', timeStyle: 'medium' })}
-                </span>
-              ),
-            },
-            {
-              key: 'event-id',
-              header: 'ID Événement',
-              render: (evt) => (
-                <span className="font-mono text-xs text-slate-800">{evt.id}</span>
-              ),
-            },
-            {
-              key: 'actor',
-              header: 'Acteur',
-              render: (evt) => (
-                <span className="text-xs text-slate-700">
-                  {governanceService.getPersonName(evt.actorId)}
-                </span>
-              ),
-            },
-            {
-              key: 'action',
-              header: 'Action',
-              render: (evt) => (
-                <Badge tone="neutral">
-                  {evt.action}
-                </Badge>
-              ),
-            },
-            {
-              key: 'subject',
-              header: 'Objet Concerné',
-              render: (evt) => (
-                <div className="text-xs">
-                  <span className="font-semibold text-slate-800">{evt.subjectId}</span>
-                  <span className="ml-1.5 text-slate-500">({evt.subjectType})</span>
-                </div>
-              ),
-            },
-            {
-              key: 'organizations',
-              header: 'Organisations',
-              render: (evt) => (
-                <div className="flex flex-wrap gap-1">
-                  {evt.organizationIds.map((orgId) => {
-                    const org = governanceService.getOrganization(orgId)
-                    return (
-                      <span key={orgId} className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-700">
-                        {org?.shortName ?? orgId}
-                      </span>
-                    )
-                  })}
-                </div>
-              ),
-            },
-          ]}
-          rows={auditEvents}
-          getRowKey={(item) => item.id}
-        />
+      {/* Audit timeline (HC-079) */}
+      <Card
+        title="Chronologie de l'Audit de Gouvernance"
+        actions={<span className="text-xs text-slate-500">Du plus récent au plus ancien</span>}
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-slate-600">
+            Événements minimisés du Nœud de Gouvernance : références, acteurs et organisations, jamais de donnée patient ni clinique. Chaque Nœud Hospitalier tient sa propre piste d'audit des accès aux données.
+          </p>
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrer par domaine">
+              {AUDIT_DOMAIN_FILTERS.map((f) => (
+                <Button
+                  key={f}
+                  size="sm"
+                  variant={domain === f ? 'primary' : 'secondary'}
+                  aria-pressed={domain === f}
+                  onClick={() => setDomain(f)}
+                >
+                  {AUDIT_DOMAIN_LABELS[f]} ({counts[f]})
+                </Button>
+              ))}
+            </div>
+            <div className="w-full sm:w-64">
+              <SelectField
+                label="Organisation"
+                placeholder="Toutes les organisations"
+                value={organizationId ?? ''}
+                onChange={(e) => setOrganizationId(e.target.value || null)}
+                options={involvedOrganizationIds(entries).map((id) => ({ value: id, label: orgName(id) }))}
+              />
+            </div>
+          </div>
+
+          {visible.length === 0 ? (
+            <EmptyState
+              title="Aucun événement pour ces filtres"
+              description="Aucun événement d'audit ne correspond au domaine et à l'organisation choisis."
+              action={
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    setDomain('all')
+                    setOrganizationId(null)
+                  }}
+                >
+                  Afficher tous les événements
+                </Button>
+              }
+            />
+          ) : (
+            <Timeline label="Chronologie des événements d'audit de gouvernance" items={visible.map(toItem)} />
+          )}
+        </div>
       </Card>
     </div>
   )
