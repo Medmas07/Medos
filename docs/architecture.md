@@ -185,11 +185,11 @@ AI is advisory, replaceable through ports, and subject to appropriate human revi
 | Governance Portal | PLANNED | No UI code; stack decided by ADR-0001. |
 | Research Portal | PLANNED | No UI code or notebook execution; stack decided by ADR-0001. |
 | Web design system | IMPLEMENTED | Tokens, components, and showcase at D1 (ADR-0002); no portal consumes it yet. |
-| Canonical demo data | MOCKED | Fictional JSON fixtures with integrity checks (ADR-0005); no product consumes them yet. |
+| Canonical demo data | MOCKED | Fictional JSON fixtures with integrity checks (ADR-0005); read by the Federation Service's simulated nodes (HC-141). |
 | Hospital Node | PLANNED | Boundary documented; runtime not implemented; stack decided by ADR-0003. |
 | Governance Node | PLANNED | Boundary documented; runtime not implemented; stack decided by ADR-0003. |
 | DMI Adapter | PLANNED | Hospital-local boundary documented; no adapter. |
-| Federation Service | PLANNED | Contracts defined in `contracts/federation/` (HC-140); no runtime implementation; stack decided by ADR-0003. |
+| Federation Service | IMPLEMENTED (D2) / MOCKED nodes | Contracts in `contracts/federation/` (HC-140); runtime serves the federated patient query with simulated Hospital Nodes and registry (HC-141); no real node-to-node exchange. |
 | Notification Service | PLANNED | No provider or runtime implementation; stack decided by ADR-0003. |
 | SciAgents Integration | PLANNED | SciAgents exists externally; repository-side contract defined (HC-170); connector is absent. |
 | Immutable Audit Ledger | OPTIONAL / PLANNED | Governance-only concept; no adapter or ledger. |

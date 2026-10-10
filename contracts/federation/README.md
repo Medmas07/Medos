@@ -4,8 +4,8 @@ Versioned communication between Hospital Nodes, the Federation Service, and thei
 
 | Contract | Provider | Status |
 |---|---|---|
-| [`hospital-node-federation.v1.yaml`](hospital-node-federation.v1.yaml) | Every Hospital Node | IMPLEMENTED as OpenAPI 3.1 with fictional examples; no provider (HC-140) |
-| [`federated-patient-query.v1.yaml`](federated-patient-query.v1.yaml) | Federation Service | IMPLEMENTED as OpenAPI 3.1 with fictional examples; no provider (HC-140). First mock: HC-141 |
+| [`hospital-node-federation.v1.yaml`](hospital-node-federation.v1.yaml) | Every Hospital Node | IMPLEMENTED as OpenAPI 3.1 with fictional examples (HC-140); no Node provides it yet, only simulated nodes inside the Federation Service (HC-141) |
+| [`federated-patient-query.v1.yaml`](federated-patient-query.v1.yaml) | Federation Service | IMPLEMENTED as OpenAPI 3.1 with fictional examples (HC-140); served by [`services/federation/`](../../services/federation/README.md) with MOCKED nodes (HC-141) |
 
 ## How they fit together
 
