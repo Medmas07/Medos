@@ -1,0 +1,83 @@
+{
+  "fictional": true,
+  "notice": "Export nocturne fictif du DMI de l'Hôpital Régional Oued Zitoun (Zitoun SIH, logiciel fictif), au format propre à ce DMI. Il représente les mêmes dossiers que records/hospital-b.json et n'est lu que par l'adaptateur DMI du Hospital Node de cet hôpital.",
+  "systeme": "Zitoun SIH 4.2 (logiciel fictif)",
+  "etablissement": "HROZ-SFAX",
+  "date_export": "10/10/2026 02:00",
+  "sejours": [
+    {
+      "num_sejour": "S2025-3381",
+      "ipp": "OZ-61822",
+      "type_venue": "URG",
+      "date_entree": "10/12/2025 03:20",
+      "matricule_medecin": "MAT-0187",
+      "libelle": "Consultation aux urgences",
+      "motif": "Difficulté respiratoire nocturne.",
+      "synthese": "Amélioration rapide après nébulisation. Orientation vers le médecin traitant."
+    },
+    {
+      "num_sejour": "S2026-1142",
+      "ipp": "OZ-55031",
+      "type_venue": "CS",
+      "date_entree": "20/05/2026 14:00",
+      "matricule_medecin": "MAT-0187",
+      "libelle": "Consultation de médecine interne",
+      "motif": "Palpitations récidivantes.",
+      "synthese": "Trouble du rythme confirmé à l'enregistrement. Instauration d'un traitement anticoagulant et bilan biologique."
+    }
+  ],
+  "prescriptions": [
+    {
+      "num_presc": 40217,
+      "ipp": "OZ-55031",
+      "num_sejour": "S2026-1142",
+      "code_produit": "COAG5",
+      "posologie": "5 mg, 2 fois par jour",
+      "prescripteur": "MAT-0187",
+      "date_debut": "20/05/2026",
+      "date_fin": "",
+      "etat": "EN COURS"
+    }
+  ],
+  "resultats_bio": [
+    {
+      "num_demande": "B2026-0751",
+      "ipp": "OZ-55031",
+      "num_sejour": "S2026-1142",
+      "date_prelevement": "20/05/2026 14:40",
+      "libelle_demande": "Bilan avant traitement",
+      "code_analyse": "HB",
+      "valeur": "12,6",
+      "unite": "g/dL",
+      "borne_inf": "12,0",
+      "borne_sup": "16,0",
+      "indicateur": "N"
+    },
+    {
+      "num_demande": "B2026-0751",
+      "ipp": "OZ-55031",
+      "num_sejour": "S2026-1142",
+      "date_prelevement": "20/05/2026 14:40",
+      "libelle_demande": "Bilan avant traitement",
+      "code_analyse": "PLQ",
+      "valeur": "245",
+      "unite": "G/L",
+      "borne_inf": "150",
+      "borne_sup": "400",
+      "indicateur": "N"
+    },
+    {
+      "num_demande": "B2026-0751",
+      "ipp": "OZ-55031",
+      "num_sejour": "S2026-1142",
+      "date_prelevement": "20/05/2026 14:40",
+      "libelle_demande": "Bilan avant traitement",
+      "code_analyse": "CREA",
+      "valeur": "11,4",
+      "unite": "mg/L",
+      "borne_inf": "6,0",
+      "borne_sup": "12,0",
+      "indicateur": "N"
+    }
+  ]
+}
