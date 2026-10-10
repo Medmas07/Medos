@@ -129,6 +129,15 @@ export interface AdministrativeProfile {
   updatedAt: string
 }
 
+/** A Hospital Node demo package prepared and downloaded in this portal (HC-061, local state). */
+export interface NodePackageRecord {
+  fileName: string
+  sha256: string
+  sizeBytes: number
+  generatedAt: string
+  downloadedAt: string
+}
+
 export interface HospitalApplication {
   id: string
   organizationId: string
@@ -146,6 +155,8 @@ export interface HospitalApplication {
   technicalQuestionnaire: TechnicalQuestionnaire | null
   reviewSteps: ReviewStep[]
   decisionId: string | null
+  /** Set once the Node package has been downloaded from this portal (local state). */
+  nodePackage?: NodePackageRecord
 }
 
 export interface PortalNotification {
