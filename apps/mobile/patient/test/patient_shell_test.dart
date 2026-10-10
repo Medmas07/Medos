@@ -68,6 +68,24 @@ void main() {
     expect(find.text('Révoquer cet accès'), findsNothing);
   });
 
+  testWidgets('grants a scoped time-limited physician access locally', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const PatientApp());
+
+    await tester.tap(find.text('Accès'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Accorder un accès'));
+    await tester.pumpAndSettle();
+    expect(find.text('Accorder un accès'), findsOneWidget);
+    await tester.tap(find.text('Accorder').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Dr Rania Kefi'), findsOneWidget);
+    expect(find.text('Expire dans 30 jours'), findsOneWidget);
+    expect(find.text('DÉMO D1'), findsNWidgets(3));
+  });
+
   testWidgets('renders the federated authorized timeline fixtures', (
     tester,
   ) async {
