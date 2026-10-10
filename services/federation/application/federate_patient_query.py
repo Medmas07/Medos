@@ -1,3 +1,4 @@
+import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -5,6 +6,7 @@ from datetime import datetime
 from typing import Protocol
 from uuid import uuid4
 
+from application.node_failures import NodeCircuitBreaker, RetryPolicy
 from application.node_registry import NodeNotFound
 from domain.federated_query import (
     Authorization,
@@ -28,6 +30,10 @@ class NodeDenied(Exception):
 
 class NodeUnavailable(Exception):
     pass
+
+
+class NodeTemporarilyUnavailable(NodeUnavailable):
+    """Unavailable in a way that may pass: no connection, or the node said 503."""
 
 
 class NodeTimeout(Exception):
@@ -131,6 +137,11 @@ class FederatePatientQuery:
         capabilities: CapabilityLookup | None,
         clock: Callable[[], datetime],
         new_id: Callable[[], str] = lambda: str(uuid4()),
+        # Failure handling for real node calls (HC-147); None for simulated nodes.
+        retry: RetryPolicy | None = None,
+        breaker: NodeCircuitBreaker | None = None,
+        monotonic: Callable[[], float] = time.monotonic,
+        sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         self._registry = registry
         self._nodes = nodes
@@ -138,6 +149,10 @@ class FederatePatientQuery:
         self._capabilities = capabilities
         self._clock = clock
         self._new_id = new_id
+        self._retry = retry
+        self._breaker = breaker
+        self._monotonic = monotonic
+        self._sleep = sleep
 
     def __call__(self, request: FederatedQueryRequest) -> FederatedResult:
         # Only a clearly expired authorization is refused here; every other check is the node's.
@@ -159,14 +174,18 @@ class FederatePatientQuery:
         not_asked = {
             node: self._reason_not_to_ask(node, request.scope) for node in targets
         }
+        for node in targets:
+            if not_asked[node] is None and self._breaker:
+                if not self._breaker.allows(node.node_ref):
+                    not_asked[node] = "circuit_open"
         to_ask = [node for node in targets if not_asked[node] is None]
         answers = {}
         if to_ask:
+            started = self._monotonic()
             # Nodes are asked in parallel so one slow node does not hold up the others.
             with ThreadPoolExecutor(max_workers=len(to_ask)) as pool:
-                answers = dict(
-                    zip(to_ask, pool.map(lambda node: self._ask(node, query), to_ask))
-                )
+                results = pool.map(lambda node: self._ask(node, query, started), to_ask)
+                answers = dict(zip(to_ask, results))
         node_results = tuple(
             answers[node]
             if node in answers
@@ -234,19 +253,44 @@ class FederatePatientQuery:
             return None  # Deregistered meanwhile; the node client reports it.
         return reason_not_to_ask(latest, scope)
 
-    def _ask(self, node: NodeRef, query: NodeQuery) -> NodeResult:
-        try:
-            answer = self._nodes.query(node, query)
-        except NodeDenied:
+    def _ask(self, node: NodeRef, query: NodeQuery, started: float) -> NodeResult:
+        result = self._ask_with_retries(node, query, started)
+        if self._breaker:
+            if result.status in (NodeStatus.OK, NodeStatus.DENIED):
+                self._breaker.record_answer(node.node_ref)
+            else:
+                self._breaker.record_failure(node.node_ref)
+        return result
+
+    def _ask_with_retries(
+        self, node: NodeRef, query: NodeQuery, started: float
+    ) -> NodeResult:
+        attempts = 0
+        while True:
+            attempts += 1
+            try:
+                answer = self._nodes.query(node, query)
+            except NodeDenied:
+                return NodeResult(
+                    node, NodeStatus.DENIED, problem_code="authorization_denied"
+                )
+            except (NodeTemporarilyUnavailable, NodeTimeout) as error:
+                # Same query_id on retry, so the node can tell it is a repeat.
+                elapsed = self._monotonic() - started
+                if self._retry and self._retry.may_retry(attempts, elapsed):
+                    self._sleep(self._retry.backoff_seconds)
+                    continue
+                if isinstance(error, NodeTimeout):
+                    return NodeResult(
+                        node, NodeStatus.TIMEOUT, problem_code="node_timeout"
+                    )
+                return NodeResult(
+                    node, NodeStatus.UNAVAILABLE, problem_code="node_unavailable"
+                )
+            except NodeUnavailable:
+                return NodeResult(
+                    node, NodeStatus.UNAVAILABLE, problem_code="node_unavailable"
+                )
             return NodeResult(
-                node, NodeStatus.DENIED, problem_code="authorization_denied"
+                node, NodeStatus.OK, entries=answer.entries, mocked=answer.mocked
             )
-        except NodeUnavailable:
-            return NodeResult(
-                node, NodeStatus.UNAVAILABLE, problem_code="node_unavailable"
-            )
-        except NodeTimeout:
-            return NodeResult(node, NodeStatus.TIMEOUT, problem_code="node_timeout")
-        return NodeResult(
-            node, NodeStatus.OK, entries=answer.entries, mocked=answer.mocked
-        )

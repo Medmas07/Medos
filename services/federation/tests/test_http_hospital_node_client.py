@@ -5,7 +5,12 @@ import pytest
 
 from adapters.outbound.http_hospital_node_client import HttpHospitalNodeClient
 from adapters.outbound.in_memory_registration_store import InMemoryRegistrationStore
-from application.federate_patient_query import NodeDenied, NodeTimeout, NodeUnavailable
+from application.federate_patient_query import (
+    NodeDenied,
+    NodeTemporarilyUnavailable,
+    NodeTimeout,
+    NodeUnavailable,
+)
 from application.node_registry import NodeRegistry
 from infrastructure.registry_seed import load_seed
 from tests.conftest import DEMO_NOW, DEMO_SEED, contract, validator
@@ -86,3 +91,19 @@ def test_a_deregistered_node_is_unavailable():
     empty = NodeRegistry(InMemoryRegistrationStore(), clock=lambda: DEMO_NOW)
     with pytest.raises(NodeUnavailable):
         client(lambda request: pytest.fail("must not be called"), empty).query(B, QUERY)
+
+
+@pytest.mark.parametrize(
+    ("respond", "transient"),
+    [
+        (lambda request: httpx.Response(503), True),
+        (lambda request: (_ for _ in ()).throw(httpx.ConnectError("refused")), True),
+        (lambda request: httpx.Response(404), False),
+        (lambda request: httpx.Response(500), False),
+    ],
+    ids=["503", "connect", "404", "500"],
+)
+def test_only_passing_failures_are_marked_temporary(respond, transient):
+    with pytest.raises(NodeUnavailable) as error:
+        client(respond).query(B, QUERY)
+    assert isinstance(error.value, NodeTemporarilyUnavailable) is transient

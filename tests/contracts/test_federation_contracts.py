@@ -201,3 +201,14 @@ ROUTED = RESULT_EXAMPLES["routedAroundNode"]["value"]
 def test_not_asked_nodes_carry_a_routing_reason_and_nothing_else(mutate):
     assert result_schema.is_valid(ROUTED)
     assert not result_schema.is_valid(changed(ROUTED, mutate))
+
+
+def test_circuit_open_is_a_not_asked_reason_only():
+    paused = changed(
+        ROUTED, lambda r: r["node_results"][0].update(problem_code="circuit_open")
+    )
+    assert result_schema.is_valid(paused)
+    on_asked_node = changed(
+        ROUTED, lambda r: r["node_results"][2].update(problem_code="circuit_open")
+    )
+    assert not result_schema.is_valid(on_asked_node)
