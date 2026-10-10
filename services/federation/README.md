@@ -9,9 +9,10 @@ Coordination capability for authorized communication among autonomous Nodes. Pyt
   - the node registry, [`node-registry.v1.yaml`](../../contracts/federation/node-registry.v1.yaml) (HC-142): register, update, list, get, and remove nodes. Federated queries ask the nodes listed there. It is kept in memory, and its Governance approval references are **not verified**.
   - temporary sync authorization (HC-144): before any node is asked under a `synchronization_decision`, the service checks it with the Governance Node over real HTTP ([`sync-authorization-check.v1.yaml`](../../contracts/federation/sync-authorization-check.v1.yaml)), then asks only the organizations Governance authorizes. No Governance Node exists yet, so live sync-basis queries return `503` and ask no node. The authorized path is covered by tests only.
   - real node-to-node communication (HC-145), the default: each registered node is asked over HTTP at its registered `base_url` (`POST /v1/federation/queries` of [`hospital-node-federation.v1.yaml`](../../contracts/federation/hospital-node-federation.v1.yaml)), in parallel, with a 3-second timeout. Answers are parsed strictly. No Hospital Node serves that endpoint yet, so live queries report every node `unavailable`. The successful path is covered by tests only.
+  - capability-aware routing (HC-146): in `http` mode, a node whose latest capability check shows it cannot answer the query is not asked and is reported `not_asked` with the reason. A node never checked, unreachable, or answering discovery badly is still asked.
   - capability discovery (HC-143): on request, the service calls each registered node's `GET /v1/federation/node` over real HTTP and keeps the latest result per node. No Hospital Node serves that endpoint yet, so live checks report `no_federation_interface` or `unreachable`. The successful path is covered by tests only.
 - **MOCKED, opt-in only:** `FEDERATION_NODES=simulated` replaces the HTTP calls with HC-141's simulated Hospital Nodes, built from [`demo-data/`](../../demo-data/README.md), so the Patient A demo works before real nodes exist. `/health` and every result say `mocked: true` in that mode. **That mode is not node-to-node exchange and not production security.**
-- **PLANNED:** using discovered capabilities when choosing which nodes to ask, Governance verification of patient access grants and registry approvals (HC-131), node-side verification of authorizations, the Hospital Node side of the Federation interface, persistent registry storage, service authentication, authentication of registry writes, and audit events.
+- **PLANNED:** Governance verification of patient access grants and registry approvals (HC-131), node-side verification of authorizations, the Hospital Node side of the Federation interface, persistent registry storage, service authentication, authentication of registry writes, and audit events.
 
 ## Running locally
 
@@ -92,6 +93,7 @@ Capability discovery (real HTTP; start the Hospital Node runtime with `fastapi r
 | `POST /v1/registry/discovery` | Hospital A: `no_federation_interface` (the runtime answers `404`; it has no Federation endpoint yet). Hospital B and the private practice: `unreachable` (nothing listens on 8102 or 8104). |
 | `POST /v1/registry/nodes/{node_ref}/capabilities` | Checks one node now and returns the result |
 | `PUT` a new `base_url` for a checked node | Its result returns to `not_checked` |
+| Timeline request with `"scope": ["medications"]`, before and after `POST /v1/registry/discovery` | Before: all three nodes asked and `unavailable`. After: Hospital A `not_asked` with `no_federation_interface`; Hospital B and the private practice still asked, because they were only `unreachable` at discovery (contract example `routedAroundNode`, with Hospital B answering) |
 
 A node that serves the endpoint gets `discovered` with its reported status, contract versions, scopes, and `mocked` flag. `incompatible` means it answers no supported version. `identity_mismatch` means it names another node or organization, and its claims are discarded. `invalid_response` means the answer is not a valid descriptor.
 
@@ -144,7 +146,14 @@ services/federation/
 - **A failed check is not "no data".** Every result carries an `outcome`, and the list carries a notice saying so.
 - **Identity is checked.** If the node at a URL names another node or organization, the result is `identity_mismatch` and its claims are discarded. Without node authentication (OPEN), this catches misrouting, not impersonation.
 - **Strict parsing.** Anything outside the contract's `NodeDescriptor` is `invalid_response`, including extra fields such as patient counts.
-- **On request only.** Discovery runs when asked, and results are kept in memory. Federated queries do not use capabilities yet.
+- **On request only.** Discovery runs when asked, and results are kept in memory. Federated queries use the latest results in `http` mode (see below).
+
+## Capability-aware routing boundaries
+
+- **Only a check that shows a node cannot answer stops it from being asked.** That means `no_federation_interface`, `incompatible`, `identity_mismatch`, or `discovered` without one of the requested scopes (`scope_not_supported`). The node appears in `node_results` as `not_asked` with that reason, and the result is `partial`.
+- **Missing or stale discovery never hides a source.** A node that was never checked, was `unreachable`, answered discovery with `invalid_response`, or moved to a new `base_url` since its check is asked as usual. Run discovery again after a node changes.
+- **The decision uses the node's self-reported capabilities.** It routes around nodes; it does not grant or restrict access. Every asked node still enforces the authorization.
+- **`http` mode only.** Discovery describes the real addresses in the registry, which say nothing about the simulated nodes, so `FEDERATION_NODES=simulated` asks every target.
 
 ## Node-to-node communication boundaries
 

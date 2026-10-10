@@ -89,11 +89,12 @@ def request(
     )
 
 
-def federate(nodes, registry=None, sync=None):
+def federate(nodes, registry=None, sync=None, capabilities=None):
     return FederatePatientQuery(
         registry=registry or FakeRegistry(),
         nodes=nodes,
         sync_authorizations=sync or FakeSyncChecker(),
+        capabilities=capabilities,
         clock=lambda: NOW,
         new_id=lambda: "query-1",
     )

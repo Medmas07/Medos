@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Federated Patient Query
-  version: 1.1.0
+  version: 1.2.0
   description: |
     Contract HC-140, version 1. The Federation Service interface that
     consumers such as the Clinician App and Patient App use to get one
@@ -41,6 +41,16 @@ info:
     denies it, the answer is `403` with Governance's reason. If Governance
     cannot be reached, the answer is `503` and no node is asked. Patient
     access grants are not checked with Governance in this version.
+
+    Capability-aware routing (1.2, HC-146): a target node whose latest
+    capability check (node-registry.v1 discovery) shows it cannot answer
+    this query is not asked. It appears in `node_results` with status
+    `not_asked` and a reason: `no_federation_interface`, `incompatible`,
+    `identity_mismatch`, or `scope_not_supported` (it reported no support
+    for a requested scope). A node that was never checked, was
+    unreachable, or answered discovery badly is still asked, so missing or
+    stale discovery never hides a source. A `not_asked` node makes the
+    result `partial`. Run discovery again after a node changes.
 
     Every component schema except `FederatedQueryRequest`,
     `FederatedQueryResult`, and `NodeResult` is shared with
@@ -197,6 +207,53 @@ paths:
                     provenance:
                       mocked: true
                       aggregated_at: "2026-10-10T10:05:01+01:00"
+                routedAroundNode:
+                  summary: >-
+                    Fictional demo — discovery showed Hospital A's runtime has no
+                    Federation interface yet, so it is not asked; Hospital B
+                    answers; the private practice cannot be reached.
+                  value:
+                    query_id: 3e4f5a6b-7c8d-4e9f-8a0b-1c2d3e4f5a6b
+                    contract_version: "1.0"
+                    patient_ref: pat-a
+                    scope: [medications]
+                    completeness: partial
+                    notice: >-
+                      Partial history: 2 sources could not be reached or
+                      refused. Missing entries are not evidence of absence.
+                    node_results:
+                      - organization_ref: org-hospital-a
+                        node_ref: node-hospital-a
+                        status: not_asked
+                        entry_count: 0
+                        problem_code: no_federation_interface
+                      - organization_ref: org-hospital-b
+                        node_ref: node-hospital-b
+                        status: ok
+                        entry_count: 1
+                        problem_code: null
+                      - organization_ref: org-private-practice
+                        node_ref: node-private-practice
+                        status: unavailable
+                        entry_count: 0
+                        problem_code: node_unavailable
+                    entries:
+                      - entry_ref: med-b-leila-coagulix
+                        record_type: medication
+                        occurred_at: "2026-05-20T00:00:00+01:00"
+                        source:
+                          organization_ref: org-hospital-b
+                          node_ref: node-hospital-b
+                        medication:
+                          code: MED-COAGULIX
+                          dosage: 5 mg, 2 fois par jour
+                          status: active
+                          start_date: "2026-05-20"
+                          end_date: null
+                          prescribed_by_ref: clin-ines
+                    provenance:
+                      mocked: true
+                      aggregated_at: "2026-10-10T10:20:02+01:00"
         "400":
           description: The request does not match this contract.
           content:
@@ -369,17 +426,27 @@ components:
           description: |
             `ok`: the node answered (possibly with no entries). `denied`: the
             node refused the authorization. `unavailable`: the node or its DMI
-            could not answer. `timeout`: no answer in time.
+            could not answer. `timeout`: no answer in time. `not_asked`: its
+            latest capability check shows it cannot answer this query (1.2).
           type: string
-          enum: [ok, denied, unavailable, timeout]
+          enum: [ok, denied, unavailable, timeout, not_asked]
         entry_count:
           type: integer
           minimum: 0
         problem_code:
-          description: Why the node did not answer `ok`; null when it did. The Federation Service sets `node_timeout` itself.
+          description: >-
+            Why the node did not answer `ok`; null when it did. The Federation
+            Service sets `node_timeout` and the `not_asked` reasons itself.
           oneOf:
             - type: string
-              enum: [authorization_denied, node_unavailable, node_timeout]
+              enum:
+                - authorization_denied
+                - node_unavailable
+                - node_timeout
+                - no_federation_interface
+                - incompatible
+                - identity_mismatch
+                - scope_not_supported
             - type: "null"
       allOf:
         - if:
@@ -396,6 +463,19 @@ components:
                 const: 0
               problem_code:
                 type: string
+        - if:
+            properties:
+              status:
+                const: not_asked
+          then:
+            properties:
+              problem_code:
+                enum: [no_federation_interface, incompatible, identity_mismatch, scope_not_supported]
+          else:
+            properties:
+              problem_code:
+                not:
+                  enum: [no_federation_interface, incompatible, identity_mismatch, scope_not_supported]
 
     Purpose:
       description: Why the data is requested. It must match the purpose of the authorization.

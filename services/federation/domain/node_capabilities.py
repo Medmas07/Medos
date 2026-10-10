@@ -59,3 +59,25 @@ class DiscoveryResult:
             )
         if (self.outcome is DiscoveryOutcome.NOT_CHECKED) != (self.checked_at is None):
             raise ValueError("Only an unchecked node has no check time.")
+
+
+def reason_not_to_ask(
+    result: DiscoveryResult, scope: frozenset[ScopeItem]
+) -> str | None:
+    """Why a node should not be asked for this scope, judging by its latest check.
+
+    Only a check that shows the node cannot answer stops it from being asked. A node
+    that was never checked, could not be reached, or answered badly is still asked, so
+    missing or stale discovery never hides a source.
+    """
+    if result.outcome is DiscoveryOutcome.DISCOVERED:
+        if scope <= result.descriptor.supported_scopes:
+            return None
+        return "scope_not_supported"
+    if result.outcome in (
+        DiscoveryOutcome.INCOMPATIBLE,
+        DiscoveryOutcome.IDENTITY_MISMATCH,
+        DiscoveryOutcome.NO_FEDERATION_INTERFACE,
+    ):
+        return result.outcome.value
+    return None
