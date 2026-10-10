@@ -5,7 +5,7 @@
 Coordination capability for authorized communication among autonomous Nodes. Python + FastAPI per [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md).
 
 - **IMPLEMENTED (D2):** a runnable service that serves [`federated-patient-query.v1.yaml`](../../contracts/federation/federated-patient-query.v1.yaml) (HC-141). It asks each approved Hospital Node, merges the answers into a transient timeline, and reports a status for each node.
-- **MOCKED:** the Hospital Nodes and the node registry. No Hospital Node runtime exists yet, so each approved organization in [`demo-data/`](../../demo-data/README.md) is simulated in process. **This is not node-to-node exchange and not production security.**
+- **MOCKED:** the Hospital Nodes and the node registry. The Hospital Node runtime (HC-110) is a skeleton with no Federation endpoint yet, so each approved organization in [`demo-data/`](../../demo-data/README.md) is simulated in process. **This is not node-to-node exchange and not production security.**
 - **PLANNED:** real node registry (HC-142), capability discovery (HC-143), Governance verification of authorizations (HC-144), real node-to-node calls (HC-145), and audit events.
 
 ## Running locally
@@ -88,5 +88,5 @@ It is not a centralized clinical database, does not access Hospital Node tables 
 ## Contracts
 
 - [`federated-patient-query.v1.yaml`](../../contracts/federation/federated-patient-query.v1.yaml): provided by this service. Implemented with MOCKED nodes (HC-141). Tests check that the demo requests reproduce the contract's `partialTimeline` and `completeHospitalB` examples.
-- [`hospital-node-federation.v1.yaml`](../../contracts/federation/hospital-node-federation.v1.yaml): called on each Hospital Node. Simulated in process until Hospital Nodes implement it.
+- [`hospital-node-federation.v1.yaml`](../../contracts/federation/hospital-node-federation.v1.yaml): called on each Hospital Node. Simulated in process until the Hospital Node implements it.
 - PLANNED: node registry (HC-142), Governance verification of authorizations (HC-144), and audit event contracts.

@@ -1,7 +1,7 @@
 """MOCKED Hospital Nodes and node registry for the D2 demo (HC-141).
 
-There is no Hospital Node runtime yet, so each approved organization in demo-data/ is
-simulated in process. Each simulated node reads only the records file its own
+The Hospital Node runtime (HC-110) does not serve this contract yet, so each approved
+organization in demo-data/ is simulated in process. Each simulated node reads only the records file its own
 organization holds, and speaks the wire format of hospital-node-federation.v1.yaml.
 
 This is not node-to-node exchange and not security:
