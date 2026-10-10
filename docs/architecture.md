@@ -39,7 +39,7 @@ Every crossing requires explicit identity, authorization, scope, minimization, a
 
 ### Hospital Node
 
-CONFIRMED autonomous hospital-controlled boundary for local clinical integration, storage, consent enforcement, audit generation, DMI Adapter ownership, and federation interfaces. Its runtime skeleton is IMPLEMENTED with a MOCKED, read-only clinical repository loaded from fictional demo data (HC-113); its clinical APIs, persistence, DMI Adapter, and Federation interface are PLANNED.
+CONFIRMED autonomous hospital-controlled boundary for local clinical integration, storage, consent enforcement, audit generation, DMI Adapter ownership, and federation interfaces. Its runtime skeleton is IMPLEMENTED with a MOCKED, read-only clinical repository loaded from fictional demo data (HC-113). It serves its side of the Federation interface, the patient history API (HC-114), and enforces each query's authorization itself; that check is MOCKED against fictional grants and decisions until node-side Governance verification is decided. Query audit, consent/access APIs, persistence, and the DMI Adapter are PLANNED.
 
 ### Governance Node
 

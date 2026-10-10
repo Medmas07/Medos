@@ -6,8 +6,8 @@ from domain.clinical_record import PatientRecords, RepositorySummary
 class ClinicalRepository(Protocol):
     """Clinical records held by this Hospital Node, and only by it.
 
-    Authorization is not checked here: callers enforce consent and scope before they
-    disclose anything (HC-114, HC-115).
+    Authorization is not checked here: get_patient_history checks it before reading
+    (HC-114).
     """
 
     def patient_records(self, patient_ref: str) -> PatientRecords:

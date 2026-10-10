@@ -28,6 +28,9 @@ class HospitalNodeConfig:
     storage_dir: Path
     # This hospital's fictional demo records file, loaded by the MOCKED repository.
     mock_clinical_records: Path
+    # Fictional grants and Governance decisions read by the MOCKED verifier (HC-114).
+    mock_access_grants: Path
+    mock_governance_decisions: Path
 
 
 class _ConfigFile(BaseModel):
@@ -39,6 +42,8 @@ class _ConfigFile(BaseModel):
     port: int = Field(ge=1024, le=65535)
     storage_dir: str = Field(min_length=1)
     mock_clinical_records: str = Field(min_length=1)
+    mock_access_grants: str = Field(min_length=1)
+    mock_governance_decisions: str = Field(min_length=1)
 
 
 def config_path_from_env() -> Path:
@@ -67,4 +72,8 @@ def load_config(path: Path) -> HospitalNodeConfig:
         port=raw.port,
         storage_dir=(path.parent / raw.storage_dir).resolve(),
         mock_clinical_records=(path.parent / raw.mock_clinical_records).resolve(),
+        mock_access_grants=(path.parent / raw.mock_access_grants).resolve(),
+        mock_governance_decisions=(
+            path.parent / raw.mock_governance_decisions
+        ).resolve(),
     )

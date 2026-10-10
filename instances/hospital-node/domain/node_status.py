@@ -3,10 +3,11 @@ from dataclasses import dataclass
 from domain.clinical_record import RepositorySummary
 
 SKELETON_NOTICE = (
-    "Hospital Node runtime skeleton (HC-111 to HC-113). Its hospital identity comes "
-    "from fictional demo configuration. Its clinical repository is MOCKED: fictional "
-    "demo records held in memory, read-only. It serves no clinical API and implements "
-    "no Federation or DMI capability. Liveness only; not a production health check."
+    "Hospital Node (HC-111 to HC-114). Its hospital identity comes from fictional demo "
+    "configuration. Its clinical repository is MOCKED: fictional demo records held in "
+    "memory, read-only. It answers patient history queries of the Federation contract; "
+    "their authorization is MOCKED against fictional grants and decisions, and they are "
+    "not audited yet. No DMI capability. Liveness only; not a production health check."
 )
 
 

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Hospital Node Federation Interface
-  version: 1.0.1
+  version: 1.0.2
   description: |
     Contract HC-140, version 1. The interface every Hospital Node exposes to
     the Federation Service. A node describes itself and answers authorized,
@@ -41,8 +41,11 @@ info:
     and `NodeQueryResult` is shared with federated-patient-query.v1.yaml
     and must stay identical. A repository test checks this.
 
-    Status: this contract has no implementation. Transport, node identity,
-    and trust establishment are OPEN. The first mock is HC-141.
+    Status: the Hospital Node runtime serves both operations (HC-114),
+    answering from MOCKED fictional records and checking the authorization
+    against fictional grants and decisions in place of the Governance Node;
+    it does not audit queries yet (HC-116). Simulated nodes (HC-141) also
+    answer it. Transport, node identity, and trust establishment are OPEN.
 paths:
   /v1/federation/node:
     get:
