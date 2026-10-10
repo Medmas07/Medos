@@ -39,13 +39,13 @@ function Boundary() {
       <ol className="grid gap-3 text-sm md:grid-cols-3">
         <li className="rounded-md border border-slate-200 p-3">
           <p className="font-semibold text-slate-900">1. Portail de Recherche</p>
-          <p className="mt-1 text-slate-600">Envoie la question, des références opaques et les résumés de résultats contrôlés.</p>
+          <p className="mt-1 text-slate-600">Prépare la question, des références opaques et deux concepts biomédicaux non identifiants.</p>
         </li>
         <li className="rounded-md border border-slate-200 p-3">
           <p className="font-semibold text-slate-900">2. Contrat HC-170 et adaptateur</p>
           <p className="mt-1 text-slate-600">
-            <code className="text-xs">scientific-investigation.v1</code> ; l'adaptateur (HC-171) et la connexion du portail
-            (HC-172) sont planifiés.
+            <code className="text-xs">scientific-investigation.v1</code> ; l'adaptateur serveur (HC-171) est implémenté et la
+            connexion du portail (HC-172) reste planifiée.
           </p>
         </li>
         <li className="rounded-md border border-slate-200 p-3">
@@ -56,8 +56,8 @@ function Boundary() {
         </li>
       </ol>
       <p className="mt-3 text-sm text-slate-600">
-        Aucun dossier patient, identifiant ni donnée brute des Hospital Nodes ne part vers SciAgents : seuls des agrégats ayant
-        passé le contrôle de divulgation peuvent servir de contexte.
+        Aucun dossier patient, identifiant, résultat contrôlé ni donnée brute des Hospital Nodes ne part vers SciAgents : seuls
+        les deux concepts biomédicaux sont transmis par l'adaptateur.
       </p>
     </Card>
   )

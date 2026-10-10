@@ -219,7 +219,9 @@ export interface SciAgentsInvestigation {
   question: string
   /** BCP 47 tag of the question. */
   language: string | null
-  /** `controlled_results`: the only context a request may carry, never raw records. */
+  /** Exactly two non-identifying biomedical concepts mapped to SciAgents keywords. */
+  concepts: { label: string }[]
+  /** Local fixture context displayed by HC-102; HC-170 v1.1 never sends it upstream. */
   controlledResultContext: { controlledResultId: string; summary: string }[]
   status: 'queued' | 'running' | 'completed' | 'failed'
   createdAt: string
@@ -233,6 +235,7 @@ export interface SciAgentsInvestigation {
 }
 
 export interface SciAgentsResult {
+  outcome: 'findings' | 'empty'
   hypotheses: SciAgentsHypothesis[]
   evidence: SciAgentsFinding[]
   contradictions: SciAgentsFinding[]

@@ -57,20 +57,20 @@ describe('SciAgents research panel (HC-102, MOCKED)', () => {
     ])
   })
 
-  it('sends only the question, opaque references, and released controlled result summaries', async () => {
+  it('builds a request with only workflow metadata and two non-identifying concepts', async () => {
     const [entry] = sciAgentsOverview(await load())
     expect(entry.context.map((c) => [c.controlledResultId, c.released])).toEqual([['res-001', true]])
     const request = investigationRequest(entry)
-    expect(Object.keys(request).sort()).toEqual(['controlled_results', 'language', 'project_ref', 'question', 'requested_by'])
+    expect(Object.keys(request).sort()).toEqual(['concepts', 'language', 'project_ref', 'question', 'requested_by'])
     expect(request).toMatchObject({ project_ref: 'proj-001', requested_by: 'usr-aymen', language: 'fr' })
-    expect(request.controlled_results).toEqual([{ result_ref: 'res-001', summary: entry.context[0].summary }])
+    expect(request.concepts).toEqual([{ label: 'Metformin' }, { label: 'Diabetes' }])
+    expect(request).not.toHaveProperty('controlled_results')
   })
 
-  it('leaves out of the request a controlled result that did not pass its disclosure check', async () => {
+  it('keeps controlled-result context local even when its disclosure check passed', async () => {
     const snapshot = await load()
-    const failed = { ...snapshot, results: snapshot.results.map((r) => ({ ...r, disclosureCheck: 'failed' as const })) }
-    const [entry] = sciAgentsOverview(failed)
-    expect(entry.context[0].released).toBe(false)
+    const [entry] = sciAgentsOverview(snapshot)
+    expect(entry.context[0].released).toBe(true)
     expect(investigationRequest(entry)).not.toHaveProperty('controlled_results')
   })
 

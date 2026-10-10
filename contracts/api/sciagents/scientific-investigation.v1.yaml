@@ -1,42 +1,47 @@
 openapi: 3.1.0
 info:
   title: SciAgents Integration — Scientific Investigation
-  version: 1.0.0
+  version: 1.1.0
   description: |
-    Contract HC-170, version 1. The provider-neutral contract between the
+    Contract HC-170, version 1.1. The provider-neutral contract between the
     Research Service / Research Portal and this repository's SciAgents
     Integration adapter (`integrations/sciagents/`).
 
     **SciAgents is an existing external system and is not reimplemented
-    here.** This contract does not describe SciAgents' own API. The adapter
-    (HC-171) maps it to that API. The real SciAgents endpoints,
-    authentication, and hosting are OPEN (see docs/OPEN_QUESTIONS.md).
+    here.** This contract does not expose SciAgents' own API. The adapter
+    (HC-171) maps it to the observed open `/hypotheses` HTTP and SSE API.
+    Hosting, rate limits, service authentication, and supported vocabulary
+    remain OPEN (see docs/OPEN_QUESTIONS.md).
 
-    Flow: the caller submits a research question (`POST`) and receives a
-    queued investigation, then polls it (`GET`) until it is `completed` or
-    `failed`. While it runs, `progress` reports what the adapter knows, for
-    progress display (HC-173).
+    Flow: the caller submits a research question plus exactly two structured
+    research concepts (`POST`) and receives a queued investigation, then polls
+    it (`GET`) until it is `completed` or `failed`. While it runs, `progress`
+    reports what the adapter knows, for progress display (HC-173).
 
     Boundary rules carried by this contract:
 
     - **Research use only.** Results are scientific leads for researchers.
       `clinical_use` is always `not_for_clinical_decisions`, and nothing in
       a result becomes clinical truth.
-    - **No raw clinical data leaves for SciAgents.** A request may carry
-      only the question, opaque references, and summaries of *controlled
-      results*: outputs that have already passed Compute-to-Data output
-      validation. The schema rejects any other field.
+    - **No clinical data leaves for SciAgents.** A request carries only a
+      display question, two non-identifying biomedical concept labels, and
+      opaque workflow references. It cannot carry patient data, raw records,
+      or controlled-result content. The adapter maps only the two concepts to
+      SciAgents' keyword-pair API; it does not send the display question.
     - **Every claim is traceable.** Hypotheses reference evidence and
       contradictions, and evidence and contradictions reference citations,
       by id. Every referenced id must exist in the same result.
     - **Provenance is explicit,** including whether the result is mocked.
 
     v1 result sections: hypotheses, evidence, contradictions, citations.
+    SciAgents scores are not calibrated confidence: the adapter must emit a
+    null confidence unless the upstream API later provides a suitable value,
+    and must not manufacture contradictions from Critic prose.
     Entity resolution, evidence graphs, and novelty checks are not part of
     this version.
 
-    Status: this contract has no implementation. The adapter is HC-171; the
-    Research Portal connection is HC-172.
+    Status: HC-171 implements the server-side HTTP adapter for this contract.
+    The Research Portal connection remains HC-172.
 paths:
   /v1/investigations:
     post:
@@ -55,15 +60,11 @@ paths:
                   project_ref: proj-001
                   requested_by: usr-aymen
                   question: >-
-                    Quels facteurs pourraient expliquer la part plus élevée de
-                    mauvais contrôle glycémique après 60 ans ?
+                    Quelles pistes de recherche relient la metformine et le diabète ?
                   language: fr
-                  controlled_results:
-                    - result_ref: res-001
-                      summary: >-
-                        Résultat agrégé fictif : la part de mauvais contrôle
-                        glycémique augmente entre 50-59 et 60-69 ans, sans
-                        hausse supplémentaire entre 70-79 ans.
+                  concepts:
+                    - label: Metformin
+                    - label: Diabetes
       responses:
         "202":
           description: Investigation accepted and queued.
@@ -80,12 +81,12 @@ paths:
                 queued:
                   value:
                     investigation_id: 0b6f5a1e-3c2d-4e7f-9a8b-1c2d3e4f5a6b
-                    contract_version: "1.0"
+                    contract_version: "1.1"
                     project_ref: proj-001
                     requested_by: usr-aymen
                     question: >-
-                      Quels facteurs pourraient expliquer la part plus élevée de
-                      mauvais contrôle glycémique après 60 ans ?
+                      Quelles pistes de recherche relient la metformine et le diabète ?
+                    concepts: [{label: Metformin}, {label: Diabetes}]
                     status: queued
                     progress: null
                     created_at: "2026-10-10T11:00:00Z"
@@ -143,12 +144,12 @@ paths:
                 running:
                   value:
                     investigation_id: 0b6f5a1e-3c2d-4e7f-9a8b-1c2d3e4f5a6b
-                    contract_version: "1.0"
+                    contract_version: "1.1"
                     project_ref: proj-001
                     requested_by: usr-aymen
                     question: >-
-                      Quels facteurs pourraient expliquer la part plus élevée de
-                      mauvais contrôle glycémique après 60 ans ?
+                      Quelles pistes de recherche relient la metformine et le diabète ?
+                    concepts: [{label: Metformin}, {label: Diabetes}]
                     status: running
                     progress:
                       stage_label: Recherche bibliographique
@@ -172,15 +173,15 @@ paths:
                       mocked: true
                       upstream_request_ref: null
                 completed:
-                  summary: Fictional demo result, matching HC-005 fixture inv-001.
+                  summary: Fictional SciAgents result using canonical HC-005 workflow references.
                   value:
                     investigation_id: 0b6f5a1e-3c2d-4e7f-9a8b-1c2d3e4f5a6b
-                    contract_version: "1.0"
+                    contract_version: "1.1"
                     project_ref: proj-001
                     requested_by: usr-aymen
                     question: >-
-                      Quels facteurs pourraient expliquer la part plus élevée de
-                      mauvais contrôle glycémique après 60 ans ?
+                      Quelles pistes de recherche relient la metformine et le diabète ?
+                    concepts: [{label: Metformin}, {label: Diabetes}]
                     status: completed
                     progress:
                       stage_label: Terminé
@@ -193,50 +194,28 @@ paths:
                       Research leads from an external system. Not for clinical
                       decisions.
                     result:
+                      outcome: findings
                       hypotheses:
                         - hypothesis_id: inv-001-h1
-                          statement: Une moindre observance liée à la polymédication.
-                          confidence: moderate
-                          evidence_ids: [inv-001-e2]
-                          contradiction_ids: []
-                        - hypothesis_id: inv-001-h2
                           statement: >-
-                            Un dépistage plus tardif chez les patients sans suivi
-                            régulier.
-                          confidence: low
+                            La metformine pourrait influencer le mécanisme étudié
+                            dans le diabète.
+                          confidence: null
                           evidence_ids: [inv-001-e1]
-                          contradiction_ids: [inv-001-x1]
+                          contradiction_ids: []
                       evidence:
                         - evidence_id: inv-001-e1
                           summary: >-
-                            Les résultats agrégés montrent une hausse nette entre
-                            50-59 et 60-69 ans.
+                            Extrait fictif résolu par le mécanisme de grounding
+                            externe pour démontrer le mapping de l'adaptateur.
                           citation_ids: [inv-001-c1]
-                        - evidence_id: inv-001-e2
-                          summary: >-
-                            Une publication fictive associe le nombre de
-                            traitements à un moins bon équilibre.
-                          citation_ids: [inv-001-c2]
-                      contradictions:
-                        - contradiction_id: inv-001-x1
-                          summary: >-
-                            La tranche 70-79 ans ne prolonge pas la hausse, ce qui
-                            affaiblit l'hypothèse liée à l'âge seul.
-                          citation_ids: [inv-001-c1]
+                      contradictions: []
                       citations:
                         - citation_id: inv-001-c1
-                          kind: controlled_result
-                          title: Résultat contrôlé res-001
-                          source: Résultat interne de démonstration
-                          identifier: res-001
-                          url: null
-                        - citation_id: inv-001-c2
-                          kind: publication
-                          title: >-
-                            Polymédication et équilibre glycémique : une revue
-                            (référence fictive)
-                          source: Référence inventée pour la démonstration
-                          identifier: null
+                          kind: other
+                          title: sciagents-demo-source
+                          source: SciAgents grounding
+                          identifier: sciagents-demo-source
                           url: null
                     error: null
                     provenance:
@@ -251,10 +230,11 @@ paths:
                 failed:
                   value:
                     investigation_id: 7c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f
-                    contract_version: "1.0"
+                    contract_version: "1.1"
                     project_ref: proj-001
                     requested_by: usr-aymen
                     question: Question de démonstration fictive.
+                    concepts: [{label: Metformin}, {label: Diabetes}]
                     status: failed
                     progress:
                       stage_label: Recherche bibliographique
@@ -313,7 +293,7 @@ components:
     InvestigationRequest:
       type: object
       additionalProperties: false
-      required: [project_ref, requested_by, question]
+      required: [project_ref, requested_by, question, concepts]
       properties:
         project_ref:
           $ref: "#/components/schemas/OpaqueRef"
@@ -329,27 +309,24 @@ components:
           description: BCP 47 language tag of the question, if known.
           type: string
           pattern: "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
-        controlled_results:
-          description: |
-            Optional context. Each entry must be a controlled result that has
-            passed Compute-to-Data output validation; never raw records.
+        concepts:
+          description: Exactly two non-identifying biomedical concepts mapped to SciAgents keywords in order.
           type: array
-          maxItems: 10
+          minItems: 2
+          maxItems: 2
           items:
-            $ref: "#/components/schemas/ControlledResultContext"
+            $ref: "#/components/schemas/ResearchConcept"
 
-    ControlledResultContext:
+    ResearchConcept:
       type: object
       additionalProperties: false
-      required: [result_ref, summary]
+      required: [label]
       properties:
-        result_ref:
-          $ref: "#/components/schemas/OpaqueRef"
-        summary:
-          description: Released, aggregated summary of the controlled result.
+        label:
+          description: Biomedical concept label resolvable by SciAgents; never a patient or person name.
           type: string
           minLength: 1
-          maxLength: 2000
+          maxLength: 200
 
     OpaqueRef:
       description: Opaque identifier. Must not contain a name or other direct identifier.
@@ -365,6 +342,7 @@ components:
         - project_ref
         - requested_by
         - question
+        - concepts
         - status
         - progress
         - created_at
@@ -379,7 +357,7 @@ components:
           type: string
           format: uuid
         contract_version:
-          const: "1.0"
+          const: "1.1"
         project_ref:
           $ref: "#/components/schemas/OpaqueRef"
         requested_by:
@@ -387,6 +365,12 @@ components:
         question:
           type: string
           minLength: 1
+        concepts:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            $ref: "#/components/schemas/ResearchConcept"
         status:
           type: string
           enum: [queued, running, completed, failed]
@@ -471,8 +455,12 @@ components:
     InvestigationResult:
       type: object
       additionalProperties: false
-      required: [hypotheses, evidence, contradictions, citations]
+      required: [outcome, hypotheses, evidence, contradictions, citations]
       properties:
+        outcome:
+          description: Findings passed the upstream quality gate, or no releasable finding.
+          type: string
+          enum: [findings, empty]
         hypotheses:
           type: array
           items:

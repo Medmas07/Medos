@@ -12,9 +12,10 @@ import type {
  * SciAgents research panel (HC-102), MOCKED. SciAgents is an existing external
  * system reached through the HC-170 contract; this portal neither reimplements
  * nor, at D1, contacts it. These pure functions join each fixture
- * investigation to its project and to the controlled results it was given as
- * context, and resolve every claim to its evidence, contradictions, and
- * citations. Its output is a research lead: it never becomes clinical data.
+ * investigation to its project and local controlled-result context, and resolve
+ * every claim to its evidence, contradictions, and citations. HC-170 v1.1 sends
+ * only two non-identifying concepts upstream. Its output is a research lead: it
+ * never becomes clinical data.
  */
 
 export interface ResolvedFinding {
@@ -100,20 +101,17 @@ export function sciAgentsOverview(snapshot: ResearchSnapshot): InvestigationEntr
 
 /**
  * The `InvestigationRequest` body of the HC-170 contract this investigation
- * corresponds to: the question, opaque references, and released controlled
- * result summaries only. Context not released is left out, as the contract
- * forbids it. Nothing sends it at D1 (HC-172). Pure.
+ * corresponds to: the display question, opaque references, and exactly two
+ * non-identifying concepts. The local controlled-result context is never added.
+ * Nothing sends this request at D1 (HC-172). Pure.
  */
 export function investigationRequest(entry: InvestigationEntry): Record<string, unknown> {
   const { investigation } = entry
-  const context = entry.context.filter((c) => c.released)
   return {
     project_ref: investigation.projectId,
     requested_by: investigation.requestedById,
     question: investigation.question,
     ...(investigation.language ? { language: investigation.language } : {}),
-    ...(context.length > 0
-      ? { controlled_results: context.map((c) => ({ result_ref: c.controlledResultId, summary: c.summary })) }
-      : {}),
+    concepts: investigation.concepts,
   }
 }

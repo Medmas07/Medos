@@ -36,3 +36,5 @@ Thumbs.db
 *.log
 *.tmp
 tmp/
+# Local checkout used only to inspect the external SciAgents API; never vendor it here.
+/integrations/sciagents/sci-agents/
