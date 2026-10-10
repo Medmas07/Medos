@@ -9,7 +9,7 @@ from application.federate_patient_query import (
     NodeDenied,
     NodeTimeout,
     NodeUnavailable,
-    RegistryUnavailable,
+    NoNodesRegistered,
     UnknownTargets,
 )
 from domain.federated_query import (
@@ -31,12 +31,10 @@ C = NodeRef("org-private-practice", "node-private-practice")
 
 
 class FakeRegistry:
-    def __init__(self, nodes=(A, B, C), error=None):
-        self.nodes, self.error = nodes, error
+    def __init__(self, nodes=(A, B, C)):
+        self.nodes = nodes
 
     def approved_nodes(self):
-        if self.error:
-            raise self.error
         return self.nodes
 
 
@@ -123,6 +121,6 @@ def test_unknown_or_unapproved_targets_are_rejected():
     assert error.value.organization_refs == ("org-hospital-c",)
 
 
-def test_registry_failure_propagates():
-    with pytest.raises(RegistryUnavailable):
-        federate(FakeNodes({}), FakeRegistry(error=RegistryUnavailable()))(request())
+def test_an_empty_registry_asks_no_node():
+    with pytest.raises(NoNodesRegistered):
+        federate(FakeNodes({}), FakeRegistry(nodes=()))(request())

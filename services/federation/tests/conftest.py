@@ -8,6 +8,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 DEMO_NOW = datetime.fromisoformat("2026-10-10T10:00:00+01:00")
 
 CONTRACTS = Path(__file__).resolve().parents[3] / "contracts" / "federation"
+DEMO_SEED = Path(__file__).resolve().parents[1] / "registry-seed.demo.json"
 
 
 def contract(name: str) -> dict:

@@ -12,7 +12,7 @@ from application.federate_patient_query import (
     AuthorizationExpired,
     FederatedQueryRequest,
     FederatePatientQuery,
-    RegistryUnavailable,
+    NoNodesRegistered,
     UnknownTargets,
 )
 from domain.federated_query import (
@@ -68,7 +68,7 @@ class FederatedQueryBody(BaseModel):
     )
 
 
-def _problem(status: int, title: str, code: str, detail: str) -> JSONResponse:
+def problem(status: int, title: str, code: str, detail: str) -> JSONResponse:
     return JSONResponse(
         {
             "type": "about:blank",
@@ -144,25 +144,25 @@ def create_router(federate: FederatePatientQuery) -> APIRouter:
         try:
             result = federate(request)
         except AuthorizationExpired:
-            return _problem(
+            return problem(
                 403,
                 "Federated query not authorized",
                 "authorization_denied",
                 f"The authorization expired on {body.authorization.expires_at.date()}.",
             )
         except UnknownTargets as error:
-            return _problem(
+            return problem(
                 400,
                 "Invalid federated query",
                 "invalid_request",
                 f"Not an approved node: {', '.join(error.organization_refs)}",
             )
-        except RegistryUnavailable:
-            return _problem(
+        except NoNodesRegistered:
+            return problem(
                 503,
                 "Federation unavailable",
                 "federation_unavailable",
-                "The Federation Service cannot reach the node registry.",
+                "No Hospital Node is registered.",
             )
         return JSONResponse(_to_wire(result))
 
@@ -175,9 +175,14 @@ def register_problem_handler(app: FastAPI) -> None:
         fields = sorted(
             {".".join(str(p) for p in e["loc"][1:]) or "body" for e in error.errors()}
         )
-        return _problem(
+        title = (
+            "Invalid node registration"
+            if request.url.path.startswith("/v1/registry/")
+            else "Invalid federated query"
+        )
+        return problem(
             400,
-            "Invalid federated query",
+            title,
             "invalid_request",
             f"Invalid or missing fields: {', '.join(fields)}",
         )

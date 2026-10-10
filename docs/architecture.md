@@ -189,7 +189,7 @@ AI is advisory, replaceable through ports, and subject to appropriate human revi
 | Hospital Node | IMPLEMENTED (skeleton) | FastAPI runtime skeleton (HC-110) with empty layers and no product endpoint; health, configuration, and clinical APIs PLANNED; must provide the HC-140 Federation contract, not yet implemented. |
 | Governance Node | PLANNED | Boundary documented; runtime not implemented; stack decided by ADR-0003. |
 | DMI Adapter | PLANNED | Hospital-local boundary documented; no adapter. |
-| Federation Service | IMPLEMENTED (D2) / MOCKED nodes | Contracts in `contracts/federation/` (HC-140); runtime serves the federated patient query with simulated Hospital Nodes and registry (HC-141); no real node-to-node exchange. |
+| Federation Service | IMPLEMENTED (D2) / MOCKED nodes | Contracts in `contracts/federation/` (HC-140); runtime serves the federated patient query with simulated Hospital Nodes (HC-141) and an in-memory node registry whose Governance approval references are unverified (HC-142); no real node-to-node exchange. |
 | Notification Service | PLANNED | No provider or runtime implementation; stack decided by ADR-0003. |
 | SciAgents Integration | PLANNED | SciAgents exists externally; repository-side contract defined (HC-170); connector is absent. |
 | Immutable Audit Ledger | OPTIONAL / PLANNED | Governance-only concept; no adapter or ledger. |

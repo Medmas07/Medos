@@ -1,0 +1,27 @@
+{
+  "fictional": true,
+  "notice": "Fictional demo node registrations for the HC-005 dataset. Ids match demo-data/organizations.json. Base URLs follow the ADR-0003 suggested ports; 8104 for the private practice is a demo choice. Approval references are not verified.",
+  "nodes": [
+    {
+      "node_ref": "node-hospital-a",
+      "organization_ref": "org-hospital-a",
+      "base_url": "http://localhost:8101",
+      "contract_versions": ["1.0"],
+      "approval_decision_ref": "dec-hospital-a"
+    },
+    {
+      "node_ref": "node-hospital-b",
+      "organization_ref": "org-hospital-b",
+      "base_url": "http://localhost:8102",
+      "contract_versions": ["1.0"],
+      "approval_decision_ref": "dec-hospital-b"
+    },
+    {
+      "node_ref": "node-private-practice",
+      "organization_ref": "org-private-practice",
+      "base_url": "http://localhost:8104",
+      "contract_versions": ["1.0"],
+      "approval_decision_ref": "dec-private-practice"
+    }
+  ]
+}

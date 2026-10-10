@@ -6,7 +6,7 @@ CONFIRMED Governance / Ethics Authority boundary; its runtime is PLANNED and not
 
 ## Responsibilities and owned concepts
 
-- Hospital approval and registry.
+- Hospital approval and registry. The Federation Service's node registry ([`node-registry.v1.yaml`](../../contracts/federation/node-registry.v1.yaml), HC-142) is only a routing directory: each registration cites a Governance approval decision, which the Federation Service cannot verify until this Node exposes an approval API (HC-131).
 - Synchronization and research authorization.
 - Policy evaluation, consent governance, and governance audit.
 - OPTIONAL Blockchain Adapter behind an application-owned `AuditLedgerPort`.

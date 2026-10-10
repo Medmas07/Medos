@@ -17,10 +17,6 @@ from domain.federated_query import (
 )
 
 
-class RegistryUnavailable(Exception):
-    pass
-
-
 class NodeDenied(Exception):
     pass
 
@@ -30,6 +26,10 @@ class NodeUnavailable(Exception):
 
 
 class NodeTimeout(Exception):
+    pass
+
+
+class NoNodesRegistered(Exception):
     pass
 
 
@@ -44,7 +44,7 @@ class UnknownTargets(Exception):
 
 
 class NodeRegistry(Protocol):
-    """Approved Hospital Nodes. Raises RegistryUnavailable. The real registry is HC-142."""
+    """Registered Hospital Nodes; implemented by application/node_registry.py."""
 
     def approved_nodes(self) -> tuple[NodeRef, ...]: ...
 
@@ -110,6 +110,8 @@ class FederatePatientQuery:
         self, organization_refs: tuple[str, ...] | None
     ) -> tuple[NodeRef, ...]:
         approved = self._registry.approved_nodes()
+        if not approved:
+            raise NoNodesRegistered()
         if organization_refs is None:
             return approved
         by_organization = {node.organization_ref: node for node in approved}

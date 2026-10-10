@@ -10,6 +10,7 @@ from conftest import FEDERATION, load, validator
 
 NODE = load("hospital-node-federation.v1.yaml", FEDERATION)
 FEDERATED = load("federated-patient-query.v1.yaml", FEDERATION)
+REGISTRY = load("node-registry.v1.yaml", FEDERATION)
 NODE_ONLY = {"NodeDescriptor", "NodeQueryRequest", "NodeQueryResult"}
 FEDERATED_ONLY = {"FederatedQueryRequest", "FederatedQueryResult", "NodeResult"}
 
@@ -34,7 +35,9 @@ def changed(document, mutate):
 
 def _examples(contract):
     for operations in contract["paths"].values():
-        for operation in operations.values():
+        for method, operation in operations.items():
+            if method == "parameters":
+                continue
             bodies = [operation.get("requestBody", {}).get("content", {})]
             bodies += [r.get("content", {}) for r in operation["responses"].values()]
             for content in bodies:
@@ -88,7 +91,7 @@ def test_shared_schemas_are_identical_in_both_contracts():
 
 def test_examples_reference_only_canonical_demo_ids():
     known = _demo_ids()
-    for contract in (NODE, FEDERATED):
+    for contract in (NODE, FEDERATED, REGISTRY):
         for example in _examples(contract):
             unknown = set(_refs(example)) - known
             assert not unknown, f"not in demo-data: {unknown}"
