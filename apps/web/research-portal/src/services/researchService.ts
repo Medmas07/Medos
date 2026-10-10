@@ -100,7 +100,7 @@ export function derivePages(summaries: ProjectSummary[], now: Date): PortalPage[
     dashboard: `${plural(summaries.length, 'projet')} de recherche.`,
     'new-project': "Création d'un projet de recherche.",
     protocol: `${plural(summaries.filter((s) => s.project.protocolDocument).length, 'protocole')} déposé(s).`,
-    population: `${plural(summaries.length, 'population')} décrite(s).`,
+    population: `${plural(summaries.filter((s) => s.project.population.trim()).length, 'population')} décrite(s).`,
     variables: `${plural(summaries.reduce((n, s) => n + s.project.variables.length, 0), 'variable')} demandée(s).`,
     hospitals: `${plural(new Set(summaries.flatMap((s) => s.project.participatingOrganizationIds)).size, 'établissement')} sollicité(s).`,
     'submit-request': `${plural(submitted.length, 'demande')} soumise(s) à l'Autorité de gouvernance.`,

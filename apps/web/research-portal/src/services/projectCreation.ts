@@ -43,6 +43,36 @@ export function validateProjectDraft(draft: ProjectDraft, existing: readonly Res
   return errors
 }
 
+/**
+ * A project can be completed (documents, population, ...) only while it is a
+ * draft without an access request: once submitted, the Governance / Ethics
+ * Authority reviews it as it is.
+ */
+export function isEditableDraft(summary: Pick<ProjectSummary, 'project' | 'request'>): boolean {
+  return summary.project.status === 'draft' && summary.request === null
+}
+
+/** The project to open first: the newest editable draft, otherwise the newest project. */
+export function defaultDraftId(snapshot: ResearchSnapshot): string | null {
+  return (snapshot.projects.find(isEditableDraft) ?? snapshot.projects[0])?.project.id ?? null
+}
+
+/** The project's summary if it can still be completed; throws a French message otherwise. */
+export function editableDraft(snapshot: ResearchSnapshot, projectId: string): ProjectSummary {
+  const summary = snapshot.projects.find((s) => s.project.id === projectId)
+  if (!summary) throw new Error(`Projet inconnu : ${projectId}.`)
+  if (!isEditableDraft(summary)) {
+    throw new Error("La demande d'accès est soumise : le projet ne peut plus être modifié.")
+  }
+  return summary
+}
+
+/** Returns the snapshot with this project replaced and page availability re-derived. Pure. */
+export function withProject(snapshot: ResearchSnapshot, project: ResearchProject): ResearchSnapshot {
+  const projects = snapshot.projects.map((s) => (s.project.id === project.id ? { ...s, project } : s))
+  return { ...snapshot, projects, pages: derivePages(projects, new Date(snapshot.asOf)) }
+}
+
 /** Next fictional project identifier after the existing `proj-NNN` ones. Pure. */
 export function nextProjectId(existing: readonly ResearchProject[]): string {
   const highest = existing.reduce((max, p) => Math.max(max, Number(/^proj-(\d+)$/.exec(p.id)?.[1] ?? 0)), 0)

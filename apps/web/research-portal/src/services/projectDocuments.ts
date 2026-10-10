@@ -2,11 +2,10 @@ import type {
   DocumentUpload,
   ProjectDocumentRef,
   ProjectDocumentType,
-  ProjectSummary,
   ResearchProject,
   ResearchSnapshot,
 } from '../types/research'
-import { derivePages } from './researchService'
+import { editableDraft, withProject } from './projectCreation'
 
 /**
  * Research protocol and document upload (HC-093), MOCKED. The portal never
@@ -66,19 +65,6 @@ export function documentChecklist(project: ResearchProject): ProjectDocument[] {
   })
 }
 
-/**
- * Documents can change only while the project is a draft without an access
- * request: once submitted, the Governance / Ethics Authority reviews them as they are.
- */
-export function canEditDocuments(summary: Pick<ProjectSummary, 'project' | 'request'>): boolean {
-  return summary.project.status === 'draft' && summary.request === null
-}
-
-/** The draft to open first: the newest editable project, otherwise the newest project. */
-export function defaultProjectId(snapshot: ResearchSnapshot): string | null {
-  return (snapshot.projects.find(canEditDocuments) ?? snapshot.projects[0])?.project.id ?? null
-}
-
 export interface FileDescription {
   name: string
   size: number
@@ -126,20 +112,6 @@ export async function uploadProjectDocument(
   return { fileName: file.name, sizeBytes: file.size, mediaType: file.type, uploadedAt: now.toISOString() }
 }
 
-function editableSummary(snapshot: ResearchSnapshot, projectId: string): ProjectSummary {
-  const summary = snapshot.projects.find((s) => s.project.id === projectId)
-  if (!summary) throw new Error(`Projet inconnu : ${projectId}.`)
-  if (!canEditDocuments(summary)) {
-    throw new Error("La demande d'accès est soumise : les documents du projet ne peuvent plus être modifiés.")
-  }
-  return summary
-}
-
-function withProject(snapshot: ResearchSnapshot, project: ResearchProject): ResearchSnapshot {
-  const projects = snapshot.projects.map((s) => (s.project.id === project.id ? { ...s, project } : s))
-  return { ...snapshot, projects, pages: derivePages(projects, new Date(snapshot.asOf)) }
-}
-
 function setDocument(
   project: ResearchProject,
   type: ProjectDocumentType,
@@ -157,7 +129,7 @@ export function applyDocumentUpload(
   type: ProjectDocumentType,
   upload: DocumentUpload,
 ): ResearchSnapshot {
-  const { project } = editableSummary(snapshot, projectId)
+  const { project } = editableDraft(snapshot, projectId)
   const document: ProjectDocumentRef = {
     // Follows the fixture identifiers (`doc-proj-001-protocole`).
     id: `doc-${project.id}-${type === 'protocol' ? 'protocole' : type.replaceAll('_', '-')}`,
@@ -174,6 +146,6 @@ export function applyDocumentRemoval(
   projectId: string,
   type: ProjectDocumentType,
 ): ResearchSnapshot {
-  const { project } = editableSummary(snapshot, projectId)
+  const { project } = editableDraft(snapshot, projectId)
   return withProject(snapshot, setDocument(project, type, null))
 }

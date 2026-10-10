@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { createResearchProject } from '../src/services/projectCreation'
+import { createResearchProject, defaultDraftId, isEditableDraft } from '../src/services/projectCreation'
 import {
   applyDocumentRemoval,
   applyDocumentUpload,
-  canEditDocuments,
-  defaultProjectId,
   documentChecklist,
   uploadProjectDocument,
   validateFile,
@@ -53,20 +51,20 @@ describe('Research protocol and document upload (HC-093, MOCKED)', () => {
 
   it('allows changes only on a draft whose access request is not submitted', async () => {
     const snapshot = await withDraft()
-    expect(canEditDocuments(projectOf(snapshot, 'proj-003'))).toBe(true)
-    expect(canEditDocuments(projectOf(snapshot, 'proj-001'))).toBe(false)
-    expect(canEditDocuments(projectOf(snapshot, 'proj-002'))).toBe(false)
-    expect(() => applyDocumentUpload(snapshot, 'proj-002', 'protocol', UPLOAD)).toThrow('ne peuvent plus être modifiés')
-    expect(() => applyDocumentRemoval(snapshot, 'proj-001', 'protocol')).toThrow('ne peuvent plus être modifiés')
+    expect(isEditableDraft(projectOf(snapshot, 'proj-003'))).toBe(true)
+    expect(isEditableDraft(projectOf(snapshot, 'proj-001'))).toBe(false)
+    expect(isEditableDraft(projectOf(snapshot, 'proj-002'))).toBe(false)
+    expect(() => applyDocumentUpload(snapshot, 'proj-002', 'protocol', UPLOAD)).toThrow('ne peut plus être modifié')
+    expect(() => applyDocumentRemoval(snapshot, 'proj-001', 'protocol')).toThrow('ne peut plus être modifié')
     expect(() => applyDocumentUpload(snapshot, 'proj-999', 'protocol', UPLOAD)).toThrow('Projet inconnu')
   })
 
   it('opens the newest editable draft first', async () => {
-    expect(defaultProjectId(await withDraft())).toBe('proj-003')
+    expect(defaultDraftId(await withDraft())).toBe('proj-003')
     const nominal = await loadResearchSnapshot(DEMO_RESEARCHER_ID, { delayMs: 0, now: NOW })
-    expect(defaultProjectId(nominal)).toBe('proj-002')
+    expect(defaultDraftId(nominal)).toBe('proj-002')
     const empty = await loadResearchSnapshot(DEMO_RESEARCHER_ID, { scenario: 'empty', delayMs: 0, now: NOW })
-    expect(defaultProjectId(empty)).toBeNull()
+    expect(defaultDraftId(empty)).toBeNull()
   })
 
   it('accepts only non-empty PDF files of at most 10 MB', () => {

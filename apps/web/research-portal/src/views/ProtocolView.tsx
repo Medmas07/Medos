@@ -15,8 +15,6 @@ import {
   ACCEPT_ATTRIBUTE,
   applyDocumentRemoval,
   applyDocumentUpload,
-  canEditDocuments,
-  defaultProjectId,
   documentChecklist,
   formatSize,
   PROJECT_DOCUMENTS,
@@ -25,6 +23,7 @@ import {
   type FileDescription,
   type ProjectDocument,
 } from '../services/projectDocuments'
+import { defaultDraftId, isEditableDraft } from '../services/projectCreation'
 import type { DocumentUpload, PageId, ResearchSnapshot } from '../types/research'
 
 interface ProtocolViewProps {
@@ -44,7 +43,7 @@ const documentStatus = (document: ProjectDocument, required: boolean): { label: 
 
 /** Research protocol and document upload (HC-093): MOCKED, metadata kept in session state. */
 export function ProtocolView({ snapshot, consumeSimulatedFailure, onUpdated, onNavigate }: ProtocolViewProps) {
-  const [selectedId, setSelectedId] = useState(() => defaultProjectId(snapshot))
+  const [selectedId, setSelectedId] = useState(() => defaultDraftId(snapshot))
   const [failure, setFailure] = useState<string | null>(null)
   // Uploads finish asynchronously: each applies to the latest snapshot, so concurrent ones are all kept.
   const latest = useRef(snapshot)
@@ -78,7 +77,7 @@ export function ProtocolView({ snapshot, consumeSimulatedFailure, onUpdated, onN
   }
 
   const { project, request } = summary
-  const editable = canEditDocuments(summary)
+  const editable = isEditableDraft(summary)
   const checklist = documentChecklist(project)
   const protocolReceived = checklist.find((d) => d.type === 'protocol')!.status === 'received'
   const requestStatus = requestStatusDisplay[request?.status ?? 'not_submitted']
