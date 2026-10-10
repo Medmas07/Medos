@@ -8,11 +8,13 @@ These questions are OPEN. Do not answer them through implementation without the 
 - Which persistence technologies and data models fit each bounded context?
 - Which authentication provider and identity architecture will serve patients, clinicians, researchers, organizations, and Nodes?
 - How will consent, legal authority, revocation, retention, restriction, and erasure differ by jurisdiction?
+- How does one patient's access grant reach every Hospital Node holding their records, and what does the Governance Node's consent governance record? In the [access grants contract](../contracts/api/patient-access/patient-access-grants.v1.yaml) v1 (HC-115), each node records and enforces its own grants, so a grant recorded on one node is unknown to the others. Who may call it (patient, delegate, Patient App identity) is also undecided.
 - Which transport and protocol will carry Federation queries, synchronization, and node discovery?
 - How will node identity, signing, authorization tokens, key rotation, and trust establishment work?
 - How does a Hospital Node verify a synchronization authorization itself, and should Governance issue signed, time-limited tokens instead of answering online checks? HC-144 implements only the Federation Service's online check ([`sync-authorization-check.v1.yaml`](../contracts/federation/sync-authorization-check.v1.yaml)), without service authentication.
 - Who may register, update, or remove entries in the Federation [node registry](../contracts/federation/node-registry.v1.yaml), and where are registrations persisted? In v1 the writes are unauthenticated and the registry is in memory; the Governance approval each registration cites is not verified.
 - How is one patient matched across organizations? The [Federation contracts](../contracts/federation/README.md) carry an ecosystem-level `patient_ref` that each Hospital Node maps to its local identifier; the matching and enrolment process is undecided.
+- Who may read a Hospital Node's audit trail ([`hospital-audit-events.v1.yaml`](../contracts/api/hospital-audit/hospital-audit-events.v1.yaml)), how those readers are authenticated, and how long events are retained? In v1 events are kept in memory and readers are not authenticated (HC-116).
 - Is an Immutable Audit Ledger required, and if so which permissioned ledger technology is justified?
 - Which AI providers, models, hosting mode, evaluation criteria, and clinical review controls are acceptable?
 - Which components may call the AI clinical extraction API with clinical source text, and is AI Services hosted inside the hospital boundary or as a company service? This decides whether clinical text leaves the Hospital Node. ([HC-152 contract](../contracts/api/ai/clinical-extraction.v1.yaml).)

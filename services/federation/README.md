@@ -8,12 +8,12 @@ Coordination capability for authorized communication among autonomous Nodes. Pyt
   - the federated patient query, [`federated-patient-query.v1.yaml`](../../contracts/federation/federated-patient-query.v1.yaml) (HC-141). It asks each registered Hospital Node, merges the answers into a transient timeline, and reports a status for each node.
   - the node registry, [`node-registry.v1.yaml`](../../contracts/federation/node-registry.v1.yaml) (HC-142): register, update, list, get, and remove nodes. Federated queries ask the nodes listed there. It is kept in memory, and its Governance approval references are **not verified**.
   - temporary sync authorization (HC-144): before any node is asked under a `synchronization_decision`, the service checks it with the Governance Node over real HTTP ([`sync-authorization-check.v1.yaml`](../../contracts/federation/sync-authorization-check.v1.yaml)), then asks only the organizations Governance authorizes. No Governance Node exists yet, so live sync-basis queries return `503` and ask no node. The authorized path is covered by tests only.
-  - real node-to-node communication (HC-145), the default: each registered node is asked over HTTP at its registered `base_url` (`POST /v1/federation/queries` of [`hospital-node-federation.v1.yaml`](../../contracts/federation/hospital-node-federation.v1.yaml)), in parallel, with a 2-second timeout per attempt. Answers are parsed strictly. No Hospital Node serves that endpoint yet, so live queries report every node `unavailable`. The successful path is covered by tests only.
+  - real node-to-node communication (HC-145), the default: each registered node is asked over HTTP at its registered `base_url` (`POST /v1/federation/queries` of [`hospital-node-federation.v1.yaml`](../../contracts/federation/hospital-node-federation.v1.yaml)), in parallel, with a 2-second timeout per attempt. Answers are parsed strictly. The [Hospital Node runtime](../../instances/hospital-node/README.md#patient-history-api-hc-114) serves that endpoint (HC-114) from MOCKED records, so live answers carry `mocked: true`.
   - failure handling (HC-147), in `http` mode: a node that cannot be reached, answers `503`, or times out is retried once with the same `query_id`, within a 5-second budget per query. After 3 consecutive failed queries a node is paused for 30 seconds and reported `not_asked` with `circuit_open`, then asked again.
   - capability-aware routing (HC-146): in `http` mode, a node whose latest capability check shows it cannot answer the query is not asked and is reported `not_asked` with the reason. A node never checked, unreachable, or answering discovery badly is still asked.
-  - capability discovery (HC-143): on request, the service calls each registered node's `GET /v1/federation/node` over real HTTP and keeps the latest result per node. No Hospital Node serves that endpoint yet, so live checks report `no_federation_interface` or `unreachable`. The successful path is covered by tests only.
+  - capability discovery (HC-143): on request, the service calls each registered node's `GET /v1/federation/node` over real HTTP and keeps the latest result per node. A running Hospital Node is `discovered`; one not running is `unreachable`.
 - **MOCKED, opt-in only:** `FEDERATION_NODES=simulated` replaces the HTTP calls with HC-141's simulated Hospital Nodes, built from [`demo-data/`](../../demo-data/README.md), so the Patient A demo works before real nodes exist. `/health` and every result say `mocked: true` in that mode. **That mode is not node-to-node exchange and not production security.**
-- **PLANNED:** Governance verification of patient access grants and registry approvals (HC-131), node-side verification of authorizations, the Hospital Node side of the Federation interface, persistent registry storage, service authentication, authentication of registry writes, and audit events.
+- **PLANNED:** Governance verification of patient access grants and registry approvals (HC-131), node-side verification of authorizations with the Governance Node (Hospital Nodes check fictional grants for now), persistent registry storage, service authentication, authentication of registry writes, and audit events.
 
 ## Running locally
 
@@ -35,7 +35,7 @@ From this directory (POSIX shell; on Windows activate with `.venv\Scripts\activa
 
 ## Demo
 
-**Real mode (default).** Start the Hospital Node runtime for Hospital A (`HOSPITAL_NODE_CONFIG=config/hospital-a.demo.json fastapi run main.py --port 8101` in [`instances/hospital-node/`](../../instances/hospital-node/README.md)) and this service with the demo seed. The timeline request below is `partial`, with every node `unavailable`: Hospital A's runtime answers `404` because it has no Federation endpoint yet, and nothing listens on 8102 or 8104. `provenance.mocked` is `false`.
+**Real mode (default).** Start the three Hospital Node runtimes, one terminal each, in [`instances/hospital-node/`](../../instances/hospital-node/README.md) (`HOSPITAL_NODE_CONFIG=config/hospital-a.demo.json fastapi run main.py --port 8101`, then `hospital-b` on 8102 and `private-practice` on 8104), and this service with the demo seed. The timeline request below is `complete`: Hospital A answers 1 entry, Hospital B 2 (including Medication A), and the private practice 2. `provenance.mocked` is `true` because the nodes answer from MOCKED fictional records (HC-114). A node that is not running is `unavailable`, and the result is `partial`.
 
 **Simulated mode.** Add `FEDERATION_NODES=simulated` for the Patient A walkthrough below. The registry lists the three demo nodes, each with `approval.verified: false`:
 
@@ -86,15 +86,15 @@ Registry states to show:
 | `PUT` with credentials or a query in `base_url` | `400 invalid_request` |
 | `GET` or `DELETE` an unknown node | `404 node_not_found` |
 
-Capability discovery (real HTTP; start the Hospital Node runtime with `fastapi run main.py --port 8101` in [`instances/hospital-node/`](../../instances/hospital-node/README.md) to show a reachable node):
+Capability discovery (real HTTP; start the Hospital Node runtimes as in real mode above to show reachable nodes):
 
 | Action | Result |
 |---|---|
 | `GET /v1/registry/nodes/node-hospital-a/capabilities` before any check | `not_checked`, `checked_at: null` |
-| `POST /v1/registry/discovery` | Hospital A: `no_federation_interface` (the runtime answers `404`; it has no Federation endpoint yet). Hospital B and the private practice: `unreachable` (nothing listens on 8102 or 8104). |
+| `POST /v1/registry/discovery` | Each running node: `discovered`, `online`, all three scopes, `mocked: true`. A node not running: `unreachable`. |
 | `POST /v1/registry/nodes/{node_ref}/capabilities` | Checks one node now and returns the result |
 | `PUT` a new `base_url` for a checked node | Its result returns to `not_checked` |
-| Timeline request with `"scope": ["medications"]`, before and after `POST /v1/registry/discovery` | Before: all three nodes asked and `unavailable`. After: Hospital A `not_asked` with `no_federation_interface`; Hospital B and the private practice still asked, because they were only `unreachable` at discovery (contract example `routedAroundNode`, with Hospital B answering) |
+| Timeline request with `"scope": ["medications"]`, after `POST /v1/registry/discovery` | Every `discovered` node and every `unreachable` node is asked. A node is `not_asked` only when its latest check shows it cannot answer, for example `no_federation_interface` when its `base_url` points to something other than a Hospital Node (contract example `routedAroundNode`) |
 
 A node that serves the endpoint gets `discovered` with its reported status, contract versions, scopes, and `mocked` flag. `incompatible` means it answers no supported version. `identity_mismatch` means it names another node or organization, and its claims are discarded. `invalid_response` means the answer is not a valid descriptor.
 

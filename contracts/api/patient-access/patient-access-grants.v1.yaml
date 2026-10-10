@@ -1,0 +1,329 @@
+openapi: 3.1.0
+info:
+  title: Hospital Node Patient Access Grants
+  version: 1.0.0
+  description: |
+    Contract HC-115, version 1. The consent/access interface a Hospital Node
+    exposes for one patient's access grants: list them, record a new one,
+    and revoke one. A grant lets one named person query this patient's
+    records held by this node, inside a scope, for a purpose, until it
+    expires or is revoked.
+
+    Boundary rules carried by this contract:
+
+    - **Grants are recorded and enforced by the node that serves them.** A
+      grant recorded here is checked by this node's `queryNode`
+      (hospital-node-federation.v1.yaml) under the basis
+      `patient_access_grant`. It does not reach other nodes: how one
+      patient's consent is propagated to, or governed across, every node
+      holding their records is OPEN (Governance consent governance, HC-136).
+    - **Revocation is a recorded state, not a deletion.** A revoked grant
+      stays listed with `revoked_at`, and the node denies any later query
+      citing it.
+    - **Status is evaluated when answering.** `status` is `revoked` once
+      revoked, `expired` from `expires_at` on, and `active` otherwise.
+    - **Grants contain no clinical data.** They hold opaque references,
+      a scope, a purpose, and times only.
+    - **Unknown and foreign grants look the same.** A grant reference that
+      is unknown here, or that belongs to another patient, answers
+      `404 grant_not_found`.
+
+    Not decided by this version, and OPEN: who may call it (patient,
+    delegate, or app identity and authentication), legal consent semantics
+    (docs/OPEN_QUESTIONS.md), delegations to relatives, restriction and
+    erasure requests, grants without an expiry, and auditing grant changes:
+    the node's audit trail (hospital-audit-events.v1.yaml, HC-116) records
+    the queries made under a grant, not its recording or revocation.
+
+    Status: implemented by the Hospital Node runtime over a MOCKED
+    in-memory store seeded from fictional demo data (HC-115). Requests are
+    not authenticated.
+paths:
+  /v1/patients/{patient_ref}/access-grants:
+    parameters:
+      - $ref: "#/components/parameters/PatientRef"
+    get:
+      operationId: listAccessGrants
+      summary: List this patient's access grants recorded by this node, newest first.
+      responses:
+        "200":
+          description: |
+            Every grant recorded here for this patient, including expired and
+            revoked ones. Empty when none exists, including for a patient
+            unknown here.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessGrantList"
+              examples:
+                patientA:
+                  summary: Fictional demo — Patient A's grants on Hospital A on the demo date.
+                  value:
+                    node_ref: node-hospital-a
+                    organization_ref: org-hospital-a
+                    patient_ref: pat-a
+                    grants:
+                      - grant_ref: grant-a-drx
+                        patient_ref: pat-a
+                        grantee_ref: clin-x
+                        scope: [encounters, medications, lab_reports]
+                        purpose: Consultation de cardiologie
+                        status: active
+                        granted_at: "2026-10-10T09:00:00+01:00"
+                        expires_at: "2026-10-24T09:00:00+01:00"
+                        revoked_at: null
+                      - grant_ref: grant-a-ines
+                        patient_ref: pat-a
+                        grantee_ref: clin-ines
+                        scope: [encounters, medications]
+                        purpose: Consultation de médecine interne
+                        status: expired
+                        granted_at: "2026-05-18T12:00:00+01:00"
+                        expires_at: "2026-08-20T12:00:00+01:00"
+                        revoked_at: null
+                    mocked: true
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+    post:
+      operationId: grantAccess
+      summary: Record a new grant for this patient.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewAccessGrant"
+            examples:
+              patientAGrantsInes:
+                summary: Fictional demo — Patient A grants Dr. Ines a month of access to medications.
+                value:
+                  grantee_ref: clin-ines
+                  scope: [medications]
+                  purpose: Consultation de médecine interne
+                  expires_at: "2026-11-10T10:00:00+01:00"
+      responses:
+        "201":
+          description: The grant is recorded and enforced by this node from now on.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessGrantRecord"
+              examples:
+                granted:
+                  value:
+                    node_ref: node-hospital-a
+                    organization_ref: org-hospital-a
+                    grant:
+                      grant_ref: grant-5b1d0c7e9a2f4e8d9c3b6a1f0e2d4c8b
+                      patient_ref: pat-a
+                      grantee_ref: clin-ines
+                      scope: [medications]
+                      purpose: Consultation de médecine interne
+                      status: active
+                      granted_at: "2026-10-10T10:00:00+01:00"
+                      expires_at: "2026-11-10T10:00:00+01:00"
+                      revoked_at: null
+                    mocked: true
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+  /v1/patients/{patient_ref}/access-grants/{grant_ref}/revocation:
+    parameters:
+      - $ref: "#/components/parameters/PatientRef"
+      - name: grant_ref
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/OpaqueRef"
+    post:
+      operationId: revokeAccessGrant
+      summary: Revoke one of this patient's grants.
+      description: |
+        Idempotent: revoking a revoked grant returns it unchanged, with its
+        original `revoked_at`. An expired grant can still be revoked.
+      responses:
+        "200":
+          description: The grant as revoked. This node denies every later query citing it.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessGrantRecord"
+              examples:
+                revoked:
+                  summary: Fictional demo — Patient A revokes Dr. X's grant.
+                  value:
+                    node_ref: node-hospital-b
+                    organization_ref: org-hospital-b
+                    grant:
+                      grant_ref: grant-a-drx
+                      patient_ref: pat-a
+                      grantee_ref: clin-x
+                      scope: [encounters, medications, lab_reports]
+                      purpose: Consultation de cardiologie
+                      status: revoked
+                      granted_at: "2026-10-10T09:00:00+01:00"
+                      expires_at: "2026-10-24T09:00:00+01:00"
+                      revoked_at: "2026-10-10T10:00:00+01:00"
+                    mocked: true
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "404":
+          description: No grant with this reference for this patient here.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                grantNotFound:
+                  value:
+                    type: about:blank
+                    title: Access grant not found
+                    status: 404
+                    code: grant_not_found
+components:
+  parameters:
+    PatientRef:
+      name: patient_ref
+      in: path
+      required: true
+      description: Ecosystem-level opaque patient reference, as in the Federation contracts.
+      schema:
+        $ref: "#/components/schemas/OpaqueRef"
+
+  responses:
+    InvalidRequest:
+      description: |
+        The request is outside this contract: a missing or unknown field, an
+        empty or repeated scope, a non-opaque reference, a time without an
+        offset, or an expiry that is not in the future.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          examples:
+            invalidRequest:
+              value:
+                type: about:blank
+                title: Invalid access grant request
+                status: 400
+                detail: "Invalid or missing fields: expires_at"
+                code: invalid_request
+
+  schemas:
+    NewAccessGrant:
+      type: object
+      additionalProperties: false
+      required: [grantee_ref, scope, purpose, expires_at]
+      properties:
+        grantee_ref:
+          description: The one person, usually a clinician, who may query under this grant.
+          allOf:
+            - $ref: "#/components/schemas/OpaqueRef"
+        scope:
+          $ref: "#/components/schemas/Scope"
+        purpose:
+          $ref: "#/components/schemas/Purpose"
+        expires_at:
+          description: Must be in the future. Queries are denied from this time on.
+          type: string
+          format: date-time
+
+    AccessGrant:
+      type: object
+      additionalProperties: false
+      required: [grant_ref, patient_ref, grantee_ref, scope, purpose, status, granted_at, expires_at, revoked_at]
+      properties:
+        grant_ref:
+          description: Cited as `authorization.ref` with basis `patient_access_grant` in a node query.
+          allOf:
+            - $ref: "#/components/schemas/OpaqueRef"
+        patient_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        grantee_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        scope:
+          $ref: "#/components/schemas/Scope"
+        purpose:
+          $ref: "#/components/schemas/Purpose"
+        status:
+          type: string
+          enum: [active, expired, revoked]
+        granted_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        revoked_at:
+          type: [string, "null"]
+          format: date-time
+
+    AccessGrantList:
+      type: object
+      additionalProperties: false
+      required: [node_ref, organization_ref, patient_ref, grants, mocked]
+      properties:
+        node_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        patient_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        grants:
+          type: array
+          items:
+            $ref: "#/components/schemas/AccessGrant"
+        mocked:
+          description: True while the grant store is a fictional in-memory fixture.
+          type: boolean
+
+    AccessGrantRecord:
+      type: object
+      additionalProperties: false
+      required: [node_ref, organization_ref, grant, mocked]
+      properties:
+        node_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        grant:
+          $ref: "#/components/schemas/AccessGrant"
+        mocked:
+          description: True while the grant store is a fictional in-memory fixture.
+          type: boolean
+
+    Purpose:
+      description: Why access is granted. A query must cite exactly this purpose.
+      type: string
+      minLength: 1
+      maxLength: 200
+
+    Scope:
+      description: Record types the grantee may query.
+      type: array
+      minItems: 1
+      uniqueItems: true
+      items:
+        type: string
+        enum: [encounters, medications, lab_reports]
+
+    OpaqueRef:
+      description: Opaque identifier. Must not contain a name or other direct identifier.
+      type: string
+      pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+
+    Problem:
+      description: RFC 9457 problem details.
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+          enum: [invalid_request, grant_not_found]

@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-PLANNED company-managed orchestration capability for governed research projects and Compute-to-Data jobs. No runtime or execution code exists. When its first runtime ticket needs one, it is a separate Python + FastAPI project per [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md).
+PLANNED company-managed orchestration capability for governed research projects and Compute-to-Data jobs. No runtime or execution code exists. The D1 Hospital Node execution contract is IMPLEMENTED in [`contracts/api/research/`](../../contracts/api/research/research-node-execution.v1.yaml), but no component serves or consumes it. When its first runtime ticket needs one, it is a separate Python + FastAPI project per [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md).
 
 ## Responsibilities and owned concepts
 
@@ -18,4 +18,4 @@ It does not approve its own access, directly query hospital databases, download 
 
 ## Expected contracts
 
-PLANNED project/request, research-job, execution-status, provenance, controlled-result, and Governance-decision contracts.
+The Hospital Node execution slice of the research-job contract is IMPLEMENTED at D1: authorization context, bounded data scope, algorithm identity, aggregate-only output policy, execution states, controlled result, errors, and provenance. Research Service orchestration, Governance verification, cross-node aggregation, and portal-facing contracts remain PLANNED.

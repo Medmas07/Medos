@@ -154,5 +154,3 @@ describe('Governance Service & Canonical Fixtures', () => {
     expect(notFound).toBeUndefined()
   })
 })
-
-

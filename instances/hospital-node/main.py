@@ -1,18 +1,60 @@
+from collections.abc import Callable
+from datetime import UTC, datetime
+
 from fastapi import FastAPI
 
+from adapters.inbound.http.access_grants import (
+    create_router as create_access_grants_router,
+)
+from adapters.inbound.http.audit import create_router as create_audit_router
+from adapters.inbound.http.federation import create_router as create_federation_router
 from adapters.inbound.http.health import create_router as create_health_router
+from adapters.outbound.fixture_authorization_verifier import (
+    FixtureAuthorizationVerifier,
+)
 from adapters.outbound.fixture_clinical_repository import FixtureClinicalRepository
+from adapters.outbound.in_memory_access_grant_store import InMemoryAccessGrantStore
+from adapters.outbound.in_memory_audit_log import InMemoryAuditLog
 from application.get_node_status import NODE_VERSION
 from infrastructure.config import HospitalNodeConfig, config_path_from_env, load_config
 
 
-def create_app(config: HospitalNodeConfig) -> FastAPI:
+def _now() -> datetime:
+    return datetime.now(UTC)
+
+
+def create_app(
+    config: HospitalNodeConfig,
+    clock: Callable[[], datetime] = _now,
+    new_grant_ref: Callable[[], str] | None = None,
+) -> FastAPI:
     # MOCKED (HC-113): refuses to start on a records file held by another organization.
     repository = FixtureClinicalRepository.load(
         config.mock_clinical_records, config.identity.organization_ref
     )
+    # MOCKED (HC-115): seeded from fictional grants; changes are kept in memory only.
+    access_grants = InMemoryAccessGrantStore.load(config.mock_access_grants)
+    # MOCKED (HC-114): fictional decisions and the grant store stand in for Governance.
+    verifier = FixtureAuthorizationVerifier.load(
+        access_grants,
+        config.mock_governance_decisions,
+        config.identity.organization_ref,
+    )
+    # HC-116: real events of the queries handled, kept in memory (persistence is OPEN).
+    audit_log = InMemoryAuditLog()
     app = FastAPI(title="Hospital Node", version=NODE_VERSION)
     app.include_router(create_health_router(config.identity, repository))
+    app.include_router(
+        create_federation_router(
+            config.identity, repository, verifier, audit_log, clock
+        )
+    )
+    app.include_router(create_audit_router(config.identity, audit_log))
+    app.include_router(
+        create_access_grants_router(
+            config.identity, access_grants, clock, new_grant_ref
+        )
+    )
     return app
 
 

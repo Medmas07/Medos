@@ -20,7 +20,7 @@ def test_health_reports_the_configured_hospital():
         "version": "0.1.0",
         "node_ref": "node-hospital-b",
         "organization_ref": "org-hospital-b",
-        "capabilities": [],
+        "capabilities": ["patient_history", "audit_events", "access_grants"],
         "clinical_records": {
             "mocked": True,
             "encounters": 2,
