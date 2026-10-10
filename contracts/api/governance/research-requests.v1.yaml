@@ -1,0 +1,714 @@
+openapi: 3.1.0
+info:
+  title: Governance Node Research Access Requests
+  version: 1.0.0
+  description: |
+    Contract HC-133, version 1. The Governance / Ethics Authority's research
+    access interface: a research project submits a data-access request, a
+    governance reviewer reads it with the Governance Node's checks, and
+    records the decision. An approval authorizes Compute-to-Data execution
+    only; the Research Service verifies it before each job with
+    contracts/api/research/research-authorization-check.v1.yaml, which the
+    same Node serves.
+
+    Boundary rules carried by this contract:
+
+    - **Governance decides; nobody else does.** The Research Portal may
+      submit and display requests. Only a person with the
+      `governance_reviewer` role may decide, and never the submitter, the
+      principal investigator, or a member of the research organization or
+      of a participating organization. Only a request `under_review` can be
+      decided, once.
+    - **An approval only narrows the request.** It names the participating
+      organizations (among those approved by the Authority,
+      hospital-approval.v1.yaml), the variables (among those requested),
+      its validity (1 to 12 months, D2 demo policy), and the minimum output
+      cell size (at least 10, D2 demo policy). The population is the one
+      requested.
+    - **Compute-to-Data only.** An approval never authorizes exporting
+      records; code runs inside the Hospital Nodes and only controlled
+      aggregates leave them.
+    - **No clinical data.** Requests hold opaque references, a project
+      title and purpose, a population definition (age and encounter-date
+      bounds), variable names, and a protocol document reference. Document
+      contents are never sent.
+
+    Not decided by this version, and OPEN: who may call it (authentication:
+    `submitted_by_ref` and `reviewer_ref` are declared by the caller, not
+    authenticated), document upload and review, revoking or extending an
+    approval, carrying the minimum cell size in the authorization check,
+    and recording decisions in the governance audit trail (HC-134) or a
+    ledger.
+
+    Status: implemented by the Governance Node runtime (HC-133) over an
+    in-memory store seeded from fictional demo data; requests and
+    decisions are lost on restart. Requests are not authenticated.
+paths:
+  /v1/research-requests:
+    get:
+      operationId: listResearchRequests
+      summary: List research access requests, those under review first.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Only requests with this status when answering.
+          schema:
+            $ref: "#/components/schemas/RequestStatus"
+      responses:
+        "200":
+          description: |
+            The requests held by the Governance Node with their status when
+            answering, ordered `under_review`, `authorized`, `expired`,
+            `rejected`, then newest submission first. Empty when none
+            matches.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequestList"
+              examples:
+                demo:
+                  summary: Fictional demo — the two requests on the demo date.
+                  value:
+                    notice: >-
+                      Fictional demo research access requests, held in
+                      memory by the Governance Node: requests and decisions
+                      are lost on restart, and requests are not
+                      authenticated.
+                    requests:
+                      - request_ref: rar-002
+                        project_ref: proj-002
+                        research_organization_ref: org-research-lab
+                        principal_investigator_ref: usr-aymen
+                        status: under_review
+                        submitted_at: "2026-10-02T16:30:00+01:00"
+                        decision_ref: null
+                        valid_until: null
+                      - request_ref: rar-001
+                        project_ref: proj-001
+                        research_organization_ref: org-research-lab
+                        principal_investigator_ref: usr-aymen
+                        status: authorized
+                        submitted_at: "2026-07-01T10:00:00+01:00"
+                        decision_ref: dec-rar-001
+                        valid_until: "2027-07-20T15:00:00+01:00"
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+    post:
+      operationId: submitResearchRequest
+      summary: Submit a research access request for a governance decision.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewRequest"
+            examples:
+              hypertensionStudy:
+                summary: Fictional demo — a new project asks Hospital A for two variables.
+                value:
+                  project_ref: proj-003
+                  project_title: Hypertension traitée et âge
+                  research_organization_ref: org-research-lab
+                  principal_investigator_ref: usr-aymen
+                  submitted_by_ref: usr-aymen
+                  purpose: Décrire la part d'hypertension traitée par tranche d'âge.
+                  participating_organization_refs: [org-hospital-a]
+                  data_scope:
+                    population: {age_min: 50, age_max: 79}
+                    variables: [age_band, treated_hypertension]
+                  protocol_document_ref: doc-proj-003-protocole
+      responses:
+        "201":
+          description: The request was recorded `under_review`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequestDetail"
+              examples:
+                submitted:
+                  value:
+                    request_ref: rar-003
+                    project_ref: proj-003
+                    research_organization_ref: org-research-lab
+                    principal_investigator_ref: usr-aymen
+                    status: under_review
+                    submitted_at: "2026-10-10T10:00:00+01:00"
+                    decision_ref: null
+                    valid_until: null
+                    project_title: Hypertension traitée et âge
+                    submitted_by_ref: usr-aymen
+                    purpose: Décrire la part d'hypertension traitée par tranche d'âge.
+                    participating_organization_refs: [org-hospital-a]
+                    data_scope:
+                      population: {age_min: 50, age_max: 79}
+                      variables: [age_band, treated_hypertension]
+                    protocol_document_ref: doc-proj-003-protocole
+                    checks:
+                      - check: protocol
+                        state: pass
+                        detail: Protocol doc-proj-003-protocole is provided.
+                      - check: organizations
+                        state: pass
+                        detail: org-hospital-a approved by the Authority.
+                    eligible_organization_refs: [org-hospital-a]
+                    decision: null
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+  /v1/research-requests/{request_ref}:
+    parameters:
+      - $ref: "#/components/parameters/RequestRef"
+    get:
+      operationId: getResearchRequest
+      summary: Read one request with the Governance Node's checks and its decision.
+      description: |
+        The checks are evaluated when answering. They are informative once
+        the request is decided; the decision is what counts.
+      responses:
+        "200":
+          description: The request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequestDetail"
+              examples:
+                rar002:
+                  summary: Fictional demo — the asthma study awaiting review.
+                  value:
+                    request_ref: rar-002
+                    project_ref: proj-002
+                    research_organization_ref: org-research-lab
+                    principal_investigator_ref: usr-aymen
+                    status: under_review
+                    submitted_at: "2026-10-02T16:30:00+01:00"
+                    decision_ref: null
+                    valid_until: null
+                    project_title: Asthme de l'adulte jeune et saisonnalité
+                    submitted_by_ref: usr-aymen
+                    purpose: Étudier la variation saisonnière des consultations pour asthme chez les 18-30 ans.
+                    participating_organization_refs: [org-hospital-b, org-private-practice]
+                    data_scope:
+                      population: {age_min: 18, age_max: 30}
+                      variables: [consultation_month, age_band, emergency_visit]
+                    protocol_document_ref: doc-proj-002-protocole
+                    checks:
+                      - check: protocol
+                        state: pass
+                        detail: Protocol doc-proj-002-protocole is provided.
+                      - check: organizations
+                        state: pass
+                        detail: org-hospital-b, org-private-practice approved by the Authority.
+                    eligible_organization_refs: [org-hospital-b, org-private-practice]
+                    decision: null
+        "404":
+          $ref: "#/components/responses/RequestNotFound"
+  /v1/research-requests/{request_ref}/decision:
+    parameters:
+      - $ref: "#/components/parameters/RequestRef"
+    post:
+      operationId: decideResearchRequest
+      summary: Record the reviewer's decision to approve or reject a request.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DecisionRequest"
+            examples:
+              approveRar002:
+                summary: >-
+                  Fictional demo — Pr Olfa Hamdi approves rar-002 for Hospital
+                  B and two variables, for 6 months.
+                value:
+                  reviewer_ref: usr-olfa
+                  outcome: approved
+                  rationale: Protocole conforme, finalité de recherche et périmètre proportionné.
+                  conditions: [Aucune donnée individuelle en sortie.]
+                  approved_organization_refs: [org-hospital-b]
+                  approved_variables: [consultation_month, age_band]
+                  validity_months: 6
+                  minimum_cell_size: 10
+      responses:
+        "201":
+          description: The decision was recorded; an approval authorizes Compute-to-Data execution only.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResearchDecision"
+              examples:
+                approved:
+                  value:
+                    decision_ref: dec-rar-002
+                    request_ref: rar-002
+                    outcome: approved
+                    decided_by_ref: usr-olfa
+                    decided_at: "2026-10-10T10:00:00+01:00"
+                    rationale: Protocole conforme, finalité de recherche et périmètre proportionné.
+                    conditions: [Aucune donnée individuelle en sortie.]
+                    approved_organization_refs: [org-hospital-b]
+                    approved_variables: [consultation_month, age_band]
+                    minimum_cell_size: 10
+                    valid_until: "2027-04-10T10:00:00+01:00"
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "403":
+          description: |
+            The reviewer may not decide: unknown here, not a governance
+            reviewer, the submitter or principal investigator, or a member of
+            the research organization or a participating organization.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                investigator:
+                  summary: Fictional demo — the principal investigator tries to decide.
+                  value:
+                    type: about:blank
+                    title: Reviewer not allowed
+                    status: 403
+                    detail: Only a governance reviewer may decide.
+                    code: reviewer_not_allowed
+        "404":
+          $ref: "#/components/responses/RequestNotFound"
+        "409":
+          description: The request is not under review.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                alreadyDecided:
+                  value:
+                    type: about:blank
+                    title: Not under review
+                    status: 409
+                    detail: Request rar-001 is approved and already has decision dec-rar-001.
+                    code: not_under_review
+        "422":
+          description: |
+            The decision breaks a review rule. Every broken rule is listed,
+            so a form can show them all at once.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                widened:
+                  summary: Fictional demo — an approval that widens the request and lowers the cell size.
+                  value:
+                    type: about:blank
+                    title: Invalid decision
+                    status: 422
+                    detail: The decision breaks 2 review rule(s).
+                    code: invalid_decision
+                    issues:
+                      - field: approved_variables
+                        message: Approve at least one of the requested variables, and only those.
+                      - field: minimum_cell_size
+                        message: The minimum cell size must be at least 10.
+components:
+  parameters:
+    RequestRef:
+      name: request_ref
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/OpaqueRef"
+  responses:
+    InvalidRequest:
+      description: The request is malformed.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          examples:
+            invalid:
+              value:
+                type: about:blank
+                title: Invalid request
+                status: 400
+                detail: "data_scope.variables: List should have at least 1 item after validation, not 0"
+                code: invalid_request
+    RequestNotFound:
+      description: No research access request has this reference.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          examples:
+            notFound:
+              value:
+                type: about:blank
+                title: Request not found
+                status: 404
+                detail: No research access request rar-999.
+                code: request_not_found
+  schemas:
+    OpaqueRef:
+      description: Opaque identifier. Must not contain a name or other direct identifier.
+      type: string
+      pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    Timestamp:
+      type: string
+      format: date-time
+      pattern: "(Z|[+-][0-9]{2}:[0-9]{2})$"
+    RequestStatus:
+      type: string
+      description: |
+        `under_review`: awaiting a decision. `authorized`: approved and its
+        validity has not ended. `expired`: approved, but its validity has
+        ended. `rejected`: refused.
+      enum: [under_review, authorized, expired, rejected]
+    Variable:
+      description: Same names as research-authorization-check.v1.yaml.
+      type: string
+      pattern: "^[A-Za-z][A-Za-z0-9_.-]{0,99}$"
+    DataScope:
+      description: Same shape as research-authorization-check.v1.yaml.
+      type: object
+      additionalProperties: false
+      required: [population, variables]
+      properties:
+        population:
+          description: Bounds of the population; a lower bound is never above its upper bound.
+          type: object
+          additionalProperties: false
+          minProperties: 1
+          properties:
+            age_min: {type: integer, minimum: 0, maximum: 130}
+            age_max: {type: integer, minimum: 0, maximum: 130}
+            encounter_from: {type: string, format: date}
+            encounter_to: {type: string, format: date}
+        variables:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/Variable"
+    NewRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - project_ref
+        - project_title
+        - research_organization_ref
+        - principal_investigator_ref
+        - submitted_by_ref
+        - purpose
+        - participating_organization_refs
+        - data_scope
+        - protocol_document_ref
+      properties:
+        project_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        project_title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        research_organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        principal_investigator_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        submitted_by_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        purpose:
+          type: string
+          minLength: 1
+          maxLength: 500
+        participating_organization_refs:
+          description: Organizations whose Hospital Nodes would run the code.
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/OpaqueRef"
+        data_scope:
+          $ref: "#/components/schemas/DataScope"
+        protocol_document_ref:
+          description: Reference of the research protocol; null if none is provided yet.
+          oneOf:
+            - $ref: "#/components/schemas/OpaqueRef"
+            - type: "null"
+    RequestList:
+      type: object
+      additionalProperties: false
+      required: [notice, requests]
+      properties:
+        notice:
+          type: string
+        requests:
+          type: array
+          items:
+            $ref: "#/components/schemas/RequestSummary"
+    RequestSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - request_ref
+        - project_ref
+        - research_organization_ref
+        - principal_investigator_ref
+        - status
+        - submitted_at
+        - decision_ref
+        - valid_until
+      properties:
+        request_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        project_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        research_organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        principal_investigator_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        status:
+          $ref: "#/components/schemas/RequestStatus"
+        submitted_at:
+          $ref: "#/components/schemas/Timestamp"
+        decision_ref:
+          oneOf:
+            - $ref: "#/components/schemas/OpaqueRef"
+            - type: "null"
+        valid_until:
+          description: End of an approval's validity; null otherwise.
+          oneOf:
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
+    RequestDetail:
+      description: A `RequestSummary` with the request's content, checks, and decision.
+      type: object
+      additionalProperties: false
+      required:
+        - request_ref
+        - project_ref
+        - research_organization_ref
+        - principal_investigator_ref
+        - status
+        - submitted_at
+        - decision_ref
+        - valid_until
+        - project_title
+        - submitted_by_ref
+        - purpose
+        - participating_organization_refs
+        - data_scope
+        - protocol_document_ref
+        - checks
+        - eligible_organization_refs
+        - decision
+      properties:
+        request_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        project_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        research_organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        principal_investigator_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        status:
+          $ref: "#/components/schemas/RequestStatus"
+        submitted_at:
+          $ref: "#/components/schemas/Timestamp"
+        decision_ref:
+          oneOf:
+            - $ref: "#/components/schemas/OpaqueRef"
+            - type: "null"
+        valid_until:
+          oneOf:
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
+        project_title:
+          type: string
+        submitted_by_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        purpose:
+          type: string
+        participating_organization_refs:
+          type: array
+          items:
+            $ref: "#/components/schemas/OpaqueRef"
+        data_scope:
+          $ref: "#/components/schemas/DataScope"
+        protocol_document_ref:
+          oneOf:
+            - $ref: "#/components/schemas/OpaqueRef"
+            - type: "null"
+        checks:
+          description: The Governance Node's checks, in this order, evaluated when answering.
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            $ref: "#/components/schemas/Check"
+        eligible_organization_refs:
+          description: Participating organizations an approval may name now.
+          type: array
+          items:
+            $ref: "#/components/schemas/OpaqueRef"
+        decision:
+          oneOf:
+            - $ref: "#/components/schemas/ResearchDecision"
+            - type: "null"
+    Check:
+      type: object
+      additionalProperties: false
+      required: [check, state, detail]
+      properties:
+        check:
+          type: string
+          enum: [protocol, organizations]
+        state:
+          type: string
+          enum: [pass, fail]
+        detail:
+          type: string
+    DecisionRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - reviewer_ref
+        - outcome
+        - rationale
+        - conditions
+        - approved_organization_refs
+        - approved_variables
+        - validity_months
+        - minimum_cell_size
+      properties:
+        reviewer_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        outcome:
+          type: string
+          enum: [approved, rejected]
+        rationale:
+          description: At least 20 characters once trimmed.
+          type: string
+          maxLength: 2000
+        conditions:
+          description: |
+            Further conditions of an approval, one per entry. Blank entries
+            are ignored; a rejection must have none.
+          type: array
+          maxItems: 10
+          items:
+            type: string
+            maxLength: 500
+        approved_organization_refs:
+          description: For an approval, among `eligible_organization_refs`; null for a rejection.
+          oneOf:
+            - type: array
+              items:
+                $ref: "#/components/schemas/OpaqueRef"
+            - type: "null"
+        approved_variables:
+          description: For an approval, among the requested variables; null for a rejection.
+          oneOf:
+            - type: array
+              items:
+                $ref: "#/components/schemas/Variable"
+            - type: "null"
+        validity_months:
+          description: For an approval, 1 to 12; null for a rejection.
+          oneOf:
+            - type: integer
+            - type: "null"
+        minimum_cell_size:
+          description: For an approval, at least 10; null for a rejection.
+          oneOf:
+            - type: integer
+            - type: "null"
+    ResearchDecision:
+      type: object
+      additionalProperties: false
+      required:
+        - decision_ref
+        - request_ref
+        - outcome
+        - decided_by_ref
+        - decided_at
+        - rationale
+        - conditions
+        - approved_organization_refs
+        - approved_variables
+        - minimum_cell_size
+        - valid_until
+      properties:
+        decision_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        request_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        outcome:
+          type: string
+          enum: [approved, rejected]
+        decided_by_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        decided_at:
+          $ref: "#/components/schemas/Timestamp"
+        rationale:
+          type: string
+        conditions:
+          type: array
+          items:
+            type: string
+        approved_organization_refs:
+          description: Empty for a rejection.
+          type: array
+          items:
+            $ref: "#/components/schemas/OpaqueRef"
+        approved_variables:
+          description: Empty for a rejection.
+          type: array
+          items:
+            $ref: "#/components/schemas/Variable"
+        minimum_cell_size:
+          oneOf:
+            - type: integer
+              minimum: 10
+            - type: "null"
+        valid_until:
+          description: End of the approval's validity; null for a rejection.
+          oneOf:
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
+    Problem:
+      description: RFC 9457 problem details.
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+          enum:
+            - invalid_request
+            - request_not_found
+            - reviewer_not_allowed
+            - not_under_review
+            - invalid_decision
+        issues:
+          description: Every broken review rule, for `invalid_decision`.
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [field, message]
+            properties:
+              field:
+                type: string
+                enum:
+                  - rationale
+                  - conditions
+                  - checks
+                  - approved_organization_refs
+                  - approved_variables
+                  - validity_months
+                  - minimum_cell_size
+              message:
+                type: string

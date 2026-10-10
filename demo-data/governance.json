@@ -244,7 +244,12 @@
       "decidedAt": "2026-07-20T15:00:00+01:00",
       "rationale": "Protocole conforme. Exécution compute-to-data uniquement, résultats agrégés avec effectif minimal de 10.",
       "conditions": ["Aucune donnée individuelle en sortie.", "Effectif minimal de 10 par cellule."],
-      "validUntil": "2027-07-20T15:00:00+01:00"
+      "validUntil": "2027-07-20T15:00:00+01:00",
+      "researchAuthorization": {
+        "approvedOrganizationIds": ["org-hospital-a", "org-hospital-b"],
+        "approvedVariables": ["age_band", "sex", "hba1c", "treated_hypertension"],
+        "minimumCellSize": 10
+      }
     }
   ],
   "auditEvents": [

@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-CONFIRMED Governance / Ethics Authority boundary. Its stack (Python + FastAPI, one process) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED at D2 (HC-130): a FastAPI app with Clean/Hexagonal layers, pinned dependencies, tests, and a liveness `GET /health`. The [hospital approval API](#hospital-approval-api-hc-131) is IMPLEMENTED at D2 (HC-131), over applications and decisions held **in memory**, seeded from fictional demo data: decisions are lost on restart, and the reviewer is declared, not authenticated. The [synchronization request API](#synchronization-request-api-hc-132) and the synchronization authorization check the Federation Service calls are IMPLEMENTED at D2 (HC-132), in memory the same way; patient grants are checked against fictional demo grants (**MOCKED**). Research requests (HC-133), audit (HC-134), policy (HC-135), and consent evaluation (HC-136) are PLANNED. There is no persistence, no authentication, and no ledger adapter. It is not deployed.
+CONFIRMED Governance / Ethics Authority boundary. Its stack (Python + FastAPI, one process) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED at D2 (HC-130): a FastAPI app with Clean/Hexagonal layers, pinned dependencies, tests, and a liveness `GET /health`. The [hospital approval API](#hospital-approval-api-hc-131) is IMPLEMENTED at D2 (HC-131), over applications and decisions held **in memory**, seeded from fictional demo data: decisions are lost on restart, and the reviewer is declared, not authenticated. The [synchronization request API](#synchronization-request-api-hc-132) and the synchronization authorization check the Federation Service calls are IMPLEMENTED at D2 (HC-132), in memory the same way; patient grants are checked against fictional demo grants (**MOCKED**). The [research access request API](#research-access-request-api-hc-133) and the research authorization check the Research Service calls are IMPLEMENTED at D2 (HC-133), in memory the same way. Audit (HC-134), policy (HC-135), and consent evaluation (HC-136) are PLANNED. There is no persistence, no authentication, and no ledger adapter. It is not deployed.
 
 ## Running locally
 
@@ -27,19 +27,23 @@ IMPLEMENTED at D2. One process, so there is no per-instance configuration file. 
 ```text
 main.py                                   # composition root: identity, seed data, clock, routers
 domain/                                   # NodeIdentity, NodeStatus, HospitalApplication, approval rules,
-                                          # synchronization requests, checks, and authorization
+                                          # synchronization and research requests, checks, authorization
 application/get_node_status.py            # use case; declares capabilities as their APIs land
 application/hospital_approval.py          # HC-131 use cases and their ports
 application/synchronization.py            # HC-132 use cases and their ports
+application/research.py                   # HC-133 use cases and their ports
 adapters/inbound/http/health.py           # GET /health
 adapters/inbound/http/hospital_approval.py
 adapters/inbound/http/synchronization_requests.py
 adapters/inbound/http/sync_authorization.py   # the Federation Service's check
+adapters/inbound/http/research_requests.py
+adapters/inbound/http/research_authorization.py   # the Research Service's check
 adapters/inbound/http/problems.py         # RFC 9457 problem details
 adapters/outbound/in_memory_hospital_applications.py  # store, seeded from demo-data/governance.json
 adapters/outbound/fixture_reviewer_directory.py       # who a reviewer_ref names (demo-data/people.json)
 adapters/outbound/in_memory_synchronization.py        # store, seeded from demo-data/governance.json
 adapters/outbound/fixture_patient_grants.py           # MOCKED: patient grants (demo-data/access.json)
+adapters/outbound/in_memory_research.py               # store, seeded from governance.json and research.json
 tests/                                    # domain, use case, adapter, HTTP, and layer-boundary tests
 ```
 
@@ -49,11 +53,11 @@ tests/                                    # domain, use case, adapter, HTTP, and
 {
   "status": "ok",
   "node": "governance-node",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "node_ref": "node-governance",
   "organization_ref": "org-governance",
-  "capabilities": ["hospital_approval", "synchronization"],
-  "notice": "Governance Node (HC-130 to HC-132). ... Liveness only; not a production health check."
+  "capabilities": ["hospital_approval", "synchronization", "research"],
+  "notice": "Governance Node (HC-130 to HC-133). ... Liveness only; not a production health check."
 }
 ```
 
@@ -165,10 +169,79 @@ How a Hospital Node verifies a decision with the Governance Node is OPEN ([OPEN_
 
 Not done at D2: the Governance Portal still records simulated synchronization decisions (HC-076) and does not call this API; revoking or extending an approval; recording requests, checks, and decisions in the governance audit trail (HC-134) or a ledger.
 
+## Research access request API (HC-133)
+
+IMPLEMENTED at D2. Research uses Compute-to-Data: a project asks the Authority for access, and an approval authorizes code to run inside the named Hospital Nodes, with only controlled aggregates leaving them. The Research Service checks the approval before each job.
+
+| Route | Contract | Purpose |
+|---|---|---|
+| `POST /v1/research-requests` | [`research-requests.v1.yaml`](../../contracts/api/governance/research-requests.v1.yaml) | Submit a request with the project's content: title, research organization, principal investigator, purpose, participating organizations, structured data scope, and protocol reference. Recorded `under_review` as `rar-NNN`. |
+| `GET /v1/research-requests[?status=]` | same | Requests with their status **as of now**: `under_review`, `authorized`, `expired` (authorizes nothing), `rejected`; under review first, newest submission first. |
+| `GET /v1/research-requests/{request_ref}` | same | One request, the Node's checks, the organizations an approval may name now, and its decision. |
+| `POST /v1/research-requests/{request_ref}/decision` | same | Record the reviewer's decision. |
+| `POST /v1/research-authorizations/check` | [`research-authorization-check.v1.yaml`](../../contracts/api/research/research-authorization-check.v1.yaml) | The Research Service's question before each job: does this decision authorize this exact job now? |
+
+**Data scope.** A request carries its population as bounds (`age_min`, `age_max`, `encounter_from`, `encounter_to`, at least one, lower never above upper) and its variables as contract names (`hba1c`, `age_band`), the same shape the Research Service and Hospital Nodes use. The demo projects carry this in a `dataScope` added to [`demo-data/research.json`](../../demo-data/research.json); their French variable labels stay for display.
+
+**Checks** (`domain/research.py`, the same rules as the Governance Portal's research form, HC-078), evaluated when answering:
+
+- **protocol:** a protocol document reference is provided (document contents never reach the Node).
+- **organizations:** at least one participating organization is approved by this Node's own [hospital approvals](#hospital-approval-api-hc-131); only those are eligible.
+
+**Decision rules**, in this order:
+
+1. `409 not_under_review` unless the request is under review.
+2. `403 reviewer_not_allowed` unless the reviewer is a `governance_reviewer` who is neither the submitter nor the principal investigator, and belongs neither to the research organization nor to a participating one.
+3. `422 invalid_decision` listing every broken rule:
+   - a rationale of at least 20 characters;
+   - for an approval: every check passing, at least one eligible organization and only those, at least one requested variable and only those, a validity of 1 to 12 months (calendar months), and a minimum output cell size of at least 10 (D2 demo policy, as in `dec-rar-001`);
+   - for a rejection: nothing authorized and no condition.
+
+An approval only narrows the request: the population stays the one requested. The decision is `dec-` and the request reference.
+
+**Authorization check.** An unknown reference, a request still under review, or a decision on another subject is `404 decision_not_found`. Otherwise the answer is `approved`, with the decision's organizations, variables, and `valid_until`, or `denied` with the first failing `reason_code`, in this order: `not_approved`, `not_yet_valid`, `expired`, `project_mismatch`, `requester_mismatch` (the principal investigator or the submitter only), `organization_not_approved`, `variable_not_approved`, and `population_exceeded`. Every bound of the job must lie inside the requested population, and a bound the job leaves open where the request set one is wider. `purpose` is not compared. The decision's minimum cell size is not carried by this contract, so the Research Service's job sets its own output policy (OPEN).
+
+**Storage, at D2:** `InMemoryResearchStore` holds requests and decisions, seeded from the fictional [`demo-data/governance.json`](../../demo-data/governance.json) (requests and decisions, with the structured `researchAuthorization` of `dec-rar-001`) and `research.json` (each request's project content). Everything recorded through the API is **lost on restart**, and `submitted_by_ref` and `reviewer_ref` are declared, **not authenticated**.
+
+Demo, with the Node running:
+
+```bash
+# rar-002 (asthma study) awaits review; Hospital B and the private practice are eligible.
+curl -s localhost:8200/v1/research-requests/rar-002
+
+# Pr Olfa Hamdi approves it narrowed: Hospital B, two variables, 6 months, cell size 10.
+curl -s -X POST localhost:8200/v1/research-requests/rar-002/decision \
+  -H 'content-type: application/json' -d '{"reviewer_ref": "usr-olfa", "outcome": "approved",
+  "rationale": "Protocole conforme, finalité de recherche et périmètre proportionné.",
+  "conditions": [], "approved_organization_refs": ["org-hospital-b"],
+  "approved_variables": ["consultation_month", "age_band"], "validity_months": 6,
+  "minimum_cell_size": 10}'
+
+# The Research Service's check for job-001 under dec-rar-001: approved.
+curl -s -X POST localhost:8200/v1/research-authorizations/check \
+  -H 'content-type: application/json' -d '{"decision_ref": "dec-rar-001",
+  "project_ref": "proj-001", "requested_by": "usr-aymen",
+  "purpose": "Aggregate cardiometabolic risk research",
+  "target_organization_refs": ["org-hospital-a", "org-hospital-b"],
+  "data_scope": {"population": {"age_min": 40, "age_max": 79,
+  "encounter_from": "2024-01-01", "encounter_to": "2026-12-31"},
+  "variables": ["age_band", "hba1c"]}}'
+```
+
+Other states to show: `reviewer_ref: "usr-aymen"` (the investigator) gives `403`; adding `"diagnosis"` to the variables or a cell size of 5 gives `422`; a check asking for `"diagnosis"` is `denied` with `variable_not_approved`.
+
+**End to end**, with the Research Service, Hospital Nodes A and B, and this Node running as separate processes:
+
+- A request whose scope the HC-183 aggregate can run (`hba1c`, encounter dates only) is submitted and approved here. A job under it is authorized, and both nodes execute it with output validation passed. The aggregate is suppressed because the fictional cohorts are below the minimum cell size of 10.
+- Jobs outside a decision are denied here before any node is asked.
+- Under `dec-rar-001`, no job can complete. The HC-183 aggregate refuses age bounds (no local demographic data), and this Node refuses a job without them as wider than the approved population (ages 40–79).
+
+Not done at D2: the Governance Portal still records simulated research decisions (HC-078), and the Research Portal does not submit to this API; revoking or extending an approval; recording requests, checks, and decisions in the governance audit trail (HC-134) or a ledger.
+
 ## Responsibilities and owned concepts
 
 - Hospital approval and registry. Hospital approval is served by the [hospital approval API](#hospital-approval-api-hc-131) (HC-131). The Federation Service's node registry ([`node-registry.v1.yaml`](../../contracts/federation/node-registry.v1.yaml), HC-142) is only a routing directory: each registration cites a Governance approval decision, which it could now check with `getHospitalApproval`, but does not yet.
-- Synchronization and research authorization. Synchronization requests, decisions, and the [`sync-authorization-check.v1.yaml`](../../contracts/federation/sync-authorization-check.v1.yaml) check the Federation Service calls before every synchronization-decision query are served by the [synchronization request API](#synchronization-request-api-hc-132) (HC-132). Research authorization is PLANNED (HC-133).
+- Synchronization and research authorization. Synchronization requests, decisions, and the [`sync-authorization-check.v1.yaml`](../../contracts/federation/sync-authorization-check.v1.yaml) check the Federation Service calls before every synchronization-decision query are served by the [synchronization request API](#synchronization-request-api-hc-132) (HC-132). Research access requests, decisions, and the [`research-authorization-check.v1.yaml`](../../contracts/api/research/research-authorization-check.v1.yaml) check the Research Service calls before each job are served by the [research access request API](#research-access-request-api-hc-133) (HC-133).
 - Policy evaluation, consent governance, and governance audit.
 - OPTIONAL Blockchain Adapter behind an application-owned `AuditLedgerPort`.
 
@@ -182,4 +255,4 @@ It does not own raw hospital clinical databases, clinician workflows, patient me
 
 ## Expected contracts
 
-The consumer-side [`research-authorization-check.v1.yaml`](../../contracts/api/research/research-authorization-check.v1.yaml) contract is IMPLEMENTED for HC-182, but this Node does not provide it yet. This Node provides [`hospital-approval.v1.yaml`](../../contracts/api/governance/hospital-approval.v1.yaml) (HC-131), [`synchronization-requests.v1.yaml`](../../contracts/api/governance/synchronization-requests.v1.yaml), and the Federation's [`sync-authorization-check.v1.yaml`](../../contracts/federation/sync-authorization-check.v1.yaml) (HC-132). Research review/decision, other policy and authorization, audit-event, and immutable-proof contracts remain PLANNED.
+This Node provides [`hospital-approval.v1.yaml`](../../contracts/api/governance/hospital-approval.v1.yaml) (HC-131), [`synchronization-requests.v1.yaml`](../../contracts/api/governance/synchronization-requests.v1.yaml), and the Federation's [`sync-authorization-check.v1.yaml`](../../contracts/federation/sync-authorization-check.v1.yaml) (HC-132), [`research-requests.v1.yaml`](../../contracts/api/governance/research-requests.v1.yaml), and the Research Service's [`research-authorization-check.v1.yaml`](../../contracts/api/research/research-authorization-check.v1.yaml) (HC-133). Other policy and authorization, audit-event, and immutable-proof contracts remain PLANNED.
