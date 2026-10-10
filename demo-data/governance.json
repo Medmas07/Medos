@@ -14,8 +14,8 @@
         { "id": "doc-c-assurance", "type": "insurance_certificate", "title": "Attestation d'assurance.pdf", "status": "missing" }
       ],
       "agreements": [
-        { "code": "data_processing_agreement", "title": "Accord de traitement des données", "accepted": true },
-        { "code": "governance_charter", "title": "Charte de gouvernance fédérée", "accepted": true }
+        { "code": "data_processing_agreement", "title": "Accord de traitement des données", "accepted": true, "version": "1.0", "acceptedAt": "2026-10-06T15:12:00+01:00", "acceptedById": "usr-mehdi" },
+        { "code": "governance_charter", "title": "Charte de gouvernance fédérée", "accepted": true, "version": "1.0", "acceptedAt": "2026-10-06T15:13:00+01:00", "acceptedById": "usr-mehdi" }
       ],
       "administrativeProfile": {
         "legalName": "Centre Hospitalier Cap Azur",
