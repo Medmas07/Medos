@@ -8,6 +8,7 @@ const response = {
   question: 'Question fictive.',
   concepts: [{ label: 'Metformin' }, { label: 'Diabetes' }],
   status: 'completed',
+  progress: { stage_label: 'Completed', percent: 100, updated_at: '2026-10-10T11:01:00Z' },
   created_at: '2026-10-10T11:00:00Z',
   updated_at: '2026-10-10T11:01:00Z',
   clinical_use: 'not_for_clinical_decisions',
@@ -32,7 +33,12 @@ describe('SciAgents HTTP client (HC-172)', () => {
       concepts: [{ label: 'Metformin' }, { label: 'Diabetes' }] as [{ label: string }, { label: string }],
     }
     const result = await api.submit(input)
-    expect(result).toMatchObject({ id: response.investigation_id, status: 'completed', result: { outcome: 'empty' } })
+    expect(result).toMatchObject({
+      id: response.investigation_id,
+      status: 'completed',
+      progress: { stageLabel: 'Completed', percent: 100, updatedAt: '2026-10-10T11:01:00Z' },
+      result: { outcome: 'empty' },
+    })
     expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual(input)
   })
 

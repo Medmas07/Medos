@@ -19,6 +19,7 @@ import {
   sciAgentsIntegrationConfigured,
   submitInvestigation,
 } from '../services/sciagentsApi'
+import { investigationProgressDisplay } from '../services/sciagentsProgress'
 import type { PageId, ResearchSnapshot, SciAgentsCitation, SciAgentsInvestigation } from '../types/research'
 
 interface SciAgentsViewProps {
@@ -32,6 +33,52 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       <dt className="text-slate-500">{label}</dt>
       <dd className="text-slate-900">{children}</dd>
     </div>
+  )
+}
+
+function ExecutionProgress({ investigation }: { investigation: SciAgentsInvestigation }) {
+  const display = investigationProgressDisplay(investigation)
+  const lastUpdate = investigation.progress?.updatedAt ?? investigation.updatedAt
+
+  return (
+    <Card
+      title="Progression de l'exécution"
+      description="Dernier état connu par l'adaptateur serveur ; actualisation par interrogation périodique à D2."
+      actions={<Badge tone={display.tone}>{investigationStatusDisplay[investigation.status].label}</Badge>}
+    >
+      <div aria-live="polite" className="space-y-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <p className="font-medium text-slate-900">{display.label}</p>
+          <p className="text-sm text-slate-500">
+            {display.percent === null ? 'Pourcentage non communiqué' : `${display.percent} %`}
+          </p>
+        </div>
+        {display.percent === null ? (
+          <div
+            role="progressbar"
+            aria-label="Progression sans estimation"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            className="h-2 overflow-hidden rounded-full bg-slate-200"
+          >
+            <div className={`h-full w-1/3 rounded-full ${investigation.status === 'running' ? 'animate-pulse bg-brand-600' : 'bg-slate-400'}`} />
+          </div>
+        ) : (
+          <div
+            role="progressbar"
+            aria-label="Progression estimée de l'investigation"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={display.percent}
+            className="h-2 overflow-hidden rounded-full bg-slate-200"
+          >
+            <div className="h-full rounded-full bg-brand-600 transition-[width]" style={{ width: `${display.percent}%` }} />
+          </div>
+        )}
+        <p className="text-sm text-slate-600">{display.detail}</p>
+        <p className="text-xs text-slate-500">Dernière mise à jour : {formatDateTime(lastUpdate)}</p>
+      </div>
+    </Card>
   )
 }
 
@@ -232,7 +279,7 @@ function InvestigationOutcome({ entry, onNavigate }: { entry: InvestigationEntry
       <Alert tone="danger" title={investigationErrorLabels[investigation.error.code]}>
         {investigation.error.message} Aucune hypothèse n'a été produite.{' '}
         {investigation.error.retryable
-          ? 'La question peut être soumise à nouveau une fois le portail connecté à SciAgents (HC-172).'
+          ? 'La question peut être soumise à nouveau lorsque SciAgents est disponible.'
           : "SciAgents a refusé la demande : la reformuler avant de la soumettre à nouveau."}
       </Alert>
     )
@@ -296,6 +343,8 @@ function InvestigationPanel({ entry, onNavigate }: { entry: InvestigationEntry; 
         recommandation, et ne deviennent jamais une donnée clinique ni une donnée versée à un dossier médical.
       </Alert>
 
+      <ExecutionProgress investigation={investigation} />
+
       <InvestigationOutcome entry={entry} onNavigate={onNavigate} />
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -350,7 +399,7 @@ function InvestigationPanel({ entry, onNavigate }: { entry: InvestigationEntry; 
   )
 }
 
-/** SciAgents panel: HC-102 fixtures plus the configured HC-172 D2 connection. */
+/** SciAgents panel: HC-102 fixtures, HC-172 connection, and HC-173 execution progress. */
 export function SciAgentsView({ snapshot, onNavigate }: SciAgentsViewProps) {
   const [liveInvestigations, setLiveInvestigations] = useState<SciAgentsInvestigation[]>([])
   const [integrationError, setIntegrationError] = useState('')
@@ -374,7 +423,7 @@ export function SciAgentsView({ snapshot, onNavigate }: SciAgentsViewProps) {
 
   const header = (
     <PageHeader
-      eyebrow="Assistance scientifique · HC-102 / HC-172"
+      eyebrow="Assistance scientifique · HC-102 / HC-172 / HC-173"
       title="SciAgents"
       description="Explorez les hypothèses qu'un système scientifique externe propose à partir de votre question et de vos résultats contrôlés, avec leurs preuves, contradictions et citations."
       actions={<Badge tone={sciAgentsIntegrationConfigured ? 'success' : 'neutral'}>{sciAgentsIntegrationConfigured ? 'Intégration D2 configurée' : 'Intégration non configurée'}</Badge>}
@@ -425,7 +474,12 @@ export function SciAgentsView({ snapshot, onNavigate }: SciAgentsViewProps) {
                       >
                         <code className="text-xs text-slate-700">{e.investigation.id}</code>
                         <p className="mt-1 font-medium text-slate-900">{e.investigation.question}</p>
-                        <p className="text-xs text-slate-500">{e.summary.project.title}</p>
+                        <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-xs text-slate-500">{e.summary.project.title}</p>
+                          <Badge tone={investigationStatusDisplay[e.investigation.status].tone}>
+                            {investigationStatusDisplay[e.investigation.status].label}
+                          </Badge>
+                        </div>
                       </button>
                     </li>
                   ))}
@@ -438,7 +492,7 @@ export function SciAgentsView({ snapshot, onNavigate }: SciAgentsViewProps) {
           <Card>
             <EmptyState
               title="Aucune investigation"
-              description="Soumettre une question à SciAgents sera possible une fois le portail connecté (HC-172). Aucune investigation fictive n'existe pour vos projets."
+              description="Aucune investigation SciAgents n'existe pour vos projets. Utilisez le formulaire ci-dessus lorsque l'intégration D2 est configurée."
               action={
                 <Button variant="secondary" onClick={() => onNavigate('results')}>
                   Voir les résultats contrôlés

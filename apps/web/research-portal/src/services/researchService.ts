@@ -44,9 +44,14 @@ const investigations = (
   ({ outcome, hypotheses, evidence, contradictions, citations, mocked, provenance, ...investigation }): SciAgentsInvestigation => ({
     ...investigation,
     clinicalUse: 'not_for_clinical_decisions',
+    progress: {
+      stageLabel: 'Terminée',
+      percent: 100,
+      updatedAt: investigation.updatedAt,
+    },
     result: investigation.status === 'completed' ? { outcome, hypotheses, evidence, contradictions, citations } : null,
     error: null,
-    // The fixture stays visibly mocked; HC-171 exists but HC-172 does not connect this portal to it.
+    // The historical fixture stays visibly mocked and remains separate from the HC-172 live path.
     provenance: {
       provider: { name: 'SciAgents', version: null },
       adapter: { name: 'demo-sciagents-adapter', version: '1.0.0' },
@@ -235,6 +240,11 @@ function timedOut(investigation: SciAgentsInvestigation): SciAgentsInvestigation
   return {
     ...investigation,
     status: 'failed',
+    progress: {
+      stageLabel: 'Interrompue : délai dépassé',
+      percent: null,
+      updatedAt: investigation.updatedAt,
+    },
     result: null,
     error: { code: 'timeout', message: "SciAgents n'a pas répondu à temps.", retryable: true },
   }

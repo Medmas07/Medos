@@ -26,6 +26,11 @@ interface ApiInvestigation {
   question: string
   concepts: { label: string }[]
   status: SciAgentsInvestigation['status']
+  progress: null | {
+    stage_label: string
+    percent: number | null
+    updated_at: string
+  }
   created_at: string
   updated_at: string
   clinical_use: 'not_for_clinical_decisions'
@@ -77,6 +82,11 @@ function map(document: ApiInvestigation): SciAgentsInvestigation {
     concepts: document.concepts,
     controlledResultContext: [],
     status: document.status,
+    progress: document.progress && {
+      stageLabel: document.progress.stage_label,
+      percent: document.progress.percent,
+      updatedAt: document.progress.updated_at,
+    },
     createdAt: document.created_at,
     updatedAt: document.updated_at,
     clinicalUse: document.clinical_use,

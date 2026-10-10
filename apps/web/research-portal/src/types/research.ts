@@ -224,6 +224,8 @@ export interface SciAgentsInvestigation {
   /** Local fixture context displayed by HC-102; HC-170 v1.1 never sends it upstream. */
   controlledResultContext: { controlledResultId: string; summary: string }[]
   status: 'queued' | 'running' | 'completed' | 'failed'
+  /** Latest adapter-reported progress; percent is null when SciAgents provides no estimate. */
+  progress: { stageLabel: string; percent: number | null; updatedAt: string } | null
   createdAt: string
   updatedAt: string
   clinicalUse: 'not_for_clinical_decisions'
