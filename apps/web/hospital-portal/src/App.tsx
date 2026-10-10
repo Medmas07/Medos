@@ -22,6 +22,7 @@ import {
 } from './services/onboardingService'
 import type { OnboardingSnapshot, StepId } from './types/onboarding'
 import { AgreementsView } from './views/AgreementsView'
+import { DmiView } from './views/DmiView'
 import { DocumentsView } from './views/DocumentsView'
 import { OverviewView } from './views/OverviewView'
 import { ProfileView } from './views/ProfileView'
@@ -180,6 +181,16 @@ export default function App() {
         <TechnicalView
           snapshot={load.snapshot}
           consumeSimulatedFailure={failureOnce('technical-failure')}
+          onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
+          onNavigate={navigateTo}
+        />
+      )
+    }
+    if (currentView === 'dmi') {
+      return (
+        <DmiView
+          snapshot={load.snapshot}
+          consumeSimulatedFailure={failureOnce('dmi-failure')}
           onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
           onNavigate={navigateTo}
         />

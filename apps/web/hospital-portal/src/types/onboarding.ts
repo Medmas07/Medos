@@ -68,6 +68,9 @@ export interface ApplicationAgreement {
 
 export type HostingType = 'on_premise' | 'virtual_machine' | 'private_cloud'
 
+export type DmiHosting = 'on_premise' | 'vendor_hosted'
+export type IntegrationMethod = 'hl7v2' | 'fhir_api' | 'file_export' | 'database_replica' | 'none'
+
 /**
  * Technical questionnaire. The deployment environment of the future Hospital
  * Node is collected by HC-055; the DMI / HIS fields belong to HC-056.
@@ -86,8 +89,13 @@ export interface TechnicalQuestionnaire {
   containerRuntimeAvailable: boolean
   backupsInPlace: boolean
   technicalContactId: string
+  // DMI / HIS information (HC-056); absent until that page is completed.
   dmiSystem?: string
   database?: string
+  dmiHosting?: DmiHosting
+  integrationMethods?: IntegrationMethod[]
+  testEnvironmentAvailable?: boolean
+  dmiNotes?: string
 }
 
 export interface ReviewStep {
