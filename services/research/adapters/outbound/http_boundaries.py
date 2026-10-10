@@ -119,4 +119,5 @@ class HttpHospitalExecution:
             status=ExecutionStatus(document["status"]),
             result=document.get("result"),
             error=error,
+            mocked=document.get("mocked", False),
         )
