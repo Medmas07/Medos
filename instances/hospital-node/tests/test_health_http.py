@@ -21,6 +21,12 @@ def test_health_reports_the_configured_hospital():
         "node_ref": "node-hospital-b",
         "organization_ref": "org-hospital-b",
         "capabilities": [],
+        "clinical_records": {
+            "mocked": True,
+            "encounters": 2,
+            "medications": 1,
+            "lab_reports": 1,
+        },
         "notice": SKELETON_NOTICE,
     }
 

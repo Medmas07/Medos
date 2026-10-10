@@ -22,6 +22,7 @@ VALID = {
     "organization_ref": "org-test",
     "port": 8199,
     "storage_dir": "storage/test",
+    "mock_clinical_records": "records/test.json",
 }
 
 
@@ -39,10 +40,11 @@ def test_loads_a_valid_configuration(tmp_path):
     assert config.port == 8199
 
 
-def test_storage_dir_is_resolved_against_the_config_file(tmp_path):
+def test_paths_are_resolved_against_the_config_file(tmp_path):
     config = load_config(write_config(tmp_path, VALID))
 
     assert config.storage_dir == (tmp_path / "storage" / "test").resolve()
+    assert config.mock_clinical_records == (tmp_path / "records/test.json").resolve()
 
 
 def test_demo_configs_match_the_canonical_demo_nodes():
@@ -93,6 +95,7 @@ def test_missing_file_stops_startup(tmp_path):
         {**VALID, "port": 80},
         {**VALID, "port": "8101a"},
         {**VALID, "storage_dir": ""},
+        {k: v for k, v in VALID.items() if k != "mock_clinical_records"},
         {**VALID, "organization_ref": "Hôpital A"},
     ],
     ids=[
@@ -102,6 +105,7 @@ def test_missing_file_stops_startup(tmp_path):
         "privileged-port",
         "non-numeric-port",
         "empty-storage",
+        "missing-clinical-records",
         "non-opaque-ref",
     ],
 )
