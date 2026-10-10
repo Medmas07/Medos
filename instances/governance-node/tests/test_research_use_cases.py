@@ -21,6 +21,7 @@ from domain.research import (
     RequestStatus,
     ResearchDecision,
 )
+from tests.test_policy import DEMO_POLICIES
 from tests.conftest import DEMO_NOW
 from tests.test_audit_use_cases import FakeAuditTrail
 from tests.test_research import APPROVE, JOB_001, RAR
@@ -141,6 +142,7 @@ def test_submit_decide_then_check():
         store,
         FakeReviewers(),
         APPROVED,
+        DEMO_POLICIES,
         audit,
         lambda: DEMO_NOW,
     )
@@ -200,6 +202,7 @@ def test_unknown_requests_and_decisions():
             store,
             FakeReviewers(),
             APPROVED,
+            DEMO_POLICIES,
             audit,
             lambda: DEMO_NOW,
         )

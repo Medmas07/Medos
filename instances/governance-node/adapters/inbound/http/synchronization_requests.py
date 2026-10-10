@@ -34,6 +34,7 @@ from application.synchronization import (
     list_requests,
     submit_request,
 )
+from domain.policy import PolicyHistory
 from domain.hospital_approval import InvalidDecision, Outcome, ReviewerNotAllowed
 from domain.synchronization import (
     MAX_DURATION_DAYS,
@@ -136,6 +137,7 @@ def _decision(decision: SynchronizationDecision) -> dict:
         "outcome": decision.outcome.value,
         "decided_by_ref": decision.decided_by_ref,
         "decided_at": decision.decided_at.isoformat(),
+        "policy_ref": decision.policy_ref,
         "rationale": decision.rationale,
         "conditions": list(decision.conditions),
         "approved_days": decision.approved_days,
@@ -182,13 +184,14 @@ def create_router(
     reviewers: ReviewerDirectory,
     grants: PatientGrantDirectory,
     applications: HospitalApplicationStore,
+    policies: PolicyHistory,
     audit: AuditTrail,
     clock: Callable[[], datetime],
 ) -> APIRouter:
     router = APIRouter(prefix="/v1/synchronization-requests", tags=["synchronization"])
 
     def view(request_ref: str) -> RequestView:
-        return get_request(request_ref, store, grants, applications, clock)
+        return get_request(request_ref, store, grants, applications, policies, clock)
 
     @router.get("")
     def list_synchronization_requests(status: str | None = None) -> JSONResponse:
@@ -261,6 +264,7 @@ def create_router(
                 reviewers,
                 grants,
                 applications,
+                policies,
                 audit,
                 clock,
             )

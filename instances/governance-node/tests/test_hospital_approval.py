@@ -19,6 +19,7 @@ from domain.hospital_approval import (
     ReviewerNotAllowed,
     decide,
 )
+from tests.test_policy import DEMO_POLICY
 from tests.conftest import DEMO_NOW
 
 SUBMITTED = datetime.fromisoformat("2026-10-06T15:20:00+01:00")
@@ -52,12 +53,12 @@ def draft(**changes) -> DecisionDraft:
 
 def issue_fields(application, d) -> list[str]:
     with pytest.raises(InvalidDecision) as raised:
-        decide(application, OLFA, d, DEMO_NOW)
+        decide(application, OLFA, d, DEMO_POLICY, DEMO_NOW)
     return [i.field for i in raised.value.issues]
 
 
 def test_approval_records_the_decision_and_decides_the_application():
-    decision, decided = decide(HOSPITAL_C, OLFA, draft(), DEMO_NOW)
+    decision, decided = decide(HOSPITAL_C, OLFA, draft(), DEMO_POLICY, DEMO_NOW)
 
     assert decision.decision_ref == "dec-hospital-c"
     assert decision.organization_ref == "org-hospital-c"
@@ -74,6 +75,7 @@ def test_rationale_and_conditions_are_trimmed_and_blank_conditions_dropped():
         HOSPITAL_C,
         OLFA,
         draft(rationale="  " + "x" * 20 + "  ", conditions=("  A  ", "   ", "")),
+        DEMO_POLICY,
         DEMO_NOW,
     )
 
@@ -83,7 +85,11 @@ def test_rationale_and_conditions_are_trimmed_and_blank_conditions_dropped():
 
 def test_rejection_needs_no_condition():
     decision, decided = decide(
-        HOSPITAL_C, OLFA, draft(outcome=Outcome.REJECTED, conditions=()), DEMO_NOW
+        HOSPITAL_C,
+        OLFA,
+        draft(outcome=Outcome.REJECTED, conditions=()),
+        DEMO_POLICY,
+        DEMO_NOW,
     )
 
     assert decision.outcome is Outcome.REJECTED
@@ -105,7 +111,11 @@ def test_rejection_with_a_condition_is_refused():
 
 def test_application_without_findings_needs_no_acknowledgement_or_condition():
     decision, _ = decide(
-        CLEAN, OLFA, draft(conditions=(), findings_acknowledged=False), DEMO_NOW
+        CLEAN,
+        OLFA,
+        draft(conditions=(), findings_acknowledged=False),
+        DEMO_POLICY,
+        DEMO_NOW,
     )
 
     assert decision.conditions == ()
@@ -119,7 +129,7 @@ def test_advisory_findings_alone_need_acknowledgement_but_no_condition():
     assert issue_fields(advisory_only, draft(findings_acknowledged=False)) == [
         "findings_acknowledged"
     ]
-    decide(advisory_only, OLFA, draft(conditions=()), DEMO_NOW)
+    decide(advisory_only, OLFA, draft(conditions=()), DEMO_POLICY, DEMO_NOW)
 
 
 @pytest.mark.parametrize(
@@ -134,7 +144,7 @@ def test_advisory_findings_alone_need_acknowledgement_but_no_condition():
 )
 def test_only_a_governance_reviewer_outside_the_applicant_may_decide(reviewer):
     with pytest.raises(ReviewerNotAllowed):
-        decide(HOSPITAL_C, reviewer, draft(), DEMO_NOW)
+        decide(HOSPITAL_C, reviewer, draft(), DEMO_POLICY, DEMO_NOW)
 
 
 @pytest.mark.parametrize(
@@ -148,7 +158,7 @@ def test_only_an_application_in_human_review_can_be_decided(status):
     )
 
     with pytest.raises(NotAwaitingReview):
-        decide(application, OLFA, draft(), DEMO_NOW)
+        decide(application, OLFA, draft(), DEMO_POLICY, DEMO_NOW)
 
 
 def test_not_awaiting_review_is_checked_before_the_reviewer():
@@ -157,7 +167,7 @@ def test_not_awaiting_review_is_checked_before_the_reviewer():
     )
 
     with pytest.raises(NotAwaitingReview):
-        decide(approved, None, draft(), DEMO_NOW)
+        decide(approved, None, draft(), DEMO_POLICY, DEMO_NOW)
 
 
 def test_findings_count_and_completeness():

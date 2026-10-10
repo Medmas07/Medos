@@ -179,6 +179,29 @@
       "decisionId": null
     }
   ],
+  "policies": [
+    {
+      "id": "pol-governance-v1",
+      "version": 1,
+      "effectiveAt": "2025-01-01T00:00:00+01:00",
+      "title": "Politique de gouvernance de démonstration, version 1",
+      "review": {
+        "minimumRationaleLength": 20
+      },
+      "synchronization": {
+        "maximumDurationDays": 365,
+        "consentBases": {
+          "patient_grant": "verified",
+          "signed_consent_form": "manual",
+          "emergency_override": "manual"
+        }
+      },
+      "research": {
+        "maximumValidityMonths": 12,
+        "minimumCellSize": 10
+      }
+    }
+  ],
   "decisions": [
     {
       "id": "dec-hospital-a",
@@ -187,6 +210,7 @@
       "outcome": "approved",
       "decidedById": "usr-olfa",
       "decidedAt": "2025-01-28T11:00:00+01:00",
+      "policyId": "pol-governance-v1",
       "rationale": "Dossier complet et conforme à la charte de gouvernance.",
       "conditions": [],
       "validUntil": null
@@ -198,6 +222,7 @@
       "outcome": "approved",
       "decidedById": "usr-olfa",
       "decidedAt": "2025-02-17T11:00:00+01:00",
+      "policyId": "pol-governance-v1",
       "rationale": "Dossier complet et conforme à la charte de gouvernance.",
       "conditions": [],
       "validUntil": null
@@ -209,6 +234,7 @@
       "outcome": "approved",
       "decidedById": "usr-olfa",
       "decidedAt": "2025-05-06T11:00:00+01:00",
+      "policyId": "pol-governance-v1",
       "rationale": "Cabinet admis avec un nœud allégé.",
       "conditions": [],
       "validUntil": null
@@ -220,6 +246,7 @@
       "outcome": "approved",
       "decidedById": "usr-olfa",
       "decidedAt": "2025-12-12T14:30:00+01:00",
+      "policyId": "pol-governance-v1",
       "rationale": "Finalité de soins, périmètre limité, autorisation de la patiente.",
       "conditions": ["Périmètre limité aux consultations."],
       "validUntil": "2026-03-12T14:30:00+01:00"
@@ -231,6 +258,7 @@
       "outcome": "rejected",
       "decidedById": "usr-olfa",
       "decidedAt": "2026-08-05T10:00:00+01:00",
+      "policyId": "pol-governance-v1",
       "rationale": "Finalité de recherche incompatible avec une synchronisation de soins et absence d'autorisation du patient. Utiliser une demande d'accès recherche.",
       "conditions": [],
       "validUntil": null
@@ -242,6 +270,7 @@
       "outcome": "approved",
       "decidedById": "usr-olfa",
       "decidedAt": "2026-07-20T15:00:00+01:00",
+      "policyId": "pol-governance-v1",
       "rationale": "Protocole conforme. Exécution compute-to-data uniquement, résultats agrégés avec effectif minimal de 10.",
       "conditions": ["Aucune donnée individuelle en sortie.", "Effectif minimal de 10 par cellule."],
       "validUntil": "2027-07-20T15:00:00+01:00",

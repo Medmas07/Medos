@@ -171,4 +171,5 @@ def _decision(raw: dict) -> ResearchDecision:
         approved_variables=tuple(authorization.get("approvedVariables", ())),
         minimum_cell_size=authorization.get("minimumCellSize"),
         valid_until=valid_until,
+        policy_ref=raw["policyId"],
     )

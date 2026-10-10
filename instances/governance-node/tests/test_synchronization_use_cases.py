@@ -26,6 +26,7 @@ from domain.synchronization import (
     SyncDecisionDraft,
     SynchronizationDecision,
 )
+from tests.test_policy import DEMO_POLICIES
 from tests.conftest import DEMO_NOW
 from tests.test_audit_use_cases import FakeAuditTrail
 from tests.test_synchronization import GRANT_A, PURPOSE, SYNC_001
@@ -149,7 +150,12 @@ def test_organization_approval_comes_from_hospital_approvals():
 
     def organizations(applications):
         view = get_request(
-            "sync-001", store, FakeGrants(), applications, lambda: DEMO_NOW
+            "sync-001",
+            store,
+            FakeGrants(),
+            applications,
+            DEMO_POLICIES,
+            lambda: DEMO_NOW,
         )
         return view.checks[0].state
 
@@ -179,7 +185,9 @@ def test_submit_then_decide_then_check():
         DEMO_NOW,
     )
 
-    view = get_request("sync-001", store, FakeGrants(), APPROVED, lambda: DEMO_NOW)
+    view = get_request(
+        "sync-001", store, FakeGrants(), APPROVED, DEMO_POLICIES, lambda: DEMO_NOW
+    )
     assert (view.status, view.max_approved_days) == (RequestStatus.PENDING, 13)
 
     decision = decide_request(
@@ -190,6 +198,7 @@ def test_submit_then_decide_then_check():
         FakeReviewers(),
         FakeGrants(),
         APPROVED,
+        DEMO_POLICIES,
         audit,
         lambda: DEMO_NOW,
     )
@@ -251,7 +260,9 @@ def test_unknown_requests_and_decisions():
     audit = FakeAuditTrail()
 
     with pytest.raises(RequestNotFound):
-        get_request("sync-404", store, FakeGrants(), APPROVED, lambda: DEMO_NOW)
+        get_request(
+            "sync-404", store, FakeGrants(), APPROVED, DEMO_POLICIES, lambda: DEMO_NOW
+        )
     with pytest.raises(RequestNotFound):
         decide_request(
             "sync-404",
@@ -261,6 +272,7 @@ def test_unknown_requests_and_decisions():
             FakeReviewers(),
             FakeGrants(),
             APPROVED,
+            DEMO_POLICIES,
             audit,
             lambda: DEMO_NOW,
         )
@@ -279,7 +291,12 @@ def test_grant_directory_port_is_used_for_the_consent_check():
             return None
 
     view = get_request(
-        "sync-001", FakeSyncStore([SYNC_001]), NoGrants(), APPROVED, lambda: DEMO_NOW
+        "sync-001",
+        FakeSyncStore([SYNC_001]),
+        NoGrants(),
+        APPROVED,
+        DEMO_POLICIES,
+        lambda: DEMO_NOW,
     )
 
     assert view.checks[1].state is CheckState.FAIL

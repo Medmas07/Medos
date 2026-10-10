@@ -9,6 +9,7 @@ from application.audit import AUTHORITY_ORGANIZATION_REF, AuditTrail, record
 from application.hospital_approval import HospitalApplicationStore, ReviewerDirectory
 from domain.audit import AuditAction, AuditDomain, AuditOutcome, SubjectType
 from domain.hospital_application import ApplicationStatus
+from domain.policy import PolicyHistory
 from domain.synchronization import (
     AuthorizationCheck,
     Check,
@@ -81,6 +82,7 @@ def _context(
     request: SynchronizationRequest,
     grants: PatientGrantDirectory,
     applications: HospitalApplicationStore,
+    policies: PolicyHistory,
     now: datetime,
 ) -> ReviewContext:
     # Organizations approved by this Node's own hospital approval decisions (HC-131).
@@ -90,7 +92,9 @@ def _context(
         if a.status is ApplicationStatus.APPROVED
     )
     ref = request.consent.access_grant_ref
-    return ReviewContext(approved, grants.grant(ref) if ref else None, now)
+    return ReviewContext(
+        approved, grants.grant(ref) if ref else None, now, policies.in_effect(now)
+    )
 
 
 def list_requests(
@@ -113,13 +117,15 @@ def get_request(
     store: SynchronizationStore,
     grants: PatientGrantDirectory,
     applications: HospitalApplicationStore,
+    policies: PolicyHistory,
     clock: Callable[[], datetime],
 ) -> RequestView:
+    """Checked under the governance policy in effect now."""
     request = store.request(request_ref)
     if request is None:
         raise RequestNotFound(request_ref)
     now = clock()
-    context = _context(request, grants, applications, now)
+    context = _context(request, grants, applications, policies, now)
     decision = _decision_of(request, store)
     return RequestView(
         request,
@@ -180,9 +186,11 @@ def decide_request(
     reviewers: ReviewerDirectory,
     grants: PatientGrantDirectory,
     applications: HospitalApplicationStore,
+    policies: PolicyHistory,
     audit: AuditTrail,
     clock: Callable[[], datetime],
 ) -> SynchronizationDecision:
+    """Decided under the governance policy in effect now, which it cites."""
     request = store.request(request_ref)
     if request is None:
         raise RequestNotFound(request_ref)
@@ -191,7 +199,7 @@ def decide_request(
         _decision_of(request, store),
         reviewers.reviewer(reviewer_ref),
         draft,
-        _context(request, grants, applications, clock()),
+        _context(request, grants, applications, policies, clock()),
     )
     store.record(decided, decision)
     record(

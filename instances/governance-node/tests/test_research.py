@@ -27,6 +27,7 @@ from domain.research import (
     eligible_organizations,
     status_at,
 )
+from tests.test_policy import DEMO_POLICY
 from tests.conftest import DEMO_NOW
 
 APPROVED_ORGS = frozenset({"org-hospital-a", "org-hospital-b", "org-private-practice"})
@@ -67,7 +68,7 @@ REJECT = ResearchDecisionDraft(
 
 def issue_fields(draft, request=RAR, orgs=APPROVED_ORGS) -> list[str]:
     with pytest.raises(InvalidDecision) as raised:
-        decide(request, None, OLFA, draft, orgs, DEMO_NOW)
+        decide(request, None, OLFA, draft, orgs, DEMO_POLICY, DEMO_NOW)
     return [i.field for i in raised.value.issues]
 
 
@@ -94,7 +95,9 @@ def test_checks_fail_without_protocol_or_approved_participant():
 
 
 def test_approval_narrows_in_the_request_order():
-    decision, decided = decide(RAR, None, OLFA, APPROVE, APPROVED_ORGS, DEMO_NOW)
+    decision, decided = decide(
+        RAR, None, OLFA, APPROVE, APPROVED_ORGS, DEMO_POLICY, DEMO_NOW
+    )
 
     assert decision.decision_ref == decided.decision_ref == "dec-rar-001"
     assert decision.approved_organization_refs == ("org-hospital-a", "org-hospital-b")
@@ -120,7 +123,7 @@ def test_validity_is_counted_in_calendar_months(start, months, end):
 
 
 def test_rejection_authorizes_nothing():
-    decision, _ = decide(RAR, None, OLFA, REJECT, frozenset(), DEMO_NOW)
+    decision, _ = decide(RAR, None, OLFA, REJECT, frozenset(), DEMO_POLICY, DEMO_NOW)
 
     assert (decision.approved_variables, decision.valid_until) == ((), None)
     assert status_at(decision, DEMO_NOW) is RequestStatus.REJECTED
@@ -174,21 +177,31 @@ def test_approval_while_a_check_fails_is_refused():
 )
 def test_only_an_uninvolved_governance_reviewer_decides(reviewer):
     with pytest.raises(ReviewerNotAllowed):
-        decide(RAR, None, reviewer, APPROVE, APPROVED_ORGS, DEMO_NOW)
+        decide(RAR, None, reviewer, APPROVE, APPROVED_ORGS, DEMO_POLICY, DEMO_NOW)
 
 
 def test_a_reviewer_who_submitted_may_not_decide():
     submitted_by_reviewer = replace(RAR, submitted_by_ref="usr-olfa")
 
     with pytest.raises(ReviewerNotAllowed):
-        decide(submitted_by_reviewer, None, OLFA, APPROVE, APPROVED_ORGS, DEMO_NOW)
+        decide(
+            submitted_by_reviewer,
+            None,
+            OLFA,
+            APPROVE,
+            APPROVED_ORGS,
+            DEMO_POLICY,
+            DEMO_NOW,
+        )
 
 
 def test_a_decided_request_is_not_under_review():
-    decision, decided = decide(RAR, None, OLFA, APPROVE, APPROVED_ORGS, DEMO_NOW)
+    decision, decided = decide(
+        RAR, None, OLFA, APPROVE, APPROVED_ORGS, DEMO_POLICY, DEMO_NOW
+    )
 
     with pytest.raises(NotUnderReview, match="rar-001 is approved"):
-        decide(decided, decision, OLFA, REJECT, APPROVED_ORGS, DEMO_NOW)
+        decide(decided, decision, OLFA, REJECT, APPROVED_ORGS, DEMO_POLICY, DEMO_NOW)
 
 
 @pytest.mark.parametrize(
@@ -237,7 +250,7 @@ JOB_001 = JobAsk(
 
 
 def approved():
-    return decide(RAR, None, OLFA, APPROVE, APPROVED_ORGS, DEMO_NOW)
+    return decide(RAR, None, OLFA, APPROVE, APPROVED_ORGS, DEMO_POLICY, DEMO_NOW)
 
 
 def test_the_approval_authorizes_job_001():
@@ -305,7 +318,9 @@ def test_a_narrower_population_is_covered():
 
 
 def test_a_rejection_denies():
-    decision, request = decide(RAR, None, OLFA, REJECT, APPROVED_ORGS, DEMO_NOW)
+    decision, request = decide(
+        RAR, None, OLFA, REJECT, APPROVED_ORGS, DEMO_POLICY, DEMO_NOW
+    )
 
     assert check_authorization(decision, request, JOB_001, DEMO_NOW).reason is (
         DenialReason.NOT_APPROVED

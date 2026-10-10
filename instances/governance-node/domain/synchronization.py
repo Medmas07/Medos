@@ -3,7 +3,9 @@
 Same review rules as the Governance Portal's synchronization form (HC-076), enforced
 here because the Governance Node, not a company-managed portal, decides. An approval is
 a temporary authorization that the Federation Service checks before each exchange
-(contracts/federation/sync-authorization-check.v1.yaml).
+(contracts/federation/sync-authorization-check.v1.yaml). The consent bases accepted, how
+each is checked, the longest authorization, and the minimum rationale length come from
+the governance policy in effect (HC-135), which the decision cites.
 """
 
 import math
@@ -14,15 +16,18 @@ from enum import Enum
 
 from domain.hospital_approval import (
     GOVERNANCE_REVIEWER_ROLE,
-    MIN_RATIONALE_LENGTH,
     InvalidDecision,
     Issue,
     Outcome,
     Reviewer,
     ReviewerNotAllowed,
+    rationale_issues,
 )
+from domain.policy import MAX_SYNC_DURATION_DAYS, ConsentMode, GovernancePolicy
 
-MAX_DURATION_DAYS = 365
+# The contract's limit on a requested duration; the policy may approve less.
+MAX_DURATION_DAYS = MAX_SYNC_DURATION_DAYS
+
 _OPAQUE_REF = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}")
 _REQUEST_REF = re.compile(r"sync-[A-Za-z0-9._:-]{1,123}")
 
@@ -164,6 +169,8 @@ class SynchronizationDecision:
     # Set for an approval only: the temporary authorization.
     approved_days: int | None = None
     valid_until: datetime | None = None
+    # The governance policy version it was decided under (HC-135).
+    policy_ref: str | None = None
 
     def __post_init__(self) -> None:
         approved = self.outcome is Outcome.APPROVED
@@ -198,6 +205,8 @@ class ReviewContext:
     # The grant named by the consent; None if it names none or an unknown one.
     grant: PatientGrant | None
     now: datetime
+    # The governance policy in effect at `now`.
+    policy: GovernancePolicy
 
 
 def status_at(
@@ -212,13 +221,23 @@ def status_at(
     return RequestStatus.ACTIVE if now < decision.valid_until else RequestStatus.EXPIRED
 
 
-def max_approved_days(request: SynchronizationRequest, context: ReviewContext) -> int:
-    """The requested duration, never beyond the patient grant. 0: none possible."""
+def _grant_days_left(
+    request: SynchronizationRequest, context: ReviewContext
+) -> int | None:
     if request.consent.basis is not ConsentBasis.PATIENT_GRANT or context.grant is None:
-        return request.duration_days
+        return None
     seconds_left = (context.grant.expires_at - context.now).total_seconds()
-    days_left = math.floor(seconds_left / timedelta(days=1).total_seconds())
-    return max(0, min(request.duration_days, days_left))
+    return max(0, math.floor(seconds_left / timedelta(days=1).total_seconds()))
+
+
+def max_approved_days(request: SynchronizationRequest, context: ReviewContext) -> int:
+    """The requested duration, never beyond the policy's longest authorization or the
+    patient grant. 0: none possible."""
+    limits = [request.duration_days, context.policy.maximum_sync_duration_days]
+    grant_days = _grant_days_left(request, context)
+    if grant_days is not None:
+        limits.append(grant_days)
+    return min(limits)
 
 
 def _grant_problem(
@@ -254,11 +273,20 @@ def checks(request: SynchronizationRequest, context: ReviewContext) -> list[Chec
     )
 
     basis = request.consent.basis
+    policy = context.policy
+    mode = policy.consent_mode(basis.value)
     if basis is ConsentBasis.NONE:
         consent = Check(
             "consent", CheckState.FAIL, "No patient grant or legal basis is given."
         )
-    elif basis is ConsentBasis.PATIENT_GRANT:
+    elif mode is None:
+        consent = Check(
+            "consent",
+            CheckState.FAIL,
+            f"Governance policy v{policy.version} does not accept {basis.value} as a "
+            "consent basis.",
+        )
+    elif mode is ConsentMode.VERIFIED:
         problem = _grant_problem(request, context)
         consent = Check(
             "consent",
@@ -282,15 +310,21 @@ def checks(request: SynchronizationRequest, context: ReviewContext) -> list[Chec
 
     most = max_approved_days(request, context)
     asked = request.duration_days
+    grant_days = _grant_days_left(request, context)
     if most >= asked:
         detail = f"{asked} days requested."
-    elif most >= 1:
+    elif most < 1:
+        detail = "No duration is possible before the patient grant ends."
+    elif grant_days is not None and grant_days == most:
         detail = (
             f"{asked} days requested, limited to {most} days by the end of the "
             "patient grant."
         )
     else:
-        detail = "No duration is possible before the patient grant ends."
+        detail = (
+            f"{asked} days requested, limited to {most} days by governance policy "
+            f"v{policy.version}."
+        )
     duration = Check(
         "duration", CheckState.PASS if most >= 1 else CheckState.FAIL, detail
     )
@@ -315,14 +349,7 @@ def _check_reviewer(request: SynchronizationRequest, reviewer: Reviewer | None) 
 def review_issues(
     request: SynchronizationRequest, draft: SyncDecisionDraft, context: ReviewContext
 ) -> list[Issue]:
-    issues = []
-    if len(draft.rationale.strip()) < MIN_RATIONALE_LENGTH:
-        issues.append(
-            Issue(
-                "rationale",
-                f"The rationale must have at least {MIN_RATIONALE_LENGTH} characters.",
-            )
-        )
+    issues = rationale_issues(draft.rationale, context.policy)
     if draft.outcome is Outcome.REJECTED:
         if _clean(draft.conditions):
             issues.append(Issue("conditions", "A rejection carries no condition."))
@@ -397,6 +424,7 @@ def decide(
         conditions=_clean(draft.conditions),
         approved_days=draft.approved_days if approved else None,
         valid_until=now + timedelta(days=draft.approved_days) if approved else None,
+        policy_ref=context.policy.policy_ref,
     )
     return decision, replace(request, decision_ref=decision.decision_ref)
 

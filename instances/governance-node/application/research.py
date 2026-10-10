@@ -9,6 +9,7 @@ from application.audit import AUTHORITY_ORGANIZATION_REF, AuditTrail, record
 from application.hospital_approval import HospitalApplicationStore, ReviewerDirectory
 from domain.audit import AuditAction, AuditDomain, AuditOutcome, SubjectType
 from domain.hospital_application import ApplicationStatus
+from domain.policy import PolicyHistory
 from domain.research import (
     AuthorizationAnswer,
     Check,
@@ -147,19 +148,23 @@ def decide_request(
     store: ResearchStore,
     reviewers: ReviewerDirectory,
     applications: HospitalApplicationStore,
+    policies: PolicyHistory,
     audit: AuditTrail,
     clock: Callable[[], datetime],
 ) -> ResearchDecision:
+    """Decided under the governance policy in effect now, which it cites."""
     request = store.request(request_ref)
     if request is None:
         raise RequestNotFound(request_ref)
+    now = clock()
     decision, decided = decide(
         request,
         _decision_of(request, store),
         reviewers.reviewer(reviewer_ref),
         draft,
         _approved_organizations(applications),
-        clock(),
+        policies.in_effect(now),
+        now,
     )
     store.record(decided, decision)
     record(

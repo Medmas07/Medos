@@ -164,4 +164,5 @@ def _decision(raw: dict) -> SynchronizationDecision:
         conditions=tuple(raw["conditions"]),
         approved_days=approved_days,
         valid_until=valid_until,
+        policy_ref=raw["policyId"],
     )

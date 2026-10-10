@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Governance Node Hospital Approval
-  version: 1.0.0
+  version: 1.1.0
   description: |
     Contract HC-131, version 1. The Governance / Ethics Authority's hospital
     approval interface: list the hospital applications it holds, read one
@@ -171,6 +171,7 @@ paths:
                     outcome: approved
                     decided_by_ref: usr-olfa
                     decided_at: "2026-10-10T10:00:00+01:00"
+                    policy_ref: pol-governance-v1
                     rationale: Dossier conforme, sous réserve de l'attestation d'assurance.
                     conditions:
                       - Transmettre l'attestation d'assurance sous 30 jours.
@@ -265,6 +266,7 @@ paths:
                     outcome: approved
                     decided_by_ref: usr-olfa
                     decided_at: "2025-02-17T11:00:00+01:00"
+                    policy_ref: pol-governance-v1
                     rationale: Dossier complet et conforme à la charte de gouvernance.
                     conditions: []
         "404":
@@ -456,7 +458,7 @@ components:
         outcome:
           $ref: "#/components/schemas/Outcome"
         rationale:
-          description: At least 20 characters once trimmed.
+          description: At least the governance policy's `review.minimum_rationale_length` once trimmed (20 in demo policy v1, never less).
           type: string
           maxLength: 2000
         conditions:
@@ -481,6 +483,7 @@ components:
         - outcome
         - decided_by_ref
         - decided_at
+        - policy_ref
         - rationale
         - conditions
       properties:
@@ -498,6 +501,12 @@ components:
           $ref: "#/components/schemas/OpaqueRef"
         decided_at:
           $ref: "#/components/schemas/Timestamp"
+        policy_ref:
+          description: |
+            The governance policy version the decision was made under
+            (governance-policies.v1.yaml, HC-135). A later version never
+            changes a decision already made.
+          $ref: "#/components/schemas/OpaqueRef"
         rationale:
           type: string
         conditions:

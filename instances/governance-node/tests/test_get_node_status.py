@@ -16,6 +16,7 @@ def test_status_names_the_node_and_its_capabilities():
         "synchronization",
         "research",
         "audit",
+        "policy",
     )
     assert status.notice == SKELETON_NOTICE
 
