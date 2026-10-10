@@ -1,0 +1,15 @@
+{
+  "fictional": true,
+  "notice": "Notifications fictives (MOCKED). Aucune notification n'est réellement envoyée.",
+  "notifications": [
+    { "id": "notif-001", "recipientId": "pat-a", "type": "access_granted", "title": "Accès accordé", "body": "Dr Youssef Gharbi peut consulter votre historique jusqu'au 24/10/2026.", "createdAt": "2026-10-10T09:00:00+01:00", "read": false, "relatedId": "grant-a-drx" },
+    { "id": "notif-002", "recipientId": "pat-a", "type": "new_record", "title": "Nouveau bilan disponible", "body": "Un bilan biologique de l'Hôpital Régional Oued Zitoun a été ajouté à votre historique.", "createdAt": "2026-05-21T08:00:00+01:00", "read": true, "relatedId": "lab-b-2026-leila" },
+    { "id": "notif-003", "recipientId": "rel-sami", "type": "delegation_granted", "title": "Accès délégué", "body": "Leïla Mansouri vous a délégué l'accès à ses consultations et traitements.", "createdAt": "2026-06-01T10:00:00+01:00", "read": true, "relatedId": "deleg-a-sami" },
+    { "id": "notif-004", "recipientId": "pat-c", "type": "request_status", "title": "Demande en cours d'analyse", "body": "Votre demande de restriction d'usage est en cours d'analyse.", "createdAt": "2026-09-29T09:00:00+01:00", "read": false, "relatedId": "rrq-c-research" },
+    { "id": "notif-005", "recipientId": "clin-x", "type": "alert", "title": "Résultat anormal", "body": "HbA1c au-dessus de la plage de référence pour Karim Haddad.", "createdAt": "2026-09-30T16:00:00+01:00", "read": false, "relatedId": "alert-b-hba1c" },
+    { "id": "notif-006", "recipientId": "usr-olfa", "type": "review_requested", "title": "Nouvelle demande de synchronisation", "body": "HU Bab Ennour demande une synchronisation avec HR Oued Zitoun.", "createdAt": "2026-10-10T09:05:00+01:00", "read": false, "relatedId": "sync-001" },
+    { "id": "notif-007", "recipientId": "usr-olfa", "type": "review_requested", "title": "Candidature d'établissement", "body": "Le Centre Hospitalier Cap Azur attend une revue humaine.", "createdAt": "2026-10-06T15:25:00+01:00", "read": false, "relatedId": "app-hospital-c" },
+    { "id": "notif-008", "recipientId": "usr-mehdi", "type": "request_status", "title": "Revue humaine en attente", "body": "Votre candidature a passé les vérifications automatiques avec des remarques. Une revue humaine est en cours.", "createdAt": "2026-10-06T15:25:00+01:00", "read": false, "relatedId": "app-hospital-c" },
+    { "id": "notif-009", "recipientId": "usr-aymen", "type": "job_completed", "title": "Exécution terminée", "body": "Le résultat contrôlé du projet « Facteurs de risque cardiométaboliques » est disponible.", "createdAt": "2026-09-12T10:05:30+01:00", "read": true, "relatedId": "job-001" }
+  ]
+}

@@ -30,6 +30,7 @@ See the [technical architecture](docs/architecture.md).
 - `integrations/`: SciAgents and future company/platform integrations.
 - `contracts/`: API, event, federation, and technology-neutral message definitions.
 - `design-system/`: web design tokens and React components shared by the web portals.
+- `demo-data/`: canonical fictional demo dataset reused by every product.
 - `infrastructure/`, `production/`, `iot/`: environment-specific or optional technical assets.
 - `docs/`: product truth, architecture, status, planning, ADRs, and guidance.
 - `tests/`: future cross-system integration and E2E validation.

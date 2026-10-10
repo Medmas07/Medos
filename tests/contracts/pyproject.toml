@@ -1,0 +1,7 @@
+# Tool configuration only; dependencies live in requirements.txt (ADR-0003).
+
+[tool.pytest.ini_options]
+testpaths = ["."]
+
+[tool.ruff]
+target-version = "py312"

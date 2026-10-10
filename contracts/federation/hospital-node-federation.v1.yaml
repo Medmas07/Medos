@@ -1,0 +1,485 @@
+openapi: 3.1.0
+info:
+  title: Hospital Node Federation Interface
+  version: 1.0.0
+  description: |
+    Contract HC-140, version 1. The interface every Hospital Node exposes to
+    the Federation Service. A node describes itself and answers authorized,
+    scoped queries about one patient from the clinical data it holds.
+
+    Boundary rules carried by this contract:
+
+    - **The node keeps control of its data.** It answers from its own
+      storage through its own DMI Adapter. Nothing outside the node reads
+      its database, and the node returns only entries inside the requested
+      scope.
+    - **Every query carries an authorization, and the node enforces it.**
+      `authorization` names a Governance-backed basis: a patient access
+      grant or an approved synchronization decision. The node denies by
+      default (`403 authorization_denied`) when the basis is unknown,
+      expired, revoked, issued to someone else, or narrower than the
+      requested scope or purpose. How the node verifies the basis with the
+      Governance Node, and the token or signature format, are OPEN (HC-144).
+    - **An empty result is not an empty history.** `entries: []` means the
+      node disclosed nothing inside the scope. The node answers the same way
+      for a patient it does not know, so a query does not reveal whether a
+      patient is registered at that hospital.
+    - **Every entry names its source.** Each entry carries the organization
+      and node that hold it, so aggregated views keep ownership visible.
+    - **Every query is auditable.** The node records `query_id`, requester,
+      purpose, scope, and authorization in its own audit trail. The audit
+      event format is not part of this version.
+
+    Patient identity: `patient_ref` is the ecosystem-level opaque reference.
+    Each node maps it to its local identifier. How identities are matched
+    across organizations is OPEN (docs/OPEN_QUESTIONS.md).
+
+    Every component schema except `NodeDescriptor`, `NodeQueryRequest`,
+    and `NodeQueryResult` is shared with federated-patient-query.v1.yaml
+    and must stay identical. A repository test checks this.
+
+    Status: this contract has no implementation. Transport, node identity,
+    and trust establishment are OPEN. The first mock is HC-141.
+paths:
+  /v1/federation/node:
+    get:
+      operationId: describeNode
+      summary: Describe this node and what it can answer.
+      responses:
+        "200":
+          description: Node identity and capabilities.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NodeDescriptor"
+              examples:
+                hospitalB:
+                  summary: Fictional demo — Hospital B's node.
+                  value:
+                    node_ref: node-hospital-b
+                    organization_ref: org-hospital-b
+                    contract_versions: ["1.0"]
+                    status: online
+                    supported_scopes: [encounters, medications, lab_reports]
+                    mocked: true
+                privatePracticeDegraded:
+                  summary: Fictional demo — the private practice node is up but its DMI is disconnected.
+                  value:
+                    node_ref: node-private-practice
+                    organization_ref: org-private-practice
+                    contract_versions: ["1.0"]
+                    status: degraded
+                    supported_scopes: [encounters, medications, lab_reports]
+                    mocked: true
+  /v1/federation/queries:
+    post:
+      operationId: queryNode
+      summary: Answer an authorized, scoped query about one patient.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NodeQueryRequest"
+            examples:
+              drXPatientA:
+                summary: Fictional demo — Dr. X asks for Patient A's medications under Patient A's grant.
+                value:
+                  query_id: 0b9f6c2e-3d41-4a8e-9f57-1c2d3e4f5a6b
+                  patient_ref: pat-a
+                  scope: [medications]
+                  purpose: Consultation de cardiologie
+                  requested_by:
+                    organization_ref: org-hospital-a
+                    actor_ref: clin-x
+                  authorization:
+                    basis: patient_access_grant
+                    ref: grant-a-drx
+                    expires_at: "2026-10-24T09:00:00+01:00"
+      responses:
+        "200":
+          description: |
+            Entries inside the authorized scope. May be empty, which means
+            nothing was disclosed, not that the patient has no history.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NodeQueryResult"
+              examples:
+                medicationFound:
+                  summary: Fictional demo — Hospital B returns Medication A for Patient A.
+                  value:
+                    query_id: 0b9f6c2e-3d41-4a8e-9f57-1c2d3e4f5a6b
+                    contract_version: "1.0"
+                    node_ref: node-hospital-b
+                    organization_ref: org-hospital-b
+                    patient_ref: pat-a
+                    entries:
+                      - entry_ref: med-b-leila-coagulix
+                        record_type: medication
+                        occurred_at: "2026-05-20T00:00:00+01:00"
+                        source:
+                          organization_ref: org-hospital-b
+                          node_ref: node-hospital-b
+                        medication:
+                          code: MED-COAGULIX
+                          dosage: 5 mg, 2 fois par jour
+                          status: active
+                          start_date: "2026-05-20"
+                          end_date: null
+                          prescribed_by_ref: clin-ines
+                    provenance:
+                      mocked: true
+                      answered_at: "2026-10-10T10:00:02+01:00"
+                nothingDisclosed:
+                  summary: No entry inside the scope, or the patient is unknown here. Both look the same.
+                  value:
+                    query_id: 0b9f6c2e-3d41-4a8e-9f57-1c2d3e4f5a6b
+                    contract_version: "1.0"
+                    node_ref: node-hospital-a
+                    organization_ref: org-hospital-a
+                    patient_ref: pat-a
+                    entries: []
+                    provenance:
+                      mocked: true
+                      answered_at: "2026-10-10T10:00:01+01:00"
+        "400":
+          description: The request does not match this contract.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                invalidRequest:
+                  value:
+                    type: about:blank
+                    title: Invalid federation query
+                    status: 400
+                    detail: "Invalid or missing fields: scope"
+                    code: invalid_request
+        "403":
+          description: |
+            The node refused the authorization. No entry is returned, and the
+            node does not say whether the patient is known.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                expiredGrant:
+                  value:
+                    type: about:blank
+                    title: Federation query not authorized
+                    status: 403
+                    detail: The authorization has expired.
+                    code: authorization_denied
+        "503":
+          description: |
+            The node cannot answer, for example because its DMI is
+            disconnected. Consumers must show that this source was not
+            reached, never that it has no records.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                dmiDisconnected:
+                  value:
+                    type: about:blank
+                    title: Node unavailable
+                    status: 503
+                    detail: The local DMI is disconnected.
+                    code: node_unavailable
+components:
+  schemas:
+    NodeDescriptor:
+      type: object
+      additionalProperties: false
+      required: [node_ref, organization_ref, contract_versions, status, supported_scopes, mocked]
+      properties:
+        node_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        contract_versions:
+          description: Versions of this contract the node answers.
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            pattern: "^[0-9]+\\.[0-9]+$"
+        status:
+          description: "`degraded` means the node runs but may not reach its local data."
+          type: string
+          enum: [online, degraded]
+        supported_scopes:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/ScopeItem"
+        mocked:
+          description: True when the node answers from fixtures rather than real local data.
+          type: boolean
+
+    NodeQueryRequest:
+      type: object
+      additionalProperties: false
+      required: [query_id, patient_ref, scope, purpose, requested_by, authorization]
+      properties:
+        query_id:
+          description: Correlation id set by the Federation Service. The node records it in its audit trail.
+          type: string
+          format: uuid
+        patient_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        scope:
+          $ref: "#/components/schemas/Scope"
+        purpose:
+          $ref: "#/components/schemas/Purpose"
+        requested_by:
+          $ref: "#/components/schemas/Requester"
+        authorization:
+          $ref: "#/components/schemas/Authorization"
+
+    NodeQueryResult:
+      type: object
+      additionalProperties: false
+      required: [query_id, contract_version, node_ref, organization_ref, patient_ref, entries, provenance]
+      properties:
+        query_id:
+          type: string
+          format: uuid
+        contract_version:
+          const: "1.0"
+        node_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        patient_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/Entry"
+        provenance:
+          type: object
+          additionalProperties: false
+          required: [mocked, answered_at]
+          properties:
+            mocked:
+              type: boolean
+            answered_at:
+              type: string
+              format: date-time
+
+    Purpose:
+      description: Why the data is requested. It must match the purpose of the authorization.
+      type: string
+      minLength: 1
+      maxLength: 200
+
+    Requester:
+      description: Who asks, as opaque references. The actor is the accountable person.
+      type: object
+      additionalProperties: false
+      required: [organization_ref, actor_ref]
+      properties:
+        organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        actor_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+
+    Authorization:
+      description: |
+        The Governance-backed basis for the query. A reference, not a
+        credential: proof and verification are OPEN (HC-144).
+      type: object
+      additionalProperties: false
+      required: [basis, ref, expires_at]
+      properties:
+        basis:
+          type: string
+          enum: [patient_access_grant, synchronization_decision]
+        ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        expires_at:
+          type: string
+          format: date-time
+
+    Scope:
+      description: Record types requested. Never wider than the authorization.
+      type: array
+      minItems: 1
+      uniqueItems: true
+      items:
+        $ref: "#/components/schemas/ScopeItem"
+
+    ScopeItem:
+      type: string
+      enum: [encounters, medications, lab_reports]
+
+    Entry:
+      description: |
+        One record disclosed by the node that holds it. A wire shape for
+        authorized views, not the node's storage model. Mapping to FHIR is
+        OPEN.
+      type: object
+      required: [entry_ref, record_type, occurred_at, source]
+      properties:
+        entry_ref:
+          description: Reference to the record at its source.
+          allOf:
+            - $ref: "#/components/schemas/OpaqueRef"
+        record_type:
+          type: string
+          enum: [encounter, medication, lab_report]
+        occurred_at:
+          type: string
+          format: date-time
+        source:
+          $ref: "#/components/schemas/EntrySource"
+      oneOf:
+        - $ref: "#/components/schemas/EncounterEntry"
+        - $ref: "#/components/schemas/MedicationEntry"
+        - $ref: "#/components/schemas/LabReportEntry"
+
+    EntrySource:
+      description: The organization and node that hold the record.
+      type: object
+      additionalProperties: false
+      required: [organization_ref, node_ref]
+      properties:
+        organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        node_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+
+    EncounterEntry:
+      type: object
+      required: [record_type, encounter]
+      properties:
+        entry_ref: true
+        record_type:
+          const: encounter
+        occurred_at: true
+        source: true
+        encounter:
+          type: object
+          additionalProperties: false
+          required: [type, title, clinician_ref]
+          properties:
+            type:
+              type: string
+              minLength: 1
+            title:
+              type: string
+              minLength: 1
+            reason:
+              type: string
+            summary:
+              type: string
+            clinician_ref:
+              $ref: "#/components/schemas/OpaqueRef"
+      additionalProperties: false
+
+    MedicationEntry:
+      type: object
+      required: [record_type, medication]
+      properties:
+        entry_ref: true
+        record_type:
+          const: medication
+        occurred_at: true
+        source: true
+        medication:
+          type: object
+          additionalProperties: false
+          required: [code, status, start_date, end_date]
+          properties:
+            code:
+              description: Medication code as recorded at the source. The terminology is OPEN.
+              type: string
+              minLength: 1
+            dosage:
+              type: string
+            status:
+              type: string
+              enum: [active, stopped, unknown]
+            start_date:
+              type: string
+              format: date
+            end_date:
+              type: [string, "null"]
+              format: date
+            prescribed_by_ref:
+              $ref: "#/components/schemas/OpaqueRef"
+      additionalProperties: false
+
+    LabReportEntry:
+      type: object
+      required: [record_type, lab_report]
+      properties:
+        entry_ref: true
+        record_type:
+          const: lab_report
+        occurred_at: true
+        source: true
+        lab_report:
+          type: object
+          additionalProperties: false
+          required: [title, results]
+          properties:
+            title:
+              type: string
+              minLength: 1
+            results:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [test, value, unit, flag]
+                properties:
+                  test:
+                    type: string
+                    minLength: 1
+                  value:
+                    type: number
+                  unit:
+                    type: string
+                  reference_range:
+                    type: object
+                    additionalProperties: false
+                    required: [low, high]
+                    properties:
+                      low:
+                        type: number
+                      high:
+                        type: number
+                  flag:
+                    description: Flag as assigned at the source.
+                    type: string
+                    enum: [low, normal, high]
+      additionalProperties: false
+
+    OpaqueRef:
+      description: Opaque identifier. Must not contain a name or other direct identifier.
+      type: string
+      pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+
+    Problem:
+      description: RFC 9457 problem details.
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+          enum: [invalid_request, authorization_denied, node_unavailable, federation_unavailable]
