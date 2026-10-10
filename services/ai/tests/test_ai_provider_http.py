@@ -12,7 +12,7 @@ def test_ai_provider_reports_the_mock_explicitly():
         "provider_id": "deterministic-mock",
         "model_id": "none",
         "is_mock": True,
-        "supported_tasks": ["explanation", "extraction", "summarization"],
+        "supported_tasks": ["explanation", "extraction", "review", "summarization"],
         "notice": PROVIDER_NOTICE,
     }
 

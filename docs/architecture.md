@@ -67,7 +67,7 @@ PLANNED mobile product consuming authorized patient context for consultation and
 
 ### AI Services
 
-Python is CONFIRMED. Clinical extraction is IMPLEMENTED with Claude (Claude Agent SDK) as primary provider and a local Ollama model as fallback behind the provider-neutral `AiProvider` port ([ADR-0006](decisions/ADR-0006-ai-provider-strategy.md)); it is not clinically validated. Summarization, document review, medication explanations, prioritization explanations, and research assistance are PLANNED.
+Python is CONFIRMED. Clinical extraction is IMPLEMENTED with Claude (Claude Agent SDK) as primary provider and a local Ollama model as fallback behind the provider-neutral `AiProvider` port ([ADR-0006](decisions/ADR-0006-ai-provider-strategy.md)); it is not clinically validated. The LLM-assisted review of hospital onboarding dossiers is IMPLEMENTED (HC-154) through the same port: advisory findings that must cite the dossier, never an approval or rejection. Summarization, medication explanations, prioritization explanations, and research assistance are PLANNED.
 
 ### Federation
 
@@ -194,7 +194,7 @@ AI is advisory, replaceable through ports, and subject to appropriate human revi
 | Notification Service | PLANNED | No provider or runtime implementation; stack decided by ADR-0003. |
 | SciAgents Integration | IMPLEMENTED (contract D1, adapter D2), integration not VALIDATED | SciAgents exists externally. HC-170 v1.1 defines the two-concept research-only contract; HC-171 implements a server-side HTTP adapter with timeout/error/state/result/provenance mapping and process-local correlation. The Research Portal displays a MOCKED fixture investigation (HC-102) but does not call the adapter. Tests use HTTP test doubles; no live endpoint, authentication, durable state, SSE consumer, or Portal connection is validated. |
 | Immutable Audit Ledger | OPTIONAL / PLANNED | Governance-only concept; no adapter or ledger. |
-| AI Services | IMPLEMENTED (extraction) | FastAPI runtime (HC-150); `AiProvider` port (HC-151) with Claude, Ollama, and mock adapters plus a fallback chain (ADR-0006); clinical extraction contract v1 (HC-152) served by real providers (HC-153) or a fixture mode (MOCKED); not clinically validated. |
+| AI Services | IMPLEMENTED (extraction, hospital document review) | FastAPI runtime (HC-150); `AiProvider` port (HC-151) with Claude, Ollama, and mock adapters plus a fallback chain (ADR-0006); clinical extraction contract v1 (HC-152) served by real providers (HC-153) or a fixture mode (MOCKED); not clinically validated. Hospital document review contract v1 (HC-154): advisory, cited findings on onboarding dossiers from the same providers, or deterministic rules (MOCKED, opt-in); not validated, and no consumer calls it yet. |
 | Authentication and persistence | PLANNED | No implementation or selected technology. |
 | IoT | OPTIONAL | PlatformIO placeholder is prepared; hardware/framework/protocol are OPEN. |
 | GitHub templates/workflows | IMPLEMENTED | Templates and manual placeholder workflows exist; product CI is not configured. |
