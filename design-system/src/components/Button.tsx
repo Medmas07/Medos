@@ -3,7 +3,7 @@ import { cx } from '../cx'
 import { Spinner } from './States'
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
-export type ButtonSize = 'sm' | 'md'
+export type ButtonSize = 'sm' | 'md' | 'lg'
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant
@@ -13,15 +13,17 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants: Record<ButtonVariant, string> = {
-  primary: 'bg-brand-700 text-white shadow-sm hover:bg-brand-800',
-  secondary: 'bg-white text-slate-800 shadow-sm ring-1 ring-slate-300 ring-inset hover:bg-slate-50',
-  ghost: 'text-slate-700 hover:bg-slate-100',
-  danger: 'bg-danger-700 text-white shadow-sm hover:bg-danger-800',
+  primary: 'bg-primary text-on-primary shadow-card hover:bg-primary-hover',
+  secondary:
+    'bg-surface text-ink shadow-card ring-1 ring-line-strong ring-inset hover:bg-brand-50 hover:ring-brand-400',
+  ghost: 'text-ink-soft hover:bg-brand-50 hover:text-ink',
+  danger: 'bg-danger-600 text-white shadow-card hover:bg-danger-800 dark:hover:bg-danger-200',
 }
 
 const sizes: Record<ButtonSize, string> = {
-  sm: 'h-8 gap-1.5 px-3 text-xs',
-  md: 'h-10 gap-2 px-4 text-sm',
+  sm: 'h-9 gap-1.5 rounded-xl px-3 text-xs',
+  md: 'h-11 gap-2 rounded-xl px-4 text-sm',
+  lg: 'h-12 gap-2 rounded-2xl px-5 text-[15px]',
 }
 
 export function Button({
@@ -40,8 +42,9 @@ export function Button({
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={cx(
-        'inline-flex items-center justify-center rounded-md font-medium whitespace-nowrap transition-colors',
-        'disabled:cursor-not-allowed disabled:opacity-50',
+        'hc-press inline-flex items-center justify-center font-medium whitespace-nowrap select-none',
+        'transition-[background-color,color,box-shadow,transform] duration-150 ease-(--ease-out)',
+        'disabled:pointer-events-none disabled:opacity-50',
         variants[variant],
         sizes[size],
         className,

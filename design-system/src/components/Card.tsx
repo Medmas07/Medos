@@ -9,6 +9,8 @@ export interface CardProps {
   footer?: ReactNode
   /** Removes body padding, for edge-to-edge content such as tables. */
   flush?: boolean
+  /** Adds hover lift for cards that sit inside a link or button. */
+  interactive?: boolean
   children?: ReactNode
   className?: string
 }
@@ -19,6 +21,7 @@ export function Card({
   actions,
   footer,
   flush = false,
+  interactive = false,
   children,
   className,
 }: CardProps) {
@@ -26,22 +29,35 @@ export function Card({
   return (
     <section
       className={cx(
-        'overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xs',
+        'rounded-2xl border border-line bg-surface shadow-card',
+        interactive && 'hc-lift',
         className,
       )}
     >
       {hasHeader && (
-        <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3 border-b border-slate-200 px-5 py-4">
+        <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3 border-b border-line px-5 py-4">
           <div className="min-w-0">
             {title && <h2 className="text-base leading-6">{title}</h2>}
-            {description && <p className="mt-0.5 text-slate-600">{description}</p>}
+            {description && <p className="mt-0.5 text-ink-soft">{description}</p>}
           </div>
-          {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+          {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
         </header>
       )}
-      {children && <div className={flush ? undefined : 'px-5 py-4'}>{children}</div>}
+      {children && (
+        <div
+          className={cx(
+            flush ? 'overflow-hidden' : 'px-5 py-4',
+            flush && !hasHeader && 'rounded-t-2xl',
+            flush && !footer && 'rounded-b-2xl',
+          )}
+        >
+          {children}
+        </div>
+      )}
       {footer && (
-        <footer className="border-t border-slate-200 bg-slate-50 px-5 py-3">{footer}</footer>
+        <footer className="rounded-b-2xl border-t border-line bg-surface-muted px-5 py-3">
+          {footer}
+        </footer>
       )}
     </section>
   )

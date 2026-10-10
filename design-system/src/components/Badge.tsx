@@ -12,7 +12,7 @@ export interface BadgeProps {
 }
 
 const badgeTones: Record<Tone, string> = {
-  neutral: 'bg-slate-100 text-slate-700 ring-slate-200',
+  neutral: 'bg-surface-muted text-ink-soft ring-line',
   info: 'bg-info-50 text-info-700 ring-info-200',
   success: 'bg-success-50 text-success-700 ring-success-200',
   warning: 'bg-warning-50 text-warning-800 ring-warning-200',
@@ -21,7 +21,7 @@ const badgeTones: Record<Tone, string> = {
 }
 
 const dotTones: Record<Tone, string> = {
-  neutral: 'bg-slate-500',
+  neutral: 'bg-ink-muted',
   info: 'bg-info-600',
   success: 'bg-success-600',
   warning: 'bg-warning-600',
@@ -37,7 +37,7 @@ export function Badge({ tone = 'neutral', dot = false, children, className }: Ba
   return (
     <span
       className={cx(
-        'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ring-1 ring-inset',
+        'tabular inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium whitespace-nowrap ring-1 ring-inset',
         badgeTones[tone],
         className,
       )}
@@ -74,7 +74,7 @@ export function DemoBanner({
   return (
     <div
       role="note"
-      className="flex items-center justify-center gap-2 bg-demo-700 px-4 py-1.5 text-center text-xs font-medium text-white"
+      className="relative z-10 flex items-center justify-center gap-2 bg-demo-solid px-4 py-1.5 text-center text-xs font-medium text-white"
     >
       <FlaskIcon className="size-4 shrink-0" />
       <span>{children}</span>
