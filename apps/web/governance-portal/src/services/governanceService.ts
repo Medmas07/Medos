@@ -14,6 +14,7 @@ import type {
   ResearchAccessRequest,
   SynchronizationRequest,
 } from '../types/governance'
+import { reviewStore } from './reviewStore'
 
 const typedGovernance = governanceFixtures as unknown as {
   fictional: boolean
@@ -38,8 +39,10 @@ const allStaffAndClinicians = [
 ]
 
 export const governanceService = {
+  // Fixtures merged with the SIMULATED decisions recorded in this session (HC-073).
   getHospitalApplications(): HospitalApplication[] {
-    return typedGovernance.hospitalApplications
+    const simulated = reviewStore.getSnapshot().applications
+    return typedGovernance.hospitalApplications.map((app) => simulated[app.id] ?? app)
   },
 
   getSynchronizationRequests(): SynchronizationRequest[] {
@@ -51,11 +54,11 @@ export const governanceService = {
   },
 
   getDecisions(): GovernanceDecision[] {
-    return typedGovernance.decisions
+    return [...typedGovernance.decisions, ...reviewStore.getSnapshot().decisions]
   },
 
   getAuditEvents(): GovernanceAuditEvent[] {
-    return typedGovernance.auditEvents
+    return [...typedGovernance.auditEvents, ...reviewStore.getSnapshot().auditEvents]
   },
 
   getLedgerProofs(): LedgerProof[] {
@@ -103,7 +106,7 @@ export const governanceService = {
 
   getDecision(id: string | null): GovernanceDecision | undefined {
     if (!id) return undefined
-    return typedGovernance.decisions.find((d) => d.id === id)
+    return this.getDecisions().find((d) => d.id === id)
   },
 
   getProofForEvent(eventId: string): LedgerProof | undefined {

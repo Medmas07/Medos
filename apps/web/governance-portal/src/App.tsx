@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import {
   AppShell,
   Badge,
@@ -14,6 +14,7 @@ import { AuditExplorerView } from './components/views/AuditExplorerView'
 import { VerifierView } from './components/views/VerifierView'
 import { StateShowcaseView } from './components/views/StateShowcaseView'
 import { governanceService } from './services/governanceService'
+import { reviewStore } from './services/reviewStore'
 
 type ViewId =
   | 'overview'
@@ -27,6 +28,8 @@ type ViewId =
 export default function App() {
   const [currentView, setCurrentView] = useState<ViewId>('overview')
   const [inspectedProofId, setInspectedProofId] = useState<string>('proof-003')
+  // Simulated decisions (HC-073) change the counts below; re-render when they do.
+  useSyncExternalStore(reviewStore.subscribe, reviewStore.getSnapshot)
 
   // Sync with URL hash if present
   useEffect(() => {
