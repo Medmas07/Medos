@@ -2,8 +2,8 @@
 
 Answers the Federation Service's question before each exchange under a synchronization
 decision: does it authorize this request now? A denial is a 200 result; only a request
-outside the contract is a 400. actor_ref is accepted but not recorded yet: the
-governance audit trail is PLANNED (HC-134).
+outside the contract is a 400. Every answer, with actor_ref, is recorded in the
+governance audit trail (HC-134) before it is given.
 """
 
 from collections.abc import Callable
@@ -16,6 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from adapters.inbound.http.problems import OPAQUE_REF, problem
 from adapters.inbound.http.synchronization_requests import Ref, ScopeField
+from application.audit import AuditTrail
 from application.synchronization import SynchronizationStore, check_sync_authorization
 from domain.synchronization import ExchangeAsk, ScopeItem
 
@@ -40,7 +41,7 @@ def _invalid(fields: set[str]) -> JSONResponse:
 
 
 def create_router(
-    store: SynchronizationStore, clock: Callable[[], datetime]
+    store: SynchronizationStore, audit: AuditTrail, clock: Callable[[], datetime]
 ) -> APIRouter:
     router = APIRouter(tags=["synchronization"])
 
@@ -64,6 +65,7 @@ def create_router(
                 body.purpose,
             ),
             store,
+            audit,
             clock,
         )
         return JSONResponse(

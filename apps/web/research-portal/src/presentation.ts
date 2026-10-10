@@ -7,6 +7,7 @@ import type {
   NextActionKind,
   StepState,
 } from './services/dashboard'
+import type { ExecutionPhaseId } from './services/executions'
 import type { RequestState, TrackingStepId } from './services/requestTracking'
 import type { UnavailableReason } from './services/workspace'
 import type { CellCheck, CellRun, ComputeJob, ComputeJobStage, PageStatus, ResearchAccessRequest } from './types/research'
@@ -190,4 +191,27 @@ export const unavailableReasonDisplay: Record<UnavailableReason, { label: string
   under_review: { label: 'En revue', tone: 'info' },
   rejected: { label: 'Refusée', tone: 'danger' },
   expired: { label: 'Autorisation expirée', tone: 'warning' },
+}
+
+export const executionPhaseDisplay: Record<ExecutionPhaseId, { title: string; description: string }> = {
+  submitted: {
+    title: 'Soumise',
+    description: "Le code de l'analyse est soumis avec la référence de son autorisation.",
+  },
+  authorization: {
+    title: 'Autorisée par la gouvernance',
+    description: 'Le Governance Node vérifie que la décision est valide et couvre ce périmètre.',
+  },
+  execution: {
+    title: 'Exécution dans les Hospital Nodes',
+    description: "Le code s'exécute localement dans chaque nœud autorisé, en parallèle.",
+  },
+  aggregation: {
+    title: 'Agrégation',
+    description: 'Seuls les agrégats produits par les nœuds sont combinés.',
+  },
+  completed: {
+    title: 'Terminée',
+    description: "Contrôle de divulgation (effectif minimal) avant toute mise à disposition.",
+  },
 }

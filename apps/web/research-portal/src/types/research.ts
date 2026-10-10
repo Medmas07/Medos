@@ -131,6 +131,8 @@ export interface ComputeJobStage {
 export interface ComputeJob {
   id: string
   projectId: string
+  /** The fixture notebook the job ran. */
+  notebookId?: string
   authorizationDecisionId: string
   status: 'queued' | 'running' | 'completed' | 'failed'
   submittedAt: string

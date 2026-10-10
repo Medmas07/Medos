@@ -21,6 +21,7 @@ from pydantic import (
 )
 
 from adapters.inbound.http.problems import OPAQUE_REF, first_error, problem
+from application.audit import AuditTrail
 from application.hospital_approval import HospitalApplicationStore, ReviewerDirectory
 from application.research import (
     RequestNotFound,
@@ -208,6 +209,7 @@ def create_router(
     store: ResearchStore,
     reviewers: ReviewerDirectory,
     applications: HospitalApplicationStore,
+    audit: AuditTrail,
     clock: Callable[[], datetime],
 ) -> APIRouter:
     router = APIRouter(prefix="/v1/research-requests", tags=["research"])
@@ -255,7 +257,7 @@ def create_router(
             )
 
         try:
-            submitted = submit_request(build, store, clock)
+            submitted = submit_request(build, store, audit, clock)
         except InvalidResearchRequest as error:
             return _invalid(str(error))
         return JSONResponse(_detail(view(submitted.request_ref)), status_code=201)
@@ -294,6 +296,7 @@ def create_router(
                 store,
                 reviewers,
                 applications,
+                audit,
                 clock,
             )
         except RequestNotFound:

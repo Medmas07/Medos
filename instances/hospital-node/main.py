@@ -22,7 +22,7 @@ from adapters.outbound.in_memory_research_execution_store import (
     InMemoryResearchExecutionStore,
 )
 from adapters.outbound.fixture_research_data_source import FixtureResearchDataSource
-from adapters.outbound.installed_aggregate_executor import InstalledAggregateExecutor
+from adapters.outbound.isolated_research_sandbox import IsolatedResearchSandbox
 from application.research_execution_agent import ResearchExecutionAgent
 from application.get_node_status import NODE_VERSION
 from infrastructure.config import HospitalNodeConfig, config_path_from_env, load_config
@@ -54,7 +54,7 @@ def create_app(
     research_data = FixtureResearchDataSource(config.identity, repository)
     research_agent = ResearchExecutionAgent(
         config.identity,
-        InstalledAggregateExecutor(research_data),
+        IsolatedResearchSandbox(research_data),
         InMemoryResearchExecutionStore(),
     )
     app = FastAPI(title="Hospital Node", version=NODE_VERSION)

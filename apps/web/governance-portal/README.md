@@ -113,7 +113,7 @@ The rules live in `src/services/auditTimeline.ts` and are unit-tested, including
 
 The dashboard's "Dernières Actions" card now uses the same newest-first order; it previously showed the six oldest events.
 
-Not done at D1: events come from fixtures and local state, not from the Governance Node audit API (HC-134 is PLANNED); simulated decisions get no ledger proof.
+Not done at D1: events come from fixtures and local state; the portal does not call the Governance Node audit API ([`governance-audit-events.v1.yaml`](../../../contracts/api/governance/governance-audit-events.v1.yaml), HC-134). Simulated decisions get no ledger proof.
 
 ## Blockchain proof explorer (HC-080) — MOCKED BLOCKCHAIN
 

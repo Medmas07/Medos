@@ -11,7 +11,12 @@ def test_status_names_the_node_and_its_capabilities():
     assert status.node == "governance-node"
     assert status.node_ref == "node-governance"
     assert status.organization_ref == "org-governance"
-    assert status.capabilities == ("hospital_approval", "synchronization", "research")
+    assert status.capabilities == (
+        "hospital_approval",
+        "synchronization",
+        "research",
+        "audit",
+    )
     assert status.notice == SKELETON_NOTICE
 
 

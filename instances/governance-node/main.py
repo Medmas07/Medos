@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 
+from adapters.inbound.http.audit_events import create_router as create_audit_router
 from adapters.inbound.http.health import create_router as create_health_router
 from adapters.inbound.http.hospital_approval import (
     create_router as create_hospital_approval_router,
@@ -21,6 +22,7 @@ from adapters.inbound.http.sync_authorization import (
 from adapters.inbound.http.synchronization_requests import (
     create_router as create_synchronization_router,
 )
+from adapters.outbound.in_memory_audit_trail import InMemoryAuditTrail
 from adapters.outbound.fixture_patient_grants import FixturePatientGrantDirectory
 from adapters.outbound.fixture_reviewer_directory import FixtureReviewerDirectory
 from adapters.outbound.in_memory_hospital_applications import (
@@ -64,17 +66,24 @@ def create_app(
     research = InMemoryResearchStore.load(
         demo_data / "governance.json", demo_data / "research.json"
     )
+    # HC-134: in memory, seeded from fictional events; runtime events lost on restart.
+    audit = InMemoryAuditTrail.load(demo_data / "governance.json")
     app = FastAPI(title="Governance Node", version=NODE_VERSION)
     app.include_router(create_health_router(identity))
-    app.include_router(create_hospital_approval_router(applications, reviewers, clock))
+    app.include_router(
+        create_hospital_approval_router(applications, reviewers, audit, clock)
+    )
     app.include_router(
         create_synchronization_router(
-            synchronizations, reviewers, grants, applications, clock
+            synchronizations, reviewers, grants, applications, audit, clock
         )
     )
-    app.include_router(create_sync_authorization_router(synchronizations, clock))
-    app.include_router(create_research_router(research, reviewers, applications, clock))
-    app.include_router(create_research_authorization_router(research, clock))
+    app.include_router(create_sync_authorization_router(synchronizations, audit, clock))
+    app.include_router(
+        create_research_router(research, reviewers, applications, audit, clock)
+    )
+    app.include_router(create_research_authorization_router(research, audit, clock))
+    app.include_router(create_audit_router(identity, audit))
     return app
 
 

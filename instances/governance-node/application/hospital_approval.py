@@ -4,6 +4,8 @@ from collections.abc import Callable
 from datetime import datetime
 from typing import Protocol
 
+from application.audit import AUTHORITY_ORGANIZATION_REF, AuditTrail, record
+from domain.audit import AuditAction, AuditDomain, AuditOutcome, SubjectType
 from domain.hospital_application import ApplicationStatus, HospitalApplication
 from domain.hospital_approval import (
     DecisionDraft,
@@ -72,6 +74,7 @@ def decide_application(
     draft: DecisionDraft,
     store: HospitalApplicationStore,
     reviewers: ReviewerDirectory,
+    audit: AuditTrail,
     clock: Callable[[], datetime],
 ) -> HospitalApprovalDecision:
     application = store.application(application_ref)
@@ -81,6 +84,17 @@ def decide_application(
         application, reviewers.reviewer(reviewer_ref), draft, clock()
     )
     store.record(decided, decision)
+    record(
+        audit,
+        decision.decided_at,
+        AuditAction.DECISION_RECORDED,
+        AuditDomain.HOSPITAL_APPROVAL,
+        decision.decided_by_ref,
+        SubjectType.DECISION,
+        decision.decision_ref,
+        (AUTHORITY_ORGANIZATION_REF, decision.organization_ref),
+        AuditOutcome(decision.outcome.value),
+    )
     return decision
 
 
