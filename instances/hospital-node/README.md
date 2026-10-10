@@ -59,7 +59,7 @@ MOCKED at D2. `application/clinical_repository.py` defines the `ClinicalReposito
 - It is read-only. Nothing is written to `storage_dir` or back to `demo-data/`.
 - Patient references are the dataset's ids (`pat-a`), as in the Federation contract; per-hospital local identifiers are not mapped.
 
-This is not real clinical storage and not a DMI integration: the [DMI port](#dmi-port-hc-120) is defined (HC-120) but no DMI adapter exists yet (HC-121+), and persistence is OPEN.
+This is not real clinical storage and not a DMI integration: the [DMI port](#dmi-port-hc-120) is defined (HC-120) and a MOCKED local DMI adapter implements it (HC-121), but nothing imports records from it at runtime, and persistence is OPEN.
 
 | Node | Encounters | Medications | Lab reports |
 |---|---|---|---|
@@ -215,7 +215,7 @@ instances/hospital-node/
 ├── adapters/inbound/http/      # health, Federation, audit, access-grant, and research-execution routers
 ├── adapters/outbound/          # fixture repositories/verifiers, installed aggregate, and in-memory stores
 ├── infrastructure/             # configuration loading and validation
-├── adapters/dmi/               # hospital-local DMI Adapters (port defined, HC-120; no adapter yet, HC-121+)
+├── adapters/dmi/               # hospital-local DMI Adapters (port defined, HC-120; MOCKED local adapter, HC-121)
 ├── contracts/                  # reserved for Node-local contract documents
 └── tests/                      # domain, use case, adapter, app, and layer-boundary tests
 ```
@@ -226,7 +226,9 @@ instances/hospital-node/
 
 DEFINED at D1. The Node owns `DmiSource` ([`application/dmi_source.py`](application/dmi_source.py)): `describe()` and `extract_patient(PatientIdentity)`, returning a `DmiExtract` ([`domain/dmi.py`](domain/dmi.py)) of one patient's records in this Node's canonical model plus the entries the adapter could not map. Each hospital's adapter implements it under [`adapters/dmi/`](adapters/dmi/README.md), which documents the rules every adapter keeps and the conformance check ([`tests/dmi_port_contract.py`](tests/dmi_port_contract.py)) its tests must pass.
 
-Nothing implements or calls the port at runtime yet: no DMI is connected, `/health` is unchanged, and records still come from the MOCKED fixture repository. The mock local DMI adapter (HC-121), the mapping strategy (HC-122), and a sample hospital-specific adapter (HC-123) build on it. No central service implements or calls it.
+The only implementation is the **MOCKED** local DMI adapter (HC-121, D2, [`adapters/dmi/mock_local_dmi.py`](adapters/dmi/mock_local_dmi.py)): a simulated DMI built from this hospital's fictional records file and the local identifiers its organization gives patients in [`people.json`](../../demo-data/people.json). It passes the port conformance check for all three demo nodes; see the [adapter README](adapters/dmi/README.md#mock-local-dmi-adapter-hc-121).
+
+Nothing calls the port at runtime yet: `main.py` does not build the adapter, no real DMI is connected, `/health` is unchanged, and the Node's records still come from the MOCKED fixture repository. When extraction runs and where its results go are OPEN. The mapping strategy (HC-122) and a sample hospital-specific adapter (HC-123) build on it. No central service implements or calls it.
 
 ## Responsibilities and owned concepts
 
