@@ -123,6 +123,17 @@ export function validateTechnical(input: TechnicalInput): TechnicalErrors {
   return errors
 }
 
+/** The DMI / HIS answers (HC-056) of a questionnaire, to carry over unchanged. */
+function dmiAnswers(previous: TechnicalQuestionnaire | null): Partial<TechnicalQuestionnaire> {
+  if (!previous) return {}
+  const { dmiSystem, database, dmiHosting, integrationMethods, testEnvironmentAvailable, dmiNotes } = previous
+  return Object.fromEntries(
+    Object.entries({ dmiSystem, database, dmiHosting, integrationMethods, testEnvironmentAvailable, dmiNotes }).filter(
+      ([, value]) => value !== undefined,
+    ),
+  )
+}
+
 /**
  * Converts valid answers to a questionnaire, keeping the DMI / HIS answers
  * (HC-056) already present. Call only when `validateTechnical` returns no error.
@@ -145,8 +156,7 @@ export function toQuestionnaire(
     containerRuntimeAvailable: input.containerRuntimeAvailable === 'yes',
     backupsInPlace: input.backupsInPlace === 'yes',
     technicalContactId,
-    ...(previous?.dmiSystem !== undefined && { dmiSystem: previous.dmiSystem }),
-    ...(previous?.database !== undefined && { database: previous.database }),
+    ...dmiAnswers(previous),
   }
 }
 
