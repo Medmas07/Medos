@@ -5,8 +5,9 @@ from domain.node_status import NodeStatus
 NODE_NAME = "hospital-node"
 NODE_VERSION = "0.1.0"
 # hospital-node-federation.v1: describeNode and queryNode (HC-114);
-# hospital-audit-events.v1: listAuditEvents (HC-116).
-CAPABILITIES = ("patient_history", "audit_events")
+# hospital-audit-events.v1: listAuditEvents (HC-116);
+# patient-access-grants.v1: list, grant, and revoke access grants (HC-115).
+CAPABILITIES = ("patient_history", "audit_events", "access_grants")
 
 
 def get_node_status(

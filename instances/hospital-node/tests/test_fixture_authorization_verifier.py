@@ -3,6 +3,7 @@ from datetime import datetime
 
 import pytest
 
+from adapters.outbound.in_memory_access_grant_store import InMemoryAccessGrantStore
 from adapters.outbound.fixture_authorization_verifier import (
     AuthorizationFixtureError,
     FixtureAuthorizationVerifier,
@@ -26,7 +27,7 @@ BEFORE_SYNC_002_ENDS = datetime.fromisoformat("2026-01-10T10:00:00+01:00")
 def verifier_for(hospital: str) -> FixtureAuthorizationVerifier:
     config = load_config(CONFIG_DIR / f"{hospital}.demo.json")
     return FixtureAuthorizationVerifier.load(
-        config.mock_access_grants,
+        InMemoryAccessGrantStore.load(config.mock_access_grants),
         config.mock_governance_decisions,
         config.identity.organization_ref,
     )
@@ -166,20 +167,32 @@ def test_decision_denies_by_default(query, at):
 
 def test_refuses_a_fixture_not_marked_fictional(tmp_path):
     config = load_config(CONFIG_DIR / "hospital-a.demo.json")
-    access = json.loads(config.mock_access_grants.read_text(encoding="utf-8"))
-    unmarked = tmp_path / "access.json"
-    unmarked.write_text(json.dumps({**access, "fictional": False}))
+    governance = json.loads(
+        config.mock_governance_decisions.read_text(encoding="utf-8")
+    )
+    unmarked = tmp_path / "governance.json"
+    unmarked.write_text(json.dumps({**governance, "fictional": False}))
 
     with pytest.raises(AuthorizationFixtureError, match="not marked fictional"):
         FixtureAuthorizationVerifier.load(
-            unmarked, config.mock_governance_decisions, "org-hospital-a"
+            InMemoryAccessGrantStore(), unmarked, "org-hospital-a"
         )
 
 
 def test_refuses_a_missing_fixture(tmp_path):
-    config = load_config(CONFIG_DIR / "hospital-a.demo.json")
-
     with pytest.raises(AuthorizationFixtureError, match="Cannot read"):
         FixtureAuthorizationVerifier.load(
-            tmp_path / "absent.json", config.mock_governance_decisions, "org-hospital-a"
+            InMemoryAccessGrantStore(), tmp_path / "absent.json", "org-hospital-a"
         )
+
+
+def test_a_revoked_grant_is_denied_at_once():
+    config = load_config(CONFIG_DIR / "hospital-b.demo.json")
+    grants = InMemoryAccessGrantStore.load(config.mock_access_grants)
+    verifier = FixtureAuthorizationVerifier.load(
+        grants, config.mock_governance_decisions, "org-hospital-b"
+    )
+
+    grants.save(grants.get("grant-a-drx").revoked(DEMO_NOW))
+
+    assert not verifier.allows(dr_x_patient_a(), DEMO_NOW)

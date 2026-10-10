@@ -1,9 +1,11 @@
-"""MOCKED authorization verifier for the D2 demo (HC-114).
+"""MOCKED authorization verifier for the D2 demo (HC-114, HC-115).
 
 How a node verifies a query's basis with the Governance Node is OPEN, and no Governance
 Node runs yet. This verifier stands in for that check: at startup it reads the fictional
-patient access grants and Governance decisions in demo-data/ and keeps them in memory,
-read-only. It applies the same rules as the Federation Service's simulated nodes (HC-141).
+Governance decisions in demo-data/ and keeps them in memory, read-only. Patient access
+grants are looked up in this node's access grant store (HC-115), so a grant recorded or
+revoked through the access grants API counts at once. It applies the same rules as the
+Federation Service's simulated nodes (HC-141).
 
 The node trusts its own copy of each basis, never the expiry stated in the request.
 This is not real authorization and not production security.
@@ -13,6 +15,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+from application.manage_access_grants import AccessGrantStore
 from domain.patient_history import AuthorizationBasis, HistoryQuery, ScopeItem
 
 # demo-data uses camelCase scope names; the contract uses snake_case.
@@ -33,7 +36,7 @@ class FixtureAuthorizationVerifier:
     def __init__(
         self,
         organization_ref: str,
-        grants: dict[str, dict],
+        grants: AccessGrantStore,
         decisions: dict[str, dict],
         sync_requests: dict[str, dict],
     ) -> None:
@@ -44,14 +47,13 @@ class FixtureAuthorizationVerifier:
 
     @classmethod
     def load(
-        cls, access_path: Path, governance_path: Path, organization_ref: str
+        cls, grants: AccessGrantStore, governance_path: Path, organization_ref: str
     ) -> "FixtureAuthorizationVerifier":
-        access = _read_fictional(access_path)
         governance = _read_fictional(governance_path)
         try:
             return cls(
                 organization_ref,
-                grants={g["id"]: g for g in access["accessGrants"]},
+                grants=grants,
                 decisions={d["id"]: d for d in governance["decisions"]},
                 sync_requests={
                     s["id"]: s for s in governance["synchronizationRequests"]
@@ -74,16 +76,7 @@ class FixtureAuthorizationVerifier:
 
     def _grant_allows(self, query: HistoryQuery, at: datetime) -> bool:
         grant = self._grants.get(query.authorization.ref)
-        return bool(
-            grant
-            and grant["status"] == "active"
-            and grant["revokedAt"] is None
-            and datetime.fromisoformat(grant["expiresAt"]) > at
-            and grant["patientId"] == query.patient_ref
-            and grant["granteeId"] == query.requested_by.actor_ref
-            and grant["purpose"] == query.purpose
-            and query.scope <= _scope(grant["scope"])
-        )
+        return grant is not None and grant.allows(query, at)
 
     def _decision_allows(self, query: HistoryQuery, at: datetime) -> bool:
         decision = self._decisions.get(query.authorization.ref)

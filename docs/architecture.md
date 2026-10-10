@@ -39,7 +39,7 @@ Every crossing requires explicit identity, authorization, scope, minimization, a
 
 ### Hospital Node
 
-CONFIRMED autonomous hospital-controlled boundary for local clinical integration, storage, consent enforcement, audit generation, DMI Adapter ownership, and federation interfaces. Its runtime skeleton is IMPLEMENTED with a MOCKED, read-only clinical repository loaded from fictional demo data (HC-113). It serves its side of the Federation interface, the patient history API (HC-114), and enforces each query's authorization itself; that check is MOCKED against fictional grants and decisions until node-side Governance verification is decided. It records every query it answers or refuses in its own audit trail and serves it through the audit-event API (HC-116); events carry references, never clinical content, and are kept in memory until persistence is decided. Durable audit storage, authenticated audit readers, consent/access APIs, persistence, and the DMI Adapter are PLANNED.
+CONFIRMED autonomous hospital-controlled boundary for local clinical integration, storage, consent enforcement, audit generation, DMI Adapter ownership, and federation interfaces. Its runtime skeleton is IMPLEMENTED with a MOCKED, read-only clinical repository loaded from fictional demo data (HC-113). It serves its side of the Federation interface, the patient history API (HC-114), and enforces each query's authorization itself; that check is MOCKED against fictional grants and decisions until node-side Governance verification is decided. It records every query it answers or refuses in its own audit trail and serves it through the audit-event API (HC-116); events carry references, never clinical content, and are kept in memory until persistence is decided. It lists, records, and revokes patients' access grants through the access grants API (HC-115) and enforces them in its patient history API; the grant store is MOCKED (in memory, per node). Durable audit storage, authenticated audit and grant callers, persistence, and the DMI Adapter are PLANNED.
 
 ### Governance Node
 
@@ -116,7 +116,7 @@ Ledger integration is OPTIONAL / PLANNED and belongs inside Governance. It may a
 
 ## 10. Patient access and consent
 
-Patient access grants, revocation, delegation, and restriction/erasure request experiences are PLANNED. Authorized views do not transfer source-data ownership. Consent is not a substitute for legal authority, policy, identity, or technical authorization; exact semantics remain OPEN.
+Each Hospital Node lists, records, and revokes a patient's access grants through [`patient-access-grants.v1.yaml`](../contracts/api/patient-access/patient-access-grants.v1.yaml) and enforces them itself (HC-115, IMPLEMENTED at D2 over a MOCKED in-memory store, callers not authenticated). A grant recorded on one node does not reach the others; propagation and Governance consent governance are OPEN (HC-136). Delegation, restriction/erasure requests, and the Patient App experiences are PLANNED. Authorized views do not transfer source-data ownership. Consent is not a substitute for legal authority, policy, identity, or technical authorization; exact semantics remain OPEN.
 
 ## 11. Clinician workflows
 
@@ -186,7 +186,7 @@ AI is advisory, replaceable through ports, and subject to appropriate human revi
 | Research Portal | PLANNED | No UI code or notebook execution; stack decided by ADR-0001. |
 | Web design system | IMPLEMENTED | Tokens, components, and showcase at D1 (ADR-0002); consumed by the Hospital Portal and Governance Portal shells. |
 | Canonical demo data | MOCKED | Fictional JSON fixtures with integrity checks (ADR-0005); read by the Federation Service's simulated nodes (HC-141). |
-| Hospital Node | IMPLEMENTED (skeleton) | FastAPI runtime skeleton (HC-110) with a liveness `GET /health` (HC-111); configuration and clinical APIs PLANNED; must provide the HC-140 Federation contract, not yet implemented. |
+| Hospital Node | IMPLEMENTED (skeleton) / MOCKED data | FastAPI runtime (HC-110) with a liveness `GET /health` (HC-111), per-hospital configuration (HC-112), a MOCKED clinical repository (HC-113), the HC-140 Federation contract with MOCKED authorization (HC-114), an in-memory audit trail (HC-116), and an access grants API over a MOCKED in-memory store (HC-115); persistence and the DMI Adapter PLANNED. |
 | Governance Node | PLANNED | Boundary documented; runtime not implemented; stack decided by ADR-0003. |
 | DMI Adapter | PLANNED | Hospital-local boundary documented; no adapter. |
 | Federation Service | IMPLEMENTED (D2/D3) | Contracts in `contracts/federation/` (HC-140). Federated patient query over real HTTP to registered nodes by default (HC-145), with HC-141's MOCKED simulated nodes as an explicit opt-in. In-memory node registry with unverified Governance approval references (HC-142). Real HTTP capability discovery (HC-143), used to route queries around nodes that cannot answer (HC-146). Retries and an in-memory circuit breaker for node calls (HC-147). Governance checks of synchronization decisions (HC-144). No Hospital Node or Governance Node serves these interfaces yet. |
