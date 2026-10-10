@@ -38,8 +38,12 @@ info:
     with Governance, signed tokens, and authentication between services.
     These remain OPEN (docs/OPEN_QUESTIONS.md).
 
-    Status: the Federation Service calls this contract (HC-144). No
-    Governance Node implements it yet (HC-130, HC-132).
+    Status: the Federation Service calls this contract (HC-144), and the
+    Governance Node serves it (HC-132) for the synchronization decisions it
+    holds in memory (contracts/api/governance/synchronization-requests.v1.yaml).
+    `actor_ref` is accepted but not yet recorded: the governance audit
+    trail is PLANNED (HC-134). The `revoked` reason is never returned
+    while decisions cannot be revoked.
 paths:
   /v1/synchronization-authorizations/{decision_ref}/checks:
     parameters:
@@ -80,7 +84,9 @@ paths:
                 authorized:
                   summary: >-
                     Fictional demo — the decision approving sync-001 (created
-                    at runtime in demo step 20) authorizes Hospital B for 30 days.
+                    at runtime in demo step 20) authorizes Hospital B for 13
+                    days: the 30 days requested are capped by the end of
+                    Patient A's grant (synchronization-requests.v1.yaml).
                   value:
                     decision_ref: dec-sync-001
                     outcome: authorized
@@ -88,7 +94,7 @@ paths:
                     target_organization_refs: [org-hospital-b]
                     scope: [lab_reports, medications]
                     purpose: "Continuité des soins : consultation de cardiologie"
-                    valid_until: "2026-11-09T10:00:00+01:00"
+                    valid_until: "2026-10-23T10:00:00+01:00"
                     checked_at: "2026-10-10T10:30:00+01:00"
                 expired:
                   summary: Fictional demo — dec-sync-002 expired on 2026-03-12.

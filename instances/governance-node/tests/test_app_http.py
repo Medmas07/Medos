@@ -13,13 +13,17 @@ def test_serves_openapi_document():
 
 
 def test_exposes_only_documented_governance_node_routes():
-    # Other governance APIs (HC-132 to HC-136) are PLANNED.
+    # Other governance APIs (HC-133 to HC-136) are PLANNED.
     assert set(client.get("/openapi.json").json()["paths"]) == {
         "/health",
         "/v1/hospital-applications",
         "/v1/hospital-applications/{application_ref}",
         "/v1/hospital-applications/{application_ref}/decision",
         "/v1/hospital-approvals/{decision_ref}",
+        "/v1/synchronization-requests",
+        "/v1/synchronization-requests/{request_ref}",
+        "/v1/synchronization-requests/{request_ref}/decision",
+        "/v1/synchronization-authorizations/{decision_ref}/checks",
     }
 
 
