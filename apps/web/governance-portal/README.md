@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-PLANNED web product for the Governance / Ethics Authority. Its technology (React + TypeScript + Vite SPA) is CONFIRMED by [ADR-0001](../../../docs/decisions/ADR-0001-web-frontend-technology.md); no UI code exists yet, and scaffolding belongs to HC-070. Development commands (`npm run dev`, `npm run build`, `npm run lint`, `npm run preview`) and the scaffold procedure are recorded in that ADR.
+PLANNED web product for the Governance / Ethics Authority. Its technology (React + TypeScript + Vite SPA) is CONFIRMED by [ADR-0001](../../../docs/decisions/ADR-0001-web-frontend-technology.md); no UI code exists yet, and scaffolding belongs to HC-070. Development commands (`npm run dev`, `npm run build`, `npm run lint`, `npm run preview`) and the scaffold procedure are recorded in that ADR. Styling uses Tailwind CSS v4 and the shared [design system](../../../design-system/README.md) ([ADR-0002](../../../docs/decisions/ADR-0002-web-design-system.md)); wiring it in also belongs to HC-070.
 
 ## Responsibilities and owned concepts
 

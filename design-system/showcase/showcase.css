@@ -1,0 +1,7 @@
+/* Same import order a portal uses, with a relative path instead of the package name. */
+@import "tailwindcss";
+@import "../src/theme.css";
+
+main {
+  scroll-behavior: smooth;
+}
