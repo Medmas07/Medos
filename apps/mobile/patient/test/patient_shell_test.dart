@@ -31,6 +31,20 @@ void main() {
     expect(find.text('MOCKED'), findsOneWidget);
   });
 
+  testWidgets('renders the federated authorized timeline fixtures', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const PatientApp());
+
+    await tester.tap(find.text('Parcours'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Consultation de suivi'), findsOneWidget);
+    expect(find.text('Hôpital Carthage'), findsOneWidget);
+    expect(find.text('Laboratoire El Amal'), findsOneWidget);
+    expect(find.text('AUTORISÉ'), findsNWidgets(3));
+  });
+
   testWidgets('navigates between shell destinations', (tester) async {
     await tester.pumpWidget(const PatientApp());
 
