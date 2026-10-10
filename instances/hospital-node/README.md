@@ -25,4 +25,4 @@ The Hospital Node does not own ethics approval, global research approval, compan
 
 Each Hospital Node must provide [`hospital-node-federation.v1.yaml`](../../contracts/federation/hospital-node-federation.v1.yaml) (HC-140): a node descriptor and authorized, scoped patient queries that the node enforces itself. The contract is defined; no Node implements it yet.
 
-PLANNED local clinical API, DMI port, consent/authorization, audit-event, research-execution, and health contracts.
+The D1 [research execution contract](../../contracts/api/research/research-node-execution.v1.yaml) is IMPLEMENTED for Research Service-to-Node Compute-to-Data communication. No Node agent implements it; authorization verification, sandboxing, package policy, disclosure review, and audit remain PLANNED or OPEN. Local clinical API, DMI port, consent/authorization, audit-event, and health contracts are PLANNED.
