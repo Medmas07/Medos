@@ -7,6 +7,7 @@ import type {
   NextActionKind,
   StepState,
 } from './services/dashboard'
+import type { RequestState, TrackingStepId } from './services/requestTracking'
 import type { ComputeJob, PageStatus, ResearchAccessRequest } from './types/research'
 
 export const requestStatusDisplay: Record<
@@ -129,4 +130,18 @@ export const stepReasonLabels: Record<NonNullable<LifecycleStep['reason']>, stri
   expired: 'Expirée',
   failed: 'Échouée',
   disclosure_failed: 'Contrôle de divulgation échoué',
+}
+
+export const requestStateDisplay: Record<RequestState, { label: string; tone: Tone }> = {
+  under_review: { label: 'En revue', tone: 'info' },
+  approved: { label: 'Autorisée', tone: 'success' },
+  expiring: { label: 'Autorisée, expire bientôt', tone: 'warning' },
+  expired: { label: 'Autorisation expirée', tone: 'warning' },
+  rejected: { label: 'Refusée', tone: 'danger' },
+}
+
+export const trackingStepLabels: Record<TrackingStepId, string> = {
+  submitted: 'Demande soumise',
+  review: "Examen par l'Autorité de gouvernance et d'éthique",
+  decision: "Décision de l'Autorité",
 }
