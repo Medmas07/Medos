@@ -7,6 +7,7 @@ import type {
   ComputeJob,
   ControlledResultSummary,
   GovernanceDecision,
+  Notebook,
   Organization,
   PageId,
   PortalNotification,
@@ -26,9 +27,12 @@ import type {
  */
 
 const projects = researchFixtures.projects as unknown as ResearchProject[]
-const notebooks = researchFixtures.notebooks as unknown as { id: string; projectId: string }[]
-const jobs = researchFixtures.computeJobs as unknown as ComputeJob[]
-const results = researchFixtures.controlledResults as unknown as ControlledResultSummary[]
+const notebooks = researchFixtures.notebooks as unknown as Notebook[]
+const jobs = researchFixtures.computeJobs as unknown as (ComputeJob & { notebookId: string })[]
+const results = researchFixtures.controlledResults as unknown as (ControlledResultSummary & {
+  columns: string[]
+  rows: (string | number)[][]
+})[]
 const investigations = researchFixtures.sciAgentsInvestigations as unknown as { id: string; projectId: string }[]
 const requests = governanceFixtures.researchAccessRequests as unknown as ResearchAccessRequest[]
 const decisions = governanceFixtures.decisions as unknown as GovernanceDecision[]
@@ -41,6 +45,23 @@ export const FIXTURE_PROJECTS: readonly ResearchProject[] = projects
 
 /** Every fixture access request; a new request's identifier must not reuse one of theirs. */
 export const FIXTURE_ACCESS_REQUESTS: readonly ResearchAccessRequest[] = requests
+
+/** Every fixture notebook, as HC-005 defines it; a session edit never changes these. */
+export const FIXTURE_NOTEBOOKS: readonly Notebook[] = notebooks
+
+/**
+ * The aggregate a fixture notebook's completed job released, with its rows,
+ * for the workspace (HC-099). Null when the notebook has no released result.
+ */
+export function fixtureNotebookResult(
+  notebookId: string,
+): { result: ControlledResultSummary; columns: string[]; rows: (string | number)[][] } | null {
+  const job = jobs.find((j) => j.notebookId === notebookId && j.status === 'completed' && j.controlledResultId)
+  const found = results.find((r) => r.id === job?.controlledResultId && r.disclosureCheck === 'passed')
+  if (!found) return null
+  const { columns, rows, id, jobId, title, minimumCellSize, disclosureCheck, provenance } = found
+  return { result: { id, jobId, title, minimumCellSize, disclosureCheck, provenance }, columns, rows }
+}
 
 /** Organizations whose Hospital Node could take part in a study: hospitals and private practices. */
 export const HEALTHCARE_ORGANIZATIONS: readonly Organization[] = organizations.filter(
@@ -159,16 +180,19 @@ function summarize(project: ResearchProject, now: Date): ProjectSummary {
 }
 
 /**
- * Demo scenarios, selected with `?demo=vide`, `?demo=erreur`, or `?demo=echec-depot`
- * (the first document upload of the page load is interrupted) in the URL.
+ * Demo scenarios, selected with `?demo=vide`, `?demo=erreur`, `?demo=echec-depot`
+ * (the first document upload of the page load is interrupted), or
+ * `?demo=echec-execution` (the first workspace run of the page load fails in a
+ * Hospital Node) in the URL.
  */
-export type DemoScenario = 'nominal' | 'empty' | 'error' | 'upload-failure'
+export type DemoScenario = 'nominal' | 'empty' | 'error' | 'upload-failure' | 'execution-failure'
 
 export function scenarioFromSearch(search: string): DemoScenario {
   const value = new URLSearchParams(search).get('demo')
   if (value === 'vide') return 'empty'
   if (value === 'erreur') return 'error'
   if (value === 'echec-depot') return 'upload-failure'
+  if (value === 'echec-execution') return 'execution-failure'
   return 'nominal'
 }
 
@@ -223,6 +247,7 @@ export async function loadResearchSnapshot(
         disclosureCheck,
         provenance,
       })),
+    notebooks: notebooks.filter((n) => projectIds.has(n.projectId)),
     pages: derivePages(summaries, now),
     notifications: notifications
       .filter((n) => n.recipientId === researcherId && (scenario !== 'empty' || n.relatedId === null))

@@ -8,7 +8,8 @@ import type {
   StepState,
 } from './services/dashboard'
 import type { RequestState, TrackingStepId } from './services/requestTracking'
-import type { ComputeJob, PageStatus, ResearchAccessRequest } from './types/research'
+import type { UnavailableReason } from './services/workspace'
+import type { CellCheck, CellRun, ComputeJob, ComputeJobStage, PageStatus, ResearchAccessRequest } from './types/research'
 
 export const requestStatusDisplay: Record<
   ResearchAccessRequest['status'] | 'not_submitted' | 'expired',
@@ -144,4 +145,49 @@ export const trackingStepLabels: Record<TrackingStepId, string> = {
   submitted: 'Demande soumise',
   review: "Examen par l'Autorité de gouvernance et d'éthique",
   decision: "Décision de l'Autorité",
+}
+
+export const cellRunDisplay: Record<CellRun['status'] | 'queued' | 'running', { label: string; tone: Tone }> = {
+  queued: { label: 'En file', tone: 'neutral' },
+  running: { label: 'En cours', tone: 'info' },
+  completed: { label: 'Terminée', tone: 'success' },
+  refused: { label: 'Refusée', tone: 'warning' },
+  failed: { label: 'Échouée', tone: 'danger' },
+}
+
+export const cellCheckLabels: Record<CellCheck['id'], string> = {
+  authorization: 'Autorisation de gouvernance',
+  not_empty: 'Code présent',
+  approved_packages: 'Paquets approuvés',
+  no_system_access: 'Accès système',
+  authorized_variables: 'Variables autorisées',
+  minimum_cell_size: 'Effectif minimal',
+  controlled_release: 'Sortie contrôlée',
+}
+
+export const cellCheckTone: Record<CellCheck['state'], Tone> = {
+  passed: 'success',
+  warning: 'warning',
+  failed: 'danger',
+}
+
+export const stageStatusTone: Record<ComputeJobStage['status'], Tone> = {
+  pending: 'neutral',
+  running: 'info',
+  completed: 'success',
+  failed: 'danger',
+}
+
+export const stageStatusLabels: Record<ComputeJobStage['status'], string> = {
+  pending: 'À venir',
+  running: 'En cours',
+  completed: 'Terminé',
+  failed: 'Échec',
+}
+
+export const unavailableReasonDisplay: Record<UnavailableReason, { label: string; tone: Tone }> = {
+  not_submitted: { label: 'Demande non soumise', tone: 'neutral' },
+  under_review: { label: 'En revue', tone: 'info' },
+  rejected: { label: 'Refusée', tone: 'danger' },
+  expired: { label: 'Autorisation expirée', tone: 'warning' },
 }
