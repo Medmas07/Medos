@@ -50,13 +50,14 @@ export function documentChecklist(application: HospitalApplication): Application
 }
 
 /**
- * A draft accepts any change. An application under review only accepts the
- * pieces still missing or rejected. A decided application accepts nothing.
+ * A draft accepts any change. An application under review, or approved (whose
+ * conditions may ask for a missing piece), only accepts the pieces still missing
+ * or rejected. A rejected application accepts nothing.
  */
 export function canUpload(application: HospitalApplication, document: ApplicationDocument): boolean {
   if (application.status === 'draft') return true
-  if (application.status === 'pending' || application.status === 'human_review') return document.status !== 'received'
-  return false
+  if (application.status === 'rejected') return false
+  return document.status !== 'received'
 }
 
 /** Removing a deposited file is only possible on a draft. */

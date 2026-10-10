@@ -3,6 +3,7 @@ import notificationFixtures from '../../../../../demo-data/notifications.json'
 import organizationFixtures from '../../../../../demo-data/organizations.json'
 import peopleFixtures from '../../../../../demo-data/people.json'
 import type {
+  GovernanceDecision,
   HospitalApplication,
   OnboardingSnapshot,
   OnboardingStep,
@@ -22,6 +23,9 @@ const applications = governanceFixtures.hospitalApplications as unknown as Hospi
 const organizations = organizationFixtures.organizations as unknown as Organization[]
 const staff = peopleFixtures.staff as unknown as StaffMember[]
 const notifications = notificationFixtures.notifications as unknown as PortalNotification[]
+const decisions = (governanceFixtures.decisions as unknown as (GovernanceDecision | { subjectType: string })[]).filter(
+  (d): d is GovernanceDecision => d.subjectType === 'hospital_application',
+)
 
 /** Read-only fixture views reused by the registration mock. */
 export function listOrganizations(): readonly Organization[] {
@@ -141,6 +145,9 @@ export function deriveSteps(
       if (def.section === 'onboarding') states.set(def.id, { status: 'completed', detail: 'Terminé.' })
     }
     states.set('decision', { status: 'completed', detail: "Approuvé par l'Autorité de gouvernance." })
+    // Approval may leave documents to provide (decision conditions); show them.
+    const documents = documentsState(application)
+    if (documents.status === 'attention') states.set('documents', documents)
     const node = organization.node
     const delivered: StepState = node
       ? { status: 'completed', detail: `Nœud ${node.id} (v${node.version}).` }
@@ -183,9 +190,17 @@ export function deriveSteps(
     states.set(
       'decision',
       application.status === 'rejected'
-        ? { status: 'attention', detail: "Candidature rejetée par l'Autorité de gouvernance." }
+        ? { status: 'rejected', detail: "Candidature rejetée par l'Autorité de gouvernance." }
         : { status: 'pending', detail: "Décision de l'Autorité de gouvernance attendue." },
     )
+    if (application.status === 'rejected') {
+      // Nothing can change after a rejection: open steps must not ask for action.
+      for (const [id, state] of states) {
+        if (id !== 'decision' && state.status !== 'completed') {
+          states.set(id, { status: 'locked', detail: 'Verrouillé : candidature rejetée.' })
+        }
+      }
+    }
   }
 
   return STEP_DEFINITIONS.map((def) => {
@@ -200,10 +215,12 @@ export function deriveSteps(
 /**
  * Demo scenarios, selected with `?demo=vide`, `?demo=erreur`,
  * `?demo=echec-inscription`, `?demo=echec-profil`, `?demo=echec-document`,
- * `?demo=echec-accord`, `?demo=echec-technique`, `?demo=echec-dmi`, or
- * `?demo=echec-soumission` in the URL. The document failure scenario starts
- * like `nominal`; the other failure scenarios start like `empty`. Each makes the
- * first matching submission fail.
+ * `?demo=echec-accord`, `?demo=echec-technique`, `?demo=echec-dmi`,
+ * `?demo=echec-soumission`, or `?demo=echec-actualisation` in the URL. The
+ * document and refresh failure scenarios start like `nominal`; the other
+ * failure scenarios start like `empty`. Each makes the first matching request
+ * fail. `?demo=decision-approuvee` and `?demo=decision-refusee` start like
+ * `nominal` and simulate a Governance decision published for the application.
  */
 export type DemoScenario =
   | 'nominal'
@@ -216,6 +233,9 @@ export type DemoScenario =
   | 'technical-failure'
   | 'dmi-failure'
   | 'submission-failure'
+  | 'refresh-failure'
+  | 'decision-approved'
+  | 'decision-rejected'
 
 export function scenarioFromSearch(search: string): DemoScenario {
   const value = new URLSearchParams(search).get('demo')
@@ -228,7 +248,55 @@ export function scenarioFromSearch(search: string): DemoScenario {
   if (value === 'echec-technique') return 'technical-failure'
   if (value === 'echec-dmi') return 'dmi-failure'
   if (value === 'echec-soumission') return 'submission-failure'
+  if (value === 'echec-actualisation') return 'refresh-failure'
+  if (value === 'decision-approuvee') return 'decision-approved'
+  if (value === 'decision-refusee') return 'decision-rejected'
   return 'nominal'
+}
+
+/**
+ * Simulates a decision published by the Governance / Ethics Authority, for the
+ * decision demo scenarios. The canonical fixtures keep Cap Azur pending, because
+ * the demo approves it live in the Governance Portal; these scenarios only show
+ * what the hospital receives. The Hospital Portal never makes a decision. Pure.
+ */
+export function withSimulatedDecision(
+  organization: Organization,
+  application: HospitalApplication,
+  outcome: GovernanceDecision['outcome'],
+): { organization: Organization; application: HospitalApplication; decision: GovernanceDecision } {
+  const decidedAt = '2026-10-10T10:30:00+01:00'
+  const decision: GovernanceDecision = {
+    id: `dec-demo-${application.id}`,
+    subjectType: 'hospital_application',
+    subjectId: application.id,
+    outcome,
+    decidedById: 'usr-olfa',
+    decidedAt,
+    rationale:
+      outcome === 'approved'
+        ? 'Dossier conforme à la charte de gouvernance fédérée ; une pièce administrative reste à fournir.'
+        : "Le dossier ne permet pas d'établir l'autorisation d'exercice de l'établissement.",
+    conditions: outcome === 'approved' ? ["Fournir l'attestation d'assurance avant la mise en service du Hospital Node."] : [],
+    validUntil: null,
+    simulated: true,
+  }
+  return {
+    organization: {
+      ...organization,
+      governanceStatus: outcome,
+      approvalDecisionId: outcome === 'approved' ? decision.id : null,
+    },
+    application: {
+      ...application,
+      status: outcome,
+      decisionId: decision.id,
+      reviewSteps: application.reviewSteps.map((s) =>
+        s.step === 'human_review' ? { ...s, status: 'completed', completedAt: decidedAt } : s,
+      ),
+    },
+    decision,
+  }
 }
 
 export interface LoadOptions {
@@ -253,7 +321,7 @@ export async function loadOnboardingSnapshot(
     throw new Error(`Établissement ou responsable inconnu : ${organizationId} / ${managerId}.`)
   }
 
-  const application =
+  const loaded =
     scenario === 'empty' ||
     scenario === 'registration-failure' ||
     scenario === 'profile-failure' ||
@@ -264,11 +332,22 @@ export async function loadOnboardingSnapshot(
       ? null
       : (applications.find((a) => a.organizationId === organizationId) ?? null)
 
-  return {
+  let decided = {
     organization,
+    application: loaded,
+    decision: decisions.find((d) => d.id === loaded?.decisionId) ?? null,
+  }
+  if (loaded && (scenario === 'decision-approved' || scenario === 'decision-rejected')) {
+    decided = withSimulatedDecision(organization, loaded, scenario === 'decision-approved' ? 'approved' : 'rejected')
+  }
+  const { application } = decided
+
+  return {
+    organization: decided.organization,
     manager,
     application,
-    steps: deriveSteps(organization, application),
+    decision: decided.decision,
+    steps: deriveSteps(decided.organization, application),
     notifications: notifications
       .filter((n) => n.recipientId === managerId && (application !== null || n.relatedId === null))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),

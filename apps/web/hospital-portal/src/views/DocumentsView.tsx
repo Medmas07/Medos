@@ -60,7 +60,8 @@ export function DocumentsView({ snapshot, consumeSimulatedFailure, onUpdated, on
   const received = checklist.filter((d) => d.status === 'received').length
   const complete = received === checklist.length
   const underReview = application.status === 'pending' || application.status === 'human_review'
-  const decided = application.status === 'approved' || application.status === 'rejected'
+  const approved = application.status === 'approved'
+  const locked = application.status === 'rejected' || (approved && complete)
 
   return (
     <>
@@ -76,7 +77,13 @@ export function DocumentsView({ snapshot, consumeSimulatedFailure, onUpdated, on
             peuvent plus être remplacées.
           </Alert>
         )}
-        {decided && (
+        {approved && !complete && (
+          <Alert tone="warning" title="Pièces à fournir après approbation">
+            L'adhésion est approuvée ; les pièces manquantes restent à fournir, notamment si les conditions de la
+            décision l'exigent. Les pièces reçues ne peuvent plus être remplacées.
+          </Alert>
+        )}
+        {locked && (
           <Alert tone="neutral" title="Documents verrouillés">
             La candidature a reçu une décision de l'Autorité de gouvernance : les documents ne peuvent plus être
             modifiés.

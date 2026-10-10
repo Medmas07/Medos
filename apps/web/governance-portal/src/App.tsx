@@ -13,7 +13,9 @@ import { ResearchRequestsView } from './components/views/ResearchRequestsView'
 import { AuditExplorerView } from './components/views/AuditExplorerView'
 import { VerifierView } from './components/views/VerifierView'
 import { StateShowcaseView } from './components/views/StateShowcaseView'
+import { NotificationsView } from './components/views/NotificationsView'
 import { governanceService } from './services/governanceService'
+import { notificationStore, applyReadOverrides, countNotifications, notificationRows } from './services/notificationService'
 import { reviewStore } from './services/reviewStore'
 
 type ViewId =
@@ -22,6 +24,7 @@ type ViewId =
   | 'synchronizations'
   | 'research'
   | 'audit'
+  | 'notifications'
   | 'verifier'
   | 'states'
 
@@ -30,6 +33,8 @@ export default function App() {
   const [inspectedProofId, setInspectedProofId] = useState<string>('proof-003')
   // Simulated decisions (HC-073) change the counts below; re-render when they do.
   useSyncExternalStore(reviewStore.subscribe, reviewStore.getSnapshot)
+  // Re-render when notification read state changes (HC-200).
+  useSyncExternalStore(notificationStore.subscribe, () => notificationStore.getSnapshot())
 
   // Sync with URL hash if present
   useEffect(() => {
@@ -42,6 +47,7 @@ export default function App() {
           'synchronizations',
           'research',
           'audit',
+          'notifications',
           'verifier',
           'states',
         ].includes(hash)
@@ -73,6 +79,10 @@ export default function App() {
   const pendingAppsCount = applications.filter((a) => a.status === 'human_review' || a.status === 'pending').length
   const pendingSyncsCount = syncs.filter((s) => s.status === 'pending').length
   const underReviewResearchCount = research.filter((r) => r.status === 'under_review').length
+
+  // HC-200: Notification unread count with session overrides.
+  const rawNotifs = applyReadOverrides(governanceService.getReviewerNotifications('usr-olfa'))
+  const unreadNotifCount = countNotifications(notificationRows(rawNotifs)).unread
 
   const navigationSections: SideNavSection[] = [
     {
@@ -125,6 +135,16 @@ export default function App() {
           onClick: (e) => {
             e.preventDefault()
             navigateTo('audit')
+          },
+        },
+        {
+          label: 'Notifications',
+          href: '#notifications',
+          current: currentView === 'notifications',
+          badge: unreadNotifCount > 0 ? <Badge tone="danger" dot>{unreadNotifCount}</Badge> : undefined,
+          onClick: (e) => {
+            e.preventDefault()
+            navigateTo('notifications')
           },
         },
       ],
@@ -180,6 +200,7 @@ export default function App() {
       {currentView === 'synchronizations' && <DataSyncView />}
       {currentView === 'research' && <ResearchRequestsView />}
       {currentView === 'audit' && <AuditExplorerView onInspectProof={handleInspectProof} />}
+      {currentView === 'notifications' && <NotificationsView />}
       {currentView === 'verifier' && <VerifierView initialProofId={inspectedProofId} />}
       {currentView === 'states' && <StateShowcaseView />}
     </AppShell>

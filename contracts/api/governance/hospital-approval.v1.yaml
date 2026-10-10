@@ -1,0 +1,539 @@
+openapi: 3.1.0
+info:
+  title: Governance Node Hospital Approval
+  version: 1.0.0
+  description: |
+    Contract HC-131, version 1. The Governance / Ethics Authority's hospital
+    approval interface: list the hospital applications it holds, read one
+    with the findings a reviewer must examine, record the human decision
+    that approves or rejects it, and read an approval decision by its
+    reference.
+
+    Boundary rules carried by this contract:
+
+    - **The Governance Node decides; nobody else does.** Company-managed
+      portals (Hospital Portal, Governance Portal) may display applications
+      and submit a reviewer's decision, but the decision rules are checked
+      here. An applicant organization never decides on its own application.
+    - **A decision is human and final.** Only a person with the
+      `governance_reviewer` role, outside the applicant organization, may
+      decide, and only on an application in `human_review` that has no
+      decision yet. A decision cannot be changed or recorded twice.
+    - **Findings are examined before deciding.** If the application has
+      missing documents, unaccepted agreements, completeness findings, or
+      advisory findings, the reviewer must acknowledge them. Approving an
+      application with missing documents or unaccepted agreements requires
+      at least one condition. A rejection carries no condition.
+    - **AI findings are advisory.** `advisory_findings` come from an
+      assisted review step; they are never binding and never decide.
+    - **No clinical data.** Applications and decisions hold opaque
+      references, administrative document and agreement metadata, review
+      text, and times. Document contents are never served.
+    - **Approval references can be checked.** `getHospitalApproval` lets a
+      consumer, such as the Federation Service's node registry
+      (node-registry.v1.yaml), confirm that a cited `decision_ref` is a
+      hospital approval and for which organization.
+
+    Not decided by this version, and OPEN: who may call it (authentication
+    and reviewer identity: `reviewer_ref` is declared by the caller, not
+    authenticated), application submission and document upload, decision
+    expiry or revocation, Hospital Node configuration and package
+    generation after approval, and recording the decision in the
+    governance audit trail (HC-134) or a ledger (AuditLedgerPort, PLANNED).
+
+    Status: implemented by the Governance Node runtime (HC-131) over an
+    in-memory store seeded from fictional demo data; decisions are lost on
+    restart. Requests are not authenticated.
+paths:
+  /v1/hospital-applications:
+    get:
+      operationId: listHospitalApplications
+      summary: List hospital applications, those awaiting human review first.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Only applications with this status.
+          schema:
+            $ref: "#/components/schemas/ApplicationStatus"
+      responses:
+        "200":
+          description: |
+            The applications held by the Governance Node, ordered
+            `human_review`, `pending`, `approved`, `rejected`, then newest
+            submission first. Empty when none matches.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationList"
+              examples:
+                awaitingReview:
+                  summary: Fictional demo — the one application awaiting review.
+                  value:
+                    notice: >-
+                      Fictional demo applications, held in memory by the
+                      Governance Node: decisions are lost on restart, and
+                      requests are not authenticated.
+                    applications:
+                      - application_ref: app-hospital-c
+                        organization_ref: org-hospital-c
+                        status: human_review
+                        submitted_at: "2026-10-06T15:20:00+01:00"
+                        decision_ref: null
+                        findings_count: 4
+                empty:
+                  summary: No application matches the filter.
+                  value:
+                    notice: >-
+                      Fictional demo applications, held in memory by the
+                      Governance Node: decisions are lost on restart, and
+                      requests are not authenticated.
+                    applications: []
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+  /v1/hospital-applications/{application_ref}:
+    parameters:
+      - $ref: "#/components/parameters/ApplicationRef"
+    get:
+      operationId: getHospitalApplication
+      summary: Read one application, with the findings a reviewer must examine.
+      responses:
+        "200":
+          description: The application, its findings, and its decision if any.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationDetail"
+              examples:
+                hospitalC:
+                  summary: Fictional demo — Hospital C, awaiting human review.
+                  value:
+                    application_ref: app-hospital-c
+                    organization_ref: org-hospital-c
+                    status: human_review
+                    submitted_at: "2026-10-06T15:20:00+01:00"
+                    decision_ref: null
+                    findings_count: 4
+                    findings:
+                      missing_documents:
+                        - document_ref: doc-c-assurance
+                          type: insurance_certificate
+                          title: Attestation d'assurance.pdf
+                      unaccepted_agreements: []
+                      completeness_findings:
+                        - Attestation d'assurance manquante.
+                      advisory_findings:
+                        - >-
+                          La version de la base de données déclarée ne
+                          correspond pas à celle indiquée dans le document
+                          d'architecture.
+                        - Aucun contact de sécurité distinct n'est indiqué.
+                    decision: null
+        "404":
+          $ref: "#/components/responses/ApplicationNotFound"
+  /v1/hospital-applications/{application_ref}/decision:
+    parameters:
+      - $ref: "#/components/parameters/ApplicationRef"
+    post:
+      operationId: decideHospitalApplication
+      summary: Record the reviewer's decision to approve or reject an application.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DecisionRequest"
+            examples:
+              approveHospitalC:
+                summary: Fictional demo — Pr Olfa Hamdi approves Hospital C with a condition.
+                value:
+                  reviewer_ref: usr-olfa
+                  outcome: approved
+                  rationale: Dossier conforme, sous réserve de l'attestation d'assurance.
+                  conditions:
+                    - Transmettre l'attestation d'assurance sous 30 jours.
+                  findings_acknowledged: true
+      responses:
+        "201":
+          description: The decision was recorded; the application now has its outcome as status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HospitalApprovalDecision"
+              examples:
+                approved:
+                  value:
+                    decision_ref: dec-hospital-c
+                    application_ref: app-hospital-c
+                    organization_ref: org-hospital-c
+                    outcome: approved
+                    decided_by_ref: usr-olfa
+                    decided_at: "2026-10-10T10:00:00+01:00"
+                    rationale: Dossier conforme, sous réserve de l'attestation d'assurance.
+                    conditions:
+                      - Transmettre l'attestation d'assurance sous 30 jours.
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "403":
+          description: |
+            The reviewer may not decide: unknown here, not a governance
+            reviewer, or a member of the applicant organization.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                hospitalManager:
+                  summary: Fictional demo — Hospital C's manager tries to decide.
+                  value:
+                    type: about:blank
+                    title: Reviewer not allowed
+                    status: 403
+                    detail: Only a governance reviewer may decide.
+                    code: reviewer_not_allowed
+        "404":
+          $ref: "#/components/responses/ApplicationNotFound"
+        "409":
+          description: The application is not awaiting human review, or already has a decision.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                alreadyDecided:
+                  value:
+                    type: about:blank
+                    title: Not awaiting review
+                    status: 409
+                    detail: Application app-hospital-a is approved and already has decision dec-hospital-a.
+                    code: not_awaiting_review
+        "422":
+          description: |
+            The decision breaks a review rule. Every broken rule is listed,
+            so a form can show them all at once.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                unacknowledgedFindings:
+                  value:
+                    type: about:blank
+                    title: Invalid decision
+                    status: 422
+                    detail: The decision breaks 2 review rule(s).
+                    code: invalid_decision
+                    issues:
+                      - field: findings_acknowledged
+                        message: Every finding must be examined and acknowledged before deciding.
+                      - field: conditions
+                        message: >-
+                          Approving an application with missing documents
+                          or unaccepted agreements requires at least one
+                          condition.
+  /v1/hospital-approvals/{decision_ref}:
+    parameters:
+      - name: decision_ref
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/OpaqueRef"
+    get:
+      operationId: getHospitalApproval
+      summary: Read a hospital approval decision by its reference.
+      description: |
+        Answers for decisions on hospital applications only, approved or
+        rejected; a consumer checking an approval must check `outcome` and
+        `organization_ref`. Any other reference, including a decision on
+        another subject, answers `404 decision_not_found`.
+      responses:
+        "200":
+          description: The decision.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HospitalApprovalDecision"
+              examples:
+                hospitalB:
+                  summary: Fictional demo — the approval Hospital B's node registration cites.
+                  value:
+                    decision_ref: dec-hospital-b
+                    application_ref: app-hospital-b
+                    organization_ref: org-hospital-b
+                    outcome: approved
+                    decided_by_ref: usr-olfa
+                    decided_at: "2025-02-17T11:00:00+01:00"
+                    rationale: Dossier complet et conforme à la charte de gouvernance.
+                    conditions: []
+        "404":
+          description: No hospital approval decision has this reference.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                notFound:
+                  value:
+                    type: about:blank
+                    title: Decision not found
+                    status: 404
+                    detail: No hospital approval decision dec-sync-002.
+                    code: decision_not_found
+components:
+  parameters:
+    ApplicationRef:
+      name: application_ref
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/OpaqueRef"
+  responses:
+    InvalidRequest:
+      description: The request is malformed.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          examples:
+            invalid:
+              value:
+                type: about:blank
+                title: Invalid request
+                status: 400
+                detail: "outcome: Input should be 'approved' or 'rejected'"
+                code: invalid_request
+    ApplicationNotFound:
+      description: No application has this reference.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          examples:
+            notFound:
+              value:
+                type: about:blank
+                title: Application not found
+                status: 404
+                detail: No hospital application app-unknown.
+                code: application_not_found
+  schemas:
+    OpaqueRef:
+      type: string
+      pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    ApplicationStatus:
+      type: string
+      description: |
+        `pending`: submitted, automated checks not finished. `human_review`:
+        awaiting a reviewer's decision. `approved` / `rejected`: decided.
+      enum: [pending, human_review, approved, rejected]
+    Outcome:
+      type: string
+      enum: [approved, rejected]
+    Timestamp:
+      type: string
+      format: date-time
+      pattern: "(Z|[+-][0-9]{2}:[0-9]{2})$"
+    ApplicationList:
+      type: object
+      additionalProperties: false
+      required: [notice, applications]
+      properties:
+        notice:
+          type: string
+        applications:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApplicationSummary"
+    ApplicationSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - application_ref
+        - organization_ref
+        - status
+        - submitted_at
+        - decision_ref
+        - findings_count
+      properties:
+        application_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        status:
+          $ref: "#/components/schemas/ApplicationStatus"
+        submitted_at:
+          $ref: "#/components/schemas/Timestamp"
+        decision_ref:
+          oneOf:
+            - $ref: "#/components/schemas/OpaqueRef"
+            - type: "null"
+        findings_count:
+          type: integer
+          minimum: 0
+          description: Total of every finding list in `ApplicationDetail.findings`.
+    ApplicationDetail:
+      description: An `ApplicationSummary` with its findings and decision.
+      type: object
+      additionalProperties: false
+      required:
+        - application_ref
+        - organization_ref
+        - status
+        - submitted_at
+        - decision_ref
+        - findings_count
+        - findings
+        - decision
+      properties:
+        application_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        status:
+          $ref: "#/components/schemas/ApplicationStatus"
+        submitted_at:
+          $ref: "#/components/schemas/Timestamp"
+        decision_ref:
+          oneOf:
+            - $ref: "#/components/schemas/OpaqueRef"
+            - type: "null"
+        findings_count:
+          type: integer
+          minimum: 0
+        findings:
+          $ref: "#/components/schemas/Findings"
+        decision:
+          oneOf:
+            - $ref: "#/components/schemas/HospitalApprovalDecision"
+            - type: "null"
+    Findings:
+      type: object
+      additionalProperties: false
+      required:
+        - missing_documents
+        - unaccepted_agreements
+        - completeness_findings
+        - advisory_findings
+      properties:
+        missing_documents:
+          description: Required documents not received.
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [document_ref, type, title]
+            properties:
+              document_ref:
+                $ref: "#/components/schemas/OpaqueRef"
+              type:
+                type: string
+              title:
+                type: string
+        unaccepted_agreements:
+          description: Codes of the agreements not accepted.
+          type: array
+          items:
+            type: string
+        completeness_findings:
+          description: Findings of the deterministic completeness check.
+          type: array
+          items:
+            type: string
+        advisory_findings:
+          description: Findings of the assisted review. Advisory, never binding.
+          type: array
+          items:
+            type: string
+    DecisionRequest:
+      type: object
+      additionalProperties: false
+      required: [reviewer_ref, outcome, rationale, conditions, findings_acknowledged]
+      properties:
+        reviewer_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        outcome:
+          $ref: "#/components/schemas/Outcome"
+        rationale:
+          description: At least 20 characters once trimmed.
+          type: string
+          maxLength: 2000
+        conditions:
+          description: |
+            Conditions of an approval, one per entry. Blank entries are
+            ignored; a rejection must have none.
+          type: array
+          maxItems: 10
+          items:
+            type: string
+            maxLength: 500
+        findings_acknowledged:
+          description: The reviewer examined every finding of the application.
+          type: boolean
+    HospitalApprovalDecision:
+      type: object
+      additionalProperties: false
+      required:
+        - decision_ref
+        - application_ref
+        - organization_ref
+        - outcome
+        - decided_by_ref
+        - decided_at
+        - rationale
+        - conditions
+      properties:
+        decision_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        application_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        organization_ref:
+          description: The applicant organization.
+          allOf:
+            - $ref: "#/components/schemas/OpaqueRef"
+        outcome:
+          $ref: "#/components/schemas/Outcome"
+        decided_by_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        decided_at:
+          $ref: "#/components/schemas/Timestamp"
+        rationale:
+          type: string
+        conditions:
+          type: array
+          items:
+            type: string
+    Problem:
+      description: RFC 9457 problem details.
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+          enum:
+            - invalid_request
+            - application_not_found
+            - decision_not_found
+            - reviewer_not_allowed
+            - not_awaiting_review
+            - invalid_decision
+        issues:
+          description: Every broken review rule, for `invalid_decision`.
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [field, message]
+            properties:
+              field:
+                type: string
+                enum: [rationale, conditions, findings_acknowledged]
+              message:
+                type: string

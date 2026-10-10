@@ -2,16 +2,17 @@
 
 ## Purpose and status
 
-IMPLEMENTED at initial D3 for HC-182. The service orchestrates a governed
+IMPLEMENTED at initial D3 for HC-182 and HC-184. The service orchestrates a governed
 Compute-to-Data job across explicit Governance and Hospital Node HTTP
-boundaries. It does not execute researcher code, read hospital storage, or
-aggregate node results.
+boundaries and aggregates only disclosure-checked node results. It does not
+execute researcher code or read hospital storage.
 
 The orchestration code and its boundary behavior are test-validated. Live
 cross-process integration is **not VALIDATED** because the Governance research
-authorization endpoint and Hospital-side execution agent (HC-183) are not yet
-implemented. With no endpoints configured, `/health` reports `degraded` and a
-submitted job fails closed with `governance_unavailable`.
+authorization endpoint is not implemented. The HC-183 Hospital-side provider
+exists, but a live job still fails closed when Governance cannot verify it.
+With no endpoints configured, `/health` reports `degraded` and a submitted job
+fails with `governance_unavailable`.
 
 ## D3 behavior
 
@@ -24,13 +25,23 @@ submitted job fails closed with `governance_unavailable`.
 4. retains only orchestration state and controlled node outcomes in memory.
 
 `GET /v1/research-jobs/{job_ref}` refreshes accepted executions and exposes
-queued/authorizing/dispatching/running/completed/denied/failed behavior. A
-partial node failure is explicit and never silently converted into a complete
-result. Per-node controlled results stay separate because aggregation belongs
-to HC-184.
+queued/authorizing/dispatching/running/completed/denied/failed behavior. A node
+failure is explicit and makes aggregation unavailable.
 
-The runtime has no fixture mode. Test doubles exist only under `tests/` and all
-runtime responses carry `mocked: false`.
+When every node completes, the HC-184 bounded aggregator validates each result's
+shape, disclosure threshold, algorithm hash, authorization reference, and source
+organization before using it. It combines only the installed HC-183
+`participant_count` and `hba1c_above_7_pct` cells, using participant counts as
+weights. Empty results contribute no rows. Suppressed cells are never inferred:
+they produce `suppressed` when no node released a result, or `partial` with an
+explicit excluded-organization list when other nodes released results. Invalid
+output fails closed, is removed from the response, and produces
+`invalid_controlled_result`. Aggregation provenance names organizations, never
+patients.
+
+The runtime has no fixture mode. Test doubles exist only under `tests/`.
+Service responses carry `mocked: false`; each node outcome and aggregation also
+carry whether their source Hospital Node identified its data as mocked.
 
 ## Configuration
 
@@ -42,8 +53,8 @@ runtime responses carry `mocked: false`.
 
 Run from this directory with `uvicorn main:app --port 8400`. The service keeps
 jobs in process-local memory; durable persistence, authentication, retries,
-aggregation, output validation, sandboxing, and hospital-side execution remain
-outside HC-182.
+general-purpose aggregation, sandboxing, and production disclosure technology
+remain outside HC-182/HC-184.
 
 ## Boundaries
 
