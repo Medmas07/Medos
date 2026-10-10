@@ -26,6 +26,7 @@ import { NewProjectView } from './views/NewProjectView'
 import { PagePlaceholderView } from './views/PagePlaceholderView'
 import { PopulationView } from './views/PopulationView'
 import { ProtocolView } from './views/ProtocolView'
+import { RequestStatusView } from './views/RequestStatusView'
 import { SubmitRequestView } from './views/SubmitRequestView'
 import { VariablesView } from './views/VariablesView'
 
@@ -195,6 +196,9 @@ export default function App() {
           onNavigate={navigateTo}
         />
       )
+    }
+    if (currentView === 'request-status') {
+      return <RequestStatusView snapshot={load.snapshot} onNavigate={navigateTo} />
     }
     const page = load.snapshot.pages.find((p) => p.id === currentView)!
     const section = PAGE_DEFINITIONS.find((d) => d.id === currentView)!.section

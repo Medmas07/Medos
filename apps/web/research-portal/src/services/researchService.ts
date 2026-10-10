@@ -52,6 +52,11 @@ export function organizationsByIds(ids: readonly string[]): Organization[] {
   return ids.map((id) => organizations.find((o) => o.id === id)).filter((o): o is Organization => o !== undefined)
 }
 
+/** A fictional staff member by identifier, for example the reviewer named on a Governance decision. Pure. */
+export function staffMemberById(id: string): StaffMember | null {
+  return staff.find((p) => p.id === id) ?? null
+}
+
 /** Demo persona: the fictional principal investigator of the cardiometabolic research lab. */
 export const DEMO_RESEARCHER_ID = 'usr-aymen'
 
