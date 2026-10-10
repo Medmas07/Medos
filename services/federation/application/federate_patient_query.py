@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Protocol
 from uuid import uuid4
 
+from application.node_registry import NodeNotFound
 from domain.federated_query import (
     Authorization,
     AuthorizationBasis,
@@ -17,6 +18,7 @@ from domain.federated_query import (
     Requester,
     ScopeItem,
 )
+from domain.node_capabilities import DiscoveryResult, reason_not_to_ask
 from domain.sync_authorization import DenialReason, SyncAuthorization
 
 
@@ -84,6 +86,12 @@ class SyncAuthorizationChecker(Protocol):
     ) -> SyncAuthorization: ...
 
 
+class CapabilityLookup(Protocol):
+    """Latest capability check of a registered node (DiscoverNodeCapabilities, HC-143)."""
+
+    def latest(self, node_ref: str) -> DiscoveryResult: ...
+
+
 @dataclass(frozen=True)
 class NodeAnswer:
     entries: tuple[Entry, ...]
@@ -119,12 +127,15 @@ class FederatePatientQuery:
         registry: NodeRegistry,
         nodes: HospitalNodeClient,
         sync_authorizations: SyncAuthorizationChecker,
+        # None when capabilities say nothing about the nodes asked (simulated nodes).
+        capabilities: CapabilityLookup | None,
         clock: Callable[[], datetime],
         new_id: Callable[[], str] = lambda: str(uuid4()),
     ) -> None:
         self._registry = registry
         self._nodes = nodes
         self._sync_authorizations = sync_authorizations
+        self._capabilities = capabilities
         self._clock = clock
         self._new_id = new_id
 
@@ -145,9 +156,23 @@ class FederatePatientQuery:
             requested_by=request.requested_by,
             authorization=request.authorization,
         )
-        # Nodes are asked in parallel so one slow node does not hold up the others.
-        with ThreadPoolExecutor(max_workers=len(targets)) as pool:
-            node_results = tuple(pool.map(lambda node: self._ask(node, query), targets))
+        not_asked = {
+            node: self._reason_not_to_ask(node, request.scope) for node in targets
+        }
+        to_ask = [node for node in targets if not_asked[node] is None]
+        answers = {}
+        if to_ask:
+            # Nodes are asked in parallel so one slow node does not hold up the others.
+            with ThreadPoolExecutor(max_workers=len(to_ask)) as pool:
+                answers = dict(
+                    zip(to_ask, pool.map(lambda node: self._ask(node, query), to_ask))
+                )
+        node_results = tuple(
+            answers[node]
+            if node in answers
+            else NodeResult(node, NodeStatus.NOT_ASKED, problem_code=not_asked[node])
+            for node in targets
+        )
         return FederatedResult(
             query_id=query.query_id,
             patient_ref=request.patient_ref,
@@ -197,6 +222,17 @@ class FederatePatientQuery:
         if unknown:
             raise UnknownTargets(unknown)
         return tuple(by_organization[ref] for ref in organization_refs)
+
+    def _reason_not_to_ask(
+        self, node: NodeRef, scope: frozenset[ScopeItem]
+    ) -> str | None:
+        if self._capabilities is None:
+            return None
+        try:
+            latest = self._capabilities.latest(node.node_ref)
+        except NodeNotFound:
+            return None  # Deregistered meanwhile; the node client reports it.
+        return reason_not_to_ask(latest, scope)
 
     def _ask(self, node: NodeRef, query: NodeQuery) -> NodeResult:
         try:

@@ -33,6 +33,8 @@ class NodeStatus(StrEnum):
     DENIED = "denied"
     UNAVAILABLE = "unavailable"
     TIMEOUT = "timeout"
+    # Not asked because its latest capability check shows it cannot answer (HC-146).
+    NOT_ASKED = "not_asked"
 
 
 class Completeness(StrEnum):
@@ -119,7 +121,7 @@ class FederatedResult:
 
     def __post_init__(self) -> None:
         if not self.node_results:
-            raise ValueError("At least one node must be asked.")
+            raise ValueError("At least one node must be targeted.")
 
     @property
     def completeness(self) -> Completeness:

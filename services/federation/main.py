@@ -65,6 +65,9 @@ def create_app(
         sync_authorizations=HttpSyncAuthorizationChecker(
             governance_url, transport=governance_transport
         ),
+        # Route around nodes whose last check shows they cannot answer (HC-146). Discovery
+        # describes real nodes, so it says nothing about simulated ones.
+        capabilities=discovery if node_mode == "http" else None,
         clock=clock,
     )
     app = FastAPI(title="Federation Service", version=SERVICE_VERSION)

@@ -176,3 +176,28 @@ def test_an_entry_has_one_typed_body_and_a_source(mutate):
 def test_requests_must_be_authorized_scoped_and_minimised(mutate):
     assert request_schema.is_valid(REQUEST)
     assert not request_schema.is_valid(changed(REQUEST, mutate))
+
+
+ROUTED = RESULT_EXAMPLES["routedAroundNode"]["value"]
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda r: r["node_results"][0].update(problem_code="node_unavailable"),
+        lambda r: r["node_results"][0].update(problem_code=None),
+        lambda r: r["node_results"][2].update(problem_code="scope_not_supported"),
+        lambda r: r["node_results"][0].update(entry_count=1),
+        lambda r: r.update(completeness="complete"),
+    ],
+    ids=[
+        "not_asked_with_node_reason",
+        "not_asked_without_reason",
+        "routing_reason_on_asked_node",
+        "not_asked_with_entries",
+        "complete_with_node_not_asked",
+    ],
+)
+def test_not_asked_nodes_carry_a_routing_reason_and_nothing_else(mutate):
+    assert result_schema.is_valid(ROUTED)
+    assert not result_schema.is_valid(changed(ROUTED, mutate))
