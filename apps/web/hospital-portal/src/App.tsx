@@ -27,6 +27,7 @@ import { DecisionView } from './views/DecisionView'
 import { DmiView } from './views/DmiView'
 import { DocumentsView } from './views/DocumentsView'
 import { HumanReviewView } from './views/HumanReviewView'
+import { InstallationView } from './views/InstallationView'
 import { NodeConfigurationView } from './views/NodeConfigurationView'
 import { NodeDownloadView } from './views/NodeDownloadView'
 import { OverviewView } from './views/OverviewView'
@@ -231,6 +232,15 @@ export default function App() {
         <NodeDownloadView
           snapshot={load.snapshot}
           consumeSimulatedFailure={failureOnce('download-failure')}
+          onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
+          onNavigate={navigateTo}
+        />
+      )
+    }
+    if (currentView === 'node-installation') {
+      return (
+        <InstallationView
+          snapshot={load.snapshot}
           onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
           onNavigate={navigateTo}
         />
