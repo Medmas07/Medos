@@ -48,6 +48,10 @@
         "backupsInPlace": true,
         "dmiSystem": "MediDossier v7 (logiciel fictif)",
         "database": "PostgreSQL 13",
+        "dmiHosting": "on_premise",
+        "integrationMethods": ["hl7v2", "file_export"],
+        "testEnvironmentAvailable": false,
+        "dmiNotes": "Exports nocturnes uniquement ; pas d'API en temps réel.",
         "network": "Lien fibre 100 Mb/s, zone démilitarisée disponible",
         "technicalContactId": "usr-mehdi"
       },

@@ -172,7 +172,7 @@ export function deriveSteps(
     )
     states.set(
       'dmi',
-      questionnaire?.dmiSystem
+      questionnaire?.dmiSystem && questionnaire.integrationMethods?.length
         ? { status: 'completed', detail: `DMI déclaré : ${questionnaire.dmiSystem}.` }
         : { status: 'pending', detail: 'DMI / SIH non décrit.' },
     )
@@ -198,9 +198,9 @@ export function deriveSteps(
 /**
  * Demo scenarios, selected with `?demo=vide`, `?demo=erreur`,
  * `?demo=echec-inscription`, `?demo=echec-profil`, `?demo=echec-document`,
- * `?demo=echec-accord`, or `?demo=echec-technique` in the URL. The document
- * failure scenario starts like `nominal`; the other failure scenarios start like
- * `empty`. Each makes the first matching submission fail.
+ * `?demo=echec-accord`, `?demo=echec-technique`, or `?demo=echec-dmi` in the
+ * URL. The document failure scenario starts like `nominal`; the other failure
+ * scenarios start like `empty`. Each makes the first matching submission fail.
  */
 export type DemoScenario =
   | 'nominal'
@@ -211,6 +211,7 @@ export type DemoScenario =
   | 'document-failure'
   | 'agreement-failure'
   | 'technical-failure'
+  | 'dmi-failure'
 
 export function scenarioFromSearch(search: string): DemoScenario {
   const value = new URLSearchParams(search).get('demo')
@@ -221,6 +222,7 @@ export function scenarioFromSearch(search: string): DemoScenario {
   if (value === 'echec-document') return 'document-failure'
   if (value === 'echec-accord') return 'agreement-failure'
   if (value === 'echec-technique') return 'technical-failure'
+  if (value === 'echec-dmi') return 'dmi-failure'
   return 'nominal'
 }
 
@@ -251,7 +253,8 @@ export async function loadOnboardingSnapshot(
     scenario === 'registration-failure' ||
     scenario === 'profile-failure' ||
     scenario === 'agreement-failure' ||
-    scenario === 'technical-failure'
+    scenario === 'technical-failure' ||
+    scenario === 'dmi-failure'
       ? null
       : (applications.find((a) => a.organizationId === organizationId) ?? null)
 

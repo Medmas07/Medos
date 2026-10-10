@@ -6,6 +6,7 @@ import peopleFixtures from '../../../../../demo-data/people.json'
 import researchFixtures from '../../../../../demo-data/research.json'
 import type {
   AccessGrant,
+  AccessGrantInfo,
   GovernanceAuditEvent,
   GovernanceDecision,
   GovernanceNotification,
@@ -68,6 +69,14 @@ export const governanceService = {
   getSynchronizationRequests(): SynchronizationRequest[] {
     const simulated = reviewStore.getSnapshot().synchronizationRequests
     return typedGovernance.synchronizationRequests.map((req) => simulated[req.id] ?? req)
+  },
+
+  getSynchronizationRequest(id: string): SynchronizationRequest | undefined {
+    return this.getSynchronizationRequests().find((s) => s.id === id)
+  },
+
+  getAccessGrants(): AccessGrant[] {
+    return typedAccessGrants
   },
 
   getAccessGrant(id: string | null): AccessGrant | undefined {
