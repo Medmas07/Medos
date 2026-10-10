@@ -17,7 +17,7 @@ import type {
   OrganizationInfo,
   PersonInfo,
   ResearchAccessRequest,
-  ResearchProject,
+  ResearchProjectInfo,
 } from '../types/governance'
 import { MIN_RATIONALE_LENGTH, type ReviewOutcome } from './hospitalReview'
 
@@ -37,7 +37,7 @@ export interface ResearchCheck {
 
 export interface ResearchReviewContext {
   request: ResearchAccessRequest
-  project: ResearchProject | undefined
+  project: ResearchProjectInfo | undefined
   organization: (id: string) => OrganizationInfo | undefined
   now: Date
 }

@@ -15,7 +15,7 @@ import type {
   PatientInfo,
   PersonInfo,
   ResearchAccessRequest,
-  ResearchProject,
+  ResearchProjectInfo,
   SynchronizationRequest,
 } from '../types/governance'
 import { reviewStore } from './reviewStore'
@@ -33,13 +33,13 @@ const typedGovernance = governanceFixtures as unknown as {
 
 const typedAccessGrants = (accessFixtures.accessGrants ?? []) as unknown as AccessGrant[]
 
-const typedProjects = (researchFixtures.projects ?? []) as unknown as ResearchProject[]
-
 const typedOrganizations = (organizationsFixtures.organizations ?? []) as unknown as OrganizationInfo[]
 
 const typedPatients = (peopleFixtures.patients ?? []) as unknown as PatientInfo[]
 
 const typedNotifications = (notificationsFixtures.notifications ?? []) as unknown as GovernanceNotification[]
+
+const typedProjects = (researchFixtures.projects ?? []) as unknown as ResearchProjectInfo[]
 
 const allStaffAndClinicians = [
   ...((peopleFixtures.staff ?? []) as unknown as PersonInfo[]),
@@ -81,7 +81,15 @@ export const governanceService = {
     return typedGovernance.researchAccessRequests.map((req) => simulated[req.id] ?? req)
   },
 
-  getResearchProject(id: string): ResearchProject | undefined {
+  getResearchAccessRequest(id: string): ResearchAccessRequest | undefined {
+    return this.getResearchAccessRequests().find((r) => r.id === id)
+  },
+
+  getResearchProjects(): ResearchProjectInfo[] {
+    return typedProjects
+  },
+
+  getResearchProject(id: string): ResearchProjectInfo | undefined {
     return typedProjects.find((p) => p.id === id)
   },
 

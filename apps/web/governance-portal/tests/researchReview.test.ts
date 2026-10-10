@@ -14,7 +14,7 @@ import {
   type ResearchReviewDraft,
 } from '../src/services/researchReview'
 import { reviewStore } from '../src/services/reviewStore'
-import type { ResearchAccessRequest, ResearchProject } from '../src/types/governance'
+import type { ResearchAccessRequest, ResearchProjectInfo } from '../src/types/governance'
 
 const DEMO_NOW = new Date('2026-10-10T10:00:00+01:00')
 const reviewer = governanceService.getPerson('usr-olfa')
@@ -26,7 +26,7 @@ function request(id: string): ResearchAccessRequest {
 }
 
 function context(
-  projectChanges: Partial<ResearchProject> = {},
+  projectChanges: Partial<ResearchProjectInfo> = {},
   requestId = 'rar-002',
 ): ResearchReviewContext {
   const req = request(requestId)
@@ -65,7 +65,7 @@ describe('Research access review checks (HC-078)', () => {
   })
 
   it('fails without a protocol, a population, or variables', () => {
-    expect(states(context({ protocolDocument: null })).protocol).toBe('fail')
+    expect(states(context({ protocolDocument: undefined })).protocol).toBe('fail')
     expect(states(context({ population: '  ' })).scope).toBe('fail')
     expect(states(context({ variables: [] })).scope).toBe('fail')
   })
@@ -109,7 +109,7 @@ describe('Research access review rules (HC-078)', () => {
   })
 
   it('blocks approval when a check fails, but always allows a motivated rejection', () => {
-    const ctx = context({ protocolDocument: null })
+    const ctx = context({ protocolDocument: undefined })
 
     expect(fields(ctx, approve(ctx))).toContain('checks')
     expect(fields(ctx, reject(ctx))).toEqual([])
