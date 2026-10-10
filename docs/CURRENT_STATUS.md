@@ -31,8 +31,8 @@ Status is based on repository inspection, not product intent. Use the [shared vo
 - **Blockchain / Immutable Audit Ledger — OPTIONAL / PLANNED:** no `AuditLedgerPort`, adapter, simulated ledger, or real ledger exists.
 - **Authentication, authorization, RBAC, and organization identity — PLANNED:** no production or demo implementation exists.
 - **Persistence and canonical/FHIR model — PLANNED:** no database, ORM, schema, FHIR server, or profile is selected.
-- **Communication contracts — PLANNED except one:** the only defined contract is the AI clinical extraction API, [`contracts/api/ai/clinical-extraction.v1.yaml`](../contracts/api/ai/clinical-extraction.v1.yaml) (HC-152). No event, Federation, or message schema exists.
-- **Product tests — PLANNED:** test directories are placeholders and contain no product tests.
+- **Communication contracts — mostly PLANNED:** two API contracts are defined: AI clinical extraction, [`clinical-extraction.v1.yaml`](../contracts/api/ai/clinical-extraction.v1.yaml) (HC-152), and medication safety check, [`medication-safety-check.v1.yaml`](../contracts/api/medication-safety/medication-safety-check.v1.yaml) (HC-160). The medication safety contract has no provider or implementation. No event, Federation, or message schema exists.
+- **Product tests — mostly PLANNED:** only `services/ai/tests/` and the repository [contract tests](../tests/contracts/) exist; `tests/integration/` and `tests/e2e/` are empty placeholders.
 - **Product deployment — NOT IMPLEMENTED:** no production build, container image, package, hosting configuration, tunnel, or deployment exists.
 
 ## Mocked behavior
