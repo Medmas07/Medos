@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-SciAgents exists externally. This repository owns only its PLANNED integration; no client or communication contract is implemented.
+SciAgents exists externally. This repository owns only its PLANNED integration; no client or communication contract is implemented. The client adapter is Python per [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md); HC-171 decides whether it runs inside the Research Service or as its own process.
 
 ## Responsibilities and owned concepts
 

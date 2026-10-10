@@ -4,7 +4,7 @@ This document uses the shared [status vocabulary](README.md#status-vocabulary). 
 
 ## 1. Architecture status
 
-The federated model, trust boundaries, local data control, Clean / Hexagonal dependency rule, contract-based communication, local DMI placement, Governance-owned authorization, external SciAgents Integration, and advisory AI role are CONFIRMED constraints. The web portal technology is CONFIRMED by [ADR-0001](decisions/ADR-0001-web-frontend-technology.md), and the web design-system location and styling by [ADR-0002](decisions/ADR-0002-web-design-system.md). Other runtime stacks, databases, protocols, hosting, providers, and concrete implementations remain OPEN. Most capabilities below are PLANNED, not implemented.
+The federated model, trust boundaries, local data control, Clean / Hexagonal dependency rule, contract-based communication, local DMI placement, Governance-owned authorization, external SciAgents Integration, and advisory AI role are CONFIRMED constraints. The web portal technology is CONFIRMED by [ADR-0001](decisions/ADR-0001-web-frontend-technology.md), and the web design-system location and styling by [ADR-0002](decisions/ADR-0002-web-design-system.md). The backend runtime strategy (Python + FastAPI for every Node and service, one project per bounded context) is CONFIRMED by [ADR-0003](decisions/ADR-0003-backend-runtime-strategy.md). Other runtime stacks, databases, protocols, hosting, providers, and concrete implementations remain OPEN. Most capabilities below are PLANNED, not implemented.
 
 ## 2. Product context
 
@@ -146,7 +146,13 @@ Cross-component communication uses explicit, versionable APIs, events, Federatio
 
 ## 15. Runtime and deployment model
 
-Hospital Nodes and the Governance Node are distinct deployable trust boundaries. Hospital Nodes are expected to become containerized, but container/runtime choices are OPEN pending ADRs. The web portals use React + TypeScript + Vite as client-side SPAs with static build output ([ADR-0001](decisions/ADR-0001-web-frontend-technology.md)), styled with Tailwind CSS v4 and the `design-system/` package ([ADR-0002](decisions/ADR-0002-web-design-system.md)). Mobile stacks, service runtimes, persistence, hosting, and topology remain OPEN.
+Hospital Nodes and the Governance Node are distinct deployable trust boundaries. Hospital Nodes are expected to become containerized, but container choices are OPEN pending ADRs.
+
+The web portals use React + TypeScript + Vite as client-side SPAs with static build output ([ADR-0001](decisions/ADR-0001-web-frontend-technology.md)), styled with Tailwind CSS v4 and the `design-system/` package ([ADR-0002](decisions/ADR-0002-web-design-system.md)).
+
+Every backend runtime (Hospital Node, Governance Node, Federation, Research, Notifications, AI Services) is a separate Python project using FastAPI as its inbound HTTP adapter, with its own pinned dependencies and no code imports between projects ([ADR-0003](decisions/ADR-0003-backend-runtime-strategy.md)). One Hospital Node codebase runs as one process per hospital, with separate configuration and storage. FastAPI and Pydantic stay in adapters, infrastructure, and the composition root; Domain and Application use the standard library only. A runtime is created only when a ticket needs it.
+
+Mobile stacks, persistence, hosting, and topology remain OPEN.
 
 ## 16. Development / preview / production
 
@@ -176,14 +182,14 @@ AI is advisory, replaceable through ports, and subject to appropriate human revi
 | Governance Portal | PLANNED | No UI code; stack decided by ADR-0001. |
 | Research Portal | PLANNED | No UI code or notebook execution; stack decided by ADR-0001. |
 | Web design system | IMPLEMENTED | Tokens, components, and showcase at D1 (ADR-0002); no portal consumes it yet. |
-| Hospital Node | PLANNED | Boundary documented; runtime not implemented. |
-| Governance Node | PLANNED | Boundary documented; runtime not implemented. |
+| Hospital Node | PLANNED | Boundary documented; runtime not implemented; stack decided by ADR-0003. |
+| Governance Node | PLANNED | Boundary documented; runtime not implemented; stack decided by ADR-0003. |
 | DMI Adapter | PLANNED | Hospital-local boundary documented; no adapter. |
-| Federation Service | PLANNED | No contracts or runtime implementation. |
-| Notification Service | PLANNED | No provider or runtime implementation. |
+| Federation Service | PLANNED | No contracts or runtime implementation; stack decided by ADR-0003. |
+| Notification Service | PLANNED | No provider or runtime implementation; stack decided by ADR-0003. |
 | SciAgents Integration | PLANNED | SciAgents exists externally; connector is absent. |
 | Immutable Audit Ledger | OPTIONAL / PLANNED | Governance-only concept; no adapter or ledger. |
-| AI Services | PLANNED | Python CONFIRMED; libraries and implementation absent. |
+| AI Services | PLANNED | Python + FastAPI runtime decided by ADR-0003; AI libraries and implementation absent. |
 | Authentication and persistence | PLANNED | No implementation or selected technology. |
 | IoT | OPTIONAL | PlatformIO placeholder is prepared; hardware/framework/protocol are OPEN. |
 | GitHub templates/workflows | IMPLEMENTED | Templates and manual placeholder workflows exist; product CI is not configured. |

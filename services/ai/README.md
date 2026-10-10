@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-Python is CONFIRMED for potential AI components. Specific frameworks, providers, models, hosting, and APIs are OPEN. All capabilities are PLANNED; no AI implementation exists.
+Python is CONFIRMED for potential AI components, and FastAPI is CONFIRMED as its HTTP runtime by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md); HC-150 creates the runtime. AI libraries, providers, models, hosting, and API contracts are OPEN. All capabilities are PLANNED; no AI implementation exists.
 
 ## Responsibilities and owned concepts
 

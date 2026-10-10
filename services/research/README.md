@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-PLANNED company-managed orchestration capability for governed research projects and Compute-to-Data jobs. No runtime or execution code exists.
+PLANNED company-managed orchestration capability for governed research projects and Compute-to-Data jobs. No runtime or execution code exists. When its first runtime ticket needs one, it is a separate Python + FastAPI project per [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md).
 
 ## Responsibilities and owned concepts
 

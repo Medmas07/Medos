@@ -14,3 +14,4 @@ Clean/Hexagonal principles are an initial project constraint and do not require 
 |---|---|---|
 | [ADR-0001](ADR-0001-web-frontend-technology.md) | Web frontend technology for the three web portals | Accepted |
 | [ADR-0002](ADR-0002-web-design-system.md) | Location and styling of the web design system | Accepted |
+| [ADR-0003](ADR-0003-backend-runtime-strategy.md) | Backend runtime strategy for Nodes and company services | Accepted |
