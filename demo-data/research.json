@@ -12,6 +12,10 @@
       "summary": "Décrire la fréquence du mauvais contrôle glycémique selon l'âge chez les adultes suivis pour un risque cardiométabolique.",
       "population": "Adultes de 40 à 79 ans ayant au moins une consultation entre 2024 et 2026.",
       "variables": ["Tranche d'âge", "Sexe", "HbA1c", "Hypertension traitée"],
+      "dataScope": {
+        "population": { "ageMin": 40, "ageMax": 79, "encounterFrom": "2024-01-01", "encounterTo": "2026-12-31" },
+        "variables": ["age_band", "sex", "hba1c", "treated_hypertension"]
+      },
       "participatingOrganizationIds": ["org-hospital-a", "org-hospital-b"],
       "protocolDocument": { "id": "doc-proj-001-protocole", "title": "Protocole_v2.pdf" },
       "researchAccessRequestId": "rar-001"
@@ -26,6 +30,10 @@
       "summary": "Étudier la variation saisonnière des consultations pour asthme chez les 18-30 ans.",
       "population": "Adultes de 18 à 30 ans avec au moins une consultation pour asthme.",
       "variables": ["Mois de consultation", "Tranche d'âge", "Passage aux urgences"],
+      "dataScope": {
+        "population": { "ageMin": 18, "ageMax": 30 },
+        "variables": ["consultation_month", "age_band", "emergency_visit"]
+      },
       "participatingOrganizationIds": ["org-hospital-b", "org-private-practice"],
       "protocolDocument": { "id": "doc-proj-002-protocole", "title": "Protocole_asthme_v1.pdf" },
       "researchAccessRequestId": "rar-002"

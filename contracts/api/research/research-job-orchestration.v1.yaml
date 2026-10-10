@@ -1,11 +1,12 @@
 openapi: 3.1.0
 info:
   title: Research Job Orchestration API
-  version: 1.1.0
+  version: 1.2.0
   description: |
-    HC-182/HC-184 D3 Research Service API. It coordinates authorization and
-    Hospital Node execution, then aggregates only validated controlled results.
-    It never executes submitted code or reads Hospital Node persistence.
+    HC-182/HC-184 D3 and HC-185 D4 Research Service API. It coordinates
+    authorization and Hospital Node execution, validates every controlled
+    output before release, then aggregates only outputs that passed. It never
+    executes submitted code or reads Hospital Node persistence.
 paths:
   /v1/research-jobs:
     post:
@@ -68,7 +69,7 @@ components:
     NodeExecution:
       type: object
       additionalProperties: false
-      required: [execution_id, organization_ref, status, mocked]
+      required: [execution_id, organization_ref, status, mocked, output_validation]
       properties:
         execution_id: {$ref: "#/components/schemas/Ref"}
         organization_ref: {$ref: "#/components/schemas/Ref"}
@@ -76,6 +77,18 @@ components:
         result: {$ref: "#/components/schemas/ControlledResult"}
         error: {$ref: "#/components/schemas/Problem"}
         mocked: {type: boolean}
+        output_validation: {$ref: "#/components/schemas/OutputValidation"}
+    OutputValidation:
+      type: object
+      additionalProperties: false
+      required: [status, checks]
+      properties:
+        status: {type: string, enum: [pending, passed, rejected, not_applicable]}
+        checks:
+          type: array
+          uniqueItems: true
+          items: {type: string, enum: [controlled_result_schema, metadata_schema, disclosure_policy, provenance_binding, timestamp_order, bounded_columns, minimum_cell_size]}
+        error: {$ref: "#/components/schemas/Problem"}
     ControlledAggregation:
       type: object
       additionalProperties: false
@@ -136,8 +149,27 @@ components:
         outcome: {type: string, enum: [released, empty, suppressed]}
         columns: {type: array, uniqueItems: true, items: {type: string}}
         rows: {type: array, description: Aggregate cells only; never raw or patient-level records., items: {type: array}}
-        disclosure: {type: object}
-        provenance: {type: object}
+        disclosure: {$ref: "#/components/schemas/NodeDisclosure"}
+        provenance: {$ref: "#/components/schemas/NodeProvenance"}
+    NodeDisclosure:
+      type: object
+      additionalProperties: false
+      required: [status, minimum_cell_size, checked_at]
+      properties:
+        status: {type: string, enum: [passed, suppressed]}
+        minimum_cell_size: {type: integer, minimum: 1}
+        checked_at: {type: string, format: date-time}
+        reason_code: {type: string, enum: [minimum_cell_size]}
+    NodeProvenance:
+      type: object
+      additionalProperties: false
+      required: [algorithm_sha256, authorization_decision_ref, executed_at, source_organization_ref, source_node_ref]
+      properties:
+        algorithm_sha256: {type: string, pattern: "^[a-f0-9]{64}$"}
+        authorization_decision_ref: {$ref: "#/components/schemas/Ref"}
+        executed_at: {type: string, format: date-time}
+        source_organization_ref: {$ref: "#/components/schemas/Ref"}
+        source_node_ref: {$ref: "#/components/schemas/Ref"}
     Problem:
       type: object
       additionalProperties: false

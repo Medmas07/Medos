@@ -26,8 +26,10 @@ import { NewProjectView } from './views/NewProjectView'
 import { PagePlaceholderView } from './views/PagePlaceholderView'
 import { PopulationView } from './views/PopulationView'
 import { ProtocolView } from './views/ProtocolView'
+import { RequestStatusView } from './views/RequestStatusView'
 import { SubmitRequestView } from './views/SubmitRequestView'
 import { VariablesView } from './views/VariablesView'
+import { WorkspaceView } from './views/WorkspaceView'
 
 type ViewId = 'home' | PageId
 
@@ -80,6 +82,14 @@ export default function App() {
   const consumeUploadFailure = () => {
     if (scenarioFromSearch(window.location.search) !== 'upload-failure' || uploadFailureUsed.current) return false
     uploadFailureUsed.current = true
+    return true
+  }
+
+  // The execution-failure scenario fails the first workspace run dispatched once per page load.
+  const executionFailureUsed = useRef(false)
+  const consumeExecutionFailure = () => {
+    if (scenarioFromSearch(window.location.search) !== 'execution-failure' || executionFailureUsed.current) return false
+    executionFailureUsed.current = true
     return true
   }
 
@@ -196,6 +206,19 @@ export default function App() {
         />
       )
     }
+    if (currentView === 'request-status') {
+      return <RequestStatusView snapshot={load.snapshot} onNavigate={navigateTo} />
+    }
+    if (currentView === 'workspace') {
+      return (
+        <WorkspaceView
+          snapshot={load.snapshot}
+          consumeSimulatedFailure={consumeExecutionFailure}
+          onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
+          onNavigate={navigateTo}
+        />
+      )
+    }
     const page = load.snapshot.pages.find((p) => p.id === currentView)!
     const section = PAGE_DEFINITIONS.find((d) => d.id === currentView)!.section
     return <PagePlaceholderView page={page} section={SECTION_TITLES[section]} />
@@ -208,7 +231,7 @@ export default function App() {
       banner={
         <DemoBanner>
           Démonstration D1 : données fictives (HC-005), service de recherche et identité simulés. Aucune
-          exécution réelle, aucun accès aux Hospital Nodes, aucune connexion à SciAgents.
+          exécution réelle (le notebook est simulé), aucun accès aux Hospital Nodes, aucune connexion à SciAgents.
         </DemoBanner>
       }
       navigation={<SideNav label="Navigation principale" sections={navigationSections} />}

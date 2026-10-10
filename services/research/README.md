@@ -2,19 +2,19 @@
 
 ## Purpose and status
 
-IMPLEMENTED at initial D3 for HC-182 and HC-184. The service orchestrates a governed
-Compute-to-Data job across explicit Governance and Hospital Node HTTP
-boundaries and aggregates only disclosure-checked node results. It does not
-execute researcher code or read hospital storage.
+IMPLEMENTED at initial D3 for HC-182/HC-184 and D4 for HC-185. The service
+orchestrates a governed Compute-to-Data job across explicit Governance and
+Hospital Node HTTP boundaries, validates controlled outputs before release,
+and aggregates only outputs that pass. It does not execute researcher code or
+read hospital storage.
 
-The orchestration code and its boundary behavior are test-validated. Live
-cross-process integration is **not VALIDATED** because the Governance research
-authorization endpoint is not implemented. The HC-183 Hospital-side provider
-exists, but a live job still fails closed when Governance cannot verify it.
+The orchestration code and its boundary behavior are test-validated. The
+Governance Node serves the research authorization endpoint (HC-133). Run locally with the Governance Node (HC-133) and Hospital Nodes A and B, a job under a decision whose scope the HC-183 aggregate can run (`hba1c`, encounter dates) completes on both nodes with output validation passed; the fictional cohorts are below the minimum cell size, so the aggregate is suppressed. Jobs outside the decision (a variable, organization, project, requester, or population it does not cover) are denied by Governance before any node is asked. Under `dec-rar-001` (ages 40–79), no job can complete: the HC-183 aggregate refuses age bounds, and Governance refuses a job without them as wider than approved. Live
+integration is **not VALIDATED** beyond that local run.
 With no endpoints configured, `/health` reports `degraded` and a submitted job
 fails with `governance_unavailable`.
 
-## D3 behavior
+## D3 orchestration and aggregation
 
 `POST /v1/research-jobs`:
 
@@ -39,6 +39,25 @@ output fails closed, is removed from the response, and produces
 `invalid_controlled_result`. Aggregation provenance names organizations, never
 patients.
 
+## D4 output-validation gate
+
+HC-185 validates every completed Hospital Node output before the service exposes
+or aggregates it. The bounded gate checks:
+
+- the exact controlled-result and metadata shape, rejecting unexpected fields;
+- the output policy and minimum-cell threshold;
+- the algorithm, authorization, organization, and node provenance binding;
+- timezone-aware execution/review timestamps and their order;
+- the installed aggregate's exact columns, single-row bound, count, and numeric
+  percentage range.
+
+Each node outcome exposes `output_validation` as `pending`, `passed`, `rejected`,
+or `not_applicable`, with the checks that passed. A rejected output is removed,
+the job fails with `output_rejected`, and aggregation becomes `not_available`.
+The gate does not repair output, infer suppressed cells, inspect Hospital Node
+storage, or claim generic de-identification. It is deterministic validation for
+the one installed HC-183 aggregate, not production disclosure-control tooling.
+
 The runtime has no fixture mode. Test doubles exist only under `tests/`.
 Service responses carry `mocked: false`; each node outcome and aggregation also
 carry whether their source Hospital Node identified its data as mocked.
@@ -53,8 +72,8 @@ carry whether their source Hospital Node identified its data as mocked.
 
 Run from this directory with `uvicorn main:app --port 8400`. The service keeps
 jobs in process-local memory; durable persistence, authentication, retries,
-general-purpose aggregation, sandboxing, and production disclosure technology
-remain outside HC-182/HC-184.
+general-purpose aggregation, generic de-identification, sandboxing, and
+production disclosure technology remain outside HC-182/HC-184/HC-185.
 
 ## Boundaries
 

@@ -149,7 +149,8 @@ function deriveNextAction(summary: ProjectSummary, job: ComputeJob | null, resul
   return { kind: 'review_result', priority: 'ready', page: 'results' }
 }
 
-function authorizationStatus(summary: ProjectSummary, now: Date): AuthorizationStatus | null {
+/** A Governance approval's validity at `now`; null when the request is not approved. Pure. */
+export function authorizationStatus(summary: ProjectSummary, now: Date): AuthorizationStatus | null {
   const { request, decision } = summary
   if (request?.status !== 'approved' || decision?.outcome !== 'approved') return null
   if (decision.validUntil === null) return { summary, state: 'valid', daysLeft: null }

@@ -14,10 +14,10 @@ def test_health_reports_the_demo_governance_authority():
     assert response.json() == {
         "status": "ok",
         "node": "governance-node",
-        "version": "0.2.0",
+        "version": "0.4.0",
         "node_ref": "node-governance",
         "organization_ref": "org-governance",
-        "capabilities": ["hospital_approval"],
+        "capabilities": ["hospital_approval", "synchronization", "research"],
         "notice": SKELETON_NOTICE,
     }
 
