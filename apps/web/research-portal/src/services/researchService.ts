@@ -39,6 +39,16 @@ const notifications = notificationFixtures.notifications as unknown as PortalNot
 /** Every fixture project; a new project's identifier must not reuse one of theirs. */
 export const FIXTURE_PROJECTS: readonly ResearchProject[] = projects
 
+/** Organizations whose Hospital Node could take part in a study: hospitals and private practices. */
+export const HEALTHCARE_ORGANIZATIONS: readonly Organization[] = organizations.filter(
+  (o) => o.type === 'hospital' || o.type === 'private_practice',
+)
+
+/** The known organizations among these identifiers, in the same order. Pure. */
+export function organizationsByIds(ids: readonly string[]): Organization[] {
+  return ids.map((id) => organizations.find((o) => o.id === id)).filter((o): o is Organization => o !== undefined)
+}
+
 /** Demo persona: the fictional principal investigator of the cardiometabolic research lab. */
 export const DEMO_RESEARCHER_ID = 'usr-aymen'
 
@@ -135,9 +145,7 @@ function summarize(project: ResearchProject, now: Date): ProjectSummary {
     project,
     request,
     decision,
-    participatingOrganizations: project.participatingOrganizationIds
-      .map((id) => organizations.find((o) => o.id === id))
-      .filter((o): o is Organization => o !== undefined),
+    participatingOrganizations: organizationsByIds(project.participatingOrganizationIds),
   }
   return { ...summary, authorized: isAuthorized(summary, now) }
 }

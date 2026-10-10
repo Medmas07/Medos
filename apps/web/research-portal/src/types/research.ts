@@ -10,6 +10,18 @@ export interface Organization {
   name: string
   shortName: string
   city: string
+  /** Governance onboarding status, displayed only; `null` for non-healthcare organizations. */
+  governanceStatus?: 'approved' | 'under_review' | 'rejected' | null
+  /** The organization's Hospital Node, once federated. */
+  node?: HospitalNodeSummary | null
+}
+
+/** A Hospital Node's state as fixtures describe it (HC-005); the portal never contacts it. */
+export interface HospitalNodeSummary {
+  /** Node reference, `node_ref` of the HC-180 execution contract. */
+  id: string
+  status: 'online' | 'degraded' | 'offline'
+  dmiState: 'connected' | 'disconnected'
 }
 
 export interface StaffMember {
@@ -43,6 +55,10 @@ export interface ResearchProject {
   variableNames?: string[]
   /** Why each requested variable is needed (HC-095); absent on fixture projects. */
   variablesJustification?: string
+  /**
+   * Organizations whose Hospital Node is asked to run the analysis,
+   * `target_organizations` of the HC-182 job contract (HC-096).
+   */
   participatingOrganizationIds: string[]
   protocolDocument: ProjectDocumentRef | null
   /** Optional supporting documents; absent on fixture projects. */
