@@ -75,7 +75,8 @@ export function OverviewView({ snapshot, onNavigate }: OverviewViewProps) {
               {applicationStatusDisplay[application.status].label}
             </Badge>
             <p className="mt-2 text-xs text-slate-500">
-              {application.id} · soumise le {formatDateTime(application.submittedAt)}
+              {application.id} · {application.status === 'draft' ? 'enregistrée' : 'soumise'} le{' '}
+              {formatDateTime(application.submittedAt)}
             </p>
           </Card>
           <Card title="Progression">
