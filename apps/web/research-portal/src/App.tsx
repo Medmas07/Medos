@@ -11,6 +11,7 @@ import {
   type SideNavSection,
 } from '@hackcure/design-system'
 import { pageStatusDisplay } from './presentation'
+import { sciAgentsIntegrationConfigured } from './services/sciagentsApi'
 import {
   DEMO_RESEARCHER_ID,
   loadResearchSnapshot,
@@ -243,7 +244,7 @@ export default function App() {
       banner={
         <DemoBanner>
           Démonstration D1 : données fictives (HC-005), service de recherche et identité simulés. Aucune
-          exécution réelle (le notebook est simulé), aucun accès aux Hospital Nodes, aucune connexion à SciAgents (investigations fictives).
+          exécution réelle (le notebook est simulé), aucun accès aux Hospital Nodes. SciAgents : {sciAgentsIntegrationConfigured ? 'frontière D2 configurée ; les anciennes investigations restent des fixtures identifiées' : 'intégration non configurée ; investigations fictives uniquement'}.
         </DemoBanner>
       }
       navigation={<SideNav label="Navigation principale" sections={navigationSections} />}

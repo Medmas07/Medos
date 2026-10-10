@@ -40,8 +40,9 @@ info:
     Entity resolution, evidence graphs, and novelty checks are not part of
     this version.
 
-    Status: HC-171 implements the server-side HTTP adapter for this contract.
-    The Research Portal connection remains HC-172.
+    Status: HC-171 implements the server-side adapter and HC-172 serves this
+    contract to the Research Portal. Live external connectivity still requires
+    an explicitly configured SciAgents endpoint.
 paths:
   /v1/investigations:
     post:
