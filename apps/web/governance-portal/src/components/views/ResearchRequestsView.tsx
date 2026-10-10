@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import {
   Alert,
   Badge,
@@ -9,15 +9,27 @@ import {
   Table,
 } from '@hackcure/design-system'
 import { governanceService } from '../../services/governanceService'
+import { reviewStore } from '../../services/reviewStore'
 import type { ResearchAccessRequest } from '../../types/governance'
+import { ResearchReviewForm } from '../review/ResearchReviewForm'
+
+/** The reviewer signed in to this demo portal (fictional, HC-005). */
+const REVIEWER_ID = 'usr-olfa'
+
+const formatDate = (iso: string) => new Date(iso).toLocaleDateString('fr-TN')
 
 export function ResearchRequestsView() {
+  // Re-render when a simulated decision is recorded or the demo is reset (HC-078).
+  const reviewState = useSyncExternalStore(reviewStore.subscribe, reviewStore.getSnapshot)
+  const simulatedCount = Object.keys(reviewState.researchAccessRequests).length
   const requests = governanceService.getResearchAccessRequests()
   const [selectedReqId, setSelectedReqId] = useState<string>('rar-002')
 
   const selectedReq = requests.find((r) => r.id === selectedReqId)
   const decision = selectedReq ? governanceService.getDecision(selectedReq.decisionId) : undefined
   const submitter = selectedReq ? governanceService.getPerson(selectedReq.submittedById) : undefined
+  const project = selectedReq ? governanceService.getResearchProject(selectedReq.projectId) : undefined
+  const researchOrg = submitter?.organizationId ? governanceService.getOrganization(submitter.organizationId) : undefined
 
   return (
     <div className="space-y-6">
@@ -25,6 +37,13 @@ export function ResearchRequestsView() {
         eyebrow="Éthique & Recherche Biomédicale"
         title="Demandes d'Accès Projets de Recherche"
         description="Autorisation des projets de recherche multicentriques sous le paradigme Compute-to-Data. Aucun export de données brutes vers l'extérieur."
+        actions={
+          simulatedCount > 0 ? (
+            <Button variant="ghost" size="sm" onClick={() => reviewStore.reset()}>
+              Réinitialiser la démo
+            </Button>
+          ) : undefined
+        }
       />
 
       <Alert tone="info" title="Paradigme Compute-to-Data">
@@ -52,7 +71,7 @@ export function ResearchRequestsView() {
                   header: 'Chercheur / Institution',
                   render: (req) => {
                     const person = governanceService.getPerson(req.submittedById)
-                    const org = person?.role ? governanceService.getOrganization('org-research-lab') : undefined
+                    const org = person?.organizationId ? governanceService.getOrganization(person.organizationId) : undefined
                     return (
                       <div className="text-xs">
                         <div className="font-semibold text-slate-800">
@@ -103,21 +122,54 @@ export function ResearchRequestsView() {
 
         <div className="lg:col-span-5">
           {selectedReq ? (
-            <Card title={`Dossier Éthique : ${selectedReq.projectId}`} className="space-y-4">
+            <Card title={`Dossier Éthique : ${project?.title ?? selectedReq.projectId}`} className="space-y-4">
               <div className="space-y-2 text-xs">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
                   <span className="text-slate-500">Demandeur :</span>
-                  <span className="font-medium text-slate-800">
-                    {submitter ? `${submitter.title ?? ''} ${submitter.firstName} ${submitter.lastName}` : selectedReq.submittedById}
+                  <span className="text-right font-medium text-slate-800">
+                    {governanceService.getPersonName(selectedReq.submittedById)}
+                    {researchOrg && <span className="font-normal text-slate-500"> • {researchOrg.shortName}</span>}
                   </span>
                 </div>
-
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                   <span className="text-slate-500">Soumis le :</span>
-                  <span className="text-slate-800">
-                    {new Date(selectedReq.submittedAt).toLocaleDateString('fr-TN')}
-                  </span>
+                  <span className="text-slate-800">{formatDate(selectedReq.submittedAt)}</span>
                 </div>
+
+                {project ? (
+                  <dl className="space-y-2 rounded bg-slate-50 p-2.5">
+                    <div>
+                      <dt className="font-semibold text-slate-700">Objectif</dt>
+                      <dd className="text-slate-700">{project.summary}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold text-slate-700">Population</dt>
+                      <dd className="text-slate-700">{project.population}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold text-slate-700">Variables demandées</dt>
+                      <dd className="mt-1 flex flex-wrap gap-1">
+                        {project.variables.map((v) => (
+                          <Badge key={v} tone="neutral">{v}</Badge>
+                        ))}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold text-slate-700">Établissements participants</dt>
+                      <dd className="text-slate-700">
+                        {project.participatingOrganizationIds.map((id) => governanceService.getOrganization(id)?.shortName ?? id).join(', ')}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold text-slate-700">Protocole</dt>
+                      <dd className="text-slate-700">{project.protocolDocument?.title ?? 'Non fourni'}</dd>
+                    </div>
+                  </dl>
+                ) : (
+                  <Alert tone="danger" title="Projet introuvable">
+                    La demande {selectedReq.id} ne correspond à aucun projet connu.
+                  </Alert>
+                )}
 
                 <div className="rounded bg-slate-50 p-2.5">
                   <div className="font-semibold text-slate-700">Contraintes Éthiques et Sécurité :</div>
@@ -130,8 +182,19 @@ export function ResearchRequestsView() {
               </div>
 
               {decision ? (
-                <div className="rounded-md border border-success-200 bg-success-50 p-3 text-xs text-success-800">
-                  <div className="font-semibold">Décision de l'Autorité : Approuvée</div>
+                <div
+                  className={`rounded-md border p-3 text-xs ${
+                    decision.outcome === 'approved'
+                      ? 'border-success-200 bg-success-50 text-success-800'
+                      : 'border-danger-200 bg-danger-50 text-danger-800'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold">
+                      Décision de l'Autorité : {decision.outcome === 'approved' ? 'Approuvée' : 'Rejetée'}
+                    </span>
+                    {decision.simulated && <DemoBadge>Simulée — non persistée</DemoBadge>}
+                  </div>
                   <p className="mt-1">« {decision.rationale} »</p>
                   {decision.conditions.length > 0 && (
                     <div className="mt-2">
@@ -143,19 +206,31 @@ export function ResearchRequestsView() {
                       </ul>
                     </div>
                   )}
-                  <p className="mt-2 text-slate-500">
-                    Valide jusqu'au : {decision.validUntil ? new Date(decision.validUntil).toLocaleDateString('fr-TN') : 'Indéterminé'}
-                  </p>
+                  {decision.outcome === 'approved' && (
+                    <p className="mt-2 text-slate-500">
+                      Valide jusqu'au : {decision.validUntil ? formatDate(decision.validUntil) : 'Indéterminé'}
+                    </p>
+                  )}
+                  {decision.simulated && (
+                    <p className="mt-2 text-slate-600">
+                      Décidée par {governanceService.getPersonName(decision.decidedById)} le {formatDate(decision.decidedAt)}. Enregistrée dans l'état local du portail uniquement : l'API de recherche du Nœud de Gouvernance (HC-133) est planifiée, et ni le service de recherche ni les nœuds hospitaliers n'en sont informés.
+                    </p>
+                  )}
                 </div>
+              ) : selectedReq.status === 'under_review' ? (
+                <ResearchReviewForm
+                  key={selectedReq.id}
+                  context={{
+                    request: selectedReq,
+                    project,
+                    organization: (id) => governanceService.getOrganization(id),
+                  }}
+                  reviewer={governanceService.getPerson(REVIEWER_ID)}
+                  reviewerName={governanceService.getPersonName(REVIEWER_ID)}
+                />
               ) : (
-                <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-                  <div className="flex items-center justify-between font-semibold">
-                    <span>En cours d'examen par le comité éthique</span>
-                    <DemoBadge>D1 Shell</DemoBadge>
-                  </div>
-                  <p className="mt-1 text-amber-800">
-                    L'Autorité évalue le code algorithmique pour s'assurer qu'aucun modèle prédictif ou requête ne puisse réidentifier les patients.
-                  </p>
+                <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                  Aucune décision n'est associée à cette demande.
                 </div>
               )}
             </Card>

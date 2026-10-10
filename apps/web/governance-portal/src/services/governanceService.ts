@@ -3,6 +3,7 @@ import governanceFixtures from '../../../../../demo-data/governance.json'
 import notificationsFixtures from '../../../../../demo-data/notifications.json'
 import organizationsFixtures from '../../../../../demo-data/organizations.json'
 import peopleFixtures from '../../../../../demo-data/people.json'
+import researchFixtures from '../../../../../demo-data/research.json'
 import type {
   AccessGrant,
   GovernanceAuditEvent,
@@ -14,6 +15,7 @@ import type {
   PatientInfo,
   PersonInfo,
   ResearchAccessRequest,
+  ResearchProject,
   SynchronizationRequest,
 } from '../types/governance'
 import { reviewStore } from './reviewStore'
@@ -30,6 +32,8 @@ const typedGovernance = governanceFixtures as unknown as {
 }
 
 const typedAccessGrants = (accessFixtures.accessGrants ?? []) as unknown as AccessGrant[]
+
+const typedProjects = (researchFixtures.projects ?? []) as unknown as ResearchProject[]
 
 const typedOrganizations = (organizationsFixtures.organizations ?? []) as unknown as OrganizationInfo[]
 
@@ -71,8 +75,14 @@ export const governanceService = {
     return typedAccessGrants.find((g) => g.id === id)
   },
 
+  // Fixtures merged with the SIMULATED decisions recorded in this session (HC-078).
   getResearchAccessRequests(): ResearchAccessRequest[] {
-    return typedGovernance.researchAccessRequests
+    const simulated = reviewStore.getSnapshot().researchAccessRequests
+    return typedGovernance.researchAccessRequests.map((req) => simulated[req.id] ?? req)
+  },
+
+  getResearchProject(id: string): ResearchProject | undefined {
+    return typedProjects.find((p) => p.id === id)
   },
 
   getDecisions(): GovernanceDecision[] {

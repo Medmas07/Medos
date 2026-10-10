@@ -2,8 +2,8 @@
 
 ## Purpose and status
 
-- **IMPLEMENTED (D1):** Governance Portal shell (HC-070, [#71](https://github.com/Medmas07/Hackcure_hackathon/issues/71)), Governance dashboard (HC-071, [#72](https://github.com/Medmas07/Hackcure_hackathon/issues/72)), pending hospital approval list (HC-072, [#73](https://github.com/Medmas07/Hackcure_hackathon/issues/73)), hospital approval review (HC-073, [#74](https://github.com/Medmas07/Hackcure_hackathon/issues/74)), synchronization request list (HC-074, [#75](https://github.com/Medmas07/Hackcure_hackathon/issues/75)), and approve/reject synchronization request (HC-076, [#77](https://github.com/Medmas07/Hackcure_hackathon/issues/77)) at initial depth D1. Built with React 19 + TypeScript + Vite SPA as decided in [ADR-0001](../../../docs/decisions/ADR-0001-web-frontend-technology.md) and styled with Tailwind CSS v4 and the shared [design system](../../../design-system/README.md) ([ADR-0002](../../../docs/decisions/ADR-0002-web-design-system.md)).
-- **Checked on 2026-10-10:** `npm run build`, `npm run lint`, and `npm test` (Vitest suite covering canonical demo-data loading, the pending hospital approval list, dashboard metrics calculation, federated nodes status, hash verification, state behavior, the hospital review rules, the synchronization list rules, and the synchronization review rules) all pass. Both review flows and the synchronization list were also driven in headless Chrome. Fixed dev port is `5174`.
+- **IMPLEMENTED (D1):** Governance Portal shell (HC-070, [#71](https://github.com/Medmas07/Hackcure_hackathon/issues/71)), Governance dashboard (HC-071, [#72](https://github.com/Medmas07/Hackcure_hackathon/issues/72)), pending hospital approval list (HC-072, [#73](https://github.com/Medmas07/Hackcure_hackathon/issues/73)), hospital approval review (HC-073, [#74](https://github.com/Medmas07/Hackcure_hackathon/issues/74)), synchronization request list (HC-074, [#75](https://github.com/Medmas07/Hackcure_hackathon/issues/75)), approve/reject synchronization request (HC-076, [#77](https://github.com/Medmas07/Hackcure_hackathon/issues/77)), and research access request review (HC-078, [#79](https://github.com/Medmas07/Hackcure_hackathon/issues/79)) at initial depth D1. Built with React 19 + TypeScript + Vite SPA as decided in [ADR-0001](../../../docs/decisions/ADR-0001-web-frontend-technology.md) and styled with Tailwind CSS v4 and the shared [design system](../../../design-system/README.md) ([ADR-0002](../../../docs/decisions/ADR-0002-web-design-system.md)).
+- **Checked on 2026-10-10:** `npm run build`, `npm run lint`, and `npm test` (Vitest suite covering canonical demo-data loading, the pending hospital approval list, dashboard metrics calculation, federated nodes status, hash verification, state behavior, the hospital review rules, the synchronization list rules, and the synchronization and research review rules) all pass. The three review flows and the synchronization list were also driven in headless Chrome. Fixed dev port is `5174`.
 - **Mocking strategy:** Consumes canonical fictional fixtures from `demo-data/` ([ADR-0005](../../../docs/decisions/ADR-0005-canonical-demo-data.md)). Simulated local ledger proofs (SHA-256) and advisory AI annotations are explicitly marked with `DemoBanner` and `DemoBadge`. No direct access to hospital clinical databases.
 
 ## Pending hospital approval list (HC-072)
@@ -55,6 +55,23 @@ Deterministic checks, computed in `src/services/syncReview.ts` and unit-tested:
 - After a confirmation step and a short simulated delay, the decision (temporary, with its `validUntil`) and a `decision_recorded` audit event (references only) are kept in the same local store as HC-073. The list then shows the request as authorized until its end date, the sidebar badge and dashboard counts drop, and the audit views list the event as not anchored. **Réinitialiser la démo** or a reload returns to the fixtures.
 
 Not done at D1: nothing is sent to the Governance Node (its synchronization API, HC-132, is PLANNED) or to any Hospital Node. Federation queries and the Hospital Nodes' MOCKED authorization still read only the canonical fixtures, so a simulated approval authorizes no real exchange. No ledger proof is created, and the reviewer is the fictional demo reviewer, not an authenticated user.
+
+## Research access request review (HC-078)
+
+IMPLEMENTED at D1; the recorded decision is **SIMULATED**. Under **Accès Recherche**, a request's detail now shows the project the Authority is judging (objective, population, requested variables, participating organizations, protocol). A request under review (`rar-002` in the demo data) shows the ethics committee's decision form.
+
+Deterministic checks (`src/services/researchReview.ts`, unit-tested): the request matches its project; a protocol is attached; a population and at least one variable are defined; at least one participating organization is approved by the Authority with a Hospital Node (others are excluded and cannot be authorized). Approval is disabled while a check fails; a motivated rejection is always possible.
+
+An approval states exactly what it authorizes, in the shape the [research execution contract](../../../contracts/api/research/research-node-execution.v1.yaml) expects of an authorization:
+
+- **Organizations and variables** default to the whole eligible request and can only be narrowed. A participating node whose DMI is disconnected is flagged.
+- **Validity:** 1 to 12 months (default 12), and **minimum cell size:** at least 10 (default 10). Both limits are D1 demo policy taken from the canonical approved request `dec-rar-001`, not a decided policy.
+- Compute-to-Data execution and no individual-level output are always imposed. The decision stores the authorized organizations, variables, and cell size as `researchAuthorization` and states them as conditions; optional extra conditions follow.
+- Only a governance reviewer outside the research organization and the participating organizations, and not the investigator, may decide; a decided request cannot be decided again.
+
+After a confirmation step and a short simulated delay, the decision and its `decision_recorded` audit event (references only) join the local store used by HC-073 and HC-076: the list status, sidebar badge, dashboard counts, and audit views follow, and **Réinitialiser la démo** or a reload returns to the fixtures. A rejection is shown in red; previously every decision was shown as approved.
+
+Not done at D1: nothing is sent to the Governance Node (its research API, HC-133, is PLANNED), the Research Service, or any Hospital Node, so a simulated approval authorizes no execution. No ledger proof is created, and the reviewer is the fictional demo reviewer, not an authenticated user. The request list itself is HC-077.
 
 ## Responsibilities and owned concepts
 
