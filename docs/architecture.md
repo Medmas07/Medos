@@ -119,7 +119,7 @@ Patient access grants, revocation, delegation, and restriction/erasure request e
 
 ## 11. Clinician workflows
 
-Consultation workspaces, consent-aware speech-to-text, deterministic adaptive intake, extraction review, medication safety warnings, alerts, and priority queues are PLANNED. Clinical extraction requires clinician validation. Medication warnings must use deterministic rules or validated sources rather than an LLM alone. AI must not independently diagnose, prescribe, or triage critical cases.
+Consultation workspaces, consent-aware speech-to-text, deterministic adaptive intake, extraction review, medication safety warnings, alerts, and priority queues are PLANNED. Clinical extraction requires clinician validation. Medication warnings must use deterministic rules or validated sources rather than an LLM alone; the [medication safety check contract](../contracts/api/medication-safety/medication-safety-check.v1.yaml) (HC-160) encodes this by allowing only `deterministic_rule_set` or `validated_source` as the safety source and keeping AI explanations optional and advisory. Its provider is OPEN. AI must not independently diagnose, prescribe, or triage critical cases.
 
 ## 12. Research compute-to-data
 
