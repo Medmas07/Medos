@@ -1,0 +1,561 @@
+openapi: 3.1.0
+info:
+  title: AI Services — Hospital Document Review
+  version: 1.0.0
+  description: |
+    Contract HC-154, version 1. The optional LLM-assisted review of a
+    hospital onboarding dossier (product vision §4): after the deterministic
+    completeness check, before human review by the Governance / Ethics
+    Authority. It points out what the human reviewer should check:
+    inconsistencies, missing information, and points to clarify.
+
+    Boundary rules carried by this contract:
+
+    - **Advisory only.** `advisory` is always `true` and `review_status`
+      is always `pending_human_review`. The review never approves,
+      rejects, scores, or ranks an application, and nothing here feeds a
+      decision automatically. The Governance / Ethics Authority decides
+      (hospital-approval.v1.yaml).
+    - **Every finding cites the dossier.** A finding names field `path`s
+      that exist in the request, or quotes a document's `text` verbatim
+      (or both). AI Services checks every citation; a proposed finding
+      that cites nothing in the dossier is dropped and counted in
+      `unverified_findings_dropped`, never shown.
+    - **Not a completeness check.** Missing documents and agreements are
+      the deterministic completeness check's (Hospital Portal, HC-057);
+      this review only looks across the answers.
+    - **Administrative and technical data only.** A dossier is a hospital's
+      organization profile, technical questionnaire, agreements, and
+      document metadata, with optional extracted document text. It must
+      never contain patient or clinical data. With a hosted model provider,
+      the dossier is sent to that provider (ADR-0006).
+    - **Provenance and uncertainty.** Every result names the reviewer that
+      produced it (`model` or `deterministic_fixture`), whether it is
+      `mocked`, when it ran, and any uncertainty note to show with it.
+
+    The dossier is sent as generic fields, so AI Services does not depend
+    on a portal's data model. Field paths are lower-case dotted segments,
+    for example `administrative_profile.security_contact`.
+
+    Not decided by this version, and OPEN: who may call it and how callers
+    are authenticated, where document text comes from (no text extraction
+    from files is offered), and recording reviews.
+
+    Status: implemented by AI Services (HC-154) with real model providers
+    (Claude, then a local Ollama model, ADR-0006), or a deterministic
+    fixture reviewer (MOCKED, opt-in). Model output is not deterministic
+    and not validated.
+servers:
+  - url: http://localhost:8600
+    description: Local AI Services runtime (development and preview only).
+paths:
+  /v1/hospital-document-reviews:
+    post:
+      operationId: createHospitalDocumentReview
+      summary: Review an onboarding dossier and return advisory findings.
+      description: |
+        Synchronous. `200` with zero or more findings. No finding does not
+        mean the dossier is complete or acceptable: it means the reviewer
+        found nothing it could cite.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewRequest"
+            examples:
+              hospitalC:
+                summary: >-
+                  Fictional demo — Hospital C's dossier (demo-data/governance.json,
+                  app-hospital-c) as fields, with a fictional architecture
+                  document whose text gives another database version.
+                value:
+                  {
+                    "application_ref": "app-hospital-c",
+                    "requested_by": "usr-mehdi",
+                    "fields": [
+                      {
+                        "path": "registration.name",
+                        "value": "Centre Hospitalier Cap Azur"
+                      },
+                      {
+                        "path": "registration.city",
+                        "value": "Bizerte"
+                      },
+                      {
+                        "path": "administrative_profile.legal_name",
+                        "value": "Centre Hospitalier Cap Azur"
+                      },
+                      {
+                        "path": "administrative_profile.legal_status",
+                        "value": "public"
+                      },
+                      {
+                        "path": "administrative_profile.registration_number",
+                        "value": "FICT-ETAB-0003"
+                      },
+                      {
+                        "path": "administrative_profile.bed_capacity",
+                        "value": 180
+                      },
+                      {
+                        "path": "administrative_profile.address.street",
+                        "value": "12, avenue de la Corniche (adresse fictive)"
+                      },
+                      {
+                        "path": "administrative_profile.address.postal_code",
+                        "value": "7000"
+                      },
+                      {
+                        "path": "administrative_profile.address.city",
+                        "value": "Bizerte"
+                      },
+                      {
+                        "path": "administrative_profile.address.governorate",
+                        "value": "Bizerte"
+                      },
+                      {
+                        "path": "administrative_profile.phone",
+                        "value": "+216 70 000 003"
+                      },
+                      {
+                        "path": "administrative_profile.email",
+                        "value": "contact@cap-azur.example"
+                      },
+                      {
+                        "path": "administrative_profile.legal_representative.full_name",
+                        "value": "Nadia Ferchichi"
+                      },
+                      {
+                        "path": "administrative_profile.legal_representative.role",
+                        "value": "Directrice générale"
+                      },
+                      {
+                        "path": "administrative_profile.data_protection_officer.full_name",
+                        "value": "Sami Trabelsi"
+                      },
+                      {
+                        "path": "administrative_profile.data_protection_officer.email",
+                        "value": "dpo@cap-azur.example"
+                      },
+                      {
+                        "path": "administrative_profile.security_contact",
+                        "value": null
+                      },
+                      {
+                        "path": "technical_questionnaire.hosting_type",
+                        "value": "virtual_machine"
+                      },
+                      {
+                        "path": "technical_questionnaire.operating_system",
+                        "value": "Ubuntu Server 22.04"
+                      },
+                      {
+                        "path": "technical_questionnaire.cpu_cores",
+                        "value": 8
+                      },
+                      {
+                        "path": "technical_questionnaire.memory_gb",
+                        "value": 32
+                      },
+                      {
+                        "path": "technical_questionnaire.storage_gb",
+                        "value": 500
+                      },
+                      {
+                        "path": "technical_questionnaire.bandwidth_mbps",
+                        "value": 100
+                      },
+                      {
+                        "path": "technical_questionnaire.dmz_available",
+                        "value": true
+                      },
+                      {
+                        "path": "technical_questionnaire.outbound_https_allowed",
+                        "value": true
+                      },
+                      {
+                        "path": "technical_questionnaire.container_runtime_available",
+                        "value": true
+                      },
+                      {
+                        "path": "technical_questionnaire.backups_in_place",
+                        "value": true
+                      },
+                      {
+                        "path": "technical_questionnaire.dmi_system",
+                        "value": "MediDossier v7 (logiciel fictif)"
+                      },
+                      {
+                        "path": "technical_questionnaire.database",
+                        "value": "PostgreSQL 13"
+                      },
+                      {
+                        "path": "technical_questionnaire.dmi_hosting",
+                        "value": "on_premise"
+                      },
+                      {
+                        "path": "technical_questionnaire.integration_methods",
+                        "value": "hl7v2, file_export"
+                      },
+                      {
+                        "path": "technical_questionnaire.test_environment_available",
+                        "value": false
+                      },
+                      {
+                        "path": "technical_questionnaire.dmi_notes",
+                        "value": "Exports nocturnes uniquement ; pas d'API en temps réel."
+                      },
+                      {
+                        "path": "technical_questionnaire.network",
+                        "value": "Lien fibre 100 Mb/s, zone démilitarisée disponible"
+                      },
+                      {
+                        "path": "agreements.data_processing_agreement.accepted",
+                        "value": true
+                      },
+                      {
+                        "path": "agreements.governance_charter.accepted",
+                        "value": true
+                      }
+                    ],
+                    "documents": [
+                      {
+                        "document_ref": "doc-c-statuts",
+                        "type": "statutes",
+                        "title": "Statuts de l'établissement.pdf",
+                        "status": "received"
+                      },
+                      {
+                        "document_ref": "doc-c-autorisation",
+                        "type": "operating_license",
+                        "title": "Autorisation d'exercice.pdf",
+                        "status": "received"
+                      },
+                      {
+                        "document_ref": "doc-c-assurance",
+                        "type": "insurance_certificate",
+                        "title": "Attestation d'assurance.pdf",
+                        "status": "missing"
+                      },
+                      {
+                        "document_ref": "doc-c-architecture",
+                        "type": "technical_architecture",
+                        "title": "Architecture technique du SIH.pdf",
+                        "status": "received",
+                        "text": "Document fictif. Le DMI MediDossier v7 est hébergé sur site. Sa base de données est PostgreSQL 12, sauvegardée chaque nuit. Les échanges avec les autres systèmes se font par exports de fichiers nocturnes."
+                      }
+                    ]
+                  }
+      responses:
+        "200":
+          description: Advisory findings awaiting human review.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentReview"
+              examples:
+                fixtureHospitalC:
+                  summary: >-
+                    Fictional demo — the deterministic fixture reviewer
+                    (MOCKED) on Hospital C's dossier.
+                  value:
+                    {
+                      "review_id": "5f1c2b7e-0d4a-4c1e-9b3a-7e2f6d8c9a10",
+                      "contract_version": "1.0",
+                      "application_ref": "app-hospital-c",
+                      "requested_by": "usr-mehdi",
+                      "review_status": "pending_human_review",
+                      "advisory": true,
+                      "notice": "Advisory review of an onboarding dossier by an AI assistant. It points out what the human reviewer should check; it does not approve, reject, or score the application. The Governance / Ethics Authority decides.",
+                      "findings": [
+                        {
+                          "finding_id": "finding-1",
+                          "category": "missing_information",
+                          "message": "Aucun contact de sécurité distinct n'est indiqué.",
+                          "field_paths": [
+                            "administrative_profile.security_contact"
+                          ],
+                          "evidence": null
+                        },
+                        {
+                          "finding_id": "finding-2",
+                          "category": "clarification_needed",
+                          "message": "Pas d'environnement de test du DMI : l'adaptateur devra être vérifié sur des données fictives.",
+                          "field_paths": [
+                            "technical_questionnaire.test_environment_available"
+                          ],
+                          "evidence": null
+                        }
+                      ],
+                      "unverified_findings_dropped": 0,
+                      "uncertainty_notes": [
+                        "Deterministic demo rules (MOCKED): no language model was called."
+                      ],
+                      "provenance": {
+                        "reviewer": {
+                          "kind": "deterministic_fixture",
+                          "name": "fixture-document-reviewer",
+                          "version": "hc-154-v1"
+                        },
+                        "mocked": true,
+                        "generated_at": "2026-10-10T10:00:00+00:00"
+                      }
+                    }
+                modelHospitalC:
+                  summary: >-
+                    Fictional demo — an illustrative model review of the same
+                    dossier. Model output varies from run to run; one proposed
+                    finding cited no dossier field and was dropped.
+                  value:
+                    {
+                      "review_id": "9a7d3e21-4b6f-4f0a-8c2d-1e5b7a9c3f42",
+                      "contract_version": "1.0",
+                      "application_ref": "app-hospital-c",
+                      "requested_by": "usr-mehdi",
+                      "review_status": "pending_human_review",
+                      "advisory": true,
+                      "notice": "Advisory review of an onboarding dossier by an AI assistant. It points out what the human reviewer should check; it does not approve, reject, or score the application. The Governance / Ethics Authority decides.",
+                      "findings": [
+                        {
+                          "finding_id": "finding-1",
+                          "category": "inconsistency",
+                          "message": "Le questionnaire déclare PostgreSQL 13, mais le document d'architecture indique PostgreSQL 12.",
+                          "field_paths": [
+                            "technical_questionnaire.database"
+                          ],
+                          "evidence": {
+                            "document_ref": "doc-c-architecture",
+                            "quote": "Sa base de données est PostgreSQL 12"
+                          }
+                        },
+                        {
+                          "finding_id": "finding-2",
+                          "category": "missing_information",
+                          "message": "Aucun contact de sécurité n'est renseigné.",
+                          "field_paths": [
+                            "administrative_profile.security_contact"
+                          ],
+                          "evidence": null
+                        }
+                      ],
+                      "unverified_findings_dropped": 1,
+                      "uncertainty_notes": [],
+                      "provenance": {
+                        "reviewer": {
+                          "kind": "model",
+                          "name": "claude-agent-sdk",
+                          "version": "claude-opus-5-5"
+                        },
+                        "mocked": false,
+                        "generated_at": "2026-10-10T10:00:00+00:00"
+                      }
+                    }
+        "400":
+          description: The request does not match this contract.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                invalidPath:
+                  value:
+                    type: about:blank
+                    title: Invalid hospital document review request
+                    status: 400
+                    detail: "Invalid or missing fields: fields.0.path"
+                    code: invalid_request
+        "503":
+          description: No reviewer could produce a usable review (no provider answered, or the output was not valid).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                unavailable:
+                  value:
+                    type: about:blank
+                    title: Hospital document review unavailable
+                    status: 503
+                    detail: "All AI providers failed: claude-agent-sdk: unavailable; ollama: unavailable"
+                    code: review_unavailable
+components:
+  schemas:
+    OpaqueRef:
+      description: Opaque identifier. Must not contain a name or other direct identifier.
+      type: string
+      pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    FieldPath:
+      type: string
+      maxLength: 200
+      pattern: "^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)*$"
+    ReviewRequest:
+      type: object
+      additionalProperties: false
+      required: [application_ref, requested_by, fields]
+      properties:
+        application_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        requested_by:
+          $ref: "#/components/schemas/OpaqueRef"
+        fields:
+          type: array
+          minItems: 1
+          maxItems: 200
+          description: The dossier's answers. Paths must be unique.
+          items:
+            type: object
+            additionalProperties: false
+            required: [path, value]
+            properties:
+              path:
+                $ref: "#/components/schemas/FieldPath"
+              value:
+                description: The answer; `null` when not given.
+                oneOf:
+                  - type: string
+                    maxLength: 500
+                  - type: number
+                  - type: boolean
+                  - type: "null"
+        documents:
+          type: array
+          maxItems: 10
+          description: Supporting documents' metadata, and their text when the caller has it. Refs must be unique.
+          items:
+            type: object
+            additionalProperties: false
+            required: [document_ref, type, title, status]
+            properties:
+              document_ref:
+                $ref: "#/components/schemas/OpaqueRef"
+              type:
+                type: string
+                minLength: 1
+                maxLength: 200
+              title:
+                type: string
+                minLength: 1
+                maxLength: 200
+              status:
+                type: string
+                minLength: 1
+                maxLength: 200
+              text:
+                type: string
+                minLength: 1
+                maxLength: 20000
+    DocumentReview:
+      type: object
+      additionalProperties: false
+      required:
+        - review_id
+        - contract_version
+        - application_ref
+        - requested_by
+        - review_status
+        - advisory
+        - notice
+        - findings
+        - unverified_findings_dropped
+        - uncertainty_notes
+        - provenance
+      properties:
+        review_id:
+          type: string
+          format: uuid
+        contract_version:
+          const: "1.0"
+        application_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        requested_by:
+          $ref: "#/components/schemas/OpaqueRef"
+        review_status:
+          const: pending_human_review
+        advisory:
+          const: true
+        notice:
+          type: string
+        findings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Finding"
+        unverified_findings_dropped:
+          description: Proposed findings that cited nothing in the dossier and are not shown.
+          type: integer
+          minimum: 0
+        uncertainty_notes:
+          description: Limitations to show next to the findings.
+          type: array
+          items:
+            type: string
+        provenance:
+          type: object
+          additionalProperties: false
+          required: [reviewer, mocked, generated_at]
+          properties:
+            reviewer:
+              type: object
+              additionalProperties: false
+              required: [kind, name, version]
+              properties:
+                kind:
+                  type: string
+                  enum: [model, deterministic_fixture]
+                name:
+                  type: string
+                version:
+                  type: string
+            mocked:
+              type: boolean
+            generated_at:
+              type: string
+              format: date-time
+    Finding:
+      type: object
+      additionalProperties: false
+      required: [finding_id, category, message, field_paths, evidence]
+      properties:
+        finding_id:
+          type: string
+        category:
+          type: string
+          enum: [inconsistency, missing_information, clarification_needed]
+        message:
+          description: For the human reviewer, in the language of the dossier.
+          type: string
+          minLength: 1
+        field_paths:
+          description: Paths of the request's fields this finding is about; every one exists in the request.
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldPath"
+        evidence:
+          description: A verbatim quote from a document's text, or null.
+          oneOf:
+            - type: object
+              additionalProperties: false
+              required: [document_ref, quote]
+              properties:
+                document_ref:
+                  $ref: "#/components/schemas/OpaqueRef"
+                quote:
+                  type: string
+                  minLength: 1
+            - type: "null"
+    Problem:
+      description: RFC 9457 problem details.
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+          enum: [invalid_request, review_unavailable]

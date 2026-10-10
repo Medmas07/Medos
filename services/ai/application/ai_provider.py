@@ -10,6 +10,8 @@ class AiTask(Enum):
     EXTRACTION = "extraction"
     SUMMARIZATION = "summarization"
     EXPLANATION = "explanation"
+    # Advisory review of a non-clinical dossier, such as hospital onboarding (HC-154).
+    REVIEW = "review"
 
 
 @dataclass(frozen=True)

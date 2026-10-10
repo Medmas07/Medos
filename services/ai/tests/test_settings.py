@@ -3,6 +3,7 @@ import pytest
 from infrastructure.settings import (
     ExtractionMode,
     ProviderName,
+    ReviewMode,
     Settings,
     load_settings,
 )
@@ -36,3 +37,15 @@ def test_reads_overrides_from_the_environment():
 def test_rejects_unknown_provider():
     with pytest.raises(ValueError):
         load_settings({"AI_PROVIDERS": "claude,gpt"})
+
+
+def test_the_review_mode_is_model_by_default_and_set_on_its_own():
+    assert load_settings({}).review_mode is ReviewMode.MODEL
+
+    settings = load_settings({"AI_REVIEW_MODE": "fixture"})
+    assert (settings.review_mode, settings.extraction_mode) == (
+        ReviewMode.FIXTURE,
+        ExtractionMode.MODEL,
+    )
+    with pytest.raises(ValueError):
+        load_settings({"AI_REVIEW_MODE": "simulated"})
