@@ -83,7 +83,16 @@ export function HomeView({ snapshot, onNavigate }: HomeViewProps) {
       <Card
         title="Mes projets de recherche"
         description="États dérivés des données fictives HC-005."
-        actions={<DemoBadge>Fictif</DemoBadge>}
+        actions={
+          <>
+            <DemoBadge>Fictif</DemoBadge>
+            {projects.length > 0 && (
+              <Button size="sm" variant="secondary" onClick={() => onNavigate('dashboard')}>
+                Tableau de bord
+              </Button>
+            )}
+          </>
+        }
         flush
         className="mb-6"
       >

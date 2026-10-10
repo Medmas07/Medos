@@ -1,6 +1,7 @@
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
-from typing import Protocol
+from typing import Any, Protocol
 
 from domain.advisory_output import AdvisoryOutput
 
@@ -17,6 +18,8 @@ class AiRequest:
     task: AiTask
     instructions: str
     input_text: str
+    # JSON Schema the output text must satisfy. Adapters use native structured output when set.
+    output_schema: Mapping[str, Any] | None = None
 
 
 @dataclass(frozen=True)

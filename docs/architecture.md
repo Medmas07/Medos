@@ -67,7 +67,7 @@ PLANNED mobile product consuming authorized patient context for consultation and
 
 ### AI Services
 
-Python is CONFIRMED. Extraction, summarization, document review, medication explanations, prioritization explanations, and research assistance are PLANNED. Frameworks, providers, and models are OPEN.
+Python is CONFIRMED. Clinical extraction is IMPLEMENTED with Claude (Claude Agent SDK) as primary provider and a local Ollama model as fallback behind the provider-neutral `AiProvider` port ([ADR-0006](decisions/ADR-0006-ai-provider-strategy.md)); it is not clinically validated. Summarization, document review, medication explanations, prioritization explanations, and research assistance are PLANNED.
 
 ### Federation
 
@@ -183,17 +183,18 @@ AI is advisory, replaceable through ports, and subject to appropriate human revi
 | Clinician App | PLANNED | Stack decided by ADR-0004; no dependencies, generated native project, or application code. |
 | Hospital Portal | IMPLEMENTED (shell, D1) | HC-050 shell with MOCKED fixture-backed onboarding dashboard; registration flow (HC-051), organization profile (HC-052), document upload (HC-053), agreements workflow (HC-054), and technical questionnaire (HC-055) with MOCKED submission; other onboarding pages (HC-056 to HC-063) and onboarding contracts PLANNED. |
 | Governance Portal | PLANNED | No UI code; stack decided by ADR-0001. |
-| Research Portal | IMPLEMENTED (shell, D1) | HC-090 shell with MOCKED fixture-backed project list and Governance decision display; Compute-to-Data pages locked without a valid approval. Research pages (HC-091 to HC-102), notebook execution, and Research Service contracts PLANNED. |
+| Research Portal | IMPLEMENTED (shell, dashboard, and project creation, D1) | HC-090 shell with MOCKED fixture-backed project list and Governance decision display; Compute-to-Data pages locked without a valid approval. HC-091 researcher dashboard over the same MOCKED fixtures. HC-092 project creation adds a MOCKED draft to session state only. Other research pages (HC-093 to HC-102), notebook execution, and Research Service contracts PLANNED. |
 | Web design system | IMPLEMENTED | Tokens, components, and showcase at D1 (ADR-0002); consumed by the Hospital Portal, Governance Portal, and Research Portal shells. |
 | Canonical demo data | MOCKED | Fictional JSON fixtures with integrity checks (ADR-0005); read by the Federation Service's simulated nodes (HC-141). |
 | Hospital Node | IMPLEMENTED (skeleton) / MOCKED data | FastAPI runtime (HC-110) with a liveness `GET /health` (HC-111), per-hospital configuration (HC-112), a MOCKED clinical repository (HC-113), the HC-140 Federation contract with MOCKED authorization (HC-114), an in-memory audit trail (HC-116), and an access grants API over a MOCKED in-memory store (HC-115); persistence and the DMI Adapter PLANNED. |
 | Governance Node | PLANNED | Boundary documented; runtime not implemented; stack decided by ADR-0003. |
 | DMI Adapter | PLANNED | Hospital-local boundary documented; no adapter. |
 | Federation Service | IMPLEMENTED (D2/D3) | Contracts in `contracts/federation/` (HC-140). Federated patient query over real HTTP to registered nodes by default (HC-145), with HC-141's MOCKED simulated nodes as an explicit opt-in. In-memory node registry with unverified Governance approval references (HC-142). Real HTTP capability discovery (HC-143), used to route queries around nodes that cannot answer (HC-146). Retries and an in-memory circuit breaker for node calls (HC-147). Governance checks of synchronization decisions (HC-144). No Hospital Node or Governance Node serves these interfaces yet. |
+| Research Service | MOCKED (D2) | HC-181 FastAPI runtime simulates distributed Compute-to-Data job progression and controlled aggregate outcomes using fictional deterministic node responses. No code execution, sandbox, persistence, or production authorization integration. |
 | Notification Service | PLANNED | No provider or runtime implementation; stack decided by ADR-0003. |
 | SciAgents Integration | PLANNED | SciAgents exists externally; repository-side contract defined (HC-170); connector is absent. |
 | Immutable Audit Ledger | OPTIONAL / PLANNED | Governance-only concept; no adapter or ledger. |
-| AI Services | IMPLEMENTED (skeleton) / MOCKED extraction | FastAPI runtime (HC-150); provider-neutral `AiProvider` port with a deterministic mock adapter (HC-151); clinical extraction contract v1 with a deterministic fixture mock (HC-152); no real AI capability, library, or provider. |
+| AI Services | IMPLEMENTED (extraction) | FastAPI runtime (HC-150); `AiProvider` port (HC-151) with Claude, Ollama, and mock adapters plus a fallback chain (ADR-0006); clinical extraction contract v1 (HC-152) served by real providers (HC-153) or a fixture mode (MOCKED); not clinically validated. |
 | Authentication and persistence | PLANNED | No implementation or selected technology. |
 | IoT | OPTIONAL | PlatformIO placeholder is prepared; hardware/framework/protocol are OPEN. |
 | GitHub templates/workflows | IMPLEMENTED | Templates and manual placeholder workflows exist; product CI is not configured. |

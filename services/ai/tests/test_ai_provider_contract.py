@@ -14,8 +14,45 @@ from domain.advisory_output import ReviewState
 
 FIXED_TIME = datetime(2026, 1, 1, tzinfo=UTC)
 
+
+def _real_adapters_with_test_doubles() -> list:
+    """Claude and Ollama adapters wired to test doubles, so no model is called."""
+    import httpx
+    from claude_agent_sdk import ResultMessage
+
+    from adapters.outbound.claude_agent_sdk_provider import ClaudeAgentSdkProvider
+    from adapters.outbound.ollama_provider import OllamaAiProvider
+
+    async def claude_query(*, prompt, options):
+        yield ResultMessage(
+            subtype="success",
+            duration_ms=1,
+            duration_api_ms=1,
+            is_error=False,
+            num_turns=1,
+            session_id="s1",
+            result="Fictional summary.",
+        )
+
+    ollama = httpx.Client(
+        base_url="http://ollama.test",
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(
+                200, json={"message": {"content": "Fictional summary."}}
+            )
+        ),
+    )
+    return [
+        ClaudeAgentSdkProvider(query_fn=claude_query, clock=lambda: FIXED_TIME),
+        OllamaAiProvider(model="qwen2.5:3b", client=ollama, clock=lambda: FIXED_TIME),
+    ]
+
+
 # Every AiProvider adapter must pass these tests. Add future adapters here with a test double transport.
-PROVIDERS = [DeterministicMockAiProvider(clock=lambda: FIXED_TIME)]
+PROVIDERS = [
+    DeterministicMockAiProvider(clock=lambda: FIXED_TIME),
+    *_real_adapters_with_test_doubles(),
+]
 
 
 def _request(

@@ -7,24 +7,66 @@ from adapters.inbound.http.clinical_extraction import (
     create_router as create_clinical_extraction_router,
 )
 from adapters.inbound.http.clinical_extraction import register_problem_handler
-from adapters.inbound.http.health import router as health_router
+from adapters.inbound.http.health import create_health_router
+from adapters.outbound.claude_agent_sdk_provider import ClaudeAgentSdkProvider
 from adapters.outbound.fixture_extractor import FixtureClinicalExtractor
 from adapters.outbound.mock_ai_provider import DeterministicMockAiProvider
-from application.extract_clinical_information import ExtractClinicalInformation
+from adapters.outbound.ollama_provider import OllamaAiProvider
+from application.ai_provider import AiProvider
+from application.extract_clinical_information import (
+    ClinicalExtractor,
+    ExtractClinicalInformation,
+)
+from application.fallback_ai_provider import FallbackAiProvider
 from application.get_service_status import SERVICE_VERSION
+from application.model_clinical_extractor import ModelClinicalExtractor
+from infrastructure.settings import (
+    ExtractionMode,
+    ProviderName,
+    Settings,
+    load_settings,
+)
 
-# The only provider until an ADR selects a real one (HC-153).
-ai_provider = DeterministicMockAiProvider()
 
-app = FastAPI(title="AI Services", version=SERVICE_VERSION)
-app.include_router(health_router)
-app.include_router(
-    create_clinical_extraction_router(
-        ExtractClinicalInformation(
-            extractor=FixtureClinicalExtractor(),
-            clock=lambda: datetime.now(UTC),
+def _provider(name: ProviderName, settings: Settings) -> AiProvider:
+    if name is ProviderName.CLAUDE:
+        return ClaudeAgentSdkProvider(
+            model=settings.claude_model,
+            timeout_seconds=settings.provider_timeout_seconds,
+        )
+    return OllamaAiProvider(
+        model=settings.ollama_model,
+        base_url=settings.ollama_base_url,
+        timeout_seconds=settings.provider_timeout_seconds,
+    )
+
+
+def create_app(settings: Settings) -> FastAPI:
+    ai_provider: AiProvider
+    extractor: ClinicalExtractor
+    if settings.extraction_mode is ExtractionMode.FIXTURE:
+        ai_provider = DeterministicMockAiProvider()
+        extractor = FixtureClinicalExtractor()
+        capabilities = ("clinical-extraction:mocked",)
+    else:
+        ai_provider = FallbackAiProvider(
+            [_provider(n, settings) for n in settings.providers]
+        )
+        extractor = ModelClinicalExtractor(ai_provider)
+        capabilities = ("clinical-extraction:model",)
+
+    app = FastAPI(title="AI Services", version=SERVICE_VERSION)
+    app.include_router(create_health_router(capabilities))
+    app.include_router(
+        create_clinical_extraction_router(
+            ExtractClinicalInformation(
+                extractor=extractor, clock=lambda: datetime.now(UTC)
+            )
         )
     )
-)
-app.include_router(create_ai_provider_router(ai_provider))
-register_problem_handler(app)
+    app.include_router(create_ai_provider_router(ai_provider))
+    register_problem_handler(app)
+    return app
+
+
+app = create_app(load_settings())
