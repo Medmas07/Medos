@@ -5,6 +5,7 @@ import peopleFixtures from '../../../../../demo-data/people.json'
 import researchFixtures from '../../../../../demo-data/research.json'
 import type {
   ComputeJob,
+  ControlledResultSummary,
   GovernanceDecision,
   Organization,
   PageId,
@@ -27,7 +28,7 @@ import type {
 const projects = researchFixtures.projects as unknown as ResearchProject[]
 const notebooks = researchFixtures.notebooks as unknown as { id: string; projectId: string }[]
 const jobs = researchFixtures.computeJobs as unknown as ComputeJob[]
-const results = researchFixtures.controlledResults as unknown as { id: string; jobId: string }[]
+const results = researchFixtures.controlledResults as unknown as ControlledResultSummary[]
 const investigations = researchFixtures.sciAgentsInvestigations as unknown as { id: string; projectId: string }[]
 const requests = governanceFixtures.researchAccessRequests as unknown as ResearchAccessRequest[]
 const decisions = governanceFixtures.decisions as unknown as GovernanceDecision[]
@@ -179,12 +180,26 @@ export async function loadResearchSnapshot(
           .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
           .map((p) => summarize(p, now))
   const projectIds = new Set(summaries.map((s) => s.project.id))
+  const ownJobs = jobs.filter((j) => projectIds.has(j.projectId))
+  const ownJobIds = new Set(ownJobs.map((j) => j.id))
 
   return {
+    asOf: now.toISOString(),
     researcher,
     organization,
     projects: summaries,
-    jobs: jobs.filter((j) => projectIds.has(j.projectId)),
+    jobs: ownJobs,
+    // Release metadata only: the aggregate rows stay with the result panel (HC-101).
+    results: results
+      .filter((r) => ownJobIds.has(r.jobId))
+      .map(({ id, jobId, title, minimumCellSize, disclosureCheck, provenance }) => ({
+        id,
+        jobId,
+        title,
+        minimumCellSize,
+        disclosureCheck,
+        provenance,
+      })),
     pages: derivePages(summaries, now),
     notifications: notifications
       .filter((n) => n.recipientId === researcherId && (scenario !== 'empty' || n.relatedId === null))

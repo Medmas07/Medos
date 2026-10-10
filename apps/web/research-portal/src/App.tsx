@@ -19,6 +19,7 @@ import {
   type PageSection,
 } from './services/researchService'
 import type { PageId, ResearchSnapshot } from './types/research'
+import { DashboardView } from './views/DashboardView'
 import { HomeView } from './views/HomeView'
 import { PagePlaceholderView } from './views/PagePlaceholderView'
 
@@ -122,6 +123,9 @@ export default function App() {
     }
     if (currentView === 'home') {
       return <HomeView snapshot={load.snapshot} onNavigate={navigateTo} />
+    }
+    if (currentView === 'dashboard') {
+      return <DashboardView snapshot={load.snapshot} onNavigate={navigateTo} />
     }
     const page = load.snapshot.pages.find((p) => p.id === currentView)!
     const section = PAGE_DEFINITIONS.find((d) => d.id === currentView)!.section
