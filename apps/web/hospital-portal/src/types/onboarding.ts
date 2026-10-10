@@ -30,6 +30,9 @@ export interface StaffMember {
   lastName: string
   role: string
   organizationId: string
+  /** Only set for a manager registered in this portal (local state). */
+  email?: string
+  phone?: string
 }
 
 export interface ApplicationDocument {
@@ -67,7 +70,11 @@ export interface HospitalApplication {
   organizationId: string
   submittedById: string | null
   submittedAt: string
-  status: 'pending' | 'human_review' | 'approved' | 'rejected'
+  /**
+   * `draft` exists only in this portal's local state: the organization is
+   * registered (HC-051) but the application is not yet complete.
+   */
+  status: 'draft' | 'pending' | 'human_review' | 'approved' | 'rejected'
   documents: ApplicationDocument[]
   agreements: ApplicationAgreement[]
   technicalQuestionnaire: TechnicalQuestionnaire | null
