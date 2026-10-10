@@ -2,6 +2,8 @@
 
 ## Purpose and status
 
+HC-014 Medication history is IMPLEMENTED at D1 with a local authorized-view list of fictional medications and source organizations. It is presentation-only and does not provide medication safety advice or connect to hospital persistence.
+
 HC-012 Federated patient medical timeline is IMPLEMENTED at D1 with a local, deterministic timeline assembled from three fictional organizations. It is an authorized-view presentation demo; it does not contact Hospital Nodes or load clinical persistence.
 
 HC-011 Patient dashboard is IMPLEMENTED at D1: the home view summarizes a fictional authorized view with source and event counts, a visible MOCKED label, and no hospital data access. It is a demo boundary, not production integration.

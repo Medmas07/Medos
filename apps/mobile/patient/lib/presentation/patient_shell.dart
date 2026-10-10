@@ -268,6 +268,40 @@ class _DashboardContent extends StatelessWidget {
             trailing: const _StatusPill(label: 'MOCKED'),
           ),
         ),
+        const SizedBox(height: 20),
+        Text(
+          'Historique des médicaments',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 10),
+        const _MedicationHistorySection(),
+      ],
+    );
+  }
+}
+
+class _MedicationHistorySection extends StatelessWidget {
+  const _MedicationHistorySection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        for (final medication in demoMedications)
+          Card(
+            child: ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: PatientColors.brandSoft,
+                child: Icon(Icons.medication_outlined, color: PatientColors.brand),
+              ),
+              title: Text(medication.name),
+              subtitle: Text(
+                '${medication.period}\n${medication.organization}',
+              ),
+              isThreeLine: true,
+              trailing: _StatusPill(label: medication.status.toUpperCase()),
+            ),
+          ),
       ],
     );
   }
