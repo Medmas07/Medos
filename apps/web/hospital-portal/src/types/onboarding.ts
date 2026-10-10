@@ -65,6 +65,27 @@ export interface ReviewStep {
   findings: string[]
 }
 
+export interface ProfileContact {
+  fullName: string
+  email: string
+}
+
+/** Administrative information of the establishment (HC-052). */
+export interface AdministrativeProfile {
+  legalName: string
+  legalStatus: 'public' | 'private'
+  registrationNumber: string
+  bedCapacity: number
+  address: { street: string; postalCode: string; city: string; governorate: string }
+  phone: string
+  email: string
+  legalRepresentative: { fullName: string; role: string }
+  dataProtectionOfficer: ProfileContact
+  /** Recommended, not required: the assisted review flags its absence. */
+  securityContact: ProfileContact | null
+  updatedAt: string
+}
+
 export interface HospitalApplication {
   id: string
   organizationId: string
@@ -77,6 +98,8 @@ export interface HospitalApplication {
   status: 'draft' | 'pending' | 'human_review' | 'approved' | 'rejected'
   documents: ApplicationDocument[]
   agreements: ApplicationAgreement[]
+  /** Absent on applications that predate the profile (approved fixtures). */
+  administrativeProfile?: AdministrativeProfile | null
   technicalQuestionnaire: TechnicalQuestionnaire | null
   reviewSteps: ReviewStep[]
   decisionId: string | null

@@ -105,6 +105,18 @@ function humanReviewState(application: HospitalApplication): StepState {
   return { status: 'completed', detail: "Revue humaine terminée par l'Autorité de gouvernance." }
 }
 
+function profileState(application: HospitalApplication): StepState {
+  const profile = application.administrativeProfile
+  if (!profile) {
+    return application.status === 'draft'
+      ? { status: 'pending', detail: 'Informations administratives à compléter.' }
+      : { status: 'completed', detail: 'Profil renseigné.' }
+  }
+  return profile.securityContact
+    ? { status: 'completed', detail: 'Profil renseigné.' }
+    : { status: 'completed', detail: 'Profil renseigné, sans contact sécurité distinct.' }
+}
+
 /** Derives the display state of every portal step from fixture data. Pure. */
 export function deriveSteps(
   organization: Organization,
@@ -141,12 +153,7 @@ export function deriveSteps(
       status: 'completed',
       detail: draft ? `Inscription enregistrée (${application.id}).` : 'Candidature soumise.',
     })
-    states.set(
-      'profile',
-      draft
-        ? { status: 'pending', detail: 'Informations administratives à compléter.' }
-        : { status: 'completed', detail: 'Profil renseigné.' },
-    )
+    states.set('profile', profileState(application))
     states.set('documents', documentsState(application))
     states.set('agreements', agreementsState(application))
     states.set(
@@ -181,17 +188,19 @@ export function deriveSteps(
 }
 
 /**
- * Demo scenarios, selected with `?demo=vide`, `?demo=erreur`, or
- * `?demo=echec-inscription` in the URL. `registration-failure` starts like
- * `empty`, and the first registration submission fails.
+ * Demo scenarios, selected with `?demo=vide`, `?demo=erreur`,
+ * `?demo=echec-inscription`, or `?demo=echec-profil` in the URL. The two
+ * failure scenarios start like `empty`; the first registration submission or
+ * the first profile save fails.
  */
-export type DemoScenario = 'nominal' | 'empty' | 'error' | 'registration-failure'
+export type DemoScenario = 'nominal' | 'empty' | 'error' | 'registration-failure' | 'profile-failure'
 
 export function scenarioFromSearch(search: string): DemoScenario {
   const value = new URLSearchParams(search).get('demo')
   if (value === 'vide') return 'empty'
   if (value === 'erreur') return 'error'
   if (value === 'echec-inscription') return 'registration-failure'
+  if (value === 'echec-profil') return 'profile-failure'
   return 'nominal'
 }
 
@@ -218,7 +227,7 @@ export async function loadOnboardingSnapshot(
   }
 
   const application =
-    scenario === 'empty' || scenario === 'registration-failure'
+    scenario === 'empty' || scenario === 'registration-failure' || scenario === 'profile-failure'
       ? null
       : (applications.find((a) => a.organizationId === organizationId) ?? null)
 
