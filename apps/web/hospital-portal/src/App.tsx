@@ -21,6 +21,7 @@ import {
   type StepSection,
 } from './services/onboardingService'
 import type { OnboardingSnapshot, StepId } from './types/onboarding'
+import { AgreementsView } from './views/AgreementsView'
 import { DocumentsView } from './views/DocumentsView'
 import { OverviewView } from './views/OverviewView'
 import { ProfileView } from './views/ProfileView'
@@ -158,6 +159,16 @@ export default function App() {
         <DocumentsView
           snapshot={load.snapshot}
           consumeSimulatedFailure={failureOnce('document-failure')}
+          onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
+          onNavigate={navigateTo}
+        />
+      )
+    }
+    if (currentView === 'agreements') {
+      return (
+        <AgreementsView
+          snapshot={load.snapshot}
+          consumeSimulatedFailure={failureOnce('agreement-failure')}
           onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
           onNavigate={navigateTo}
         />
