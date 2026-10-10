@@ -42,6 +42,16 @@ export const governanceService = {
     return typedGovernance.hospitalApplications
   },
 
+  getPendingHospitalApplications(): HospitalApplication[] {
+    return typedGovernance.hospitalApplications.filter(
+      (app) => app.status === 'human_review' || app.status === 'pending'
+    )
+  },
+
+  getHospitalApplication(id: string): HospitalApplication | undefined {
+    return typedGovernance.hospitalApplications.find((app) => app.id === id)
+  },
+
   getSynchronizationRequests(): SynchronizationRequest[] {
     return typedGovernance.synchronizationRequests
   },
