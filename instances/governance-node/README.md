@@ -21,4 +21,4 @@ It does not own raw hospital clinical databases, clinician workflows, patient me
 
 ## Expected contracts
 
-PLANNED hospital-registry, review/decision, policy, authorization, audit-event, Federation, and immutable-proof contracts.
+The consumer-side [`research-authorization-check.v1.yaml`](../../contracts/api/research/research-authorization-check.v1.yaml) contract is IMPLEMENTED for HC-182, but this Node does not provide it yet. Hospital-registry, review/decision, other policy and authorization, audit-event, Federation, and immutable-proof contracts remain PLANNED.

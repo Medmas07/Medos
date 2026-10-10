@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-CONFIRMED autonomous hospital-controlled boundary. Its stack (Python + FastAPI, one process per hospital from one codebase, flat layer layout that keeps `adapters/dmi/`) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED (HC-110): a FastAPI app with Clean/Hexagonal layers, pinned dependencies, and tests. Per-hospital configuration loading is IMPLEMENTED at D2 (HC-112). Its clinical repository is **MOCKED** at D2 (HC-113): fictional demo records, read-only, in memory. It serves `GET /health` (HC-111, IMPLEMENTED at D2) and the [patient history API](#patient-history-api-hc-114) (HC-114, IMPLEMENTED at D2): its side of the Federation contract, whose authorization check is **MOCKED** against fictional grants and decisions. Every query it answers or refuses is recorded in its own [audit trail](#audit-event-api-hc-116) (HC-116, IMPLEMENTED at D2), kept **in memory only** and readable through an unauthenticated API. The [access grants API](#access-grants-api-hc-115) (HC-115, IMPLEMENTED at D2) lists, records, and revokes a patient's grants on this node, which then enforces them; its grant store is **MOCKED** (in memory, seeded from fictional grants) and its callers are not authenticated. It is expected to become a separately packaged/containerized instance; container choices remain OPEN.
+CONFIRMED autonomous hospital-controlled boundary. Its stack (Python + FastAPI, one process per hospital from one codebase, flat layer layout that keeps `adapters/dmi/`) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED (HC-110): a FastAPI app with Clean/Hexagonal layers, pinned dependencies, and tests. Per-hospital configuration loading is IMPLEMENTED at D2 (HC-112). Its clinical repository is **MOCKED** at D2 (HC-113): fictional demo records, read-only, in memory. It serves `GET /health` (HC-111, IMPLEMENTED at D2) and the [patient history API](#patient-history-api-hc-114) (HC-114, IMPLEMENTED at D2): its side of the Federation contract, whose authorization check is **MOCKED** against fictional grants and decisions. Every query it answers or refuses is recorded in its own [audit trail](#audit-event-api-hc-116) (HC-116, IMPLEMENTED at D2), kept **in memory only** and readable through an unauthenticated API. The [access grants API](#access-grants-api-hc-115) (HC-115, IMPLEMENTED at D2) lists, records, and revokes a patient's grants on this node, which then enforces them; its grant store is **MOCKED** (in memory, seeded from fictional grants) and its callers are not authenticated. The [research execution agent](#research-execution-agent-hc-183) is IMPLEMENTED at D3 for one bounded installed aggregate; it never executes submitted source code, and demo results remain `mocked: true` because its local repository is fictional. It is expected to become a separately packaged/containerized instance; container choices remain OPEN.
 
 ## Running locally
 
@@ -173,17 +173,34 @@ curl -s 'localhost:8102/v1/audit/events?patient_ref=pat-a'
 
 Hospital B lists two events, newest first: `denied` for the other purpose with no disclosed reference, then `disclosed` with `enc-b-2026-leila` and `med-b-leila-coagulix`. Each event carries the Federation Service's `query_id`, so the same query can be traced in every node's trail. Hospital A and the private practice list only their own events.
 
+## Research execution agent (HC-183)
+
+IMPLEMENTED at D3 against [`research-node-execution.v1.yaml`](../../contracts/api/research/research-node-execution.v1.yaml). `POST /v1/research-executions` accepts a bounded job and `GET /v1/research-executions/{execution_id}` returns its terminal controlled outcome.
+
+Before reading local data, the node verifies that the target is this exact node and organization, the authorization names the Governance authority, the organization and requested variables are approved, and `valid_until` has not passed. This is deterministic envelope validation, **not authenticated Governance verification**: signatures, service identity, and production authorization remain OPEN. A denial returns the same response regardless of local data.
+
+The D3 executor supports only the preinstalled aggregate identified by the HC-180 canonical SHA-256 and `compute` entry point, with `hba1c` as its only variable and encounter-date population filters. It does not download or execute the submitted `artifact_ref`; arbitrary Python, package installation, process isolation, and the HC-186 sandbox remain out of scope. Age filters fail explicitly because this Hospital Node does not own local demographic data in the current model.
+
+The executor reads only this node's repository through a local application port. It returns:
+
+- `empty` when no local subject matches;
+- `suppressed` with no columns or rows when the cohort is smaller than `minimum_cell_size`;
+- `released` only as aggregate cells when the minimum is met;
+- `failed`, `denied`, `invalid`, `conflict`, and `not found` states without exposing whether a patient exists.
+
+Execution state is process-local and lost on restart. The canonical demo repository is explicitly MOCKED, so accepted and terminal responses carry `mocked: true`. The HTTP agent, authorization rules, aggregate, suppression, and provenance behavior are implemented; the data source is not production data or storage. HC-184 cross-node aggregation, HC-185 output validation, audit, durable persistence, authentication, and general code execution are not implemented.
+
 ## Health endpoint (HC-111)
 
-`GET /health` is a liveness check. It returns `200` with the node kind, version, the configured `node_ref` and `organization_ref`, its `capabilities` (`patient_history`, `audit_events`, `access_grants`), the clinical repository's record counts and `mocked` flag, and a notice stating that the identity comes from fictional demo configuration, that the repository and authorization are MOCKED, that the audit trail is in memory and its readers are not authenticated, and that it is not a production health check:
+`GET /health` is a liveness check. It returns `200` with the node kind, version, the configured `node_ref` and `organization_ref`, its `capabilities` (`patient_history`, `audit_events`, `access_grants`, `research_execution`), the clinical repository's record counts and `mocked` flag, and a notice stating that the identity comes from fictional demo configuration, that the repository and authorization are MOCKED, that research execution is bounded, that the audit trail is in memory and its readers are not authenticated, and that it is not a production health check:
 
 ```json
-{"status": "ok", "node": "hospital-node", "version": "0.1.0", "node_ref": "node-hospital-a", "organization_ref": "org-hospital-a", "capabilities": ["patient_history", "audit_events", "access_grants"], "clinical_records": {"mocked": true, "encounters": 3, "medications": 1, "lab_reports": 2}, "notice": "Hospital Node (HC-111 to HC-114, HC-116). ..."}
+{"status": "ok", "node": "hospital-node", "version": "0.2.0", "node_ref": "node-hospital-a", "organization_ref": "org-hospital-a", "capabilities": ["patient_history", "audit_events", "access_grants", "research_execution"], "clinical_records": {"mocked": true, "encounters": 3, "medications": 1, "lab_reports": 2}, "notice": "Hospital Node (HC-111 to HC-116, HC-183). ..."}
 ```
 
 The counts contain no patient data.
 
-It does not check storage, DMI connectivity, or Federation reachability; none exists yet. Deployment health checks are PLANNED in HC-223. Besides `/health`, the two Federation operations, `/v1/audit/events`, and the access grants paths, only FastAPI's generated `/openapi.json` and `/docs` are served.
+It does not check storage, DMI connectivity, or Federation reachability; none exists yet. Deployment health checks are PLANNED in HC-223. Besides `/health`, the Federation, audit, access-grant, and research-execution paths, only FastAPI's generated `/openapi.json` and `/docs` are served.
 
 ## Layout
 
@@ -191,10 +208,10 @@ It does not check storage, DMI connectivity, or Federation reachability; none ex
 instances/hospital-node/
 ├── main.py                     # composition root: loads configuration, builds the FastAPI app
 ├── config/                     # fictional per-hospital demo configurations
-├── domain/                     # NodeIdentity, NodeStatus, clinical records, history query, access grant, audit event — stdlib only
-├── application/                # get_node_status, get_patient_history, list_audit_events, manage_access_grants use cases; ClinicalRepository, AuthorizationVerifier, AuditLog, AccessGrantStore ports; imports only domain
-├── adapters/inbound/http/      # /health, /v1/federation, /v1/audit, and access grants routers, Pydantic wire models
-├── adapters/outbound/          # MOCKED fixture clinical repository (HC-113) and authorization verifier (HC-114); in-memory audit log (HC-116) and access grant store (HC-115, MOCKED)
+├── domain/                     # Node identity/status, clinical records, access/audit, and research execution values — stdlib only
+├── application/                # Hospital use cases and their repository, authorization, audit, grant, and research ports
+├── adapters/inbound/http/      # health, Federation, audit, access-grant, and research-execution routers
+├── adapters/outbound/          # fixture repositories/verifiers, installed aggregate, and in-memory stores
 ├── infrastructure/             # configuration loading and validation
 ├── adapters/dmi/               # PLANNED hospital-local DMI Adapter (HC-120+)
 ├── contracts/                  # reserved for Node-local contract documents
@@ -210,7 +227,7 @@ instances/hospital-node/
 - Local storage and clinical source-data control.
 - Consent/authorization enforcement at the local boundary.
 - Local audit generation and Federation interface.
-- Per-hospital configuration loading, liveness health check, patient history API, in-memory audit trail, and access grants API (IMPLEMENTED); clinical repository, authorization check, and grant store (MOCKED); future delegations, durable audit storage, authenticated identity/RBAC, and events.
+- Per-hospital configuration loading, liveness health check, patient history API, in-memory audit trail, access grants API, and bounded research execution agent (IMPLEMENTED); clinical repository, patient-query authorization check, grant store, and research data are MOCKED; future delegations, durable storage, authenticated identity/RBAC, and events.
 
 ## Communication boundaries
 
@@ -226,6 +243,8 @@ Each Hospital Node must provide [`hospital-node-federation.v1.yaml`](../../contr
 
 It also provides [`hospital-audit-events.v1.yaml`](../../contracts/api/hospital-audit/hospital-audit-events.v1.yaml) (HC-116): its own audit trail of those queries; and [`patient-access-grants.v1.yaml`](../../contracts/api/patient-access/patient-access-grants.v1.yaml) (HC-115): the patient access grants it records and enforces.
 
-PLANNED local clinical API, DMI port, and research-execution contracts. `/health` is Node-local and has no versioned contract.
+The D1 research execution contract at [`contracts/api/research/research-node-execution.v1.yaml`](../../contracts/api/research/research-node-execution.v1.yaml) is IMPLEMENTED by the HC-183 agent for the bounded installed aggregate described above. Authenticated Governance verification, general code execution, sandboxing, package policy, durable state, research audit, and production disclosure review remain PLANNED or OPEN.
+
+PLANNED local clinical API, DMI port, consent/authorization, and health contracts. `/health` is Node-local and has no versioned contract.
 
 The Federation Service calls this runtime over real HTTP at the `base_url` it has in the node registry: `GET /v1/federation/node` for capability discovery (HC-143) and `POST /v1/federation/queries` for federated queries (HC-145). This runtime serves both, so a running node is `discovered` and answers queries. The demo ports in `config/` (8101, 8102, 8104) match the Federation Service's [`registry-seed.demo.json`](../../services/federation/registry-seed.demo.json).

@@ -1,0 +1,258 @@
+openapi: 3.1.0
+info:
+  title: Hospital Node Research Execution Interface
+  version: 1.0.0
+  description: |
+    HC-180 D1 contract between the Research Service and each Hospital Node.
+    Approved code moves to the node; only disclosure-checked aggregates return.
+    The node independently enforces Governance authorization and never exposes
+    its database, DMI, raw records, patient identifiers, or row-level output.
+
+    IMPLEMENTED contract with MOCKED fictional examples. The HC-183 Hospital
+    Node agent implements it for one bounded, installed aggregate over the
+    visibly MOCKED local repository. It validates the authorization envelope
+    but does not authenticate its issuer. Arbitrary code execution, sandboxing,
+    durable state, authentication, package policy, and production disclosure
+    technology remain OPEN.
+paths:
+  /v1/research-executions:
+    post:
+      operationId: submitResearchExecution
+      summary: Submit one authorized execution to this Hospital Node.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ExecutionRequest"}
+            examples:
+              canonicalJob:
+                value:
+                  execution_id: job-001-exec-a
+                  job_ref: job-001
+                  project_ref: proj-001
+                  target: {node_ref: node-hospital-a, organization_ref: org-hospital-a}
+                  submitted_by: {organization_ref: org-platform, actor_ref: usr-aymen}
+                  purpose: Aggregate cardiometabolic risk research
+                  authorization:
+                    decision_ref: dec-rar-001
+                    authority_organization_ref: org-governance
+                    valid_until: "2026-12-31T23:59:59+01:00"
+                    approved_organization_refs: [org-hospital-a, org-hospital-b]
+                    approved_variables: [age_band, hba1c]
+                  data_scope:
+                    population: {age_min: 40, age_max: 79, encounter_from: "2024-01-01", encounter_to: "2026-12-31"}
+                    variables: [age_band, hba1c]
+                  algorithm:
+                    language: python
+                    artifact_ref: notebook://nb-001/cell/nb-001-cell-2
+                    sha256: 7da3c4f53384d2c0bf4e50f736e6e0242e57a77cf18720f62e16c13c49d79801
+                    entrypoint: compute
+                  output_policy: {kind: aggregate_table, minimum_cell_size: 10, require_disclosure_review: true}
+      responses:
+        "202":
+          description: Accepted for local checks; not proof of authorization or execution.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Accepted"}
+              examples:
+                accepted:
+                  value: {execution_id: job-001-exec-a, job_ref: job-001, node_ref: node-hospital-a, status: accepted, accepted_at: "2026-09-12T10:00:21+01:00", mocked: true}
+        "400": {$ref: "#/components/responses/Invalid"}
+        "403": {$ref: "#/components/responses/Denied"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /v1/research-executions/{execution_id}:
+    parameters:
+      - {name: execution_id, in: path, required: true, schema: {$ref: "#/components/schemas/Ref"}}
+    get:
+      operationId: getResearchExecution
+      summary: Read status or the controlled terminal outcome.
+      responses:
+        "200":
+          description: Result or error presence is determined by status.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Execution"}
+              examples:
+                running:
+                  value: {execution_id: job-001-exec-a, job_ref: job-001, node_ref: node-hospital-a, organization_ref: org-hospital-a, status: running, updated_at: "2026-09-12T10:01:10+01:00", mocked: true, progress: {stage: local_execution, percent: 45}}
+                completed:
+                  value:
+                    execution_id: job-001-exec-a
+                    job_ref: job-001
+                    node_ref: node-hospital-a
+                    organization_ref: org-hospital-a
+                    status: completed
+                    updated_at: "2026-09-12T10:03:10+01:00"
+                    mocked: true
+                    result:
+                      outcome: released
+                      columns: [age_band, participant_count, hba1c_above_7_pct]
+                      rows: [["40-49", 112, 17.9], ["50-59", 164, 25.6]]
+                      disclosure: {status: passed, minimum_cell_size: 10, checked_at: "2026-09-12T10:03:05+01:00"}
+                      provenance: {algorithm_sha256: 7da3c4f53384d2c0bf4e50f736e6e0242e57a77cf18720f62e16c13c49d79801, authorization_decision_ref: dec-rar-001, executed_at: "2026-09-12T10:03:00+01:00", source_organization_ref: org-hospital-a, source_node_ref: node-hospital-a}
+                empty:
+                  value:
+                    execution_id: job-empty-exec-a
+                    job_ref: job-empty
+                    node_ref: node-hospital-a
+                    organization_ref: org-hospital-a
+                    status: completed
+                    updated_at: "2026-09-12T10:03:10+01:00"
+                    mocked: true
+                    result:
+                      outcome: empty
+                      columns: [age_band, participant_count]
+                      rows: []
+                      disclosure: {status: passed, minimum_cell_size: 10, checked_at: "2026-09-12T10:03:05+01:00"}
+                      provenance: {algorithm_sha256: 7da3c4f53384d2c0bf4e50f736e6e0242e57a77cf18720f62e16c13c49d79801, authorization_decision_ref: dec-rar-001, executed_at: "2026-09-12T10:03:00+01:00", source_organization_ref: org-hospital-a, source_node_ref: node-hospital-a}
+                suppressed:
+                  value:
+                    execution_id: job-small-exec-a
+                    job_ref: job-small
+                    node_ref: node-hospital-a
+                    organization_ref: org-hospital-a
+                    status: completed
+                    updated_at: "2026-09-12T10:03:10+01:00"
+                    mocked: true
+                    result:
+                      outcome: suppressed
+                      columns: []
+                      rows: []
+                      disclosure: {status: suppressed, minimum_cell_size: 10, checked_at: "2026-09-12T10:03:05+01:00", reason_code: minimum_cell_size}
+                      provenance: {algorithm_sha256: 7da3c4f53384d2c0bf4e50f736e6e0242e57a77cf18720f62e16c13c49d79801, authorization_decision_ref: dec-rar-001, executed_at: "2026-09-12T10:03:00+01:00", source_organization_ref: org-hospital-a, source_node_ref: node-hospital-a}
+                denied:
+                  value: {execution_id: job-denied-exec-a, job_ref: job-denied, node_ref: node-hospital-a, organization_ref: org-hospital-a, status: denied, updated_at: "2026-09-12T10:00:22+01:00", mocked: true, error: {code: authorization_denied, message: The Hospital Node did not authorize this execution., retryable: false}}
+                failed:
+                  value: {execution_id: job-001-exec-b, job_ref: job-001, node_ref: node-hospital-b, organization_ref: org-hospital-b, status: failed, updated_at: "2026-09-12T10:02:22+01:00", mocked: true, error: {code: execution_failed, message: The local execution did not complete., retryable: true}}
+        "404": {$ref: "#/components/responses/NotFound"}
+components:
+  responses:
+    Invalid:
+      description: Invalid request.
+      content: {application/problem+json: {schema: {$ref: "#/components/schemas/Problem"}, examples: {invalid: {value: {code: invalid_request, message: The request is invalid., retryable: false}}}}}
+    Denied:
+      description: Denied without revealing local data presence.
+      content: {application/problem+json: {schema: {$ref: "#/components/schemas/Problem"}, examples: {denied: {value: {code: authorization_denied, message: The node denied this execution., retryable: false}}}}}
+    Conflict:
+      description: Execution id already has different immutable input.
+      content: {application/problem+json: {schema: {$ref: "#/components/schemas/Problem"}, examples: {conflict: {value: {code: execution_conflict, message: The execution id is in use., retryable: false}}}}}
+    NotFound:
+      description: Execution not visible under this id.
+      content: {application/problem+json: {schema: {$ref: "#/components/schemas/Problem"}, examples: {missing: {value: {code: execution_not_found, message: The execution was not found., retryable: false}}}}}
+  schemas:
+    ExecutionRequest:
+      type: object
+      additionalProperties: false
+      required: [execution_id, job_ref, project_ref, target, submitted_by, purpose, authorization, data_scope, algorithm, output_policy]
+      properties:
+        execution_id: {$ref: "#/components/schemas/Ref"}
+        job_ref: {$ref: "#/components/schemas/Ref"}
+        project_ref: {$ref: "#/components/schemas/Ref"}
+        target: {$ref: "#/components/schemas/Target"}
+        submitted_by: {$ref: "#/components/schemas/Requester"}
+        purpose: {type: string, minLength: 1, maxLength: 500}
+        authorization: {$ref: "#/components/schemas/Authorization"}
+        data_scope: {$ref: "#/components/schemas/DataScope"}
+        algorithm: {$ref: "#/components/schemas/Algorithm"}
+        output_policy: {$ref: "#/components/schemas/OutputPolicy"}
+    Target:
+      type: object
+      additionalProperties: false
+      required: [node_ref, organization_ref]
+      properties: {node_ref: {$ref: "#/components/schemas/Ref"}, organization_ref: {$ref: "#/components/schemas/Ref"}}
+    Requester:
+      type: object
+      additionalProperties: false
+      required: [organization_ref, actor_ref]
+      properties: {organization_ref: {$ref: "#/components/schemas/Ref"}, actor_ref: {$ref: "#/components/schemas/Ref"}}
+    Authorization:
+      type: object
+      additionalProperties: false
+      required: [decision_ref, authority_organization_ref, valid_until, approved_organization_refs, approved_variables]
+      properties:
+        decision_ref: {$ref: "#/components/schemas/Ref"}
+        authority_organization_ref: {$ref: "#/components/schemas/Ref"}
+        valid_until: {type: string, format: date-time}
+        approved_organization_refs: {type: array, minItems: 1, uniqueItems: true, items: {$ref: "#/components/schemas/Ref"}}
+        approved_variables: {type: array, minItems: 1, uniqueItems: true, items: {$ref: "#/components/schemas/Name"}}
+    DataScope:
+      type: object
+      additionalProperties: false
+      required: [population, variables]
+      properties:
+        population:
+          type: object
+          additionalProperties: false
+          minProperties: 1
+          properties: {age_min: {type: integer, minimum: 0, maximum: 130}, age_max: {type: integer, minimum: 0, maximum: 130}, encounter_from: {type: string, format: date}, encounter_to: {type: string, format: date}}
+        variables: {type: array, minItems: 1, uniqueItems: true, items: {$ref: "#/components/schemas/Name"}}
+    Algorithm:
+      type: object
+      additionalProperties: false
+      required: [language, artifact_ref, sha256, entrypoint]
+      properties: {language: {type: string, enum: [python]}, artifact_ref: {type: string, minLength: 1, maxLength: 500}, sha256: {type: string, pattern: "^[a-f0-9]{64}$"}, entrypoint: {type: string, pattern: "^[A-Za-z_][A-Za-z0-9_]{0,99}$"}}
+    OutputPolicy:
+      type: object
+      additionalProperties: false
+      required: [kind, minimum_cell_size, require_disclosure_review]
+      properties: {kind: {type: string, enum: [aggregate_table]}, minimum_cell_size: {type: integer, minimum: 1}, require_disclosure_review: {type: boolean, const: true}}
+    Accepted:
+      type: object
+      additionalProperties: false
+      required: [execution_id, job_ref, node_ref, status, accepted_at, mocked]
+      properties: {execution_id: {$ref: "#/components/schemas/Ref"}, job_ref: {$ref: "#/components/schemas/Ref"}, node_ref: {$ref: "#/components/schemas/Ref"}, status: {type: string, const: accepted}, accepted_at: {type: string, format: date-time}, mocked: {type: boolean}}
+    Execution:
+      oneOf:
+        - {$ref: "#/components/schemas/ActiveExecution"}
+        - {$ref: "#/components/schemas/CompletedExecution"}
+        - {$ref: "#/components/schemas/ErroredExecution"}
+    ActiveExecution:
+      type: object
+      additionalProperties: false
+      required: [execution_id, job_ref, node_ref, organization_ref, status, updated_at, mocked, progress]
+      properties:
+        execution_id: {$ref: "#/components/schemas/Ref"}
+        job_ref: {$ref: "#/components/schemas/Ref"}
+        node_ref: {$ref: "#/components/schemas/Ref"}
+        organization_ref: {$ref: "#/components/schemas/Ref"}
+        status: {type: string, enum: [accepted, authorization_check, queued, running, output_review]}
+        updated_at: {type: string, format: date-time}
+        mocked: {type: boolean}
+        progress: {type: object, additionalProperties: false, required: [stage, percent], properties: {stage: {type: string, enum: [authorization_check, queued, local_execution, output_review]}, percent: {type: integer, minimum: 0, maximum: 99}}}
+    CompletedExecution:
+      type: object
+      additionalProperties: false
+      required: [execution_id, job_ref, node_ref, organization_ref, status, updated_at, mocked, result]
+      properties: {execution_id: {$ref: "#/components/schemas/Ref"}, job_ref: {$ref: "#/components/schemas/Ref"}, node_ref: {$ref: "#/components/schemas/Ref"}, organization_ref: {$ref: "#/components/schemas/Ref"}, status: {type: string, const: completed}, updated_at: {type: string, format: date-time}, mocked: {type: boolean}, result: {$ref: "#/components/schemas/ControlledResult"}}
+    ErroredExecution:
+      type: object
+      additionalProperties: false
+      required: [execution_id, job_ref, node_ref, organization_ref, status, updated_at, mocked, error]
+      properties: {execution_id: {$ref: "#/components/schemas/Ref"}, job_ref: {$ref: "#/components/schemas/Ref"}, node_ref: {$ref: "#/components/schemas/Ref"}, organization_ref: {$ref: "#/components/schemas/Ref"}, status: {type: string, enum: [denied, failed, cancelled, expired]}, updated_at: {type: string, format: date-time}, mocked: {type: boolean}, error: {$ref: "#/components/schemas/Problem"}}
+    ControlledResult:
+      type: object
+      additionalProperties: false
+      required: [outcome, columns, rows, disclosure, provenance]
+      properties:
+        outcome: {type: string, enum: [released, empty, suppressed]}
+        columns: {type: array, uniqueItems: true, items: {$ref: "#/components/schemas/Name"}}
+        rows: {type: array, description: Aggregate cells only; never raw or patient-level records., items: {type: array, items: {type: [string, number, integer, boolean, "null"]}}}
+        disclosure: {$ref: "#/components/schemas/Disclosure"}
+        provenance: {$ref: "#/components/schemas/Provenance"}
+    Disclosure:
+      type: object
+      additionalProperties: false
+      required: [status, minimum_cell_size, checked_at]
+      properties: {status: {type: string, enum: [passed, suppressed]}, minimum_cell_size: {type: integer, minimum: 1}, checked_at: {type: string, format: date-time}, reason_code: {type: string, enum: [minimum_cell_size, policy_restriction, manual_review_required]}}
+    Provenance:
+      type: object
+      additionalProperties: false
+      required: [algorithm_sha256, authorization_decision_ref, executed_at, source_organization_ref, source_node_ref]
+      properties: {algorithm_sha256: {type: string, pattern: "^[a-f0-9]{64}$"}, authorization_decision_ref: {$ref: "#/components/schemas/Ref"}, executed_at: {type: string, format: date-time}, source_organization_ref: {$ref: "#/components/schemas/Ref"}, source_node_ref: {$ref: "#/components/schemas/Ref"}}
+    Problem:
+      type: object
+      additionalProperties: false
+      required: [code, message, retryable]
+      properties: {code: {type: string, enum: [invalid_request, authorization_denied, authorization_expired, scope_denied, execution_conflict, execution_not_found, execution_failed, output_rejected, cancelled, expired]}, message: {type: string, minLength: 1, maxLength: 500}, retryable: {type: boolean}}
+    Ref: {type: string, minLength: 1, maxLength: 100, pattern: "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"}
+    Name: {type: string, minLength: 1, maxLength: 100, pattern: "^[a-z][a-z0-9_]*$"}

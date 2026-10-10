@@ -25,7 +25,9 @@ class FakeExtractor:
     def extract(self, source):
         self.seen.append(source)
         return ExtractorOutput(
-            items=(), missing_information=(MissingInformation("allergies", "Ask."),)
+            items=(),
+            missing_information=(MissingInformation("allergies", "Ask."),),
+            info=self.info,
         )
 
 

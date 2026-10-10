@@ -1,33 +1,67 @@
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import {
   Alert,
   Badge,
   Button,
   Card,
+  EmptyState,
   PageHeader,
   Table,
+  type Tone,
 } from '@hackcure/design-system'
 import { governanceService } from '../../services/governanceService'
-import type { SynchronizationRequest } from '../../types/governance'
+import { reviewStore } from '../../services/reviewStore'
+import {
+  SYNC_FILTERS,
+  SYNC_FILTER_LABELS,
+  SYNC_STATUS_LABELS,
+  consentLabel,
+  countSyncRows,
+  filterSyncRows,
+  scopeLabel,
+  syncListRows,
+  type SyncListFilter,
+  type SyncListRow,
+  type SyncListStatus,
+} from '../../services/syncRequestList'
+import { SyncReviewForm } from '../review/SyncReviewForm'
+import { SyncRequestDetail } from '../sync/SyncRequestDetail'
+
+/** The reviewer signed in to this demo portal (fictional, HC-005). */
+const REVIEWER_ID = 'usr-olfa'
+
+const STATUS_TONES: Record<SyncListStatus, Tone> = {
+  pending: 'warning',
+  active: 'success',
+  expired: 'neutral',
+  rejected: 'danger',
+}
+
+const formatDate = (iso: string) => new Date(iso).toLocaleDateString('fr-TN')
 
 export function DataSyncView() {
-  const syncs = governanceService.getSynchronizationRequests()
-  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
+  // Re-render when a simulated decision is recorded or the demo is reset (HC-076).
+  const reviewState = useSyncExternalStore(reviewStore.subscribe, reviewStore.getSnapshot)
+  const simulatedSyncCount = Object.keys(reviewState.synchronizationRequests).length
+
+  // Statuses are evaluated once per visit: an authorization that has lapsed shows as expired.
+  const [now] = useState(() => new Date())
+  const rows = syncListRows(
+    governanceService.getSynchronizationRequests(),
+    (id) => governanceService.getDecision(id),
+    now,
+  )
+  const counts = countSyncRows(rows)
+  const [filter, setFilter] = useState<SyncListFilter>('all')
   const [selectedSyncId, setSelectedSyncId] = useState<string>('sync-001')
 
-  const filteredSyncs = syncs.filter((s) => {
-    if (filter === 'all') return true
-    return s.status === filter
-  })
+  const filteredRows = filterSyncRows(rows, filter)
 
-  const selectedSync = syncs.find((s) => s.id === selectedSyncId)
+  const selectedRow = rows.find((row) => row.request.id === selectedSyncId)
+  const selectedSync = selectedRow?.request
   const reqOrg = selectedSync ? governanceService.getOrganization(selectedSync.requesterOrganizationId) : undefined
   const tgtOrg = selectedSync ? governanceService.getOrganization(selectedSync.targetOrganizationId) : undefined
-  const patient = selectedSync ? governanceService.getPatient(selectedSync.patientId) : undefined
   const decision = selectedSync ? governanceService.getDecision(selectedSync.decisionId) : undefined
-  const proof = decision ? governanceService.getProofForEvent(
-    governanceService.getAuditEvents().find((e) => e.subjectId === decision.id)?.id ?? ''
-  ) : undefined
 
   return (
     <div className="space-y-6">
@@ -36,197 +70,153 @@ export function DataSyncView() {
         title="Synchronisations Inter-Hospitalières de Soins"
         description="Autorisation et gouvernance des échanges ciblés entre établissements hospitaliers pour la continuité du parcours de soins."
         actions={
-          <div className="flex gap-2">
-            <Button
-              variant={filter === 'all' ? 'primary' : 'secondary'}
-              size="sm"
-              onClick={() => setFilter('all')}
-            >
-              Toutes ({syncs.length})
-            </Button>
-            <Button
-              variant={filter === 'pending' ? 'primary' : 'secondary'}
-              size="sm"
-              onClick={() => setFilter('pending')}
-            >
-              En attente ({syncs.filter((s) => s.status === 'pending').length})
-            </Button>
-            <Button
-              variant={filter === 'approved' ? 'primary' : 'secondary'}
-              size="sm"
-              onClick={() => setFilter('approved')}
-            >
-              Approuvées ({syncs.filter((s) => s.status === 'approved').length})
-            </Button>
-            <Button
-              variant={filter === 'rejected' ? 'primary' : 'secondary'}
-              size="sm"
-              onClick={() => setFilter('rejected')}
-            >
-              Rejetées ({syncs.filter((s) => s.status === 'rejected').length})
-            </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {simulatedSyncCount > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => reviewStore.reset()}>
+                Réinitialiser la démo
+              </Button>
+            )}
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrer par statut">
+              {SYNC_FILTERS.map((f) => (
+                <Button
+                  key={f}
+                  variant={filter === f ? 'primary' : 'secondary'}
+                  size="sm"
+                  aria-pressed={filter === f}
+                  onClick={() => setFilter(f)}
+                >
+                  {SYNC_FILTER_LABELS[f]} ({counts[f]})
+                </Button>
+              ))}
+            </div>
           </div>
         }
       />
 
-      <Alert tone="info" title="Contrôle de finalité">
+      <Alert tone="info" title="Contrôle de finalité & Souveraineté hospitalière">
         Chaque synchronisation exige une finalité clinique explicite, une base d'autorisation vérifiée et une durée strictement délimitée. Aucun accès SQL direct entre serveurs hospitaliers n'est autorisé.
       </Alert>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        <div className="lg:col-span-7">
+        {/* Table of synchronization requests */}
+        <div className="lg:col-span-5">
           <Card title="File des Demandes de Synchronisation" flush>
-            <Table<SynchronizationRequest>
-              caption="Demandes de synchronisation clinique inter-hospitalière"
-              columns={[
-                {
-                  key: 'patient',
-                  header: 'Réf. & Patient',
-                  render: (s) => {
-                    const pat = governanceService.getPatient(s.patientId)
-                    return (
-                      <div>
-                        <div className="font-medium text-slate-900">{pat ? `${pat.firstName} ${pat.lastName}` : s.patientId}</div>
-                        <div className="text-xs text-slate-500">{pat?.federatedId} • {s.id}</div>
-                      </div>
-                    )
+            {filteredRows.length === 0 ? (
+              <EmptyState
+                title={`Aucune demande « ${SYNC_FILTER_LABELS[filter].toLowerCase()} »`}
+                description="Aucune demande de synchronisation ne correspond à ce filtre."
+                action={
+                  <Button size="sm" variant="secondary" onClick={() => setFilter('all')}>
+                    Afficher toutes les demandes
+                  </Button>
+                }
+              />
+            ) : (
+              <Table<SyncListRow>
+                caption="Demandes de synchronisation clinique inter-hospitalière, les demandes en attente en premier"
+                columns={[
+                  {
+                    key: 'request',
+                    header: 'Demande',
+                    render: ({ request }) => {
+                      const r = governanceService.getOrganization(request.requesterOrganizationId)
+                      const t = governanceService.getOrganization(request.targetOrganizationId)
+                      return (
+                        <div className="space-y-0.5 text-xs">
+                          <div className="font-mono font-semibold text-slate-800">{request.id}</div>
+                          <div className="font-medium text-slate-800">
+                            {r?.shortName ?? request.requesterOrganizationId}
+                            <span className="text-slate-500"> → {t?.shortName ?? request.targetOrganizationId}</span>
+                          </div>
+                          <div className="text-slate-500">
+                            <span title="Identifiant fédéré pseudonyme du patient">
+                              {governanceService.getPatient(request.patientId)?.federatedId ?? request.patientId}
+                            </span>
+                            {' • '}Reçue le {formatDate(request.submittedAt)}
+                          </div>
+                        </div>
+                      )
+                    },
                   },
-                },
-                {
-                  key: 'organizations',
-                  header: 'Établissements (Demandeur → Cible)',
-                  render: (s) => {
-                    const r = governanceService.getOrganization(s.requesterOrganizationId)
-                    const t = governanceService.getOrganization(s.targetOrganizationId)
-                    return (
-                      <div className="text-xs">
-                        <div className="font-semibold text-slate-800">{r?.shortName ?? s.requesterOrganizationId}</div>
-                        <div className="text-slate-500">→ {t?.shortName ?? s.targetOrganizationId}</div>
+                  {
+                    key: 'purpose',
+                    header: 'Finalité & Périmètre',
+                    render: ({ request }) => (
+                      <div className="space-y-1 text-xs">
+                        <div className="line-clamp-2 text-slate-800" title={request.purpose}>{request.purpose}</div>
+                        <div className="flex flex-wrap gap-1">
+                          {request.scope.map((item) => (
+                            <Badge key={item} tone="neutral">{scopeLabel(item)}</Badge>
+                          ))}
+                          <Badge tone={request.consent.basis === 'none' ? 'danger' : 'info'}>
+                            {consentLabel(request.consent.basis)}
+                          </Badge>
+                        </div>
+                        <div className="text-slate-500">Durée : {request.durationDays} j</div>
                       </div>
-                    )
+                    ),
                   },
-                },
-                {
-                  key: 'scope',
-                  header: 'Périmètre & Durée',
-                  render: (s) => (
-                    <div className="text-xs">
-                      <div className="flex flex-wrap gap-1">
-                        {s.scope.map((scopeItem) => (
-                          <Badge key={scopeItem} tone="neutral">{scopeItem}</Badge>
-                        ))}
+                  {
+                    key: 'status',
+                    header: 'Statut',
+                    render: ({ status, validUntil }) => (
+                      <div className="space-y-0.5 text-xs">
+                        <Badge tone={STATUS_TONES[status]} dot>{SYNC_STATUS_LABELS[status]}</Badge>
+                        {validUntil && (
+                          <div className="text-slate-500 text-[10px]">
+                            {status === 'expired' ? 'Expirée le' : "Jusqu'au"} {formatDate(validUntil)}
+                          </div>
+                        )}
                       </div>
-                      <span className="text-slate-500">{s.durationDays} jours</span>
-                    </div>
-                  ),
-                },
-                {
-                  key: 'status',
-                  header: 'Statut',
-                  render: (s) => {
-                    if (s.status === 'pending') return <Badge tone="warning" dot>En attente</Badge>
-                    if (s.status === 'approved') return <Badge tone="success" dot>Approuvée</Badge>
-                    return <Badge tone="danger" dot>Rejetée</Badge>
+                    ),
                   },
-                },
-                {
-                  key: 'action',
-                  header: 'Action',
-                  render: (s) => (
-                    <Button
-                      size="sm"
-                      variant={selectedSyncId === s.id ? 'primary' : 'ghost'}
-                      onClick={() => setSelectedSyncId(s.id)}
-                    >
-                      {selectedSyncId === s.id ? 'Actif' : 'Voir'}
-                    </Button>
-                  ),
-                },
-              ]}
-              rows={filteredSyncs}
-              getRowKey={(item) => item.id}
-            />
+                  {
+                    key: 'action',
+                    header: 'Action',
+                    render: ({ request }) => (
+                      <Button
+                        size="sm"
+                        variant={selectedSyncId === request.id ? 'primary' : 'ghost'}
+                        aria-pressed={selectedSyncId === request.id}
+                        onClick={() => setSelectedSyncId(request.id)}
+                      >
+                        {selectedSyncId === request.id ? 'Actif' : 'Voir'}
+                      </Button>
+                    ),
+                  },
+                ]}
+                rows={filteredRows}
+                getRowKey={(row) => row.request.id}
+              />
+            )}
           </Card>
         </div>
 
-        <div className="lg:col-span-5">
+        {/* Detailed view of selected request */}
+        <div className="lg:col-span-7">
           {selectedSync ? (
-            <Card title={`Détail : ${selectedSync.id}`} className="space-y-4">
-              <div className="space-y-2 text-xs">
-                <div>
-                  <span className="font-semibold text-slate-700">Finalité déclarée :</span>
-                  <p className="mt-0.5 rounded bg-slate-50 p-2 text-slate-800">{selectedSync.purpose}</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 pt-2">
-                  <div className="rounded bg-slate-50 p-2">
-                    <span className="text-slate-500">Demandeur :</span>
-                    <p className="font-medium text-slate-800">{reqOrg?.name}</p>
-                  </div>
-                  <div className="rounded bg-slate-50 p-2">
-                    <span className="text-slate-500">Détenteur des données :</span>
-                    <p className="font-medium text-slate-800">{tgtOrg?.name}</p>
-                  </div>
-                </div>
-
-                <div className="rounded bg-slate-50 p-2">
-                  <span className="text-slate-500">Base d'autorisation :</span>
-                  <div className="mt-1 flex items-center gap-2">
-                    <Badge tone={selectedSync.consent.basis === 'none' ? 'danger' : 'info'}>
-                      {selectedSync.consent.basis === 'patient_grant' && 'Autorisation patiente active'}
-                      {selectedSync.consent.basis === 'signed_consent_form' && 'Formulaire signé vérifié'}
-                      {selectedSync.consent.basis === 'none' && 'Aucune autorisation fournie'}
-                    </Badge>
-                    {selectedSync.consent.accessGrantId && (
-                      <span className="font-mono text-slate-600">Réf: {selectedSync.consent.accessGrantId}</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Decision details */}
-              {decision ? (
-                <div
-                  className={`rounded-md border p-3 text-xs ${
-                    decision.outcome === 'approved'
-                      ? 'border-success-200 bg-success-50 text-success-800'
-                      : 'border-danger-200 bg-danger-50 text-danger-800'
-                  }`}
-                >
-                  <div className="font-semibold">
-                    Décision d'arbitrage : {decision.outcome === 'approved' ? 'Autorisée' : 'Refusée'}
-                  </div>
-                  <p className="mt-1">« {decision.rationale} »</p>
-                  {decision.conditions.length > 0 && (
-                    <div className="mt-2">
-                      <span className="font-medium">Conditions imposées :</span>
-                      <ul className="mt-1 list-disc pl-4">
-                        {decision.conditions.map((c, i) => (
-                          <li key={i}>{c}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {proof && (
-                    <div className="mt-2 flex items-center gap-1.5 border-t border-success-200/60 pt-2 font-mono text-[11px]">
-                      <span className="text-slate-600">Empreinte ancrée :</span>
-                      <span className="truncate">{proof.hash}</span>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs">
-                  <div className="font-semibold text-amber-900">Demande en cours d'instruction</div>
-                  <p className="mt-1 text-amber-800">
-                    L'Autorité vérifie la conformité de la finalité et le consentement du patient ({patient?.federatedId}) avant émission du jeton d'autorisation fédéré.
-                  </p>
-                </div>
-              )}
-            </Card>
+            <SyncRequestDetail
+              request={selectedSync}
+              reviewForm={
+                !decision && selectedSync.status === 'pending' ? (
+                  <SyncReviewForm
+                    key={selectedSync.id}
+                    context={{
+                      request: selectedSync,
+                      requester: reqOrg,
+                      target: tgtOrg,
+                      grant: governanceService.getAccessGrant(selectedSync.consent.accessGrantId),
+                    }}
+                    reviewer={governanceService.getPerson(REVIEWER_ID)}
+                    reviewerName={governanceService.getPersonName(REVIEWER_ID)}
+                  />
+                ) : undefined
+              }
+            />
           ) : (
             <Card>
-              <div className="py-8 text-center text-xs text-slate-500">
-                Sélectionnez une demande pour examiner ses détails.
+              <div className="py-12 text-center text-xs text-slate-500">
+                Sélectionnez une demande dans la liste pour examiner ses détails.
               </div>
             </Card>
           )}

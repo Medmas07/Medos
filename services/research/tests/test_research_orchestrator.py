@@ -1,0 +1,140 @@
+from application.research_orchestrator import ResearchOrchestrator
+from domain.research_job import (
+    AuthorizationDecision,
+    ExecutionStatus,
+    JobStatus,
+    NodeExecution,
+    ResearchJob,
+)
+
+
+class AuthorizationStub:
+    def __init__(self, *, approved=True, unavailable=False, valid_until=None):
+        self.approved = approved
+        self.unavailable = unavailable
+        self.valid_until = valid_until
+
+    def check(self, job):
+        if self.unavailable:
+            raise ConnectionError
+        return AuthorizationDecision(
+            job.authorization_decision_ref,
+            self.approved,
+            job.target_organizations if self.approved else (),
+            tuple(job.data_scope["variables"]) if self.approved else (),
+            "org-governance",
+            self.valid_until
+            or ("2099-12-31T23:59:59+01:00" if self.approved else None),
+            None if self.approved else "scope_denied",
+        )
+
+
+class ExecutionStub:
+    def __init__(self, *, fail_organization=None):
+        self.fail_organization = fail_organization
+        self.submitted = []
+
+    def submit(self, job, organization_ref, authorization):
+        self.submitted.append(organization_ref)
+        if organization_ref == self.fail_organization:
+            raise ConnectionError
+        return NodeExecution(
+            f"{job.job_ref}-exec-{organization_ref}",
+            organization_ref,
+            ExecutionStatus.ACCEPTED,
+        )
+
+    def read(self, execution):
+        return NodeExecution(
+            execution.execution_id,
+            execution.organization_ref,
+            ExecutionStatus.COMPLETED,
+            result={
+                "outcome": "released",
+                "columns": ["participant_count"],
+                "rows": [[42]],
+                "disclosure": {"status": "passed", "minimum_cell_size": 10},
+            },
+        )
+
+
+def job(job_ref="job-001"):
+    return ResearchJob(
+        job_ref=job_ref,
+        project_ref="proj-001",
+        authorization_decision_ref="dec-rar-001",
+        requested_by="usr-aymen",
+        purpose="Aggregate cardiometabolic risk research",
+        target_organizations=("org-hospital-a", "org-hospital-b"),
+        data_scope={"variables": ["age_band", "hba1c"]},
+        algorithm={
+            "language": "python",
+            "artifact_ref": "notebook://nb-001/cell/nb-001-cell-2",
+            "sha256": "7da3c4f53384d2c0bf4e50f736e6e0242e57a77cf18720f62e16c13c49d79801",
+            "entrypoint": "compute",
+        },
+        output_policy={
+            "kind": "aggregate_table",
+            "minimum_cell_size": 10,
+            "require_disclosure_review": True,
+        },
+    )
+
+
+def test_authorized_job_dispatches_and_returns_unaggregated_controlled_results():
+    execution = ExecutionStub()
+    orchestrator = ResearchOrchestrator(AuthorizationStub(), execution)
+
+    submitted = orchestrator.submit(job())
+    assert submitted.status is JobStatus.RUNNING
+    assert execution.submitted == ["org-hospital-a", "org-hospital-b"]
+
+    completed = orchestrator.read("job-001")
+    assert completed.status is JobStatus.COMPLETED
+    assert len(completed.executions) == 2
+    assert all(item.result["outcome"] == "released" for item in completed.executions)
+    assert not hasattr(completed, "result")  # aggregation belongs to HC-184
+
+
+def test_denied_job_never_reaches_a_hospital_node():
+    execution = ExecutionStub()
+    orchestrator = ResearchOrchestrator(AuthorizationStub(approved=False), execution)
+    denied = orchestrator.submit(job("job-denied"))
+    assert denied.status is JobStatus.DENIED
+    assert denied.error.code == "scope_denied"
+    assert execution.submitted == []
+
+
+def test_unavailable_governance_fails_closed_and_is_retryable():
+    execution = ExecutionStub()
+    orchestrator = ResearchOrchestrator(AuthorizationStub(unavailable=True), execution)
+    failed = orchestrator.submit(job("job-governance-down"))
+    assert failed.status is JobStatus.FAILED
+    assert failed.error.code == "governance_unavailable"
+    assert failed.error.retryable is True
+    assert execution.submitted == []
+
+
+def test_expired_authorization_never_reaches_a_hospital_node():
+    execution = ExecutionStub()
+    orchestrator = ResearchOrchestrator(
+        AuthorizationStub(valid_until="2020-01-01T00:00:00+00:00"), execution
+    )
+    denied = orchestrator.submit(job("job-expired"))
+    assert denied.status is JobStatus.DENIED
+    assert denied.error.code == "authorization_expired"
+    assert execution.submitted == []
+
+
+def test_partial_node_failure_is_explicit_and_does_not_aggregate():
+    execution = ExecutionStub(fail_organization="org-hospital-b")
+    orchestrator = ResearchOrchestrator(AuthorizationStub(), execution)
+    running = orchestrator.submit(job("job-partial"))
+    assert running.status is JobStatus.RUNNING
+    failed = orchestrator.read("job-partial")
+    assert failed.status is JobStatus.FAILED
+    assert failed.error.code == "node_execution_failed"
+    assert {item.status for item in failed.executions} == {
+        ExecutionStatus.COMPLETED,
+        ExecutionStatus.FAILED,
+    }

@@ -25,6 +25,14 @@ DEMO_TRANSCRIPT = (
 )
 
 
+FIXTURE_INFO = ExtractorInfo(
+    kind=ExtractorKind.DETERMINISTIC_FIXTURE,
+    name="demo-fixture-extractor",
+    version="1.0.0",
+    mocked=True,
+)
+
+
 def _evidence(quote: str) -> Evidence:
     start = DEMO_TRANSCRIPT.index(quote)
     return Evidence(quote=quote, start=start, end=start + len(quote))
@@ -96,18 +104,14 @@ DEMO_OUTPUT = ExtractorOutput(
             prompt="Dose and frequency of Medication A are not mentioned.",
         ),
     ),
+    info=FIXTURE_INFO,
 )
 
-EMPTY_OUTPUT = ExtractorOutput(items=(), missing_information=())
+EMPTY_OUTPUT = ExtractorOutput(items=(), missing_information=(), info=FIXTURE_INFO)
 
 
 class FixtureClinicalExtractor:
-    info = ExtractorInfo(
-        kind=ExtractorKind.DETERMINISTIC_FIXTURE,
-        name="demo-fixture-extractor",
-        version="1.0.0",
-        mocked=True,
-    )
+    info = FIXTURE_INFO
 
     def extract(self, source: ExtractionSource) -> ExtractorOutput:
         if source.type is SourceType.TRANSCRIPT and source.text == DEMO_TRANSCRIPT:

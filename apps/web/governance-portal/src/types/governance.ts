@@ -54,6 +54,25 @@ export interface HospitalApplication {
   decisionId: string | null
 }
 
+export interface PatientLocalIdentifier {
+  organizationId: string
+  value: string
+}
+
+export interface AccessGrant {
+  id: string
+  patientId: string
+  granteeId: string
+  scope: string[]
+  purpose: string
+  status: 'active' | 'expired' | 'revoked'
+  grantedAt: string
+  expiresAt: string
+  revokedAt: string | null
+}
+
+export type AccessGrantInfo = AccessGrant
+
 export interface ConsentInfo {
   basis: 'patient_grant' | 'signed_consent_form' | 'emergency_override' | 'none'
   accessGrantId: string | null
@@ -82,6 +101,21 @@ export interface ResearchAccessRequest {
   decisionId: string | null
 }
 
+export interface ResearchProjectInfo {
+  id: string
+  title: string
+  principalInvestigatorId: string
+  organizationId: string
+  status: 'approved' | 'under_review' | 'rejected'
+  createdAt: string
+  summary: string
+  population: string
+  variables: string[]
+  participatingOrganizationIds: string[]
+  protocolDocument?: { id: string; title: string }
+  researchAccessRequestId?: string
+}
+
 export interface GovernanceDecision {
   id: string
   subjectType: SubjectType
@@ -94,6 +128,17 @@ export interface GovernanceDecision {
   validUntil: string | null
   /** True for a decision recorded only in local portal state (HC-073), never persisted. */
   simulated?: boolean
+  /**
+   * What an approved research access request authorizes (HC-078). Mirrors the
+   * Authorization and output policy of contracts/api/research/research-node-execution.v1.yaml.
+   */
+  researchAuthorization?: ResearchAuthorization
+}
+
+export interface ResearchAuthorization {
+  approvedOrganizationIds: string[]
+  approvedVariables: string[]
+  minimumCellSize: number
 }
 
 export interface GovernanceAuditEvent {
@@ -145,12 +190,26 @@ export interface OrganizationInfo {
   } | null
 }
 
+/** A patient's access grant (demo-data/access.json), referenced by a synchronization's consent. */
+export interface AccessGrant {
+  id: string
+  patientId: string
+  granteeId: string
+  scope: string[]
+  purpose: string
+  status: 'active' | 'expired' | 'revoked'
+  grantedAt: string
+  expiresAt: string
+  revokedAt: string | null
+}
+
 export interface PersonInfo {
   id: string
   title?: string | null
   firstName: string
   lastName: string
   role?: string
+  specialty?: string | null
   organizationId?: string
 }
 
@@ -160,6 +219,9 @@ export interface PatientInfo {
   firstName: string
   lastName: string
   city: string
+  birthDate?: string
+  sex?: 'male' | 'female' | 'other'
+  localIdentifiers?: PatientLocalIdentifier[]
 }
 
 export interface GovernanceNotification {

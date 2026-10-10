@@ -69,31 +69,41 @@ function plural(count: number, word: string): string {
 }
 
 function documentsState(application: HospitalApplication): StepState {
+  const total = application.documents.length
   const missing = application.documents.filter((d) => d.status !== 'received').length
-  if (application.documents.length === 0) return { status: 'pending', detail: 'Aucun document déposé.' }
+  if (total === 0 || missing === total) return { status: 'pending', detail: 'Aucun document déposé.' }
+  if (missing > 0 && application.status === 'draft') {
+    return { status: 'in_progress', detail: `${total - missing} / ${total} documents déposés.` }
+  }
   if (missing > 0) return { status: 'attention', detail: `${plural(missing, 'document')} à fournir.` }
   return { status: 'completed', detail: `${plural(application.documents.length, 'document')} reçu(s).` }
 }
 
 function agreementsState(application: HospitalApplication): StepState {
-  if (application.agreements.length === 0) return { status: 'pending', detail: 'Aucun accord accepté.' }
+  const total = application.agreements.length
   const open = application.agreements.filter((a) => !a.accepted).length
+  if (total === 0 || open === total) return { status: 'pending', detail: 'Aucun accord accepté.' }
+  if (open > 0 && application.status === 'draft') {
+    return { status: 'in_progress', detail: `${total - open} / ${total} accords acceptés.` }
+  }
   if (open > 0) return { status: 'attention', detail: `${plural(open, 'accord')} non accepté(s).` }
   return { status: 'completed', detail: 'Tous les accords sont acceptés.' }
 }
 
 function automatedReviewState(application: HospitalApplication): StepState {
-  const automated = application.reviewSteps.filter(
-    (s) => s.step === 'completeness_check' || s.step === 'assisted_review',
-  )
-  if (automated.length === 0 || automated.some((s) => s.status === 'pending')) {
+  const completeness = application.reviewSteps.find((s) => s.step === 'completeness_check')
+  const assisted = application.reviewSteps.find((s) => s.step === 'assisted_review')
+  if (!completeness || completeness.status === 'pending') {
     return { status: 'pending', detail: 'Vérifications automatiques non lancées.' }
   }
-  const findings = automated.reduce((sum, s) => sum + s.findings.length, 0)
-  if (findings > 0) {
-    return { status: 'attention', detail: `Terminée avec ${plural(findings, 'remarque')} (indicatives).` }
+  // Only completeness findings require action; assisted-review remarks are advisory.
+  if (completeness.findings.length > 0) {
+    return { status: 'attention', detail: `Complétude : ${plural(completeness.findings.length, 'point')} à corriger.` }
   }
-  return { status: 'completed', detail: 'Terminée sans remarque.' }
+  const remarks = assisted?.findings.length ?? 0
+  return remarks > 0
+    ? { status: 'completed', detail: `Dossier complet ; ${plural(remarks, 'remarque')} indicative(s).` }
+    : { status: 'completed', detail: 'Dossier complet, sans remarque.' }
 }
 
 function humanReviewState(application: HospitalApplication): StepState {
@@ -103,6 +113,18 @@ function humanReviewState(application: HospitalApplication): StepState {
     return { status: 'in_progress', detail: "En cours auprès de l'Autorité de gouvernance." }
   }
   return { status: 'completed', detail: "Revue humaine terminée par l'Autorité de gouvernance." }
+}
+
+function profileState(application: HospitalApplication): StepState {
+  const profile = application.administrativeProfile
+  if (!profile) {
+    return application.status === 'draft'
+      ? { status: 'pending', detail: 'Informations administratives à compléter.' }
+      : { status: 'completed', detail: 'Profil renseigné.' }
+  }
+  return profile.securityContact
+    ? { status: 'completed', detail: 'Profil renseigné.' }
+    : { status: 'completed', detail: 'Profil renseigné, sans contact sécurité distinct.' }
 }
 
 /** Derives the display state of every portal step from fixture data. Pure. */
@@ -141,12 +163,7 @@ export function deriveSteps(
       status: 'completed',
       detail: draft ? `Inscription enregistrée (${application.id}).` : 'Candidature soumise.',
     })
-    states.set(
-      'profile',
-      draft
-        ? { status: 'pending', detail: 'Informations administratives à compléter.' }
-        : { status: 'completed', detail: 'Profil renseigné.' },
-    )
+    states.set('profile', profileState(application))
     states.set('documents', documentsState(application))
     states.set('agreements', agreementsState(application))
     states.set(
@@ -157,7 +174,7 @@ export function deriveSteps(
     )
     states.set(
       'dmi',
-      questionnaire?.dmiSystem
+      questionnaire?.dmiSystem && questionnaire.integrationMethods?.length
         ? { status: 'completed', detail: `DMI déclaré : ${questionnaire.dmiSystem}.` }
         : { status: 'pending', detail: 'DMI / SIH non décrit.' },
     )
@@ -181,17 +198,36 @@ export function deriveSteps(
 }
 
 /**
- * Demo scenarios, selected with `?demo=vide`, `?demo=erreur`, or
- * `?demo=echec-inscription` in the URL. `registration-failure` starts like
- * `empty`, and the first registration submission fails.
+ * Demo scenarios, selected with `?demo=vide`, `?demo=erreur`,
+ * `?demo=echec-inscription`, `?demo=echec-profil`, `?demo=echec-document`,
+ * `?demo=echec-accord`, `?demo=echec-technique`, `?demo=echec-dmi`, or
+ * `?demo=echec-soumission` in the URL. The document failure scenario starts
+ * like `nominal`; the other failure scenarios start like `empty`. Each makes the
+ * first matching submission fail.
  */
-export type DemoScenario = 'nominal' | 'empty' | 'error' | 'registration-failure'
+export type DemoScenario =
+  | 'nominal'
+  | 'empty'
+  | 'error'
+  | 'registration-failure'
+  | 'profile-failure'
+  | 'document-failure'
+  | 'agreement-failure'
+  | 'technical-failure'
+  | 'dmi-failure'
+  | 'submission-failure'
 
 export function scenarioFromSearch(search: string): DemoScenario {
   const value = new URLSearchParams(search).get('demo')
   if (value === 'vide') return 'empty'
   if (value === 'erreur') return 'error'
   if (value === 'echec-inscription') return 'registration-failure'
+  if (value === 'echec-profil') return 'profile-failure'
+  if (value === 'echec-document') return 'document-failure'
+  if (value === 'echec-accord') return 'agreement-failure'
+  if (value === 'echec-technique') return 'technical-failure'
+  if (value === 'echec-dmi') return 'dmi-failure'
+  if (value === 'echec-soumission') return 'submission-failure'
   return 'nominal'
 }
 
@@ -218,7 +254,13 @@ export async function loadOnboardingSnapshot(
   }
 
   const application =
-    scenario === 'empty' || scenario === 'registration-failure'
+    scenario === 'empty' ||
+    scenario === 'registration-failure' ||
+    scenario === 'profile-failure' ||
+    scenario === 'agreement-failure' ||
+    scenario === 'technical-failure' ||
+    scenario === 'dmi-failure' ||
+    scenario === 'submission-failure'
       ? null
       : (applications.find((a) => a.organizationId === organizationId) ?? null)
 

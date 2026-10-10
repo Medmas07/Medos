@@ -4,8 +4,8 @@ from pydantic import BaseModel
 from application.ai_provider import AiProvider
 
 PROVIDER_NOTICE = (
-    "Provider port only (HC-151). No AI capability is exposed. A mock provider is not "
-    "validated intelligence, and any AI output is advisory and requires human review."
+    "Configured AI provider chain (ADR-0006). A mock provider is not validated "
+    "intelligence, and any AI output is advisory and requires human review."
 )
 
 

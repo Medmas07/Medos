@@ -35,24 +35,67 @@ export interface StaffMember {
   phone?: string
 }
 
+export type DocumentType = 'statutes' | 'operating_license' | 'insurance_certificate'
+
+/** Metadata of a file deposited in this portal (HC-053). The file content is never read or sent. */
+export interface DocumentUpload {
+  fileName: string
+  sizeBytes: number
+  mediaType: string
+  uploadedAt: string
+}
+
 export interface ApplicationDocument {
   id: string
+  type: DocumentType
   title: string
   status: 'received' | 'missing' | 'rejected'
+  /** Only set for a document deposited in this portal (local state). */
+  upload?: DocumentUpload
 }
+
+export type AgreementCode = 'data_processing_agreement' | 'governance_charter'
 
 export interface ApplicationAgreement {
-  code: string
+  code: AgreementCode
   title: string
   accepted: boolean
+  /** Version of the agreement text that was accepted. */
+  version?: string
+  acceptedAt?: string
+  acceptedById?: string
 }
 
+export type HostingType = 'on_premise' | 'virtual_machine' | 'private_cloud'
+
+export type DmiHosting = 'on_premise' | 'vendor_hosted'
+export type IntegrationMethod = 'hl7v2' | 'fhir_api' | 'file_export' | 'database_replica' | 'none'
+
+/**
+ * Technical questionnaire. The deployment environment of the future Hospital
+ * Node is collected by HC-055; the DMI / HIS fields belong to HC-056.
+ */
 export interface TechnicalQuestionnaire {
+  hostingType: HostingType
   operatingSystem: string
-  dmiSystem: string
-  database: string
+  cpuCores: number
+  memoryGb: number
+  storageGb: number
+  bandwidthMbps: number
+  /** Free-text description of the network. */
   network: string
+  dmzAvailable: boolean
+  outboundHttpsAllowed: boolean
+  containerRuntimeAvailable: boolean
+  backupsInPlace: boolean
   technicalContactId: string
+  // DMI / HIS information (HC-056); absent until that page is completed.
+  dmiSystem?: string
+  database?: string
+  dmiHosting?: DmiHosting
+  integrationMethods?: IntegrationMethod[]
+  testEnvironmentAvailable?: boolean
+  dmiNotes?: string
 }
 
 export interface ReviewStep {
@@ -63,6 +106,27 @@ export interface ReviewStep {
   mocked?: boolean
   advisory?: boolean
   findings: string[]
+}
+
+export interface ProfileContact {
+  fullName: string
+  email: string
+}
+
+/** Administrative information of the establishment (HC-052). */
+export interface AdministrativeProfile {
+  legalName: string
+  legalStatus: 'public' | 'private'
+  registrationNumber: string
+  bedCapacity: number
+  address: { street: string; postalCode: string; city: string; governorate: string }
+  phone: string
+  email: string
+  legalRepresentative: { fullName: string; role: string }
+  dataProtectionOfficer: ProfileContact
+  /** Recommended, not required: the assisted review flags its absence. */
+  securityContact: ProfileContact | null
+  updatedAt: string
 }
 
 export interface HospitalApplication {
@@ -77,6 +141,8 @@ export interface HospitalApplication {
   status: 'draft' | 'pending' | 'human_review' | 'approved' | 'rejected'
   documents: ApplicationDocument[]
   agreements: ApplicationAgreement[]
+  /** Absent on applications that predate the profile (approved fixtures). */
+  administrativeProfile?: AdministrativeProfile | null
   technicalQuestionnaire: TechnicalQuestionnaire | null
   reviewSteps: ReviewStep[]
   decisionId: string | null
