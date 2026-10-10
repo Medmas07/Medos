@@ -29,13 +29,29 @@ export interface ResearchProject {
   status: 'draft' | 'under_review' | 'approved' | 'rejected'
   createdAt: string
   summary: string
+  /** Plain-language description of the studied population, read by the Governance review. */
   population: string
+  /** Structured eligibility criteria set in this portal (HC-094); absent on fixture projects. */
+  populationCriteria?: PopulationCriteria
   variables: string[]
   participatingOrganizationIds: string[]
   protocolDocument: ProjectDocumentRef | null
   /** Optional supporting documents; absent on fixture projects. */
   supportingDocuments?: ProjectDocumentRef[]
   researchAccessRequestId: string | null
+}
+
+/**
+ * Eligibility criteria of a research population (HC-094). They mirror the
+ * criteria a Hospital Node can apply, `DataScope.population` of the HC-180
+ * execution contract; at least one is set. Ages are in completed years,
+ * dates are `YYYY-MM-DD`, and every bound is inclusive.
+ */
+export interface PopulationCriteria {
+  ageMin?: number
+  ageMax?: number
+  encounterFrom?: string
+  encounterTo?: string
 }
 
 /** Metadata of a file deposited in this portal (HC-093); its content is never read. */
