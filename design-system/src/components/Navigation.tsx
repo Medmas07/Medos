@@ -229,7 +229,7 @@ export function PageHeader({ title, description, eyebrow, actions }: PageHeaderP
         <h1>{title}</h1>
         {description && <p className="mt-2 max-w-[65ch] text-[15px] text-ink-soft">{description}</p>}
       </div>
-      {actions && <div className="flex flex-wrap gap-2 sm:max-w-[60%] sm:justify-end">{actions}</div>}
+      {actions && <div className="flex min-w-0 flex-wrap gap-2 sm:max-w-[60%] sm:justify-end">{actions}</div>}
     </header>
   )
 }

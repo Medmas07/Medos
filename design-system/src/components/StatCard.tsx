@@ -56,7 +56,7 @@ export function StatCard({
               {icon}
             </span>
           )}
-          <span className="label-caps truncate">{label}</span>
+          <span className="label-caps min-w-0">{label}</span>
         </div>
         {badge && <span className="shrink-0">{badge}</span>}
       </div>

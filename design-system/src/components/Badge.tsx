@@ -37,12 +37,12 @@ export function Badge({ tone = 'neutral', dot = false, children, className }: Ba
   return (
     <span
       className={cx(
-        'tabular inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium whitespace-nowrap ring-1 ring-inset',
+        'tabular inline-flex min-h-6 max-w-full items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs leading-4 font-medium ring-1 ring-inset sm:whitespace-nowrap',
         badgeTones[tone],
         className,
       )}
     >
-      {dot && <span aria-hidden="true" className={cx('size-1.5 rounded-full', dotTones[tone])} />}
+      {dot && <span aria-hidden="true" className={cx('size-1.5 shrink-0 rounded-full', dotTones[tone])} />}
       {children}
     </span>
   )
@@ -57,7 +57,7 @@ export interface DemoBadgeProps {
 export function DemoBadge({ children = 'Demo data', className }: DemoBadgeProps) {
   return (
     <Badge tone="demo" className={className}>
-      <FlaskIcon className="size-3.5" />
+      <FlaskIcon className="size-3.5 shrink-0" />
       {children}
     </Badge>
   )
