@@ -1,0 +1,62 @@
+openapi: 3.1.0
+info:
+  title: Governance Research Authorization Check
+  version: 1.0.0
+  description: |
+    Consumer contract required by HC-182. The Governance Node owns the decision
+    and remains unimplemented; the Research Service must fail closed when this
+    boundary is unavailable.
+paths:
+  /v1/research-authorizations/check:
+    post:
+      operationId: checkResearchAuthorization
+      summary: Verify a Governance decision against the exact proposed job.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/AuthorizationCheck"}
+      responses:
+        "200":
+          description: Governance-owned authorization result.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AuthorizationDecision"}
+        "404": {description: Decision not found.}
+components:
+  schemas:
+    Ref: {type: string, minLength: 1, maxLength: 100}
+    AuthorizationCheck:
+      type: object
+      additionalProperties: false
+      required: [decision_ref, project_ref, requested_by, purpose, target_organization_refs, data_scope]
+      properties:
+        decision_ref: {$ref: "#/components/schemas/Ref"}
+        project_ref: {$ref: "#/components/schemas/Ref"}
+        requested_by: {$ref: "#/components/schemas/Ref"}
+        purpose: {type: string, minLength: 1, maxLength: 500}
+        target_organization_refs: {type: array, minItems: 1, uniqueItems: true, items: {$ref: "#/components/schemas/Ref"}}
+        data_scope: {$ref: "#/components/schemas/DataScope"}
+    DataScope:
+      type: object
+      additionalProperties: false
+      required: [population, variables]
+      properties:
+        population:
+          type: object
+          additionalProperties: false
+          minProperties: 1
+          properties: {age_min: {type: integer, minimum: 0, maximum: 130}, age_max: {type: integer, minimum: 0, maximum: 130}, encounter_from: {type: string, format: date}, encounter_to: {type: string, format: date}}
+        variables: {type: array, minItems: 1, uniqueItems: true, items: {type: string, pattern: "^[A-Za-z][A-Za-z0-9_.-]{0,99}$"}}
+    AuthorizationDecision:
+      type: object
+      additionalProperties: false
+      required: [decision_ref, status, approved_organization_refs, approved_variables, authority_organization_ref]
+      properties:
+        decision_ref: {$ref: "#/components/schemas/Ref"}
+        status: {type: string, enum: [approved, denied]}
+        approved_organization_refs: {type: array, uniqueItems: true, items: {$ref: "#/components/schemas/Ref"}}
+        approved_variables: {type: array, uniqueItems: true, items: {type: string, pattern: "^[A-Za-z][A-Za-z0-9_.-]{0,99}$"}}
+        authority_organization_ref: {$ref: "#/components/schemas/Ref"}
+        valid_until: {type: string, format: date-time}
+        reason_code: {type: string, minLength: 1}
