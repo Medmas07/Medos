@@ -177,9 +177,9 @@ function NodeDashboard({
           </div>
         }
       >
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="hc-stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {report.indicators.map((indicator) => (
-            <li key={indicator.id} className="rounded-md border border-slate-200 p-4">
+            <li key={indicator.id} className="rounded-xl border border-line bg-surface-muted/50 p-4">
               <div className="flex items-start justify-between gap-2">
                 <p className="text-sm text-slate-500">{indicator.label}</p>
                 <Badge tone={indicatorDisplay[indicator.state].tone}>{indicatorDisplay[indicator.state].label}</Badge>

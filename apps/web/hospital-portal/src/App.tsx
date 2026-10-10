@@ -7,6 +7,7 @@ import {
   ErrorState,
   LoadingState,
   SideNav,
+  ThemeToggle,
   type SideNavItem,
   type SideNavSection,
 } from '@hackcure/design-system'
@@ -130,7 +131,7 @@ export default function App() {
   ]
 
   const renderContent = () => {
-    if (load.kind === 'loading') return <LoadingState label="Chargement du dossier d'adhésion…" />
+    if (load.kind === 'loading') return <LoadingState variant="skeleton" label="Chargement du dossier d'adhésion…" />
     if (load.kind === 'error') {
       return (
         <ErrorState
@@ -271,13 +272,15 @@ export default function App() {
         </DemoBanner>
       }
       navigation={<SideNav label="Navigation principale" sections={navigationSections} />}
+      toolbar={<ThemeToggle />}
+      pageKey={currentView}
       sidebarFooter={
         snapshot && (
           <div className="space-y-1">
-            <div className="font-semibold text-slate-800">
+            <div className="font-semibold text-ink">
               {snapshot.manager.firstName} {snapshot.manager.lastName}
             </div>
-            <div className="text-slate-500">Responsable d'établissement (identité simulée)</div>
+            <div className="text-ink-muted">Responsable d'établissement (identité simulée)</div>
           </div>
         )
       }

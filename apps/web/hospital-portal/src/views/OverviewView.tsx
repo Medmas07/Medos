@@ -6,6 +6,7 @@ import {
   DemoBadge,
   EmptyState,
   PageHeader,
+  StatCard,
   Timeline,
   type TimelineItem,
 } from '@hackcure/design-system'
@@ -69,7 +70,7 @@ export function OverviewView({ snapshot, onNavigate }: OverviewViewProps) {
           />
         </Card>
       ) : (
-        <div className="mb-6 grid gap-4 sm:grid-cols-3">
+        <div className="hc-stagger mb-6 grid gap-3 sm:grid-cols-3">
           <Card title="Statut de la candidature" actions={<DemoBadge>Fictif</DemoBadge>}>
             <Badge tone={applicationStatusDisplay[application.status].tone}>
               {applicationStatusDisplay[application.status].label}
@@ -79,12 +80,7 @@ export function OverviewView({ snapshot, onNavigate }: OverviewViewProps) {
               {formatDateTime(application.submittedAt)}
             </p>
           </Card>
-          <Card title="Progression">
-            <p className="text-2xl font-semibold text-slate-900">
-              {completed} / {steps.length}
-            </p>
-            <p className="text-xs text-slate-500">étapes terminées</p>
-          </Card>
+          <StatCard label="Progression" value={`${completed} / ${steps.length}`} hint="étapes terminées" />
           <Card title="Prochaine étape">
             {nextStep ? (
               <>
@@ -98,7 +94,7 @@ export function OverviewView({ snapshot, onNavigate }: OverviewViewProps) {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+      <div className="hc-stagger grid gap-6 lg:grid-cols-[2fr_1fr]">
         <Card title="Parcours d'adhésion" description="États dérivés des données fictives HC-005.">
           <Timeline label="Étapes d'adhésion" items={timelineItems} />
         </Card>

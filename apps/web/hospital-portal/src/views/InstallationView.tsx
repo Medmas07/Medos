@@ -161,7 +161,7 @@ function GuideCard({
           <div className="flex justify-end">
             <CopyButton text={step.commands} />
           </div>
-          <pre className="overflow-x-auto rounded-md bg-slate-900 p-3 text-xs leading-relaxed text-slate-100">
+          <pre className="overflow-x-auto hc-chrome rounded-xl bg-chrome p-3 text-xs leading-relaxed text-ink">
             <code>{step.commands}</code>
           </pre>
         </div>
