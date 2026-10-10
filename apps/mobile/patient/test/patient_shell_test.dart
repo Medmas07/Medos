@@ -64,6 +64,9 @@ void main() {
 
     await tester.tap(find.text('Révoquer cet accès'));
     await tester.pumpAndSettle();
+    expect(find.text('Révoquer cet accès ?'), findsOneWidget);
+    await tester.tap(find.text('Révoquer').last);
+    await tester.pumpAndSettle();
     expect(find.text('RÉVOQUÉ'), findsOneWidget);
     expect(find.text('Révoquer cet accès'), findsNothing);
   });
