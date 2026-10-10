@@ -1,0 +1,265 @@
+openapi: 3.1.0
+info:
+  title: Synchronization Authorization Check
+  version: 1.0.0
+  description: |
+    Contract HC-144, version 1. Provided by the Governance Node. Before the
+    Federation Service asks any Hospital Node on the basis of a
+    synchronization decision, it asks the Governance Node whether that
+    decision currently authorizes this exact request.
+
+    Boundary rules carried by this contract:
+
+    - **Governance decides; Federation enforces.** Approving a
+      synchronization and issuing its temporary authorization belong to the
+      Governance Node. The Federation Service never approves, extends, or
+      widens an authorization. It only asks this question and obeys the
+      answer.
+    - **Temporary by construction.** An authorization is valid only between
+      its decision and `valid_until`. After that, the check answers
+      `denied` with reason `expired`.
+    - **Exact match.** The requesting organization and patient must be the
+      ones the decision names. The requested scope must be inside the
+      approved scope, and the purpose must match. Any difference is
+      `denied`, with the first failing reason.
+    - **Targets come from Governance.** An `authorized` answer lists the
+      organizations the requester may query. The Federation Service asks
+      only those organizations' nodes, never every registered node.
+    - **Deny by default.** If the Governance Node cannot be reached or
+      answers outside this contract, the Federation Service asks no node.
+    - **Minimised.** The request carries opaque references only. Nothing
+      clinical is sent to the Governance Node.
+
+    Each Hospital Node still enforces the authorization itself
+    (hospital-node-federation.v1). This check stops a query before it
+    reaches any node; it does not replace the nodes' own checks.
+
+    Out of scope for v1: how a node verifies the authorization directly
+    with Governance, signed tokens, and authentication between services.
+    These remain OPEN (docs/OPEN_QUESTIONS.md).
+
+    Status: the Federation Service calls this contract (HC-144). No
+    Governance Node implements it yet (HC-130, HC-132).
+paths:
+  /v1/synchronization-authorizations/{decision_ref}/checks:
+    parameters:
+      - name: decision_ref
+        in: path
+        required: true
+        description: The Governance decision that approved the synchronization request.
+        schema:
+          $ref: "#/components/schemas/OpaqueRef"
+    post:
+      operationId: checkSynchronizationAuthorization
+      summary: Does this decision authorize this request now?
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckRequest"
+            examples:
+              hospitalAAsksHospitalB:
+                summary: >-
+                  Fictional demo — Hospital A checks the step-20 approval of
+                  synchronization request sync-001 for Patient A.
+                value:
+                  requester_organization_ref: org-hospital-a
+                  actor_ref: clin-x
+                  patient_ref: pat-a
+                  scope: [medications]
+                  purpose: "Continuité des soins : consultation de cardiologie"
+      responses:
+        "200":
+          description: The answer. A `denied` answer is still a `200`; it is a result, not an error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckResult"
+              examples:
+                authorized:
+                  summary: >-
+                    Fictional demo — the decision approving sync-001 (created
+                    at runtime in demo step 20) authorizes Hospital B for 30 days.
+                  value:
+                    decision_ref: dec-sync-001
+                    outcome: authorized
+                    reason: null
+                    target_organization_refs: [org-hospital-b]
+                    scope: [lab_reports, medications]
+                    purpose: "Continuité des soins : consultation de cardiologie"
+                    valid_until: "2026-11-09T10:00:00+01:00"
+                    checked_at: "2026-10-10T10:30:00+01:00"
+                expired:
+                  summary: Fictional demo — dec-sync-002 expired on 2026-03-12.
+                  value:
+                    decision_ref: dec-sync-002
+                    outcome: denied
+                    reason: expired
+                    target_organization_refs: []
+                    scope: []
+                    purpose: null
+                    valid_until: "2026-03-12T14:30:00+01:00"
+                    checked_at: "2026-10-10T10:30:00+01:00"
+                rejected:
+                  summary: Fictional demo — dec-sync-003 rejected sync-003.
+                  value:
+                    decision_ref: dec-sync-003
+                    outcome: denied
+                    reason: not_approved
+                    target_organization_refs: []
+                    scope: []
+                    purpose: null
+                    valid_until: null
+                    checked_at: "2026-10-10T10:30:00+01:00"
+        "400":
+          description: The request does not match this contract.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                invalidRequest:
+                  value:
+                    type: about:blank
+                    title: Invalid authorization check
+                    status: 400
+                    detail: "Invalid or missing fields: scope"
+                    code: invalid_request
+components:
+  schemas:
+    CheckRequest:
+      type: object
+      additionalProperties: false
+      required: [requester_organization_ref, actor_ref, patient_ref, scope, purpose]
+      properties:
+        requester_organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        actor_ref:
+          description: The accountable person behind the query, for Governance's audit trail.
+          allOf:
+            - $ref: "#/components/schemas/OpaqueRef"
+        patient_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        scope:
+          $ref: "#/components/schemas/Scope"
+        purpose:
+          type: string
+          minLength: 1
+          maxLength: 200
+
+    CheckResult:
+      type: object
+      additionalProperties: false
+      required:
+        - decision_ref
+        - outcome
+        - reason
+        - target_organization_refs
+        - scope
+        - purpose
+        - valid_until
+        - checked_at
+      properties:
+        decision_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        outcome:
+          type: string
+          enum: [authorized, denied]
+        reason:
+          description: Why the request is denied; null when authorized.
+          oneOf:
+            - type: string
+              enum:
+                - not_found
+                - not_approved
+                - not_yet_valid
+                - expired
+                - revoked
+                - requester_mismatch
+                - patient_mismatch
+                - scope_exceeded
+                - purpose_mismatch
+            - type: "null"
+        target_organization_refs:
+          description: Organizations the requester may query under this decision. Empty when denied.
+          type: array
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/OpaqueRef"
+        scope:
+          description: The approved scope. Empty when denied.
+          type: array
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/ScopeItem"
+        purpose:
+          description: The approved purpose; null when denied.
+          type: [string, "null"]
+        valid_until:
+          description: End of the temporary authorization, when the decision has one.
+          type: [string, "null"]
+          format: date-time
+        checked_at:
+          type: string
+          format: date-time
+      allOf:
+        - if:
+            properties:
+              outcome:
+                const: authorized
+          then:
+            properties:
+              reason:
+                type: "null"
+              target_organization_refs:
+                minItems: 1
+              scope:
+                minItems: 1
+              purpose:
+                type: string
+              valid_until:
+                type: string
+          else:
+            properties:
+              reason:
+                type: string
+              target_organization_refs:
+                maxItems: 0
+              scope:
+                maxItems: 0
+              purpose:
+                type: "null"
+
+    Scope:
+      type: array
+      minItems: 1
+      uniqueItems: true
+      items:
+        $ref: "#/components/schemas/ScopeItem"
+
+    ScopeItem:
+      type: string
+      enum: [encounters, medications, lab_reports]
+
+    OpaqueRef:
+      description: Opaque identifier. Must not contain a name or other direct identifier.
+      type: string
+      pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+
+    Problem:
+      description: RFC 9457 problem details.
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+          enum: [invalid_request]

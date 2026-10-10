@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Hospital Node Federation Interface
-  version: 1.0.0
+  version: 1.0.3
   description: |
     Contract HC-140, version 1. The interface every Hospital Node exposes to
     the Federation Service. A node describes itself and answers authorized,
@@ -18,8 +18,11 @@ info:
       grant or an approved synchronization decision. The node denies by
       default (`403 authorization_denied`) when the basis is unknown,
       expired, revoked, issued to someone else, or narrower than the
-      requested scope or purpose. How the node verifies the basis with the
-      Governance Node, and the token or signature format, are OPEN (HC-144).
+      requested scope or purpose. How the node itself verifies the basis
+      with the Governance Node, and any token or signature format, are
+      OPEN. The Federation Service already checks synchronization decisions
+      with the Governance Node before asking any node (HC-144), but a node
+      must not rely on that check.
     - **An empty result is not an empty history.** `entries: []` means the
       node disclosed nothing inside the scope. The node answers the same way
       for a patient it does not know, so a query does not reveal whether a
@@ -28,7 +31,8 @@ info:
       and node that hold it, so aggregated views keep ownership visible.
     - **Every query is auditable.** The node records `query_id`, requester,
       purpose, scope, and authorization in its own audit trail. The audit
-      event format is not part of this version.
+      event format is defined separately, in
+      contracts/api/hospital-audit/hospital-audit-events.v1.yaml (HC-116).
 
     Patient identity: `patient_ref` is the ecosystem-level opaque reference.
     Each node maps it to its local identifier. How identities are matched
@@ -38,8 +42,12 @@ info:
     and `NodeQueryResult` is shared with federated-patient-query.v1.yaml
     and must stay identical. A repository test checks this.
 
-    Status: this contract has no implementation. Transport, node identity,
-    and trust establishment are OPEN. The first mock is HC-141.
+    Status: the Hospital Node runtime serves both operations (HC-114),
+    answering from MOCKED fictional records and checking the authorization
+    against fictional grants and decisions in place of the Governance Node;
+    it audits every query in memory (HC-116). Simulated nodes (HC-141)
+    also answer it, without an audit trail. Transport, node identity, and
+    trust establishment are OPEN.
 paths:
   /v1/federation/node:
     get:
@@ -293,7 +301,9 @@ components:
     Authorization:
       description: |
         The Governance-backed basis for the query. A reference, not a
-        credential: proof and verification are OPEN (HC-144).
+        credential. The Federation Service checks synchronization decisions
+        with the Governance Node (sync-authorization-check.v1, HC-144);
+        credentials and node-side verification are OPEN.
       type: object
       additionalProperties: false
       required: [basis, ref, expires_at]

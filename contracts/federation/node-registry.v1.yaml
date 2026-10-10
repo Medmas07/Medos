@@ -1,0 +1,525 @@
+openapi: 3.1.0
+info:
+  title: Federation Node Registry
+  version: 1.1.0
+  description: |
+    Contract HC-142, version 1. The Federation Service's directory of
+    Hospital Nodes: which node serves which organization, where to reach
+    it, and which versions of hospital-node-federation it answers. The
+    federated patient query asks the nodes listed here.
+
+    Boundary rules carried by this contract:
+
+    - **The registry routes; it does not approve.** Approving an
+      organization belongs to the Governance Node. Each registration must
+      cite the Governance approval decision it relies on
+      (`approval.decision_ref`). In v1 the Federation Service cannot check
+      that reference, because no Governance approval API exists yet (HC-131).
+      Responses say so with `approval.verified: false`. Consumers must not
+      present a registration as a Governance approval.
+    - **No clinical data.** A registration holds node identity, routing,
+      and contract versions only. It never says which patients a node
+      holds.
+    - **One node per organization.** Federated queries target
+      organizations, so each organization has at most one registered node
+      (`409 organization_already_registered`).
+    - **Compatible nodes only.** A registration must list at least one
+      hospital-node-federation version this Federation Service speaks
+      (`1.0`); otherwise it is rejected with `400`.
+
+    **Capability discovery (added in 1.1, HC-143).** The Federation Service
+    asks a registered node for its descriptor (`GET /v1/federation/node` of
+    hospital-node-federation.v1) at the node's registered `base_url`, and
+    keeps the latest result per node. Discovery runs only when requested.
+
+    - Capabilities are what the node said about itself at `checked_at`. They
+      are not verified, and a node may report `mocked: true`.
+    - Every check has an `outcome`. A failed check is reported as a failure
+      (`unreachable`, `no_federation_interface`, `invalid_response`), never
+      as "no capabilities" and never as "no data".
+    - A node whose descriptor names another node or organization gets
+      `identity_mismatch`, and its claimed capabilities are not kept.
+    - After a node's `base_url` changes, its earlier result no longer applies
+      and the node is `not_checked` until discovery runs again. Who may call the write operations, and
+    how a node proves its identity, are OPEN (docs/OPEN_QUESTIONS.md). In
+    v1 these operations are unauthenticated.
+paths:
+  /v1/registry/nodes:
+    get:
+      operationId: listNodes
+      summary: List registered nodes.
+      responses:
+        "200":
+          description: Every registered node, ordered by `node_ref`. May be empty.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NodeList"
+              examples:
+                demoNodes:
+                  summary: Fictional demo — Hospitals A and B are registered.
+                  value:
+                    notice: >-
+                      Routing directory only. Approval references are not
+                      verified with the Governance Node.
+                    nodes:
+                      - node_ref: node-hospital-a
+                        organization_ref: org-hospital-a
+                        base_url: http://localhost:8101
+                        contract_versions: ["1.0"]
+                        approval:
+                          decision_ref: dec-hospital-a
+                          verified: false
+                        registered_at: "2026-10-10T08:00:00+01:00"
+                        updated_at: "2026-10-10T08:00:00+01:00"
+                      - node_ref: node-hospital-b
+                        organization_ref: org-hospital-b
+                        base_url: http://localhost:8102
+                        contract_versions: ["1.0"]
+                        approval:
+                          decision_ref: dec-hospital-b
+                          verified: false
+                        registered_at: "2026-10-10T08:00:00+01:00"
+                        updated_at: "2026-10-10T08:00:00+01:00"
+                empty:
+                  summary: Nothing is registered yet.
+                  value:
+                    notice: >-
+                      Routing directory only. Approval references are not
+                      verified with the Governance Node.
+                    nodes: []
+  /v1/registry/nodes/{node_ref}:
+    parameters:
+      - name: node_ref
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/OpaqueRef"
+    get:
+      operationId: getNode
+      summary: Get one registered node.
+      responses:
+        "200":
+          description: The registration.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NodeRegistration"
+              examples:
+                hospitalB:
+                  value:
+                    node_ref: node-hospital-b
+                    organization_ref: org-hospital-b
+                    base_url: http://localhost:8102
+                    contract_versions: ["1.0"]
+                    approval:
+                      decision_ref: dec-hospital-b
+                      verified: false
+                    registered_at: "2026-10-10T08:00:00+01:00"
+                    updated_at: "2026-10-10T08:00:00+01:00"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: registerNode
+      summary: Register a node, or update its registration.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegistrationRequest"
+            examples:
+              hospitalB:
+                summary: Fictional demo — Hospital B's node registers.
+                value:
+                  organization_ref: org-hospital-b
+                  base_url: http://localhost:8102
+                  contract_versions: ["1.0"]
+                  approval_decision_ref: dec-hospital-b
+      responses:
+        "200":
+          description: An existing registration was updated. `registered_at` is unchanged.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NodeRegistration"
+              examples:
+                updated:
+                  value:
+                    node_ref: node-hospital-b
+                    organization_ref: org-hospital-b
+                    base_url: http://localhost:8112
+                    contract_versions: ["1.0"]
+                    approval:
+                      decision_ref: dec-hospital-b
+                      verified: false
+                    registered_at: "2026-10-10T08:00:00+01:00"
+                    updated_at: "2026-10-10T09:30:00+01:00"
+        "201":
+          description: The node was registered.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NodeRegistration"
+              examples:
+                registered:
+                  value:
+                    node_ref: node-hospital-b
+                    organization_ref: org-hospital-b
+                    base_url: http://localhost:8102
+                    contract_versions: ["1.0"]
+                    approval:
+                      decision_ref: dec-hospital-b
+                      verified: false
+                    registered_at: "2026-10-10T08:00:00+01:00"
+                    updated_at: "2026-10-10T08:00:00+01:00"
+        "400":
+          description: The request does not match this contract, or the node speaks no supported contract version.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                unsupportedVersion:
+                  value:
+                    type: about:blank
+                    title: Invalid node registration
+                    status: 400
+                    detail: "No supported hospital-node-federation version in contract_versions; supported: 1.0"
+                    code: invalid_request
+        "409":
+          description: Another node is already registered for this organization.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                organizationTaken:
+                  value:
+                    type: about:blank
+                    title: Organization already registered
+                    status: 409
+                    detail: org-hospital-b is already served by node-hospital-b.
+                    code: organization_already_registered
+    delete:
+      operationId: deregisterNode
+      summary: Remove a node from the registry. Federated queries stop asking it.
+      responses:
+        "204":
+          description: The node was removed.
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/registry/discovery:
+    post:
+      operationId: discoverAllNodes
+      summary: Ask every registered node for its capabilities now.
+      responses:
+        "200":
+          description: One result per registered node, ordered by `node_ref`. Empty when nothing is registered.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscoveryList"
+              examples:
+                demoNodes:
+                  summary: >-
+                    Fictional demo — Hospital A's runtime answers but has no
+                    Federation interface yet; Hospital B reports its
+                    capabilities; nothing listens for the private practice.
+                  value:
+                    notice: >-
+                      Capabilities are what each node reported about itself at
+                      checked_at. A failed check means the node could not be
+                      described, not that it holds no data.
+                    results:
+                      - node_ref: node-hospital-a
+                        base_url: http://localhost:8101
+                        outcome: no_federation_interface
+                        checked_at: "2026-10-10T10:00:00+01:00"
+                        detail: >-
+                          http://localhost:8101/v1/federation/node answered 404:
+                          the node does not serve the Federation interface.
+                        capabilities: null
+                      - node_ref: node-hospital-b
+                        base_url: http://localhost:8102
+                        outcome: discovered
+                        checked_at: "2026-10-10T10:00:00+01:00"
+                        detail: Capabilities reported by the node.
+                        capabilities:
+                          status: online
+                          contract_versions: ["1.0"]
+                          supported_scopes: [encounters, lab_reports, medications]
+                          mocked: true
+                      - node_ref: node-private-practice
+                        base_url: http://localhost:8104
+                        outcome: unreachable
+                        checked_at: "2026-10-10T10:00:01+01:00"
+                        detail: Cannot connect to http://localhost:8104/v1/federation/node.
+                        capabilities: null
+  /v1/registry/nodes/{node_ref}/capabilities:
+    parameters:
+      - name: node_ref
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/OpaqueRef"
+    get:
+      operationId: getNodeCapabilities
+      summary: Latest capability check of one node.
+      responses:
+        "200":
+          description: The latest result, or `not_checked`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscoveryResult"
+              examples:
+                notChecked:
+                  value:
+                    node_ref: node-hospital-b
+                    base_url: http://localhost:8102
+                    outcome: not_checked
+                    checked_at: null
+                    detail: Not checked since the node was registered at this URL.
+                    capabilities: null
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: discoverNodeCapabilities
+      summary: Ask one node for its capabilities now.
+      responses:
+        "200":
+          description: The new result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscoveryResult"
+              examples:
+                identityMismatch:
+                  summary: The node at Hospital B's URL says it is another node.
+                  value:
+                    node_ref: node-hospital-b
+                    base_url: http://localhost:8102
+                    outcome: identity_mismatch
+                    checked_at: "2026-10-10T10:05:00+01:00"
+                    detail: The node at this URL identifies as node-hospital-a of org-hospital-a.
+                    capabilities: null
+        "404":
+          $ref: "#/components/responses/NotFound"
+components:
+  responses:
+    NotFound:
+      description: No node is registered under this reference.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          examples:
+            notFound:
+              value:
+                type: about:blank
+                title: Node not found
+                status: 404
+                detail: node-hospital-c is not registered.
+                code: node_not_found
+  schemas:
+    RegistrationRequest:
+      type: object
+      additionalProperties: false
+      required: [organization_ref, base_url, contract_versions, approval_decision_ref]
+      properties:
+        organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        base_url:
+          $ref: "#/components/schemas/BaseUrl"
+        contract_versions:
+          $ref: "#/components/schemas/ContractVersions"
+        approval_decision_ref:
+          description: The Governance decision approving this organization. Not verified in v1.
+          allOf:
+            - $ref: "#/components/schemas/OpaqueRef"
+
+    NodeRegistration:
+      type: object
+      additionalProperties: false
+      required:
+        - node_ref
+        - organization_ref
+        - base_url
+        - contract_versions
+        - approval
+        - registered_at
+        - updated_at
+      properties:
+        node_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        base_url:
+          $ref: "#/components/schemas/BaseUrl"
+        contract_versions:
+          $ref: "#/components/schemas/ContractVersions"
+        approval:
+          type: object
+          additionalProperties: false
+          required: [decision_ref, verified]
+          properties:
+            decision_ref:
+              $ref: "#/components/schemas/OpaqueRef"
+            verified:
+              description: Whether the Federation Service checked the decision with the Governance Node. Always false in v1.
+              const: false
+        registered_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    NodeList:
+      type: object
+      additionalProperties: false
+      required: [notice, nodes]
+      properties:
+        notice:
+          type: string
+          minLength: 1
+        nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/NodeRegistration"
+
+    DiscoveryList:
+      type: object
+      additionalProperties: false
+      required: [notice, results]
+      properties:
+        notice:
+          type: string
+          minLength: 1
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiscoveryResult"
+
+    DiscoveryResult:
+      type: object
+      additionalProperties: false
+      required: [node_ref, base_url, outcome, checked_at, detail, capabilities]
+      properties:
+        node_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        base_url:
+          $ref: "#/components/schemas/BaseUrl"
+        outcome:
+          description: |
+            `discovered`: the node described itself. `incompatible`: it did, but
+            answers no hospital-node-federation version this service speaks.
+            `identity_mismatch`: the node at this URL names another node or
+            organization. `no_federation_interface`: the URL answers but does not
+            serve the Federation interface. `unreachable`: no connection or no
+            answer in time. `invalid_response`: the answer is not a valid
+            NodeDescriptor. `not_checked`: no check since registration at this URL.
+          type: string
+          enum:
+            - discovered
+            - incompatible
+            - identity_mismatch
+            - no_federation_interface
+            - unreachable
+            - invalid_response
+            - not_checked
+        checked_at:
+          type: [string, "null"]
+          format: date-time
+        detail:
+          type: string
+          minLength: 1
+        capabilities:
+          oneOf:
+            - $ref: "#/components/schemas/Capabilities"
+            - type: "null"
+      allOf:
+        - if:
+            properties:
+              outcome:
+                enum: [discovered, incompatible]
+          then:
+            properties:
+              capabilities:
+                $ref: "#/components/schemas/Capabilities"
+          else:
+            properties:
+              capabilities:
+                type: "null"
+        - if:
+            properties:
+              outcome:
+                const: not_checked
+          then:
+            properties:
+              checked_at:
+                type: "null"
+          else:
+            properties:
+              checked_at:
+                type: string
+
+    Capabilities:
+      description: What the node reported about itself. Not verified.
+      type: object
+      additionalProperties: false
+      required: [status, contract_versions, supported_scopes, mocked]
+      properties:
+        status:
+          type: string
+          enum: [online, degraded]
+        contract_versions:
+          $ref: "#/components/schemas/ContractVersions"
+        supported_scopes:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum: [encounters, medications, lab_reports]
+        mocked:
+          description: True when the node says it answers from fixtures.
+          type: boolean
+
+    BaseUrl:
+      description: Absolute http(s) URL of the node's Federation interface, without credentials, query, or fragment.
+      type: string
+      format: uri
+      pattern: "^https?://[^/?#@\\s]+(/[^?#\\s]*)?$"
+      maxLength: 2048
+
+    ContractVersions:
+      description: hospital-node-federation versions the node answers.
+      type: array
+      minItems: 1
+      uniqueItems: true
+      items:
+        type: string
+        pattern: "^[0-9]+\\.[0-9]+$"
+
+    OpaqueRef:
+      description: Opaque identifier. Must not contain a name or other direct identifier.
+      type: string
+      pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+
+    Problem:
+      description: RFC 9457 problem details.
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+          enum: [invalid_request, node_not_found, organization_already_registered]

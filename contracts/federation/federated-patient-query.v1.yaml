@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Federated Patient Query
-  version: 1.0.0
+  version: 1.3.0
   description: |
     Contract HC-140, version 1. The Federation Service interface that
     consumers such as the Clinician App and Patient App use to get one
@@ -18,7 +18,9 @@ info:
     - **Nodes decide.** The service forwards the authorization to every
       node, and each node enforces it independently. The service may refuse
       a request up front (`403`) only when the authorization has clearly
-      expired. It cannot grant access.
+      expired, or, for a `synchronization_decision`, when the Governance
+      Node denies it (sync-authorization-check.v1, added in 1.1). It cannot
+      grant access.
     - **Partial results are explicit.** `node_results` lists every node that
       was asked and how it answered. `completeness: complete` requires every
       node to answer `ok`. Otherwise the result is `partial`, and consumers
@@ -32,13 +34,41 @@ info:
     asks every approved node in the registry (HC-142). The service does not
     keep an index of where patients have records.
 
+    Synchronization decisions (1.1, HC-144): before asking any node, the
+    service checks a `synchronization_decision` with the Governance Node.
+    If Governance authorizes it, only the organizations it names are asked;
+    requested targets outside them are refused with `403`. If Governance
+    denies it, the answer is `403` with Governance's reason. If Governance
+    cannot be reached, the answer is `503` and no node is asked. Patient
+    access grants are not checked with Governance in this version.
+
+    Capability-aware routing (1.2, HC-146): a target node whose latest
+    capability check (node-registry.v1 discovery) shows it cannot answer
+    this query is not asked. It appears in `node_results` with status
+    `not_asked` and a reason: `no_federation_interface`, `incompatible`,
+    `identity_mismatch`, or `scope_not_supported` (it reported no support
+    for a requested scope). A node that was never checked, was
+    unreachable, or answered discovery badly is still asked, so missing or
+    stale discovery never hides a source. A `not_asked` node makes the
+    result `partial`. Run discovery again after a node changes.
+
+    Failure handling (1.3, HC-147), for real node calls: a node that cannot
+    be reached, answers `503`, or times out is retried once after a short
+    pause with the same `query_id`, as long as the retry fits in the query's
+    time budget. A refusal (`403`) or an answer outside the contract is not
+    retried. After 3 consecutive queries a node did not answer, the service
+    stops calling it for 30 seconds and reports it `not_asked` with reason
+    `circuit_open`; after that pause it is asked again. A refusal counts as
+    an answer, not a failure.
+
     Every component schema except `FederatedQueryRequest`,
     `FederatedQueryResult`, and `NodeResult` is shared with
     hospital-node-federation.v1.yaml and must stay identical. A repository
     test checks this.
 
-    Status: this contract has no implementation. A mock Federation Service
-    serving fictional demo data is HC-141.
+    Status: implemented by the Federation Service with simulated Hospital
+    Nodes (HC-141). Synchronization decisions are checked with the
+    Governance Node over real HTTP (HC-144).
 paths:
   /v1/federated-queries:
     post:
@@ -186,6 +216,53 @@ paths:
                     provenance:
                       mocked: true
                       aggregated_at: "2026-10-10T10:05:01+01:00"
+                routedAroundNode:
+                  summary: >-
+                    Fictional demo — discovery showed Hospital A's runtime has no
+                    Federation interface yet, so it is not asked; Hospital B
+                    answers; the private practice cannot be reached.
+                  value:
+                    query_id: 3e4f5a6b-7c8d-4e9f-8a0b-1c2d3e4f5a6b
+                    contract_version: "1.0"
+                    patient_ref: pat-a
+                    scope: [medications]
+                    completeness: partial
+                    notice: >-
+                      Partial history: 2 sources could not be reached or
+                      refused. Missing entries are not evidence of absence.
+                    node_results:
+                      - organization_ref: org-hospital-a
+                        node_ref: node-hospital-a
+                        status: not_asked
+                        entry_count: 0
+                        problem_code: no_federation_interface
+                      - organization_ref: org-hospital-b
+                        node_ref: node-hospital-b
+                        status: ok
+                        entry_count: 1
+                        problem_code: null
+                      - organization_ref: org-private-practice
+                        node_ref: node-private-practice
+                        status: unavailable
+                        entry_count: 0
+                        problem_code: node_unavailable
+                    entries:
+                      - entry_ref: med-b-leila-coagulix
+                        record_type: medication
+                        occurred_at: "2026-05-20T00:00:00+01:00"
+                        source:
+                          organization_ref: org-hospital-b
+                          node_ref: node-hospital-b
+                        medication:
+                          code: MED-COAGULIX
+                          dosage: 5 mg, 2 fois par jour
+                          status: active
+                          start_date: "2026-05-20"
+                          end_date: null
+                          prescribed_by_ref: clin-ines
+                    provenance:
+                      mocked: true
+                      aggregated_at: "2026-10-10T10:20:02+01:00"
         "400":
           description: The request does not match this contract.
           content:
@@ -217,6 +294,14 @@ paths:
                     status: 403
                     detail: The authorization expired on 2026-03-12.
                     code: authorization_denied
+                governanceDenied:
+                  summary: Fictional demo — the Governance Node denies rejected decision dec-sync-003.
+                  value:
+                    type: about:blank
+                    title: Federated query not authorized
+                    status: 403
+                    detail: "The Governance Node denied the synchronization authorization: not_approved."
+                    code: authorization_denied
         "503":
           description: |
             The Federation Service cannot run the query. No node was asked.
@@ -232,6 +317,16 @@ paths:
                     title: Federation unavailable
                     status: 503
                     detail: The Federation Service cannot reach the node registry.
+                    code: federation_unavailable
+                governanceUnavailable:
+                  summary: A synchronization decision could not be checked, so no node was asked.
+                  value:
+                    type: about:blank
+                    title: Federation unavailable
+                    status: 503
+                    detail: >-
+                      The Governance Node could not be reached to check the
+                      synchronization authorization. No node was asked.
                     code: federation_unavailable
 components:
   schemas:
@@ -251,7 +346,10 @@ components:
         authorization:
           $ref: "#/components/schemas/Authorization"
         target_organization_refs:
-          description: Organizations to ask. When omitted, every approved node in the registry is asked.
+          description: >-
+            Organizations to ask. When omitted, every approved node in the
+            registry is asked, or, for a synchronization decision, every
+            organization Governance authorizes.
           type: array
           minItems: 1
           maxItems: 50
@@ -337,17 +435,29 @@ components:
           description: |
             `ok`: the node answered (possibly with no entries). `denied`: the
             node refused the authorization. `unavailable`: the node or its DMI
-            could not answer. `timeout`: no answer in time.
+            could not answer. `timeout`: no answer in time. `not_asked`: its
+            latest capability check shows it cannot answer this query (1.2),
+            or it failed repeatedly and is paused (`circuit_open`, 1.3).
           type: string
-          enum: [ok, denied, unavailable, timeout]
+          enum: [ok, denied, unavailable, timeout, not_asked]
         entry_count:
           type: integer
           minimum: 0
         problem_code:
-          description: Why the node did not answer `ok`; null when it did. The Federation Service sets `node_timeout` itself.
+          description: >-
+            Why the node did not answer `ok`; null when it did. The Federation
+            Service sets `node_timeout` and the `not_asked` reasons itself.
           oneOf:
             - type: string
-              enum: [authorization_denied, node_unavailable, node_timeout]
+              enum:
+                - authorization_denied
+                - node_unavailable
+                - node_timeout
+                - no_federation_interface
+                - incompatible
+                - identity_mismatch
+                - scope_not_supported
+                - circuit_open
             - type: "null"
       allOf:
         - if:
@@ -364,6 +474,19 @@ components:
                 const: 0
               problem_code:
                 type: string
+        - if:
+            properties:
+              status:
+                const: not_asked
+          then:
+            properties:
+              problem_code:
+                enum: [no_federation_interface, incompatible, identity_mismatch, scope_not_supported, circuit_open]
+          else:
+            properties:
+              problem_code:
+                not:
+                  enum: [no_federation_interface, incompatible, identity_mismatch, scope_not_supported, circuit_open]
 
     Purpose:
       description: Why the data is requested. It must match the purpose of the authorization.
@@ -385,7 +508,9 @@ components:
     Authorization:
       description: |
         The Governance-backed basis for the query. A reference, not a
-        credential: proof and verification are OPEN (HC-144).
+        credential. The Federation Service checks synchronization decisions
+        with the Governance Node (sync-authorization-check.v1, HC-144);
+        credentials and node-side verification are OPEN.
       type: object
       additionalProperties: false
       required: [basis, ref, expires_at]

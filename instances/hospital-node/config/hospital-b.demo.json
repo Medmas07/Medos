@@ -1,0 +1,10 @@
+{
+  "notice": "Fictional demo configuration for the HC-005 dataset. Ids match demo-data/organizations.json; the port matches the Federation registry seed. Not a production configuration.",
+  "node_ref": "node-hospital-b",
+  "organization_ref": "org-hospital-b",
+  "port": 8102,
+  "storage_dir": "../.storage/hospital-b",
+  "mock_clinical_records": "../../../demo-data/records/hospital-b.json",
+  "mock_access_grants": "../../../demo-data/access.json",
+  "mock_governance_decisions": "../../../demo-data/governance.json"
+}

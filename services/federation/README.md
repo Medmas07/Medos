@@ -2,22 +2,201 @@
 
 ## Purpose and status
 
-PLANNED coordination capability for authorized communication among autonomous Nodes. Its first contracts are defined (HC-140, see Expected contracts); no runtime exists. When its first runtime ticket needs one, it is a separate Python + FastAPI project per [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md).
+Coordination capability for authorized communication among autonomous Nodes. Python + FastAPI per [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md).
 
-## Responsibilities and owned concepts
+- **IMPLEMENTED (D2):**
+  - the federated patient query, [`federated-patient-query.v1.yaml`](../../contracts/federation/federated-patient-query.v1.yaml) (HC-141). It asks each registered Hospital Node, merges the answers into a transient timeline, and reports a status for each node.
+  - the node registry, [`node-registry.v1.yaml`](../../contracts/federation/node-registry.v1.yaml) (HC-142): register, update, list, get, and remove nodes. Federated queries ask the nodes listed there. It is kept in memory, and its Governance approval references are **not verified**.
+  - temporary sync authorization (HC-144): before any node is asked under a `synchronization_decision`, the service checks it with the Governance Node over real HTTP ([`sync-authorization-check.v1.yaml`](../../contracts/federation/sync-authorization-check.v1.yaml)), then asks only the organizations Governance authorizes. No Governance Node exists yet, so live sync-basis queries return `503` and ask no node. The authorized path is covered by tests only.
+  - real node-to-node communication (HC-145), the default: each registered node is asked over HTTP at its registered `base_url` (`POST /v1/federation/queries` of [`hospital-node-federation.v1.yaml`](../../contracts/federation/hospital-node-federation.v1.yaml)), in parallel, with a 2-second timeout per attempt. Answers are parsed strictly. The [Hospital Node runtime](../../instances/hospital-node/README.md#patient-history-api-hc-114) serves that endpoint (HC-114) from MOCKED records, so live answers carry `mocked: true`.
+  - failure handling (HC-147), in `http` mode: a node that cannot be reached, answers `503`, or times out is retried once with the same `query_id`, within a 5-second budget per query. After 3 consecutive failed queries a node is paused for 30 seconds and reported `not_asked` with `circuit_open`, then asked again.
+  - capability-aware routing (HC-146): in `http` mode, a node whose latest capability check shows it cannot answer the query is not asked and is reported `not_asked` with the reason. A node never checked, unreachable, or answering discovery badly is still asked.
+  - capability discovery (HC-143): on request, the service calls each registered node's `GET /v1/federation/node` over real HTTP and keeps the latest result per node. A running Hospital Node is `discovered`; one not running is `unreachable`.
+- **MOCKED, opt-in only:** `FEDERATION_NODES=simulated` replaces the HTTP calls with HC-141's simulated Hospital Nodes, built from [`demo-data/`](../../demo-data/README.md), so the Patient A demo works before real nodes exist. `/health` and every result say `mocked: true` in that mode. **That mode is not node-to-node exchange and not production security.**
+- **PLANNED:** Governance verification of patient access grants and registry approvals (HC-131), node-side verification of authorizations with the Governance Node (Hospital Nodes check fictional grants for now), persistent registry storage, service authentication, authentication of registry writes, and audit events.
 
-Potential node discovery/capabilities, temporary authorization handling, cross-node query coordination, synchronization, aggregation, failures, and audit-event emission.
+## Running locally
 
-## Communication boundaries
+From this directory (POSIX shell; on Windows activate with `.venv\Scripts\activate`):
 
-All communication uses versioned Federation contracts and Node-owned interfaces.
+| Purpose | Command |
+|---|---|
+| Create environment | `python3 -m venv .venv && . .venv/bin/activate` |
+| Install (dev) | `pip install -r requirements-dev.txt` |
+| Dev server with reload, demo nodes registered, real HTTP to nodes | `FEDERATION_REGISTRY_SEED=registry-seed.demo.json fastapi dev main.py --port 8300` |
+| Same, with simulated (MOCKED) nodes for the Patient A demo | `FEDERATION_NODES=simulated FEDERATION_REGISTRY_SEED=registry-seed.demo.json fastapi dev main.py --port 8300` |
+| Tests | `pytest` |
+| Lint / format check | `ruff check . && ruff format --check .` |
+| Production-mode server (preview), empty registry | `fastapi run main.py --port 8300` |
+
+`GET /health` reports `"nodes": "http"` or `"simulated"`, `mocked` (true only for simulated nodes), and a notice. `FEDERATION_NODES` accepts only `http` (default) and `simulated`; any other value stops startup.
+
+**The registry starts empty.** Nodes are registered through the API or, at startup, from the JSON file named by `FEDERATION_REGISTRY_SEED`. Seed entries go through the same validation as the API, and an invalid seed stops startup. [`registry-seed.demo.json`](registry-seed.demo.json) registers the three demo nodes: Hospital A, Hospital B, and the private practice. Hospital C is in onboarding and is not registered. Because the registry is in memory, registrations made through the API are lost on restart.
+
+## Demo
+
+**Real mode (default).** Start the three Hospital Node runtimes, one terminal each, in [`instances/hospital-node/`](../../instances/hospital-node/README.md) (`HOSPITAL_NODE_CONFIG=config/hospital-a.demo.json fastapi run main.py --port 8101`, then `hospital-b` on 8102 and `private-practice` on 8104), and this service with the demo seed. The timeline request below is `complete`: Hospital A answers 1 entry, Hospital B 2 (including Medication A), and the private practice 2. `provenance.mocked` is `true` because the nodes answer from MOCKED fictional records (HC-114). A node that is not running is `unavailable`, and the result is `partial`.
+
+**Simulated mode.** Add `FEDERATION_NODES=simulated` for the Patient A walkthrough below. The registry lists the three demo nodes, each with `approval.verified: false`:
+
+```bash
+curl -s localhost:8300/v1/registry/nodes
+```
+
+Dr. X opens Patient A's federated timeline under Patient A's grant `grant-a-drx`:
+
+```bash
+curl -s -X POST localhost:8300/v1/federated-queries -H 'content-type: application/json' -d '{
+  "patient_ref": "pat-a",
+  "scope": ["encounters", "medications"],
+  "purpose": "Consultation de cardiologie",
+  "requested_by": {"organization_ref": "org-hospital-a", "actor_ref": "clin-x"},
+  "authorization": {"basis": "patient_access_grant", "ref": "grant-a-drx", "expires_at": "2026-10-24T09:00:00+01:00"}
+}'
+```
+
+The result is `partial`:
+
+- Hospital A answers with 1 entry, and Hospital B with 2, including Medication A (`MED-COAGULIX`).
+- The private practice node is `unavailable` because its DMI is disconnected in the demo data.
+- The notice says that missing entries are not evidence of absence.
+- `provenance.mocked` is `true`.
+
+Add `"target_organization_refs": ["org-hospital-b"]` to ask Hospital B only. The result is then `complete`.
+
+Other states to show:
+
+| Change to the request | Result |
+|---|---|
+| Purpose other than the grant's | `200`; every reachable node answers `denied` |
+| `authorization.expires_at` in the past | `403 authorization_denied`; no node is asked |
+| `target_organization_refs: ["org-hospital-c"]` (still in onboarding) | `400 invalid_request` |
+| Missing or malformed fields | `400 invalid_request`, `application/problem+json` |
+| `authorization.basis: "synchronization_decision"` with a valid `expires_at` | `503`: the Governance Node could not be reached, and no node was asked (nothing runs on port 8200 yet) |
+| Started without a seed (empty registry) | `503 federation_unavailable`: "No Hospital Node is registered." |
+
+Registry states to show:
+
+| Action | Result |
+|---|---|
+| `DELETE /v1/registry/nodes/node-private-practice`, then the timeline request | `complete`; only Hospitals A and B are asked |
+| `PUT /v1/registry/nodes/node-hospital-b` with a new `base_url` | `200`; `registered_at` unchanged, `updated_at` moves |
+| `PUT` a second node for `org-hospital-b` | `409 organization_already_registered` |
+| `PUT` with `contract_versions: ["2.0"]` | `400`; only hospital-node-federation `1.0` is supported |
+| `PUT` with credentials or a query in `base_url` | `400 invalid_request` |
+| `GET` or `DELETE` an unknown node | `404 node_not_found` |
+
+Capability discovery (real HTTP; start the Hospital Node runtimes as in real mode above to show reachable nodes):
+
+| Action | Result |
+|---|---|
+| `GET /v1/registry/nodes/node-hospital-a/capabilities` before any check | `not_checked`, `checked_at: null` |
+| `POST /v1/registry/discovery` | Each running node: `discovered`, `online`, all three scopes, `mocked: true`. A node not running: `unreachable`. |
+| `POST /v1/registry/nodes/{node_ref}/capabilities` | Checks one node now and returns the result |
+| `PUT` a new `base_url` for a checked node | Its result returns to `not_checked` |
+| Timeline request with `"scope": ["medications"]`, after `POST /v1/registry/discovery` | Every `discovered` node and every `unreachable` node is asked. A node is `not_asked` only when its latest check shows it cannot answer, for example `no_federation_interface` when its `base_url` points to something other than a Hospital Node (contract example `routedAroundNode`) |
+
+A node that serves the endpoint gets `discovered` with its reported status, contract versions, scopes, and `mocked` flag. `incompatible` means it answers no supported version. `identity_mismatch` means it names another node or organization, and its claims are discarded. `invalid_response` means the answer is not a valid descriptor.
+
+The grant expires on 2026-10-24. Because the service uses the real clock, the demo request is refused with `403` after that date unless the fixtures are updated.
+
+## Layout
+
+```text
+services/federation/
+├── main.py                     # composition root; create_app(clock, registry_seed)
+├── registry-seed.demo.json     # fictional demo node registrations
+├── domain/                     # query, aggregation, registration, discovery, and sync authorization rules — stdlib only
+├── application/                # FederatePatientQuery, NodeRegistry, DiscoverNodeCapabilities, their ports; node_failures (retry policy, circuit breaker)
+├── adapters/inbound/http/      # federated query, registry, and discovery routers; problem+json errors; /health
+├── adapters/outbound/
+│   ├── hospital_node_contract.py        # strict wire mapping for hospital-node-federation.v1
+│   ├── http_hospital_node_client.py     # real HTTP client for POST /v1/federation/queries
+│   ├── http_node_descriptor_client.py   # real HTTP client for GET /v1/federation/node
+│   ├── http_sync_authorization_checker.py  # real HTTP client for the Governance check
+│   ├── in_memory_discovery_store.py     # latest discovery result per node
+│   ├── in_memory_registration_store.py  # RegistrationStore kept in this process
+│   └── simulated_hospital_nodes.py      # SimulatedHospitalNodes (MOCKED, FEDERATION_NODES=simulated)
+├── infrastructure/registry_seed.py      # loads FEDERATION_REGISTRY_SEED at startup
+└── tests/                      # domain, use cases, seed, simulated nodes, HTTP client, HTTP/contract, layer boundaries
+```
+
+`tests/test_layer_boundaries.py` fails if `domain/` or `application/` imports anything other than inner layers or the standard library.
+
+## How the simulated mode keeps the boundaries
+
+- **The use case knows only the ports.** It never sees files, grants, or records. Switching between `SimulatedHospitalNodes` and `HttpHospitalNodeClient` changes no domain or application code.
+- **Each simulated node reads only its own organization's records file.** It receives the request in the [`hospital-node-federation.v1.yaml`](../../contracts/federation/hospital-node-federation.v1.yaml) wire format and answers in it. Tests validate every simulated answer against that contract.
+- **Nodes enforce the authorization and deny by default.** A patient access grant must be active, unexpired, unrevoked, for the same patient, actor, and purpose, and cover the scope. A synchronization decision must be approved, still valid, name this node's organization as the target, and match the requester, patient, purpose, and scope. The simulated nodes read these from the fictional `access.json` and `governance.json`, standing in for verification with the Governance Node (HC-144).
+- **Federation stores nothing.** The merged result exists only for the response.
+- **Which nodes are asked comes from the real registry,** not from the demo data. A registered node with no simulation answers `unavailable`.
+
+## Node registry boundaries
+
+- **It routes; it does not approve.** Approving an organization belongs to the Governance Node. Each registration cites the Governance decision it relies on, but nothing can check that reference until a Governance approval API exists (HC-131). The API says `approval.verified: false`, and the list carries a notice saying so.
+- **It holds routing data only:** node and organization references, base URL, and contract versions. It holds nothing about patients.
+- **One node per organization,** because federated queries target organizations.
+- **Compatible nodes only:** a node must answer hospital-node-federation `1.0`.
+- **Base URLs** must be absolute http(s) URLs without credentials, query, or fragment, so no secrets end up in the registry.
+- **Not production-ready:** registry writes are unauthenticated, and node identity and trust are OPEN. Registrations live in memory because persistence is OPEN.
+
+## Capability discovery boundaries
+
+- **Real calls, no mock.** Discovery uses `HttpNodeDescriptorClient` against each node's registered `base_url`, with a 2-second timeout and no redirects. Network test doubles exist only in `tests/`.
+- **Self-reported, not verified.** Capabilities are what the node said at `checked_at`. A node may report `mocked: true`, and that is passed through.
+- **A failed check is not "no data".** Every result carries an `outcome`, and the list carries a notice saying so.
+- **Identity is checked.** If the node at a URL names another node or organization, the result is `identity_mismatch` and its claims are discarded. Without node authentication (OPEN), this catches misrouting, not impersonation.
+- **Strict parsing.** Anything outside the contract's `NodeDescriptor` is `invalid_response`, including extra fields such as patient counts.
+- **On request only.** Discovery runs when asked, and results are kept in memory. Federated queries use the latest results in `http` mode (see below).
+
+## Capability-aware routing boundaries
+
+- **Only a check that shows a node cannot answer stops it from being asked.** That means `no_federation_interface`, `incompatible`, `identity_mismatch`, or `discovered` without one of the requested scopes (`scope_not_supported`). The node appears in `node_results` as `not_asked` with that reason, and the result is `partial`.
+- **Missing or stale discovery never hides a source.** A node that was never checked, was `unreachable`, answered discovery with `invalid_response`, or moved to a new `base_url` since its check is asked as usual. Run discovery again after a node changes.
+- **The decision uses the node's self-reported capabilities.** It routes around nodes; it does not grant or restrict access. Every asked node still enforces the authorization.
+- **`http` mode only.** Discovery describes the real addresses in the registry, which say nothing about the simulated nodes, so `FEDERATION_NODES=simulated` asks every target.
+
+## Node-to-node communication boundaries
+
+- **Real calls, only to registered nodes.** `HttpHospitalNodeClient` posts the query to the `base_url` the node has in the registry. It uses no other address and never reads a node's database or DMI.
+- **Status mapping.** `403` → `denied`. A timeout → `timeout`. A connection error, `404`, `503`, another status, a redirect, or non-JSON → `unavailable`.
+- **Strict answers.** The answer is parsed with models mirroring the contract (`extra="forbid"`). An answer is rejected, and the node reported `unavailable`, if it has unknown fields (for example a patient name), is about another query, patient, or node, contains an entry held by another node, or contains an entry outside the requested scope. Nothing from a rejected answer reaches the result.
+- **Honest provenance.** A federated result is `mocked: true` when any node said it answered from fixtures, as the contract requires. Real HTTP does not by itself mean real data.
+- **Parallel, bounded.** Nodes are asked in parallel. A slow node times out without hiding the others (see Failure handling).
+- **Not production security.** There is no mutual TLS or service authentication; node identity and trust remain OPEN.
+
+## Failure handling (HC-147)
+
+Real node calls only (`FEDERATION_NODES=http`). The simulated nodes fail by fixture, not by network, so they get neither retries nor a breaker.
+
+- **Retry what may pass, once.** A connection error, a `503`, or a timeout is retried after 0.2 seconds with the **same `query_id`**, so the node can recognise the repeat in its audit trail.
+- **Never retried:** a `403` refusal, a `404` or other status, a redirect, or an answer outside the contract. These will not fix themselves.
+- **Bounded time.** Each attempt has a 2-second timeout. A retry starts only if a full attempt still fits in the 5-second budget of the query (`RetryPolicy` in [`application/node_failures.py`](application/node_failures.py)).
+- **Circuit breaker.** After 3 consecutive queries a node did not answer, the node is not called for 30 seconds. It is reported `not_asked` with `circuit_open`, and the result is `partial`. After the pause the next query asks it again: an answer closes the circuit, and another failure pauses it again.
+- **What counts as a failure:** unavailable, timed out, or an answer outside the contract. A `403` refusal is an answer, so it does not count.
+- **Limits.** Breaker state is in memory, per `node_ref`, and resets on restart. A node that moves to a new `base_url` keeps its circuit until the pause ends. Several queries arriving just after a pause may all probe the node.
+
+Live, with Hospital A's runtime on 8101 and nothing on 8102 or 8104: the first three queries take about 0.23 seconds each. Hospital A's `404` is not retried, while the other two are retried once after the pause. The fourth query returns at once, with all three nodes `not_asked`/`circuit_open`.
+
+## Temporary sync authorization boundaries
+
+- **Governance decides; Federation enforces.** The service never approves, extends, or widens a synchronization. It asks the Governance Node at `FEDERATION_GOVERNANCE_URL` (default `http://localhost:8200`, the ADR-0003 port) whether the decision authorizes this requester, patient, scope, and purpose now.
+- **No node is asked unless Governance confirms.** Federation answers `403` with Governance's reason when it denies. It answers `503` when Governance is unreachable, times out (2 s), redirects, or answers outside the contract, including an answer about a different decision.
+- **Only authorized targets.** An authorized query goes only to the organizations Governance names. Requested targets outside them get `403`. This replaces asking every registered node.
+- **Never widened.** If Governance's "authorized" answer has already expired, or its scope does not cover the request, Federation refuses anyway.
+- **Nodes still decide.** Each node enforces the authorization again. The simulated nodes know only the decisions in `demo-data/`, so a decision created at runtime, such as step 20's approval of `sync-001`, is still denied by the simulated node.
+- **Unchanged for patient access grants.** They are patient-issued and are not sent to Governance in this version.
+- **Not production security.** There is no service authentication and no signed token; both are OPEN.
 
 ## Non-responsibilities
 
-It is not a centralized clinical database, does not access Hospital Node tables directly, and does not connect directly to hospital DMI/HIS systems.
+It is not a centralized clinical database, does not access Hospital Node tables directly, and does not connect directly to hospital DMI/HIS systems. It cannot grant access; only the Governance-backed basis checked by each node can.
 
-## Expected contracts
+## Contracts
 
-- [`federated-patient-query.v1.yaml`](../../contracts/federation/federated-patient-query.v1.yaml): IMPLEMENTED contract this service provides. It sends a query to each node, merges the results into a transient timeline, and reports a status for each node. No provider yet; HC-141 is the first mock.
-- [`hospital-node-federation.v1.yaml`](../../contracts/federation/hospital-node-federation.v1.yaml): IMPLEMENTED contract this service calls on each Hospital Node.
-- PLANNED: node registry (HC-142), Governance verification of authorizations (HC-144), and audit event contracts.
+- [`federated-patient-query.v1.yaml`](../../contracts/federation/federated-patient-query.v1.yaml): provided by this service. Implemented with MOCKED nodes (HC-141). Tests check that the demo requests reproduce the contract's `partialTimeline` and `completeHospitalB` examples.
+- [`hospital-node-federation.v1.yaml`](../../contracts/federation/hospital-node-federation.v1.yaml): called on each Hospital Node. Simulated in process until the Hospital Node implements it.
+- [`node-registry.v1.yaml`](../../contracts/federation/node-registry.v1.yaml) 1.1: provided by this service. Registry (HC-142) and capability discovery (HC-143). Tests validate every response against it.
+- [`hospital-node-federation.v1.yaml`](../../contracts/federation/hospital-node-federation.v1.yaml) `GET /v1/federation/node`: called over real HTTP by capability discovery.
+- [`sync-authorization-check.v1.yaml`](../../contracts/federation/sync-authorization-check.v1.yaml): provided by the Governance Node, called by this service for every synchronization-decision query (HC-144). Tests drive the client with the contract's own examples.
+- PLANNED: Governance verification of patient access grants, and audit event contracts.

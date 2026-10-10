@@ -10,6 +10,7 @@ from conftest import FEDERATION, load, validator
 
 NODE = load("hospital-node-federation.v1.yaml", FEDERATION)
 FEDERATED = load("federated-patient-query.v1.yaml", FEDERATION)
+REGISTRY = load("node-registry.v1.yaml", FEDERATION)
 NODE_ONLY = {"NodeDescriptor", "NodeQueryRequest", "NodeQueryResult"}
 FEDERATED_ONLY = {"FederatedQueryRequest", "FederatedQueryResult", "NodeResult"}
 
@@ -34,7 +35,9 @@ def changed(document, mutate):
 
 def _examples(contract):
     for operations in contract["paths"].values():
-        for operation in operations.values():
+        for method, operation in operations.items():
+            if method == "parameters":
+                continue
             bodies = [operation.get("requestBody", {}).get("content", {})]
             bodies += [r.get("content", {}) for r in operation["responses"].values()]
             for content in bodies:
@@ -88,7 +91,7 @@ def test_shared_schemas_are_identical_in_both_contracts():
 
 def test_examples_reference_only_canonical_demo_ids():
     known = _demo_ids()
-    for contract in (NODE, FEDERATED):
+    for contract in (NODE, FEDERATED, REGISTRY):
         for example in _examples(contract):
             unknown = set(_refs(example)) - known
             assert not unknown, f"not in demo-data: {unknown}"
@@ -173,3 +176,39 @@ def test_an_entry_has_one_typed_body_and_a_source(mutate):
 def test_requests_must_be_authorized_scoped_and_minimised(mutate):
     assert request_schema.is_valid(REQUEST)
     assert not request_schema.is_valid(changed(REQUEST, mutate))
+
+
+ROUTED = RESULT_EXAMPLES["routedAroundNode"]["value"]
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda r: r["node_results"][0].update(problem_code="node_unavailable"),
+        lambda r: r["node_results"][0].update(problem_code=None),
+        lambda r: r["node_results"][2].update(problem_code="scope_not_supported"),
+        lambda r: r["node_results"][0].update(entry_count=1),
+        lambda r: r.update(completeness="complete"),
+    ],
+    ids=[
+        "not_asked_with_node_reason",
+        "not_asked_without_reason",
+        "routing_reason_on_asked_node",
+        "not_asked_with_entries",
+        "complete_with_node_not_asked",
+    ],
+)
+def test_not_asked_nodes_carry_a_routing_reason_and_nothing_else(mutate):
+    assert result_schema.is_valid(ROUTED)
+    assert not result_schema.is_valid(changed(ROUTED, mutate))
+
+
+def test_circuit_open_is_a_not_asked_reason_only():
+    paused = changed(
+        ROUTED, lambda r: r["node_results"][0].update(problem_code="circuit_open")
+    )
+    assert result_schema.is_valid(paused)
+    on_asked_node = changed(
+        ROUTED, lambda r: r["node_results"][2].update(problem_code="circuit_open")
+    )
+    assert not result_schema.is_valid(on_asked_node)

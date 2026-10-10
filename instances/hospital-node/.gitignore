@@ -1,0 +1,2 @@
+# Per-hospital local storage (HC-112 config storage_dir); never commit it.
+.storage/
