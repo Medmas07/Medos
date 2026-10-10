@@ -82,6 +82,21 @@ export interface ResearchAccessRequest {
   decisionId: string | null
 }
 
+export interface ResearchProjectInfo {
+  id: string
+  title: string
+  principalInvestigatorId: string
+  organizationId: string
+  status: 'approved' | 'under_review' | 'rejected'
+  createdAt: string
+  summary: string
+  population: string
+  variables: string[]
+  participatingOrganizationIds: string[]
+  protocolDocument?: { id: string; title: string }
+  researchAccessRequestId?: string
+}
+
 export interface GovernanceDecision {
   id: string
   subjectType: SubjectType
