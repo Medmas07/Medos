@@ -32,8 +32,29 @@ export interface ResearchProject {
   population: string
   variables: string[]
   participatingOrganizationIds: string[]
-  protocolDocument: { id: string; title: string } | null
+  protocolDocument: ProjectDocumentRef | null
+  /** Optional supporting documents; absent on fixture projects. */
+  supportingDocuments?: ProjectDocumentRef[]
   researchAccessRequestId: string | null
+}
+
+/** Metadata of a file deposited in this portal (HC-093); its content is never read. */
+export interface DocumentUpload {
+  fileName: string
+  sizeBytes: number
+  mediaType: string
+  uploadedAt: string
+}
+
+export type ProjectDocumentType = 'protocol' | 'data_management_plan' | 'information_notice'
+
+export interface ProjectDocumentRef {
+  id: string
+  title: string
+  /** Set for a supporting document; the protocol is `protocolDocument`. */
+  type?: Exclude<ProjectDocumentType, 'protocol'>
+  /** Only set for a document deposited in this portal (session state). */
+  upload?: DocumentUpload
 }
 
 export interface ResearchAccessRequest {
@@ -58,12 +79,32 @@ export interface GovernanceDecision {
   validUntil: string | null
 }
 
+export interface ComputeJobStage {
+  id: string
+  stage: 'authorization_check' | 'execution' | 'aggregation' | 'output_validation'
+  organizationId: string
+  status: 'pending' | 'running' | 'completed' | 'failed'
+  completedAt?: string
+}
+
 export interface ComputeJob {
   id: string
   projectId: string
+  authorizationDecisionId: string
   status: 'queued' | 'running' | 'completed' | 'failed'
   submittedAt: string
+  stages: ComputeJobStage[]
   controlledResultId: string | null
+}
+
+/** A controlled result's release metadata; its aggregate rows belong to the result panel (HC-101). */
+export interface ControlledResultSummary {
+  id: string
+  jobId: string
+  title: string
+  minimumCellSize: number
+  disclosureCheck: 'passed' | 'failed'
+  provenance: string
 }
 
 export interface PortalNotification {
@@ -118,10 +159,13 @@ export interface PortalPage {
 }
 
 export interface ResearchSnapshot {
+  /** Reference time the snapshot was derived at (ISO 8601). */
+  asOf: string
   researcher: StaffMember
   organization: Organization
   projects: ProjectSummary[]
   jobs: ComputeJob[]
+  results: ControlledResultSummary[]
   pages: PortalPage[]
   notifications: PortalNotification[]
 }

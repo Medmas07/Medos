@@ -101,6 +101,21 @@ export interface ResearchAccessRequest {
   decisionId: string | null
 }
 
+export interface ResearchProjectInfo {
+  id: string
+  title: string
+  principalInvestigatorId: string
+  organizationId: string
+  status: 'approved' | 'under_review' | 'rejected'
+  createdAt: string
+  summary: string
+  population: string
+  variables: string[]
+  participatingOrganizationIds: string[]
+  protocolDocument?: { id: string; title: string }
+  researchAccessRequestId?: string
+}
+
 export interface GovernanceDecision {
   id: string
   subjectType: SubjectType
@@ -113,6 +128,17 @@ export interface GovernanceDecision {
   validUntil: string | null
   /** True for a decision recorded only in local portal state (HC-073), never persisted. */
   simulated?: boolean
+  /**
+   * What an approved research access request authorizes (HC-078). Mirrors the
+   * Authorization and output policy of contracts/api/research/research-node-execution.v1.yaml.
+   */
+  researchAuthorization?: ResearchAuthorization
+}
+
+export interface ResearchAuthorization {
+  approvedOrganizationIds: string[]
+  approvedVariables: string[]
+  minimumCellSize: number
 }
 
 export interface GovernanceAuditEvent {

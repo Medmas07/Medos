@@ -2,11 +2,10 @@ from pathlib import Path
 
 import pytest
 import yaml
-from fastapi.testclient import TestClient
 from jsonschema import Draft202012Validator, FormatChecker
 
 from adapters.outbound.fixture_extractor import DEMO_TRANSCRIPT
-from main import app
+from tests.conftest import fixture_client
 
 CONTRACT = yaml.safe_load(
     (
@@ -14,7 +13,7 @@ CONTRACT = yaml.safe_load(
         / "contracts/api/ai/clinical-extraction.v1.yaml"
     ).read_text()
 )
-client = TestClient(app)
+client = fixture_client()
 
 
 def validator(schema_name: str) -> Draft202012Validator:

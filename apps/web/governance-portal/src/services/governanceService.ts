@@ -3,6 +3,7 @@ import governanceFixtures from '../../../../../demo-data/governance.json'
 import notificationsFixtures from '../../../../../demo-data/notifications.json'
 import organizationsFixtures from '../../../../../demo-data/organizations.json'
 import peopleFixtures from '../../../../../demo-data/people.json'
+import researchFixtures from '../../../../../demo-data/research.json'
 import type {
   AccessGrant,
   AccessGrantInfo,
@@ -15,6 +16,7 @@ import type {
   PatientInfo,
   PersonInfo,
   ResearchAccessRequest,
+  ResearchProjectInfo,
   SynchronizationRequest,
 } from '../types/governance'
 import { reviewStore } from './reviewStore'
@@ -37,6 +39,8 @@ const typedOrganizations = (organizationsFixtures.organizations ?? []) as unknow
 const typedPatients = (peopleFixtures.patients ?? []) as unknown as PatientInfo[]
 
 const typedNotifications = (notificationsFixtures.notifications ?? []) as unknown as GovernanceNotification[]
+
+const typedProjects = (researchFixtures.projects ?? []) as unknown as ResearchProjectInfo[]
 
 const allStaffAndClinicians = [
   ...((peopleFixtures.staff ?? []) as unknown as PersonInfo[]),
@@ -80,8 +84,22 @@ export const governanceService = {
     return typedAccessGrants.find((g) => g.id === id)
   },
 
+  // Fixtures merged with the SIMULATED decisions recorded in this session (HC-078).
   getResearchAccessRequests(): ResearchAccessRequest[] {
-    return typedGovernance.researchAccessRequests
+    const simulated = reviewStore.getSnapshot().researchAccessRequests
+    return typedGovernance.researchAccessRequests.map((req) => simulated[req.id] ?? req)
+  },
+
+  getResearchAccessRequest(id: string): ResearchAccessRequest | undefined {
+    return this.getResearchAccessRequests().find((r) => r.id === id)
+  },
+
+  getResearchProjects(): ResearchProjectInfo[] {
+    return typedProjects
+  },
+
+  getResearchProject(id: string): ResearchProjectInfo | undefined {
+    return typedProjects.find((p) => p.id === id)
   },
 
   getDecisions(): GovernanceDecision[] {
