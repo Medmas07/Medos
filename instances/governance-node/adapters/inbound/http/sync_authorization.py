@@ -2,8 +2,11 @@
 
 Answers the Federation Service's question before each exchange under a synchronization
 decision: does it authorize this request now? A denial is a 200 result; only a request
-outside the contract is a 400. Every answer, with actor_ref, is recorded in the
-governance audit trail (HC-134) before it is given.
+outside the contract is a 400. An authorization relying on a patient grant is
+re-verified with the Hospital Node holding the grant (HC-136): withdrawn there, it is
+denied `revoked`; if that node cannot answer, the answer is a 503 and nothing is
+authorized. Every answer, with actor_ref, is recorded in the governance audit trail
+(HC-134) before it is given.
 """
 
 from collections.abc import Callable
@@ -17,7 +20,12 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from adapters.inbound.http.problems import OPAQUE_REF, problem
 from adapters.inbound.http.synchronization_requests import Ref, ScopeField
 from application.audit import AuditTrail
-from application.synchronization import SynchronizationStore, check_sync_authorization
+from application.synchronization import (
+    GrantsUnavailable,
+    PatientGrantDirectory,
+    SynchronizationStore,
+    check_sync_authorization,
+)
 from domain.synchronization import ExchangeAsk, ScopeItem
 
 
@@ -41,7 +49,10 @@ def _invalid(fields: set[str]) -> JSONResponse:
 
 
 def create_router(
-    store: SynchronizationStore, audit: AuditTrail, clock: Callable[[], datetime]
+    store: SynchronizationStore,
+    grants: PatientGrantDirectory,
+    audit: AuditTrail,
+    clock: Callable[[], datetime],
 ) -> APIRouter:
     router = APIRouter(tags=["synchronization"])
 
@@ -55,19 +66,28 @@ def create_router(
             # Malformed JSON has no field location.
             fields = {str(e["loc"][0]) for e in error.errors() if e["loc"]}
             return _invalid(fields or {"body"})
-        result = check_sync_authorization(
-            decision_ref,
-            ExchangeAsk(
-                body.requester_organization_ref,
-                body.actor_ref,
-                body.patient_ref,
-                frozenset(ScopeItem(item) for item in body.scope),
-                body.purpose,
-            ),
-            store,
-            audit,
-            clock,
-        )
+        try:
+            result = check_sync_authorization(
+                decision_ref,
+                ExchangeAsk(
+                    body.requester_organization_ref,
+                    body.actor_ref,
+                    body.patient_ref,
+                    frozenset(ScopeItem(item) for item in body.scope),
+                    body.purpose,
+                ),
+                store,
+                grants,
+                audit,
+                clock,
+            )
+        except GrantsUnavailable as error:
+            return problem(
+                503,
+                "Consent unavailable",
+                "consent_unavailable",
+                f"The patient grant could not be re-verified: {error}",
+            )
         return JSONResponse(
             {
                 "decision_ref": result.decision_ref,

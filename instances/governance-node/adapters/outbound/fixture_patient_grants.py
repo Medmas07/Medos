@@ -1,10 +1,11 @@
 """PatientGrantDirectory over the fictional grants of demo-data/access.json (HC-132).
 
-MOCKED. Patient access grants are recorded and enforced by the Hospital Nodes
-(patient-access-grants.v1.yaml, HC-115), not by the Governance Node. How the Governance
-Node learns of them is OPEN (consent governance, HC-136). Until then it reads the
-fictional seed grants, read-only: it never sees a grant recorded or revoked on a
-Hospital Node at runtime.
+MOCKED, opt-in only (GOVERNANCE_GRANTS=fixture). Patient access grants are recorded and
+enforced by the Hospital Nodes (patient-access-grants.v1.yaml, HC-115); by default the
+Governance Node asks them over HTTP (HttpPatientGrantDirectory, HC-136). This directory
+reads the fictional seed grants instead, read-only, for demos without Hospital Nodes
+running: it ignores which node holds a grant and never sees a grant recorded or revoked
+on a Hospital Node at runtime.
 """
 
 import json
@@ -16,6 +17,7 @@ from domain.synchronization import PatientGrant
 
 
 class FixturePatientGrantDirectory:
+    mode = "fixture"
     mocked = True
 
     def __init__(self, grants: list[PatientGrant]) -> None:
@@ -39,5 +41,9 @@ class FixturePatientGrantDirectory:
             ]
         )
 
-    def grant(self, grant_ref: str) -> PatientGrant | None:
-        return self._grants.get(grant_ref)
+    def grant(
+        self, holder_organization_ref: str, patient_ref: str, grant_ref: str
+    ) -> PatientGrant | None:
+        # As a Hospital Node lists by patient: another patient's grant is not found.
+        grant = self._grants.get(grant_ref)
+        return grant if grant and grant.patient_ref == patient_ref else None

@@ -94,7 +94,7 @@ def test_without_a_grant_the_requested_duration_applies():
 @pytest.mark.parametrize(
     "grant, message",
     [
-        (None, "Grant grant-a-drx is unknown to the Governance Node."),
+        (None, "Grant grant-a-drx is unknown to the Hospital Node of org-hospital-b."),
         (replace(GRANT_A, revoked=True), "Grant grant-a-drx was revoked."),
         (
             replace(GRANT_A, expires_at=DEMO_NOW - timedelta(days=1)),

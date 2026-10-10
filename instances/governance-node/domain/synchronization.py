@@ -5,7 +5,10 @@ here because the Governance Node, not a company-managed portal, decides. An appr
 a temporary authorization that the Federation Service checks before each exchange
 (contracts/federation/sync-authorization-check.v1.yaml). The consent bases accepted, how
 each is checked, the longest authorization, and the minimum rationale length come from
-the governance policy in effect (HC-135), which the decision cites.
+the governance policy in effect (HC-135), which the decision cites. A patient grant is
+evaluated against the grants the target organization's Hospital Node holds, when
+reviewing and again before each exchange (HC-136): a grant withdrawn there stops the
+authorization.
 """
 
 import math
@@ -207,6 +210,8 @@ class ReviewContext:
     now: datetime
     # The governance policy in effect at `now`.
     policy: GovernancePolicy
+    # Why the grant could not be looked up, when its holder could not answer.
+    grant_unavailable: str | None = None
 
 
 def status_at(
@@ -240,15 +245,19 @@ def max_approved_days(request: SynchronizationRequest, context: ReviewContext) -
     return min(limits)
 
 
-def _grant_problem(
-    request: SynchronizationRequest, context: ReviewContext
+def grant_problem(
+    request: SynchronizationRequest, grant: PatientGrant | None, now: datetime
 ) -> str | None:
-    grant, ref = context.grant, request.consent.access_grant_ref
+    """Why the patient grant does not support this request now; None if it does."""
+    ref = request.consent.access_grant_ref
     if grant is None:
-        return f"Grant {ref} is unknown to the Governance Node."
+        return (
+            f"Grant {ref} is unknown to the Hospital Node of "
+            f"{request.target_organization_ref}."
+        )
     if grant.revoked:
         return f"Grant {ref} was revoked."
-    if not grant.active_at(context.now):
+    if not grant.active_at(now):
         return f"Grant {ref} expired on {grant.expires_at.isoformat()}."
     if grant.patient_ref != request.patient_ref:
         return f"Grant {ref} concerns another patient."
@@ -286,8 +295,15 @@ def checks(request: SynchronizationRequest, context: ReviewContext) -> list[Chec
             f"Governance policy v{policy.version} does not accept {basis.value} as a "
             "consent basis.",
         )
+    elif mode is ConsentMode.VERIFIED and context.grant_unavailable:
+        consent = Check(
+            "consent",
+            CheckState.FAIL,
+            f"Grant {request.consent.access_grant_ref} could not be verified: "
+            f"{context.grant_unavailable}",
+        )
     elif mode is ConsentMode.VERIFIED:
-        problem = _grant_problem(request, context)
+        problem = grant_problem(request, context.grant, context.now)
         consent = Check(
             "consent",
             CheckState.FAIL if problem else CheckState.PASS,
@@ -440,6 +456,9 @@ class DenialReason(str, Enum):
     PATIENT_MISMATCH = "patient_mismatch"
     SCOPE_EXCEEDED = "scope_exceeded"
     PURPOSE_MISMATCH = "purpose_mismatch"
+    # Last, once everything else holds: the patient grant the approval relies on is no
+    # longer active at the target organization's Hospital Node (HC-136).
+    REVOKED = "revoked"
 
 
 @dataclass(frozen=True)
@@ -508,6 +527,30 @@ def check_authorization(
         scope=request.scope,
         purpose=request.purpose,
         valid_until=decision.valid_until,
+    )
+
+
+def relies_on_patient_grant(request: SynchronizationRequest) -> bool:
+    return request.consent.basis is ConsentBasis.PATIENT_GRANT
+
+
+def reverify_consent(
+    result: AuthorizationCheck,
+    request: SynchronizationRequest,
+    grant: PatientGrant | None,
+    now: datetime,
+) -> AuthorizationCheck:
+    """An authorization stands only while its patient grant still supports it at the
+    Hospital Node that holds it: revoked, expired, or unknown there denies it."""
+    if not result.authorized or not relies_on_patient_grant(request):
+        return result
+    if grant_problem(request, grant, now) is None:
+        return result
+    return AuthorizationCheck(
+        result.decision_ref,
+        DenialReason.REVOKED,
+        result.checked_at,
+        valid_until=result.valid_until,
     )
 
 

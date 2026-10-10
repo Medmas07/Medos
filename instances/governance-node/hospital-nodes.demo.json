@@ -1,0 +1,9 @@
+{
+  "fictional": true,
+  "notice": "Fictional demo directory of the Hospital Nodes the Governance Node asks for patient grants (HC-136). Ids match demo-data/organizations.json; ports match instances/hospital-node/config/*.demo.json. Not a production configuration.",
+  "nodes": [
+    { "organization_ref": "org-hospital-a", "base_url": "http://127.0.0.1:8101" },
+    { "organization_ref": "org-hospital-b", "base_url": "http://127.0.0.1:8102" },
+    { "organization_ref": "org-private-practice", "base_url": "http://127.0.0.1:8104" }
+  ]
+}

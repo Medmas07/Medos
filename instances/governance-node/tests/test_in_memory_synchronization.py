@@ -125,11 +125,17 @@ def test_refuses_inconsistent_seeds(tmp_path, change):
 def test_grant_directory_reads_the_fictional_grants():
     grants = FixturePatientGrantDirectory.load(DEMO_DATA / "access.json")
 
-    grant_a = grants.grant("grant-a-drx")
+    def grant(patient_ref, grant_ref):
+        # MOCKED: the holder is ignored; the seed grants stand for every node's.
+        return grants.grant("org-hospital-b", patient_ref, grant_ref)
+
+    grant_a = grant("pat-a", "grant-a-drx")
     assert grant_a.scope == set(ScopeItem)
     assert grant_a.active_at(DEMO_NOW)
     assert not grant_a.active_at(DEMO_NOW + timedelta(days=14))
-    assert grants.grant("grant-c-ines").revoked
-    assert not grants.grant("grant-a-ines").active_at(DEMO_NOW)
-    assert grants.grant("grant-unknown") is None
-    assert grants.mocked
+    assert grant("pat-c", "grant-c-ines").revoked
+    assert not grant("pat-a", "grant-a-ines").active_at(DEMO_NOW)
+    assert grant("pat-a", "grant-unknown") is None
+    # As a Hospital Node lists by patient, another patient's grant is not found.
+    assert grant("pat-b", "grant-a-drx") is None
+    assert (grants.mode, grants.mocked) == ("fixture", True)

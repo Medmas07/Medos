@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Governance Node Synchronization Requests
-  version: 1.1.0
+  version: 1.2.0
   description: |
     Contract HC-132, version 1. The Governance / Ethics Authority's
     synchronization request interface: a hospital submits a request to
@@ -40,15 +40,19 @@ info:
 
     Not decided by this version, and OPEN: who may call it (authentication:
     `submitted_by_ref` and `reviewer_ref` are declared by the caller, not
-    authenticated), how the Governance Node learns of patient grants held
-    by Hospital Nodes (consent governance, HC-136), how a Hospital Node
-    verifies a decision with the Governance Node, revoking or extending an
-    approval, and anchoring decisions in a ledger.
+    authenticated), how a Hospital Node verifies a decision with the
+    Governance Node, revoking or extending an approval, and anchoring
+    decisions in a ledger.
 
     Status: implemented by the Governance Node runtime (HC-132) over an
     in-memory store seeded from fictional demo data; requests and
-    decisions are lost on restart. The patient grant check reads the
-    fictional demo grants (MOCKED). Requests are not authenticated. Each
+    decisions are lost on restart. Since 1.2.0 (HC-136), a `patient_grant`
+    consent is evaluated against the grants of the target organization's
+    Hospital Node, which holds and enforces them
+    (patient-access-grants.v1.yaml), asked over HTTP when answering; if
+    that node cannot answer, the consent check fails with the reason. The
+    demo runtime can instead read fictional demo grants (MOCKED, opt-in).
+    Requests are not authenticated. Each
     request received and decision recorded is added to the Node's
     governance audit trail (governance-audit-events.v1.yaml, HC-134), in
     memory as well.
@@ -76,7 +80,11 @@ paths:
                 $ref: "#/components/schemas/RequestList"
               examples:
                 demo:
-                  summary: Fictional demo — the three requests on the demo date.
+                  summary: >-
+                    Fictional demo — the three requests on the demo date,
+                    with the MOCKED fixture grant source; with the default
+                    HTTP source the notice ends "patient grants are checked
+                    with the Hospital Node holding them, over HTTP."
                   value:
                     notice: >-
                       Fictional demo synchronization requests, held in
