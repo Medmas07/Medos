@@ -24,6 +24,7 @@ from domain.clinical_record import (
     ReferenceRange,
     RepositorySummary,
 )
+from domain.research_execution import ResearchSubject
 
 
 class ClinicalFixtureError(RuntimeError):
@@ -81,6 +82,30 @@ class FixtureClinicalRepository:
             encounters=len(self._encounters),
             medications=len(self._medications),
             lab_reports=len(self._lab_reports),
+        )
+
+    def local_research_subjects(self) -> tuple[ResearchSubject, ...]:
+        """Internal-only view; patient references never leave the executor."""
+        patient_refs = {
+            record.patient_ref
+            for records in (self._encounters, self._medications, self._lab_reports)
+            for record in records
+        }
+        return tuple(self._research_subject(ref) for ref in sorted(patient_refs))
+
+    def _research_subject(self, patient_ref: str) -> ResearchSubject:
+        records = self.patient_records(patient_ref)
+        return ResearchSubject(
+            patient_ref=patient_ref,
+            encounter_dates=tuple(
+                encounter.started_at.date() for encounter in records.encounters
+            ),
+            hba1c_values=tuple(
+                result.value
+                for report in records.lab_reports
+                for result in report.results
+                if result.test.casefold() == "hba1c"
+            ),
         )
 
 

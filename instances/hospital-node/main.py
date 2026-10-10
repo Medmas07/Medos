@@ -9,12 +9,21 @@ from adapters.inbound.http.access_grants import (
 from adapters.inbound.http.audit import create_router as create_audit_router
 from adapters.inbound.http.federation import create_router as create_federation_router
 from adapters.inbound.http.health import create_router as create_health_router
+from adapters.inbound.http.research_executions import (
+    create_router as create_research_executions_router,
+)
 from adapters.outbound.fixture_authorization_verifier import (
     FixtureAuthorizationVerifier,
 )
 from adapters.outbound.fixture_clinical_repository import FixtureClinicalRepository
 from adapters.outbound.in_memory_access_grant_store import InMemoryAccessGrantStore
 from adapters.outbound.in_memory_audit_log import InMemoryAuditLog
+from adapters.outbound.in_memory_research_execution_store import (
+    InMemoryResearchExecutionStore,
+)
+from adapters.outbound.fixture_research_data_source import FixtureResearchDataSource
+from adapters.outbound.installed_aggregate_executor import InstalledAggregateExecutor
+from application.research_execution_agent import ResearchExecutionAgent
 from application.get_node_status import NODE_VERSION
 from infrastructure.config import HospitalNodeConfig, config_path_from_env, load_config
 
@@ -42,6 +51,12 @@ def create_app(
     )
     # HC-116: real events of the queries handled, kept in memory (persistence is OPEN).
     audit_log = InMemoryAuditLog()
+    research_data = FixtureResearchDataSource(config.identity, repository)
+    research_agent = ResearchExecutionAgent(
+        config.identity,
+        InstalledAggregateExecutor(research_data),
+        InMemoryResearchExecutionStore(),
+    )
     app = FastAPI(title="Hospital Node", version=NODE_VERSION)
     app.include_router(create_health_router(config.identity, repository))
     app.include_router(
@@ -55,6 +70,7 @@ def create_app(
             config.identity, access_grants, clock, new_grant_ref
         )
     )
+    app.include_router(create_research_executions_router(research_agent, clock))
     return app
 
 
