@@ -157,6 +157,8 @@ export interface HospitalApplication {
   decisionId: string | null
   /** Set once the Node package has been downloaded from this portal (local state). */
   nodePackage?: NodePackageRecord
+  /** Installation guide steps the hospital declared done (HC-062, local state, not verified). */
+  installationChecklist?: string[]
 }
 
 export interface PortalNotification {
