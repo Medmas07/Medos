@@ -282,6 +282,13 @@ class _DashboardContent extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         const _LaboratoryHistorySection(),
+        const SizedBox(height: 20),
+        Text(
+          'Hôpitaux et médecins',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 10),
+        const _CareHistorySection(),
       ],
     );
   }
@@ -367,6 +374,33 @@ class _LabResultRow extends StatelessWidget {
           Text(result.flag, style: const TextStyle(color: PatientColors.muted)),
         ],
       ),
+    );
+  }
+}
+
+class _CareHistorySection extends StatelessWidget {
+  const _CareHistorySection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        for (final encounter in demoCareHistory)
+          Card(
+            child: ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: PatientColors.brandSoft,
+                child: Icon(Icons.local_hospital_outlined, color: PatientColors.brand),
+              ),
+              title: Text(encounter.physician),
+              subtitle: Text(
+                '${encounter.date} · ${encounter.specialty}\n${encounter.organization}',
+              ),
+              isThreeLine: true,
+              trailing: const _StatusPill(label: 'AUTORISÉ'),
+            ),
+          ),
+      ],
     );
   }
 }

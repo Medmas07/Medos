@@ -158,3 +158,43 @@ const demoLabReports = <CanonicalLabReport>[
     ],
   ),
 ];
+
+class CanonicalCareEncounter {
+  const CanonicalCareEncounter({
+    required this.date,
+    required this.organization,
+    required this.physician,
+    required this.specialty,
+    required this.summary,
+  });
+
+  final String date;
+  final String organization;
+  final String physician;
+  final String specialty;
+  final String summary;
+}
+
+const demoCareHistory = <CanonicalCareEncounter>[
+  CanonicalCareEncounter(
+    date: '20 mai 2026',
+    organization: 'Hôpital Régional Oued Zitoun',
+    physician: 'Dr Inès Chaabane',
+    specialty: 'Médecine interne',
+    summary: 'Consultation de médecine interne et bilan avant traitement.',
+  ),
+  CanonicalCareEncounter(
+    date: '14 mars 2026',
+    organization: 'Hôpital Universitaire Bab Ennour',
+    physician: 'Dr Youssef Gharbi',
+    specialty: 'Cardiologie',
+    summary: 'Suivi cardiologique et recommandations de prévention.',
+  ),
+  CanonicalCareEncounter(
+    date: '08 janvier 2026',
+    organization: 'Cabinet médical Dr Hatem Bouzid',
+    physician: 'Dr Hatem Bouzid',
+    specialty: 'Médecine générale',
+    summary: 'Consultation de suivi avec le médecin traitant.',
+  ),
+];

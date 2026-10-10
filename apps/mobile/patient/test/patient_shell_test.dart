@@ -44,6 +44,10 @@ void main() {
     expect(find.text('Hémoglobine'), findsOneWidget);
     expect(find.text('12,6 g/dL'), findsOneWidget);
     expect(find.text('DÉMO D1'), findsOneWidget);
+    expect(find.text('Hôpitaux et médecins'), findsOneWidget);
+    expect(find.text('Dr Inès Chaabane'), findsOneWidget);
+    expect(find.text('Dr Youssef Gharbi'), findsOneWidget);
+    expect(find.text('Cabinet médical Dr Hatem Bouzid'), findsOneWidget);
   });
 
   testWidgets('renders the federated authorized timeline fixtures', (
