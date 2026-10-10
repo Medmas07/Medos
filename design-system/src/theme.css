@@ -392,7 +392,8 @@
   transition-timing-function: var(--ease-drawer);
 }
 .hc-drawer::backdrop {
-  background: rgb(5 20 15 / 0.55);
+  background: rgb(5 20 15 / 0.62);
+  backdrop-filter: blur(3px);
   opacity: 0;
   transition:
     opacity 200ms var(--ease-out),

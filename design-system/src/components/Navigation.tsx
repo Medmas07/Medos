@@ -88,7 +88,7 @@ export function AppShell({
           {(sidebarFooter || toolbar) && (
             <div className="space-y-3 border-t border-line/70 p-3">
               {sidebarFooter && (
-                <div className="rounded-2xl bg-surface-muted/60 px-3 py-2.5 text-xs text-ink-soft">
+                <div className="rounded-2xl bg-white/[0.06] px-3 py-2.5 text-xs text-ink-soft">
                   {sidebarFooter}
                 </div>
               )}
@@ -134,7 +134,7 @@ export function AppShell({
             <div className="flex-1 overflow-y-auto px-3 pb-4">{navigation}</div>
             {sidebarFooter && (
               <div className="border-t border-line/70 p-3">
-                <div className="rounded-2xl bg-surface-muted/60 px-3 py-2.5 text-xs text-ink-soft">
+                <div className="rounded-2xl bg-white/[0.06] px-3 py-2.5 text-xs text-ink-soft">
                   {sidebarFooter}
                 </div>
               </div>
