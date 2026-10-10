@@ -25,6 +25,7 @@ import { AgreementsView } from './views/AgreementsView'
 import { AutomatedReviewView } from './views/AutomatedReviewView'
 import { DmiView } from './views/DmiView'
 import { DocumentsView } from './views/DocumentsView'
+import { HumanReviewView } from './views/HumanReviewView'
 import { OverviewView } from './views/OverviewView'
 import { ProfileView } from './views/ProfileView'
 import { RegistrationView } from './views/RegistrationView'
@@ -203,6 +204,15 @@ export default function App() {
           snapshot={load.snapshot}
           consumeSimulatedFailure={failureOnce('submission-failure')}
           onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
+          onNavigate={navigateTo}
+        />
+      )
+    }
+    if (currentView === 'human-review') {
+      return (
+        <HumanReviewView
+          snapshot={load.snapshot}
+          consumeSimulatedFailure={failureOnce('refresh-failure')}
           onNavigate={navigateTo}
         />
       )
