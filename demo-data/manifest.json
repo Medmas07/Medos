@@ -1,7 +1,7 @@
 {
   "fictional": true,
   "notice": "FICTIONAL DEMO DATA / DONNÉES FICTIVES DE DÉMONSTRATION. Not real people, organizations, medicines, or clinical guidance. Never use for clinical decisions.",
-  "datasetVersion": "1.3.0",
+  "datasetVersion": "1.4.0",
   "scenario": "docs/planning/demo-scenario.md",
   "referenceDate": "2026-10-10",
   "utcOffset": "+01:00",

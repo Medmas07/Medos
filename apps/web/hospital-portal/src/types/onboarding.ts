@@ -66,12 +66,28 @@ export interface ApplicationAgreement {
   acceptedById?: string
 }
 
+export type HostingType = 'on_premise' | 'virtual_machine' | 'private_cloud'
+
+/**
+ * Technical questionnaire. The deployment environment of the future Hospital
+ * Node is collected by HC-055; the DMI / HIS fields belong to HC-056.
+ */
 export interface TechnicalQuestionnaire {
+  hostingType: HostingType
   operatingSystem: string
-  dmiSystem: string
-  database: string
+  cpuCores: number
+  memoryGb: number
+  storageGb: number
+  bandwidthMbps: number
+  /** Free-text description of the network. */
   network: string
+  dmzAvailable: boolean
+  outboundHttpsAllowed: boolean
+  containerRuntimeAvailable: boolean
+  backupsInPlace: boolean
   technicalContactId: string
+  dmiSystem?: string
+  database?: string
 }
 
 export interface ReviewStep {
