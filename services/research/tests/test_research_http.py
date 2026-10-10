@@ -1,9 +1,27 @@
 from fastapi.testclient import TestClient
 
 from main import app
+from adapters.inbound.http import research_jobs
+from application.research_orchestrator import ResearchOrchestrator
 
 
 client = TestClient(app)
+
+
+class NodeDouble:
+    def submit(self, node_ref, request):
+        if request["authorization"]["decision_ref"] != "dec-rar-001":
+            return {"status": "denied", "execution_id": request["execution_id"]}
+        return {"status": "accepted", "execution_id": request["execution_id"]}
+
+    def read(self, node_ref, execution_ref):
+        return {"status": "completed", "execution_id": execution_ref}
+
+
+research_jobs.orchestrator = ResearchOrchestrator(
+    node_execution=NodeDouble(),
+    node_refs=["node-hospital-a", "node-hospital-b"],
+)
 
 
 def request(job_ref="job-001", authorization_decision_ref="dec-rar-001"):
@@ -20,7 +38,6 @@ def test_job_endpoint_exposes_mocked_distributed_progress_and_result():
     submitted = client.post("/v1/research-jobs", json=request())
     assert submitted.status_code == 202
     assert submitted.json()["status"] == "queued"
-    assert submitted.json()["mocked"] is True
 
     running = client.get("/v1/research-jobs/job-001")
     assert running.json()["status"] == "running"
@@ -34,6 +51,9 @@ def test_job_endpoint_exposes_mocked_distributed_progress_and_result():
 def test_job_endpoint_keeps_denial_and_not_found_explicit():
     denied = client.post("/v1/research-jobs", json=request("job-denied", "dec-unknown"))
     assert denied.status_code == 202
-    assert denied.json()["status"] == "denied"
-    assert denied.json()["error"]["code"] == "authorization_denied"
+    assert client.get("/v1/research-jobs/job-denied").json()["status"] == "denied"
+    assert (
+        client.get("/v1/research-jobs/job-denied").json()["error"]["code"]
+        == "authorization_denied"
+    )
     assert client.get("/v1/research-jobs/missing").status_code == 404

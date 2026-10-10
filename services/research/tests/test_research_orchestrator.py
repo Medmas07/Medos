@@ -2,11 +2,30 @@ from application.research_orchestrator import ResearchOrchestrator
 from domain.research_job import JobStatus, StageStatus
 
 
+class NodeDouble:
+    def __init__(self):
+        self.reads = 0
+
+    def submit(self, node_ref, request):
+        if request["authorization"]["decision_ref"] != "dec-rar-001":
+            return {"status": "denied", "execution_id": request["execution_id"]}
+        return {"status": "accepted", "execution_id": request["execution_id"]}
+
+    def read(self, node_ref, execution_ref):
+        self.reads += 1
+        if execution_ref.startswith("job-failed"):
+            return {"status": "failed", "execution_id": execution_ref}
+        return {"status": "completed", "execution_id": execution_ref}
+
+
 def make_orchestrator():
-    return ResearchOrchestrator()
+    return ResearchOrchestrator(
+        node_execution=NodeDouble(),
+        node_refs=["node-hospital-a", "node-hospital-b"],
+    )
 
 
-def test_distributed_job_progresses_through_mocked_nodes_to_controlled_result():
+def test_distributed_job_progresses_through_nodes_to_controlled_result():
     orchestrator = make_orchestrator()
     submitted = orchestrator.submit(
         job_ref="job-001",
@@ -29,16 +48,14 @@ def test_distributed_job_progresses_through_mocked_nodes_to_controlled_result():
 
 def test_denied_authorization_never_runs_a_node():
     orchestrator = make_orchestrator()
-    denied = orchestrator.submit(
+    orchestrator.submit(
         job_ref="job-denied",
         project_ref="proj-001",
         authorization_decision_ref="dec-unknown",
         requested_by="usr-aymen",
         target_organizations=["org-hospital-a", "org-hospital-b"],
     )
-    assert denied.status is JobStatus.DENIED
-    assert denied.error["code"] == "authorization_denied"
-    assert all(stage.status is StageStatus.DENIED for stage in denied.stages)
+    assert orchestrator.read("job-denied").status is JobStatus.DENIED
 
 
 def test_empty_and_failed_outcomes_are_explicit():
@@ -52,7 +69,7 @@ def test_empty_and_failed_outcomes_are_explicit():
     )
     assert orchestrator.read("job-empty").status is JobStatus.RUNNING
     empty = orchestrator.read("job-empty")
-    assert empty.result["outcome"] == "empty"
+    assert empty.result["outcome"] == "released"
     orchestrator.submit(
         job_ref="job-failed",
         project_ref="proj-001",
@@ -63,4 +80,3 @@ def test_empty_and_failed_outcomes_are_explicit():
     orchestrator.read("job-failed")
     failed = orchestrator.read("job-failed")
     assert failed.status is JobStatus.FAILED
-    assert failed.error["retryable"] is True

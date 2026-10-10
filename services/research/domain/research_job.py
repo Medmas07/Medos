@@ -38,8 +38,8 @@ class ResearchJob:
     requested_by: str
     status: JobStatus = JobStatus.QUEUED
     poll_count: int = 0
-    mocked: bool = True
     stages: list[Stage] = field(default_factory=list)
+    execution_refs: dict[str, str] = field(default_factory=dict)
     result: dict | None = None
     error: dict | None = None
 
