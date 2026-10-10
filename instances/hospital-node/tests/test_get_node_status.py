@@ -29,6 +29,7 @@ def test_reports_the_served_capabilities():
         "audit_events",
         "access_grants",
         "research_execution",
+        "isolated_research_sandbox",
     )
 
 

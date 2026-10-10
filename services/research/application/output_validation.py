@@ -16,7 +16,8 @@ class ResearchOutputValidator:
     """Validate the one bounded HC-183 result; this is not a generic scanner."""
 
     COLUMNS = ["participant_count", "hba1c_above_7_pct"]
-    RESULT_KEYS = {"outcome", "columns", "rows", "disclosure", "provenance"}
+    REQUIRED_RESULT_KEYS = {"outcome", "columns", "rows", "disclosure", "provenance"}
+    RESULT_KEYS = REQUIRED_RESULT_KEYS | {"sandbox"}
     DISCLOSURE_KEYS = {
         "status",
         "minimum_cell_size",
@@ -30,11 +31,27 @@ class ResearchOutputValidator:
         "source_organization_ref",
         "source_node_ref",
     }
+    SANDBOX_KEYS = {
+        "mode",
+        "python_isolated",
+        "site_packages_disabled",
+        "environment_cleared",
+        "network",
+        "filesystem",
+        "wall_time_seconds",
+        "max_input_bytes",
+        "max_output_bytes",
+        "os_resource_limits",
+    }
 
     def validate(self, execution: NodeExecution, job: ResearchJob) -> OutputValidation:
         checks: list[str] = []
         result = execution.result
-        if not isinstance(result, dict) or set(result) != self.RESULT_KEYS:
+        if (
+            not isinstance(result, dict)
+            or not self.REQUIRED_RESULT_KEYS <= set(result)
+            or not set(result) <= self.RESULT_KEYS
+        ):
             return self._rejected("output_schema_invalid", checks)
         checks.append("controlled_result_schema")
 
@@ -65,10 +82,31 @@ class ResearchOutputValidator:
             return self._rejected("output_timestamp_invalid", checks)
         checks.append("timestamp_order")
 
+        if "sandbox" in result:
+            if not self._valid_sandbox(result["sandbox"]):
+                return self._rejected("output_sandbox_invalid", checks)
+            checks.append("sandbox_controls")
+
         if not self._valid_cells(outcome, result, job):
             return self._rejected("output_cell_unsafe", checks)
         checks.extend(("bounded_columns", "minimum_cell_size"))
         return OutputValidation(OutputValidationStatus.PASSED, tuple(checks))
+
+    def _valid_sandbox(self, sandbox: object) -> bool:
+        return (
+            isinstance(sandbox, dict)
+            and set(sandbox) == self.SANDBOX_KEYS
+            and sandbox.get("mode") == "isolated_process"
+            and sandbox.get("python_isolated") is True
+            and sandbox.get("site_packages_disabled") is True
+            and sandbox.get("environment_cleared") is True
+            and sandbox.get("network") == "denied"
+            and sandbox.get("filesystem") == "denied_after_startup"
+            and sandbox.get("wall_time_seconds") == 2.0
+            and sandbox.get("max_input_bytes") == 262_144
+            and sandbox.get("max_output_bytes") == 65_536
+            and sandbox.get("os_resource_limits") in {"posix_rlimit", "parent_enforced"}
+        )
 
     @staticmethod
     def _rejected(code: str, checks: list[str]) -> OutputValidation:

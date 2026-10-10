@@ -69,6 +69,8 @@ def test_executes_inside_hospital_boundary_and_suppresses_small_cells():
     assert body["result"]["outcome"] == "suppressed"
     assert body["result"]["rows"] == []
     assert body["result"]["provenance"]["source_node_ref"] == "node-hospital-a"
+    assert body["result"]["sandbox"]["mode"] == "isolated_process"
+    assert body["result"]["sandbox"]["network"] == "denied"
     assert "pat-a" not in completed.text and "pat-b" not in completed.text
 
 
@@ -88,7 +90,7 @@ def test_empty_failed_denied_conflict_and_not_found_are_explicit():
     )
     failed = client.get("/v1/research-executions/job-failed-exec-a").json()
     assert failed["status"] == "failed"
-    assert failed["error"]["code"] == "execution_failed"
+    assert failed["error"]["code"] == "unsupported_population"
 
     denied_request = request("job-denied-exec-a")
     denied_request["target"]["organization_ref"] = "org-hospital-b"

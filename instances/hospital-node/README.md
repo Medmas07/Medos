@@ -179,7 +179,9 @@ IMPLEMENTED at D3 against [`research-node-execution.v1.yaml`](../../contracts/ap
 
 Before reading local data, the node verifies that the target is this exact node and organization, the authorization names the Governance authority, the organization and requested variables are approved, and `valid_until` has not passed. This is deterministic envelope validation, **not authenticated Governance verification**: signatures, service identity, and production authorization remain OPEN. A denial returns the same response regardless of local data.
 
-The D3 executor supports only the preinstalled aggregate identified by the HC-180 canonical SHA-256 and `compute` entry point, with `hba1c` as its only variable and encounter-date population filters. It does not download or execute the submitted `artifact_ref`; arbitrary Python, package installation, process isolation, and the HC-186 sandbox remain out of scope. Age filters fail explicitly because this Hospital Node does not own local demographic data in the current model.
+The executor supports only the preinstalled aggregate identified by the HC-180 canonical SHA-256 and `compute` entry point, with `hba1c` as its only variable and encounter-date population filters. It does not download or execute the submitted `artifact_ref`; arbitrary Python and package installation remain out of scope. Age filters fail explicitly because this Hospital Node does not own local demographic data in the current model.
+
+HC-186 (D4) runs that installed aggregate in a separate Python process with `-I -S`, an empty environment, a temporary working directory, no patient references in its JSON payload, and fixed input/output/record quotas. A Python audit hook denies post-startup file access, imports, network calls, shell/process creation, while the parent enforces a two-second wall-time limit. POSIX runtimes additionally apply CPU, address-space, file-size, and child-process `rlimit`; Windows honestly reports `parent_enforced` because those OS limits are unavailable in this adapter. Each controlled result carries a `sandbox` evidence object. This is a concrete defense-in-depth boundary for one trusted installed worker, **not** container-grade production isolation and not permission to execute submitted code.
 
 The executor reads only this node's repository through a local application port. It returns:
 
@@ -188,14 +190,14 @@ The executor reads only this node's repository through a local application port.
 - `released` only as aggregate cells when the minimum is met;
 - `failed`, `denied`, `invalid`, `conflict`, and `not found` states without exposing whether a patient exists.
 
-Execution state is process-local and lost on restart. The canonical demo repository is explicitly MOCKED, so accepted and terminal responses carry `mocked: true`. The HTTP agent, authorization rules, aggregate, suppression, and provenance behavior are implemented; the data source is not production data or storage. HC-184 cross-node aggregation, HC-185 output validation, audit, durable persistence, authentication, and general code execution are not implemented.
+Execution state is process-local and lost on restart. The canonical demo repository is explicitly MOCKED, so accepted and terminal responses carry `mocked: true`. The HTTP agent, authorization rules, aggregate, sandbox, suppression, and provenance behavior are implemented; the data source is not production data or storage. Cross-node aggregation and output validation live in the Research Service (HC-184/HC-185). Research audit, durable persistence, authentication, container isolation, and general code execution are not implemented.
 
 ## Health endpoint (HC-111)
 
-`GET /health` is a liveness check. It returns `200` with the node kind, version, the configured `node_ref` and `organization_ref`, its `capabilities` (`patient_history`, `audit_events`, `access_grants`, `research_execution`), the clinical repository's record counts and `mocked` flag, and a notice stating that the identity comes from fictional demo configuration, that the repository and authorization are MOCKED, that research execution is bounded, that the audit trail is in memory and its readers are not authenticated, and that it is not a production health check:
+`GET /health` is a liveness check. It returns `200` with the node kind, version, the configured `node_ref` and `organization_ref`, its capabilities (including `research_execution` and `isolated_research_sandbox`), the clinical repository's record counts and `mocked` flag, and a notice stating that the identity comes from fictional demo configuration, that the repository and authorization are MOCKED, that research execution is bounded, that the process sandbox is not production container isolation, that the audit trail is in memory and its readers are not authenticated, and that it is not a production health check:
 
 ```json
-{"status": "ok", "node": "hospital-node", "version": "0.2.0", "node_ref": "node-hospital-a", "organization_ref": "org-hospital-a", "capabilities": ["patient_history", "audit_events", "access_grants", "research_execution"], "clinical_records": {"mocked": true, "encounters": 3, "medications": 1, "lab_reports": 2}, "notice": "Hospital Node (HC-111 to HC-116, HC-183). ..."}
+{"status": "ok", "node": "hospital-node", "version": "0.3.0", "node_ref": "node-hospital-a", "organization_ref": "org-hospital-a", "capabilities": ["patient_history", "audit_events", "access_grants", "research_execution", "isolated_research_sandbox"], "clinical_records": {"mocked": true, "encounters": 3, "medications": 1, "lab_reports": 2}, "notice": "Hospital Node (HC-111 to HC-116, HC-183, HC-186). ..."}
 ```
 
 The counts contain no patient data.
@@ -243,7 +245,7 @@ Each Hospital Node must provide [`hospital-node-federation.v1.yaml`](../../contr
 
 It also provides [`hospital-audit-events.v1.yaml`](../../contracts/api/hospital-audit/hospital-audit-events.v1.yaml) (HC-116): its own audit trail of those queries; and [`patient-access-grants.v1.yaml`](../../contracts/api/patient-access/patient-access-grants.v1.yaml) (HC-115): the patient access grants it records and enforces.
 
-The D1 research execution contract at [`contracts/api/research/research-node-execution.v1.yaml`](../../contracts/api/research/research-node-execution.v1.yaml) is IMPLEMENTED by the HC-183 agent for the bounded installed aggregate described above. Authenticated Governance verification, general code execution, sandboxing, package policy, durable state, research audit, and production disclosure review remain PLANNED or OPEN.
+The D1 research execution contract at [`contracts/api/research/research-node-execution.v1.yaml`](../../contracts/api/research/research-node-execution.v1.yaml) is IMPLEMENTED by the HC-183 agent for the bounded installed aggregate and extended by HC-186 with sandbox evidence. Authenticated Governance verification, general code execution, container-grade isolation, package distribution, durable state, research audit, and production disclosure review remain PLANNED or OPEN.
 
 PLANNED local clinical API, DMI port, consent/authorization, and health contracts. `/health` is Node-local and has no versioned contract.
 
