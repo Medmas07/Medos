@@ -79,7 +79,7 @@ PLANNED delivery of authorized patient, clinician, researcher, hospital, and gov
 
 ### SciAgents Integration
 
-SciAgents is an existing external system. This repository's PLANNED responsibility is the integration contract, adapter, authentication boundary, mapping, error handling, provenance, and Research Portal connection—not SciAgents implementation.
+SciAgents is an existing external system. This repository's PLANNED responsibility is the integration contract, adapter, authentication boundary, mapping, error handling, provenance, and Research Portal connection—not SciAgents implementation. The repository-side [investigation contract](../contracts/api/sciagents/scientific-investigation.v1.yaml) (HC-170) is defined; it accepts only questions and controlled-result summaries, never raw clinical data, and marks results as not for clinical decisions.
 
 ## 6. Hospital Node internal boundary
 
@@ -191,7 +191,7 @@ AI is advisory, replaceable through ports, and subject to appropriate human revi
 | DMI Adapter | PLANNED | Hospital-local boundary documented; no adapter. |
 | Federation Service | PLANNED | No contracts or runtime implementation; stack decided by ADR-0003. |
 | Notification Service | PLANNED | No provider or runtime implementation; stack decided by ADR-0003. |
-| SciAgents Integration | PLANNED | SciAgents exists externally; connector is absent. |
+| SciAgents Integration | PLANNED | SciAgents exists externally; repository-side contract defined (HC-170); connector is absent. |
 | Immutable Audit Ledger | OPTIONAL / PLANNED | Governance-only concept; no adapter or ledger. |
 | AI Services | IMPLEMENTED (skeleton) / MOCKED extraction | FastAPI runtime (HC-150); provider-neutral `AiProvider` port with a deterministic mock adapter (HC-151); clinical extraction contract v1 with a deterministic fixture mock (HC-152); no real AI capability, library, or provider. |
 | Authentication and persistence | PLANNED | No implementation or selected technology. |
