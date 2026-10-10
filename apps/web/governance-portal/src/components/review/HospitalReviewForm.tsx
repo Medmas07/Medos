@@ -145,9 +145,9 @@ export function HospitalReviewForm({
       </div>
 
       {hasFindings(findings) && (
-        <div className="space-y-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs">
-          <div className="font-semibold text-amber-900">Points à examiner avant de statuer</div>
-          <ul className="list-disc space-y-1 pl-4 text-amber-900">
+        <div className="space-y-2 rounded-xl border border-warning-200 bg-warning-50 p-3 text-xs">
+          <div className="font-semibold text-warning-800">Points à examiner avant de statuer</div>
+          <ul className="list-disc space-y-1 pl-4 text-warning-800">
             {findings.missingDocuments.map((d) => (
               <li key={d.id}>Pièce manquante : {d.title}</li>
             ))}
@@ -159,7 +159,7 @@ export function HospitalReviewForm({
             ))}
           </ul>
           {findings.advisoryFindings.length > 0 && (
-            <div className="rounded border border-demo-200 bg-white p-2">
+            <div className="rounded border border-demo-200 bg-surface p-2">
               <div className="flex items-center gap-1.5 font-medium text-slate-800">
                 Observations de l’IA <DemoBadge>Consultatif — non contraignant</DemoBadge>
               </div>

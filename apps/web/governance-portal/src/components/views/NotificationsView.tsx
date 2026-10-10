@@ -129,7 +129,7 @@ export function NotificationsView() {
         title="Notifications de Gouvernance"
         description="Alertes, dossiers assignés et mises à jour pour les réviseurs de l'Autorité de Gouvernance."
         actions={
-          <div className="flex gap-2">
+          <div className="flex max-w-full flex-wrap gap-2">
             {counts.unread > 0 && (
               <Button size="sm" variant="primary" onClick={handleMarkAllRead}>
                 Tout marquer lu ({counts.unread})
@@ -159,10 +159,10 @@ export function NotificationsView() {
             <button
               key={t}
               type="button"
-              className={`text-left w-full rounded-lg border p-3 text-xs transition-all hover:scale-[1.02] focus:outline-none ${
+              className={`text-left w-full rounded-xl border p-3 text-xs hc-lift hc-press ${
                 filter === t
                   ? 'border-brand-300 bg-brand-50 ring-2 ring-brand-200'
-                  : 'border-slate-200 bg-white'
+                  : 'border-slate-200 bg-surface'
               }`}
               onClick={() => setFilter(filter === t ? 'all' : t)}
             >
@@ -251,7 +251,7 @@ export function NotificationsView() {
                 <tr
                   key={row.notification.id}
                   className={`border-b border-slate-100 transition-colors ${
-                    row.notification.read ? 'bg-white' : 'bg-amber-50/30'
+                    row.notification.read ? 'bg-surface' : 'bg-warning-50/30'
                   }`}
                 >
                   <td className="px-4 py-2.5">
@@ -260,8 +260,8 @@ export function NotificationsView() {
                         <span className="size-2 rounded-full bg-slate-300" /> Lu
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 font-semibold text-amber-600">
-                        <span className="size-2 rounded-full bg-amber-500 animate-pulse" /> Non lu
+                      <span className="inline-flex items-center gap-1 font-semibold text-warning-700">
+                        <span className="size-2 rounded-full bg-warning-600 animate-pulse" /> Non lu
                       </span>
                     )}
                   </td>

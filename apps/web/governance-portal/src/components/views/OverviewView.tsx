@@ -6,6 +6,7 @@ import {
   Card,
   DemoBadge,
   PageHeader,
+  StatCard,
   Table,
 } from '@hackcure/design-system'
 import { auditTimeline } from '../../services/auditTimeline'
@@ -45,7 +46,7 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
         title="Tableau de Bord de Gouvernance Fédérée"
         description="Surveillance centrale des nœuds hospitaliers, arbitrage des flux de continuité des soins et traçabilité immuable des décisions."
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
               variant={activeTab === 'all' ? 'primary' : 'secondary'}
@@ -90,10 +91,10 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
             {notifications.map((notif) => (
               <div
                 key={notif.id}
-                className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 p-3 text-xs"
+                className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs"
               >
                 <div className="flex items-center gap-3">
-                  <span className="size-2 rounded-full bg-amber-500 shrink-0" />
+                  <span className="size-2 rounded-full bg-warning-600 shrink-0" />
                   <div>
                     <span className="font-semibold text-slate-900">{notif.title}</span>
                     <p className="text-slate-600">{notif.body}</p>
@@ -122,86 +123,53 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <button
-          type="button"
-          className="text-left w-full transition-transform hover:scale-[1.01] focus:outline-none"
+      <div className="hc-stagger grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Adhésions Nœuds"
+          value={metrics.totalApplications}
+          hint={`${metrics.approvedHospitals} approuvés • ${metrics.pendingApplications} requiert révision humaine`}
+          badge={
+            metrics.pendingApplications > 0 ? (
+              <Badge tone="warning" dot>{metrics.pendingApplications} en examen</Badge>
+            ) : (
+              <Badge tone="success">À jour</Badge>
+            )
+          }
           onClick={() => onNavigate('onboarding')}
-        >
-          <Card>
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Adhésions Nœuds</span>
-              {metrics.pendingApplications > 0 ? (
-                <Badge tone="warning" dot>{metrics.pendingApplications} en examen</Badge>
-              ) : (
-                <Badge tone="success">À jour</Badge>
-              )}
-            </div>
-            <div className="mt-3 text-3xl font-bold text-slate-900">{metrics.totalApplications}</div>
-            <p className="mt-1 text-xs text-slate-600">
-              {metrics.approvedHospitals} approuvés • {metrics.pendingApplications} requiert révision humaine
-            </p>
-          </Card>
-        </button>
-
-        <button
-          type="button"
-          className="text-left w-full transition-transform hover:scale-[1.01] focus:outline-none"
+        />
+        <StatCard
+          label="Flux Continuité"
+          value={metrics.totalSyncs}
+          hint={`${metrics.approvedSyncs} autorisés • ${metrics.rejectedSyncs} refusés`}
+          badge={
+            metrics.pendingSyncs > 0 ? (
+              <Badge tone="warning" dot>{metrics.pendingSyncs} à arbitrer</Badge>
+            ) : (
+              <Badge tone="neutral">0 en attente</Badge>
+            )
+          }
           onClick={() => onNavigate('synchronizations')}
-        >
-          <Card>
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Flux Continuité</span>
-              {metrics.pendingSyncs > 0 ? (
-                <Badge tone="warning" dot>{metrics.pendingSyncs} à arbitrer</Badge>
-              ) : (
-                <Badge tone="neutral">0 en attente</Badge>
-              )}
-            </div>
-            <div className="mt-3 text-3xl font-bold text-slate-900">{metrics.totalSyncs}</div>
-            <p className="mt-1 text-xs text-slate-600">
-              {metrics.approvedSyncs} autorisés • {metrics.rejectedSyncs} refusés
-            </p>
-          </Card>
-        </button>
-
-        <button
-          type="button"
-          className="text-left w-full transition-transform hover:scale-[1.01] focus:outline-none"
+        />
+        <StatCard
+          label="Accès Recherche"
+          value={metrics.totalResearchRequests}
+          hint={`${metrics.approvedResearch} approuvés • Mode Compute-to-Data`}
+          badge={
+            metrics.underReviewResearch > 0 ? (
+              <Badge tone="info" dot>{metrics.underReviewResearch} en examen</Badge>
+            ) : (
+              <Badge tone="neutral">0 en cours</Badge>
+            )
+          }
           onClick={() => onNavigate('research')}
-        >
-          <Card>
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Accès Recherche</span>
-              {metrics.underReviewResearch > 0 ? (
-                <Badge tone="info" dot>{metrics.underReviewResearch} en examen</Badge>
-              ) : (
-                <Badge tone="neutral">0 en cours</Badge>
-              )}
-            </div>
-            <div className="mt-3 text-3xl font-bold text-slate-900">{metrics.totalResearchRequests}</div>
-            <p className="mt-1 text-xs text-slate-600">
-              {metrics.approvedResearch} approuvés • Mode Compute-to-Data
-            </p>
-          </Card>
-        </button>
-
-        <button
-          type="button"
-          className="text-left w-full transition-transform hover:scale-[1.01] focus:outline-none"
+        />
+        <StatCard
+          label="Preuves Registre"
+          value={metrics.anchoredProofsCount}
+          hint="100% vérifiées • Empreintes SHA-256 sans données cliniques"
+          badge={<DemoBadge>Simulées D1</DemoBadge>}
           onClick={() => onNavigate('audit')}
-        >
-          <Card>
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Preuves Registre</span>
-              <DemoBadge>Simulées D1</DemoBadge>
-            </div>
-            <div className="mt-3 text-3xl font-bold text-slate-900">{metrics.anchoredProofsCount}</div>
-            <p className="mt-1 text-xs text-slate-600">
-              100% vérifiées • Empreintes SHA-256 sans données cliniques
-            </p>
-          </Card>
-        </button>
+        />
       </div>
 
       {/* Urgent Action Queues Panel (when tab is 'all' or 'urgent') */}
@@ -210,11 +178,11 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
           title="Dossiers Prioritaires Nécessitant une Décision Humaine"
           actions={<Badge tone="warning" dot>3 Arbitrages en attente</Badge>}
         >
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="hc-stagger grid grid-cols-1 gap-4 md:grid-cols-3">
             {pendingApp && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4 text-xs space-y-2">
+              <div className="rounded-xl border border-warning-200 bg-warning-50/50 p-4 text-xs space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-amber-900">Adhésion Établissement</span>
+                  <span className="font-semibold text-warning-800">Adhésion Établissement</span>
                   <Badge tone="warning">Examen requis</Badge>
                 </div>
                 <div className="font-bold text-slate-900">
@@ -232,9 +200,9 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
             )}
 
             {pendingSync && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4 text-xs space-y-2">
+              <div className="rounded-xl border border-warning-200 bg-warning-50/50 p-4 text-xs space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-amber-900">Synchronisation Soins</span>
+                  <span className="font-semibold text-warning-800">Synchronisation Soins</span>
                   <Badge tone="warning">En attente</Badge>
                 </div>
                 <div className="font-bold text-slate-900 truncate" title={pendingSync.purpose}>
@@ -252,9 +220,9 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
             )}
 
             {underReviewRes && (
-              <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4 text-xs space-y-2">
+              <div className="rounded-xl border border-info-200 bg-info-50/50 p-4 text-xs space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-blue-900">Projet de Recherche</span>
+                  <span className="font-semibold text-info-800">Projet de Recherche</span>
                   <Badge tone="info">Comité éthique</Badge>
                 </div>
                 <div className="font-bold text-slate-900">
@@ -294,7 +262,7 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
               return (
                 <div
                   key={org.id}
-                  className="rounded-lg border border-slate-200 bg-white p-4 text-xs space-y-2 shadow-xs"
+                  className="rounded-xl border border-slate-200 bg-surface p-4 text-xs space-y-2 shadow-card"
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-slate-900 truncate" title={org.name}>

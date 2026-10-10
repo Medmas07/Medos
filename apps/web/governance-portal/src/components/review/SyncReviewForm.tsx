@@ -171,7 +171,7 @@ export function SyncReviewForm({ context: request, reviewer, reviewerName }: Syn
 
       <ul className="space-y-2" aria-label="Contrôles préalables">
         {checks.map((check) => (
-          <li key={check.id} className="rounded-md border border-slate-200 bg-slate-50 p-2.5">
+          <li key={check.id} className="rounded-xl border border-slate-200 bg-slate-50 p-2.5">
             <div className="flex items-center justify-between gap-2">
               <span className="font-semibold text-slate-800">{check.label}</span>
               <Badge tone={CHECK_BADGES[check.state].tone} dot>

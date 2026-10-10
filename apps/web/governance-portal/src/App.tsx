@@ -4,6 +4,7 @@ import {
   Badge,
   DemoBanner,
   SideNav,
+  ThemeToggle,
   type SideNavSection,
 } from '@hackcure/design-system'
 import { OverviewView } from './components/views/OverviewView'
@@ -184,12 +185,14 @@ export default function App() {
         </DemoBanner>
       }
       navigation={<SideNav label="Navigation principale" sections={navigationSections} />}
+      toolbar={<ThemeToggle />}
+      pageKey={currentView}
       sidebarFooter={
         <div className="space-y-1">
-          <div className="font-semibold text-slate-800">Pr Olfa Hamdi</div>
-          <div className="text-slate-500">Réviseure de gouvernance (usr-olfa)</div>
-          <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-slate-600">
-            <span className="size-2 rounded-full bg-emerald-500" />
+          <div className="font-semibold text-ink">Pr Olfa Hamdi</div>
+          <div className="text-ink-muted">Réviseure de gouvernance (usr-olfa)</div>
+          <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-ink-soft">
+            <span className="size-2 rounded-full bg-success-600" />
             <span>Nœud de Gouvernance en ligne</span>
           </div>
         </div>
