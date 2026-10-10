@@ -92,6 +92,8 @@ export interface GovernanceDecision {
   rationale: string
   conditions: string[]
   validUntil: string | null
+  /** True for a decision recorded only in local portal state (HC-073), never persisted. */
+  simulated?: boolean
 }
 
 export interface GovernanceAuditEvent {
@@ -102,6 +104,8 @@ export interface GovernanceAuditEvent {
   subjectType: SubjectType
   subjectId: string
   organizationIds: string[]
+  /** True for an event recorded only in local portal state (HC-073), never persisted. */
+  simulated?: boolean
 }
 
 export interface AnchoredPayload {
@@ -147,6 +151,7 @@ export interface PersonInfo {
   firstName: string
   lastName: string
   role?: string
+  organizationId?: string
 }
 
 export interface PatientInfo {

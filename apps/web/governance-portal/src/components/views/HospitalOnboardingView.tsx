@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import {
   Badge,
   Button,
@@ -8,9 +8,18 @@ import {
   Table,
 } from '@hackcure/design-system'
 import { governanceService } from '../../services/governanceService'
+import { isAwaitingReview } from '../../services/hospitalReview'
+import { reviewStore } from '../../services/reviewStore'
 import type { HospitalApplication } from '../../types/governance'
+import { HospitalReviewForm } from '../review/HospitalReviewForm'
+
+/** The reviewer signed in to this demo portal (fictional, HC-005). */
+const REVIEWER_ID = 'usr-olfa'
 
 export function HospitalOnboardingView() {
+  // Re-render when a simulated decision is recorded or the demo is reset (HC-073).
+  const reviewState = useSyncExternalStore(reviewStore.subscribe, reviewStore.getSnapshot)
+  const simulatedCount = reviewState.decisions.length
   const applications = governanceService.getHospitalApplications()
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved'>('all')
   const [selectedAppId, setSelectedAppId] = useState<string>('app-hospital-c')
@@ -24,6 +33,9 @@ export function HospitalOnboardingView() {
   const selectedApp = applications.find((a) => a.id === selectedAppId)
   const selectedOrg = selectedApp ? governanceService.getOrganization(selectedApp.organizationId) : undefined
   const selectedDecision = selectedApp ? governanceService.getDecision(selectedApp.decisionId) : undefined
+  const decisionEvent = selectedDecision
+    ? governanceService.getAuditEvents().find((e) => e.subjectId === selectedDecision.id)
+    : undefined
 
   return (
     <div className="space-y-6">
@@ -32,7 +44,12 @@ export function HospitalOnboardingView() {
         title="Dossiers d'Adhésion des Établissements"
         description="Instruction des demandes de raccordement des hôpitaux et cliniques à l'écosystème fédéré. Les hôpitaux conservent le contrôle exclusif de leurs données sources."
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {simulatedCount > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => reviewStore.reset()}>
+                Réinitialiser la démo ({simulatedCount} décision{simulatedCount > 1 ? 's' : ''} simulée{simulatedCount > 1 ? 's' : ''})
+              </Button>
+            )}
             <Button
               variant={filter === 'all' ? 'primary' : 'secondary'}
               size="sm"
@@ -88,6 +105,9 @@ export function HospitalOnboardingView() {
                     if (app.status === 'approved') {
                       return <Badge tone="success" dot>Approuvé</Badge>
                     }
+                    if (app.status === 'rejected') {
+                      return <Badge tone="danger" dot>Rejeté</Badge>
+                    }
                     return <Badge tone="neutral">{app.status}</Badge>
                   },
                 },
@@ -138,10 +158,10 @@ export function HospitalOnboardingView() {
                 <span className="text-xs text-slate-500">
                   Déposé le {new Date(selectedApp.submittedAt).toLocaleDateString('fr-TN')} par {governanceService.getPersonName(selectedApp.submittedById)}
                 </span>
-                {selectedApp.status === 'human_review' ? (
+                {isAwaitingReview(selectedApp) ? (
                   <Badge tone="warning" dot>Examen requis</Badge>
                 ) : (
-                  <Badge tone="success">Décision enregistrée</Badge>
+                  <Badge tone={selectedApp.status === 'rejected' ? 'danger' : 'success'}>Décision enregistrée</Badge>
                 )}
               </div>
 
@@ -171,8 +191,10 @@ export function HospitalOnboardingView() {
                         ) : (
                           <p className="mt-1 text-slate-500">
                             {step.status === 'pending'
-                              ? 'En attente de conclusion par Pr Olfa Hamdi.'
-                              : 'Aucune anomalie détectée.'}
+                              ? `En attente de conclusion par ${governanceService.getPersonName(step.reviewerId ?? null)}.`
+                              : step.step === 'human_review'
+                                ? `Décision rendue par ${governanceService.getPersonName(step.reviewerId ?? null)}.`
+                                : 'Aucune anomalie détectée.'}
                           </p>
                         )}
                       </div>
@@ -233,21 +255,53 @@ export function HospitalOnboardingView() {
 
               {/* Decision Section */}
               {selectedDecision ? (
-                <div className="rounded-md border border-success-200 bg-success-50 p-3 text-xs">
-                  <div className="font-semibold text-success-800">
-                    Décision de Gouvernance : {selectedDecision.outcome === 'approved' ? 'Approuvée' : 'Rejetée'}
+                <div
+                  className={`rounded-md border p-3 text-xs ${
+                    selectedDecision.outcome === 'approved'
+                      ? 'border-success-200 bg-success-50'
+                      : 'border-danger-200 bg-danger-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span
+                      className={`font-semibold ${
+                        selectedDecision.outcome === 'approved' ? 'text-success-800' : 'text-danger-800'
+                      }`}
+                    >
+                      Décision de Gouvernance : {selectedDecision.outcome === 'approved' ? 'Approuvée' : 'Rejetée'}
+                    </span>
+                    {selectedDecision.simulated && <DemoBadge>Simulée — non persistée</DemoBadge>}
                   </div>
-                  <p className="mt-1 text-success-700">« {selectedDecision.rationale} »</p>
+                  <p className="mt-1 text-slate-700">« {selectedDecision.rationale} »</p>
+                  {selectedDecision.conditions.length > 0 && (
+                    <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-slate-700">
+                      {selectedDecision.conditions.map((c) => (
+                        <li key={c}>{c}</li>
+                      ))}
+                    </ul>
+                  )}
                   <p className="mt-1 text-slate-500">
                     Validée par {governanceService.getPersonName(selectedDecision.decidedById)} le {new Date(selectedDecision.decidedAt).toLocaleDateString('fr-TN')}
+                    {decisionEvent && <> • Événement d’audit {decisionEvent.id}</>}
                   </p>
+                  {selectedDecision.simulated && (
+                    <p className="mt-1.5 text-slate-500">
+                      Décision enregistrée dans l’état local du portail uniquement : l’API de décision du Nœud de Gouvernance (HC-131) est planifiée, et aucune preuve n’est ancrée au registre.
+                      {selectedDecision.outcome === 'approved' && ' La génération de la configuration du nœud est hors périmètre.'}
+                    </p>
+                  )}
                 </div>
+              ) : isAwaitingReview(selectedApp) ? (
+                <HospitalReviewForm
+                  key={selectedApp.id}
+                  application={selectedApp}
+                  organizationName={selectedOrg?.name ?? selectedApp.organizationId}
+                  reviewer={governanceService.getPerson(REVIEWER_ID)}
+                  reviewerName={governanceService.getPersonName(REVIEWER_ID)}
+                />
               ) : (
-                <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs">
-                  <div className="font-semibold text-amber-900">En cours d'arbitrage par l'Autorité</div>
-                  <p className="mt-1 text-amber-800">
-                    Conformément aux invariants d'architecture, la décision finale appartient exclusivement aux réviseurs humains habilités (Pr Olfa Hamdi). L'avis de l'IA ne lie pas l'Autorité.
-                  </p>
+                <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                  Aucune décision n’est associée à ce dossier.
                 </div>
               )}
             </Card>
