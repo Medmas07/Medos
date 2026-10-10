@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-PLANNED mobile product for authorized clinician workflows serving physicians, nurses, and clinics. No mobile framework or application code exists.
+PLANNED mobile product for authorized clinician workflows serving physicians, nurses, and clinics. Flutter + Dart and an Android-first development path are CONFIRMED by [ADR-0004](../../../docs/decisions/ADR-0004-mobile-technology.md). No dependencies, generated platform project, or application code exists.
 
 ## Responsibilities and owned concepts
 
