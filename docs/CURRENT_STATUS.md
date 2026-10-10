@@ -14,14 +14,15 @@ Status is based on repository inspection, not product intent. Use the [shared vo
 - **Deployment/production preparation — IMPLEMENTED documentation/placeholders:** no deployed runtime or selected provider is implied.
 
 - **AI Services runtime skeleton — VALIDATED (local):** [`services/ai/`](../services/ai/README.md) is a FastAPI service with `GET /health`, framework-free Domain/Application layers, and pytest tests (use case, HTTP, layer boundaries). Its tests, ruff checks, and local `fastapi dev`/`fastapi run` servers were verified. It exposes no real AI capability and is not deployed.
+- **Hospital Node runtime skeleton — IMPLEMENTED:** [`instances/hospital-node/`](../instances/hospital-node/README.md) is a FastAPI app with empty Domain/Application/HTTP layers, pinned dependencies, and pytest tests (OpenAPI served, no product routes, layer boundaries). It exposes no product endpoint, holds no data, and is not deployed.
 - **AI provider port — IMPLEMENTED, provider MOCKED:** the provider-neutral `AiProvider` port (HC-151) lives in `services/ai/application/`. Its only adapter is a deterministic mock, reported at `GET /ai-provider`. Outputs carry provenance and stay pending human review. No real model is called.
 
 ## Not implemented
 
 - **Web products — PLANNED:** Hospital Portal, Governance Portal, and Research Portal contain documentation only. Their technology (React + TypeScript + Vite SPA) is CONFIRMED by [ADR-0001](decisions/ADR-0001-web-frontend-technology.md), but no portal has been scaffolded.
 - **Mobile products — PLANNED:** Patient App and Clinician App contain documentation only. Flutter + Dart and the Android development path are CONFIRMED by [ADR-0004](decisions/ADR-0004-mobile-technology.md); no dependencies, application code, or generated platform project exists.
-- **Backend runtime strategy — CONFIRMED:** [ADR-0003](decisions/ADR-0003-backend-runtime-strategy.md) selects Python + FastAPI for every Node and service. Only the AI Services skeleton exists so far (see Implemented); no Node or other service runtime has been created.
-- **Hospital Node — PLANNED:** no runtime, local API, storage, identity, consent, audit, health endpoint, or Federation implementation.
+- **Backend runtime strategy — CONFIRMED:** [ADR-0003](decisions/ADR-0003-backend-runtime-strategy.md) selects Python + FastAPI for every Node and service. Only the AI Services and Hospital Node skeletons exist so far (see Implemented); no other runtime has been created.
+- **Hospital Node — PLANNED beyond its skeleton:** no local API, storage, identity, consent, audit, health endpoint, configuration, or Federation implementation.
 - **Governance Node — PLANNED:** no runtime, policy engine, authorization, audit persistence, or ledger adapter.
 - **DMI Adapter — PLANNED:** its Hospital Node-local boundary exists, but no port, mapping, configuration, fixture, or implementation.
 - **Federation Service — PLANNED:** no discovery, node identity, synchronization, query, authorization, or aggregation code. Its contracts are defined (HC-140) but not implemented.
@@ -33,7 +34,7 @@ Status is based on repository inspection, not product intent. Use the [shared vo
 - **Authentication, authorization, RBAC, and organization identity — PLANNED:** no production or demo implementation exists.
 - **Persistence and canonical/FHIR model — PLANNED:** no database, ORM, schema, FHIR server, or profile is selected.
 - **Communication contracts — mostly PLANNED:** three API contracts are defined: AI clinical extraction, [`clinical-extraction.v1.yaml`](../contracts/api/ai/clinical-extraction.v1.yaml) (HC-152); medication safety check, [`medication-safety-check.v1.yaml`](../contracts/api/medication-safety/medication-safety-check.v1.yaml) (HC-160); and SciAgents scientific investigation, [`scientific-investigation.v1.yaml`](../contracts/api/sciagents/scientific-investigation.v1.yaml) (HC-170). Only the clinical extraction contract has an implementation (MOCKED). Two Federation contracts are defined (HC-140): [`hospital-node-federation.v1.yaml`](../contracts/federation/hospital-node-federation.v1.yaml) and [`federated-patient-query.v1.yaml`](../contracts/federation/federated-patient-query.v1.yaml). They have no provider or implementation. No event or message schema exists.
-- **Product tests — mostly PLANNED:** only `services/ai/tests/` and the repository [contract tests](../tests/contracts/) exist; `tests/integration/` and `tests/e2e/` are empty placeholders.
+- **Product tests — mostly PLANNED:** only `services/ai/tests/`, `instances/hospital-node/tests/`, and the repository [contract tests](../tests/contracts/) exist; `tests/integration/` and `tests/e2e/` are empty placeholders.
 - **Product deployment — NOT IMPLEMENTED:** no production build, container image, package, hosting configuration, tunnel, or deployment exists.
 
 ## Mocked behavior

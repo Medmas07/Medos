@@ -186,7 +186,7 @@ AI is advisory, replaceable through ports, and subject to appropriate human revi
 | Research Portal | PLANNED | No UI code or notebook execution; stack decided by ADR-0001. |
 | Web design system | IMPLEMENTED | Tokens, components, and showcase at D1 (ADR-0002); no portal consumes it yet. |
 | Canonical demo data | MOCKED | Fictional JSON fixtures with integrity checks (ADR-0005); no product consumes them yet. |
-| Hospital Node | PLANNED | Boundary documented; runtime not implemented; stack decided by ADR-0003. |
+| Hospital Node | IMPLEMENTED (skeleton) | FastAPI runtime skeleton (HC-110) with empty layers and no product endpoint; health, configuration, and clinical APIs PLANNED; must provide the HC-140 Federation contract, not yet implemented. |
 | Governance Node | PLANNED | Boundary documented; runtime not implemented; stack decided by ADR-0003. |
 | DMI Adapter | PLANNED | Hospital-local boundary documented; no adapter. |
 | Federation Service | PLANNED | Contracts defined in `contracts/federation/` (HC-140); no runtime implementation; stack decided by ADR-0003. |
