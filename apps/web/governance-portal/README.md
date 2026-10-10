@@ -2,8 +2,8 @@
 
 ## Purpose and status
 
-- **IMPLEMENTED (D1):** Governance Portal shell (HC-070, [#71](https://github.com/Medmas07/Hackcure_hackathon/issues/71)), Governance dashboard (HC-071, [#72](https://github.com/Medmas07/Hackcure_hackathon/issues/72)), pending hospital approval list (HC-072, [#73](https://github.com/Medmas07/Hackcure_hackathon/issues/73)), hospital approval review (HC-073, [#74](https://github.com/Medmas07/Hackcure_hackathon/issues/74)), synchronization request list (HC-074, [#75](https://github.com/Medmas07/Hackcure_hackathon/issues/75)), approve/reject synchronization request (HC-076, [#77](https://github.com/Medmas07/Hackcure_hackathon/issues/77)), research access request list (HC-077, [#78](https://github.com/Medmas07/Hackcure_hackathon/issues/78)), and research access request review (HC-078, [#79](https://github.com/Medmas07/Hackcure_hackathon/issues/79)) at initial depth D1. Built with React 19 + TypeScript + Vite SPA as decided in [ADR-0001](../../../docs/decisions/ADR-0001-web-frontend-technology.md) and styled with Tailwind CSS v4 and the shared [design system](../../../design-system/README.md) ([ADR-0002](../../../docs/decisions/ADR-0002-web-design-system.md)).
-- **Checked on 2026-10-10:** `npm run build`, `npm run lint`, and `npm test` (Vitest suite covering canonical demo-data loading, the pending hospital approval list, dashboard metrics calculation, federated nodes status, hash verification, state behavior, the hospital review rules, the synchronization list rules, the synchronization review rules, the research access request list rules, and the research review rules) all pass. The three review flows and the synchronization list were also driven in headless Chrome. Fixed dev port is `5174`.
+- **IMPLEMENTED (D1):** Governance Portal shell (HC-070, [#71](https://github.com/Medmas07/Hackcure_hackathon/issues/71)), Governance dashboard (HC-071, [#72](https://github.com/Medmas07/Hackcure_hackathon/issues/72)), pending hospital approval list (HC-072, [#73](https://github.com/Medmas07/Hackcure_hackathon/issues/73)), hospital approval review (HC-073, [#74](https://github.com/Medmas07/Hackcure_hackathon/issues/74)), synchronization request list (HC-074, [#75](https://github.com/Medmas07/Hackcure_hackathon/issues/75)), approve/reject synchronization request (HC-076, [#77](https://github.com/Medmas07/Hackcure_hackathon/issues/77)), research access request list (HC-077, [#78](https://github.com/Medmas07/Hackcure_hackathon/issues/78)), research access request review (HC-078, [#79](https://github.com/Medmas07/Hackcure_hackathon/issues/79)), and governance audit timeline (HC-079, [#80](https://github.com/Medmas07/Hackcure_hackathon/issues/80)) at initial depth D1. Built with React 19 + TypeScript + Vite SPA as decided in [ADR-0001](../../../docs/decisions/ADR-0001-web-frontend-technology.md) and styled with Tailwind CSS v4 and the shared [design system](../../../design-system/README.md) ([ADR-0002](../../../docs/decisions/ADR-0002-web-design-system.md)).
+- **Checked on 2026-10-10:** `npm run build`, `npm run lint`, and `npm test` (Vitest suite covering canonical demo-data loading, the pending hospital approval list, dashboard metrics calculation, federated nodes status, hash verification, state behavior, the hospital review rules, the synchronization list rules, the synchronization review rules, the research access request list rules, the research review rules, and the audit timeline rules) all pass. The three review flows, the synchronization list, and the audit timeline were also driven in headless Chrome. Fixed dev port is `5174`.
 - **Mocking strategy:** Consumes canonical fictional fixtures from `demo-data/` ([ADR-0005](../../../docs/decisions/ADR-0005-canonical-demo-data.md)). Simulated local ledger proofs (SHA-256) and advisory AI annotations are explicitly marked with `DemoBanner` and `DemoBadge`. No direct access to hospital clinical databases.
 
 ## Pending hospital approval list (HC-072)
@@ -86,6 +86,22 @@ An approval states exactly what it authorizes, in the shape the [research execut
 After a confirmation step and a short simulated delay, the decision and its `decision_recorded` audit event (references only) join the local store used by HC-073 and HC-076: the list status, sidebar badge, dashboard counts, and audit views follow, and **Réinitialiser la démo** or a reload returns to the fixtures. A rejection is shown in red; previously every decision was shown as approved.
 
 Not done at D1: nothing is sent to the Governance Node (its research API, HC-133, is PLANNED), the Research Service, or any Hospital Node, so a simulated approval authorizes no execution. No ledger proof is created, and the reviewer is the fictional demo reviewer, not an authenticated user. The request list itself is HC-077.
+
+## Governance audit timeline (HC-079)
+
+IMPLEMENTED at D1, from the canonical fixtures and the session's simulated decisions. **Piste d’Audit & Registre** shows the Governance Node's audit events as a timeline, newest first, under the ledger proofs:
+
+- Each event says what happened in plain language: `Décision : synchronisation rejetée`, `Demande d’adhésion déposée`, `Demande de synchronisation reçue`. For a decision it resolves the request it was about (`sync-003`) and its outcome, coloured green for approved and red for rejected.
+- The actor (or "reçue automatiquement"), the event id, and the organizations involved.
+- Whether a ledger proof anchors the event, with **Vérifier** opening it in the proof verifier, or `Non ancré`.
+- Filters by domain (adhésions, synchronisations, recherche) with counts, and by organization; a combination with no event shows an empty state with a way back.
+- A decision recorded in the session (HC-073, HC-076, HC-078) appears at once at the top, in the demo colour and labelled `Simulé — non persisté`.
+
+The rules live in `src/services/auditTimeline.ts` and are unit-tested, including a check that no event carries patient identity. Events hold references only. This is the Governance Node's own trail: each Hospital Node keeps its own audit of data access (HC-116), which is not centralized here. An event whose decision cannot be resolved is still listed, as `Décision enregistrée`.
+
+The dashboard's "Dernières Actions" card now uses the same newest-first order; it previously showed the six oldest events.
+
+Not done at D1: events come from fixtures and local state, not from the Governance Node audit API (HC-134 is PLANNED); simulated decisions get no ledger proof.
 
 ## Responsibilities and owned concepts
 

@@ -8,6 +8,7 @@ import {
   PageHeader,
   Table,
 } from '@hackcure/design-system'
+import { auditTimeline } from '../../services/auditTimeline'
 import { governanceService } from '../../services/governanceService'
 import type { GovernanceAuditEvent, GovernanceDecision } from '../../types/governance'
 
@@ -24,7 +25,13 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
   const research = governanceService.getResearchAccessRequests()
   const nodes = governanceService.getFederatedHospitalNodes()
   const decisions = governanceService.getDecisions()
-  const auditEvents = governanceService.getAuditEvents().slice(0, 6)
+  // The six most recent events (HC-079 ordering); fixtures are stored oldest first.
+  const auditEvents = auditTimeline(governanceService.getAuditEvents(), {
+    decision: (id) => governanceService.getDecision(id),
+    proofForEvent: (id) => governanceService.getProofForEvent(id),
+  })
+    .slice(0, 6)
+    .map((entry) => entry.event)
   const notifications = governanceService.getReviewerNotifications('usr-olfa')
 
   const pendingApp = applications.find((a) => a.status === 'human_review')
