@@ -67,6 +67,18 @@ class InMemoryNotificationStore(NotificationStorePort, PreferenceStorePort):
                 if e.payload.recipient_ref == recipient_ref
             ]
 
+    def list_alerts_for_clinician(
+        self, clinician_ref: str
+    ) -> list[NotificationEvent]:
+        """Returns alert-category events addressed to the given clinician."""
+        with self._lock:
+            return [
+                e
+                for e in self._events.values()
+                if e.payload.recipient_ref == clinician_ref
+                and e.payload.category == NotificationCategory.ALERT
+            ]
+
     def set_preference(self, preference: RecipientPreference) -> None:
         with self._lock:
             self._preferences[preference.recipient_ref] = preference

@@ -2,7 +2,9 @@
 
 ## Purpose and status
 
-**IMPLEMENTED (D2)** capability for authorized notifications to patients, relatives, clinicians, researchers, hospital administrators, and governance reviewers per [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md) (HC-202).
+**IMPLEMENTED (D2/D3)** capability for authorized notifications to patients, relatives, clinicians, researchers, hospital administrators, and governance reviewers per [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md) (HC-202, HC-203).
+
+HC-203 (D3) adds real-time clinician alert queries and a polling-based SSE stream, plus a `ClinicianAlertsView` in the Hospital Portal.
 
 It runs as a standalone Python + FastAPI service on port 8700, adhering strictly to Clean / Hexagonal Architecture.
 
@@ -15,7 +17,7 @@ infrastructure (config) -> adapters (HTTP, in-memory store, channel providers) -
 ```
 
 - **Domain (`domain/`)**: Pure Python domain models, value objects, and invariant validation rules. Zero framework, database, or external library dependencies.
-- **Application (`application/`)**: Use cases (`IngestNotificationEventUseCase`, `GetNotificationEventStatusUseCase`, `ListRecipientNotificationsUseCase`) and ports (`NotificationStorePort`, `DeliveryProviderPort`, `PreferenceStorePort`).
+- **Application (`application/`)**: Use cases (`IngestNotificationEventUseCase`, `GetNotificationEventStatusUseCase`, `ListRecipientNotificationsUseCase`, `ListClinicianAlertsUseCase`) and ports (`NotificationStorePort`, `DeliveryProviderPort`, `PreferenceStorePort`).
 - **Adapters (`adapters/`)**:
   - `inbound/http/`: FastAPI route handlers for contract endpoints and `/health`.
   - `outbound/`: Thread-safe `InMemoryNotificationStore` (seeded from canonical `demo-data/notifications.json`) and delivery channel adapters (`in_app`, `push`, `email`, `sms`).
@@ -49,13 +51,16 @@ infrastructure (config) -> adapters (HTTP, in-memory store, channel providers) -
 | `POST` | `/v1/events/notifications` | Ingest an event; returns `202 Accepted` with receipt or `400` Problem details. |
 | `GET` | `/v1/events/notifications/{event_id}` | Check processing and per-channel delivery status. |
 | `GET` | `/v1/recipients/{recipient_ref}/notifications` | List notifications for an authorized recipient (newest first). |
-| `GET` | `/health` | Liveness and capability discovery endpoint (depth D2). |
+| `GET` | `/v1/clinicians/{clinician_ref}/alerts` | **HC-203** List advisory alert-category notifications for a clinician, ordered by priority then recency. |
+| `GET` | `/v1/clinicians/{clinician_ref}/alerts/stream` | **HC-203** SSE stream of clinician alerts (polling-based, D3, not broker-backed). |
+| `GET` | `/health` | Liveness and capability discovery endpoint (depth D3). |
 
-## Integration depth D2 limitations
+## Integration depth D2/D3 limitations
 
 - **In-memory persistence**: Events, deliveries, and preferences are stored in process memory (lost on restart), optionally seeded from canonical demo fixtures.
 - **Simulated push/email channels**: Channel adapters simulate delivery dispatch; real mobile push (APNs/FCM) is sequenced under HC-204.
 - **Unauthenticated callers**: Callers declare recipient and source identities without JWT / OAuth verification (auth foundation is sequenced under HC-210/HC-211).
+- **SSE is polling-based (D3)**: `/alerts/stream` polls the in-memory store at a configurable interval; it is not backed by a real message broker, WebSocket, or push server. This is explicitly labelled in response headers (`X-HC-203-Boundary: D3-SSE-simulation-polling-based`). Real-time broker delivery is out of scope for D3.
 
 ## Development and testing
 

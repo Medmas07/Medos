@@ -134,3 +134,30 @@ class ListRecipientNotificationsUseCase:
         events = self._store.list_events_for_recipient(recipient_ref)
         # Order newest first
         return sorted(events, key=lambda e: e.occurred_at, reverse=True)
+
+
+class ListClinicianAlertsUseCase:
+    """Lists advisory clinical alerts for a clinician recipient.
+
+    HC-203: Real-time clinician alerts (D3).
+    Returns alert-category notifications targeted at the given clinician,
+    ordered by priority (urgent > high > normal > low) then newest first.
+    All returned events carry advisory=True metadata — they are informational
+    and must not be acted upon without human clinician review.
+    """
+
+    _PRIORITY_ORDER = {"urgent": 0, "high": 1, "normal": 2, "low": 3}
+
+    def __init__(self, store: NotificationStorePort) -> None:
+        self._store = store
+
+    def execute(self, clinician_ref: str) -> list[NotificationEvent]:
+        events = self._store.list_alerts_for_clinician(clinician_ref)
+        return sorted(
+            events,
+            key=lambda e: (
+                self._PRIORITY_ORDER.get(e.payload.priority.value, 99),
+                # Negate timestamp for descending order
+                -e.occurred_at.timestamp(),
+            ),
+        )
