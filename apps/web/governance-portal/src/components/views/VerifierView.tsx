@@ -39,8 +39,8 @@ export function VerifierView({ initialProofId = 'proof-003' }: VerifierViewProps
       setIsVerifying(true)
       try {
         const parsed = JSON.parse(tamperedPayloadText)
-        // Compute canonical string sorted by keys matching check_fixtures.py
-        const canonicalStr = JSON.stringify(parsed, Object.keys(parsed).sort())
+        // Same canonical form as check_fixtures.py, keys sorted at every depth.
+        const canonicalStr = governanceService.canonicalJson(parsed)
         const hash = await governanceService.computeSha256(canonicalStr)
         setComputedHash(hash)
       } catch {

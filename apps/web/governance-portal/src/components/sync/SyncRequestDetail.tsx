@@ -85,7 +85,7 @@ export function SyncRequestDetail({ request, reviewForm }: SyncRequestDetailProp
                 Synchronisation Rejetée
               </Badge>
             )}
-            <DemoBadge label="D1 — Fictif" />
+            <DemoBadge>D1 — Fictif</DemoBadge>
           </div>
         </div>
       }
