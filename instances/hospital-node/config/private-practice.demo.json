@@ -1,0 +1,7 @@
+{
+  "notice": "Fictional demo configuration for the HC-005 dataset. Ids match demo-data/organizations.json; the port matches the Federation registry seed. Not a production configuration.",
+  "node_ref": "node-private-practice",
+  "organization_ref": "org-private-practice",
+  "port": 8104,
+  "storage_dir": "../.storage/private-practice"
+}
