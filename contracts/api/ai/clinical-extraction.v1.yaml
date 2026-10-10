@@ -1,0 +1,266 @@
+openapi: 3.1.0
+info:
+  title: AI Services — Clinical Extraction
+  version: 1.0.0
+  description: |
+    Contract HC-152, version 1. Turns clinical source text (a consultation
+    transcript, a physician note, or a lab report) into a **draft** of
+    structured items for clinician review.
+
+    Boundary rules carried by this contract:
+
+    - Every result is advisory. `review_status` is always
+      `pending_clinician_review`, and AI Services never marks an item as
+      confirmed. Confirmation happens in the consuming clinical workflow,
+      by an accountable clinician, outside AI Services.
+    - Every result carries provenance: which extractor produced it, whether
+      it is mocked, and when it was generated.
+    - Requests carry opaque references (`patient_ref`, `encounter_ref`,
+      `requested_by`), never names or other direct identifiers.
+    - The caller is responsible for holding an authorization covering the
+      source text it sends. The authentication convention, the permitted
+      callers, and where AI Services is hosted relative to the Hospital
+      Node are OPEN (see docs/OPEN_QUESTIONS.md).
+
+    Status: at D1 the only implementation is a deterministic fixture
+    extractor (`provenance.extractor.kind = deterministic_fixture`,
+    `provenance.mocked = true`). It is not clinical intelligence.
+servers:
+  - url: http://localhost:8600
+    description: Local AI Services runtime (development and preview only).
+paths:
+  /v1/clinical-extractions:
+    post:
+      operationId: createClinicalExtraction
+      summary: Extract a draft of structured clinical items from source text.
+      description: |
+        Synchronous. Returns `200` with a draft, which may contain no items.
+        An empty `items` list is a valid result and means nothing was
+        extracted; it does not mean the source is clinically unremarkable.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExtractionRequest"
+      responses:
+        "200":
+          description: Draft extraction awaiting clinician review.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtractionDraft"
+        "400":
+          description: The request does not match this contract.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "503":
+          description: No extractor is available to process the request.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+components:
+  schemas:
+    ExtractionRequest:
+      type: object
+      additionalProperties: false
+      required: [patient_ref, requested_by, source]
+      properties:
+        patient_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        encounter_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        requested_by:
+          description: Opaque reference to the accountable clinician who will review the draft.
+          allOf:
+            - $ref: "#/components/schemas/OpaqueRef"
+        source:
+          $ref: "#/components/schemas/ExtractionSource"
+
+    ExtractionSource:
+      type: object
+      additionalProperties: false
+      required: [type, text]
+      properties:
+        type:
+          $ref: "#/components/schemas/SourceType"
+        text:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        language:
+          description: BCP 47 language tag of the text, if known.
+          type: string
+          pattern: "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+
+    SourceType:
+      type: string
+      enum: [transcript, physician_note, lab_report]
+
+    OpaqueRef:
+      description: Opaque identifier. Must not contain a name or other direct identifier.
+      type: string
+      pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+
+    ExtractionDraft:
+      type: object
+      additionalProperties: false
+      required:
+        - extraction_id
+        - contract_version
+        - patient_ref
+        - requested_by
+        - review_status
+        - advisory
+        - notice
+        - items
+        - missing_information
+        - provenance
+      properties:
+        extraction_id:
+          type: string
+          format: uuid
+        contract_version:
+          const: "1.0"
+        patient_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        encounter_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        requested_by:
+          $ref: "#/components/schemas/OpaqueRef"
+        review_status:
+          description: AI Services only ever produces drafts.
+          const: pending_clinician_review
+        advisory:
+          const: true
+        notice:
+          type: string
+          minLength: 1
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExtractedItem"
+        missing_information:
+          type: array
+          items:
+            $ref: "#/components/schemas/MissingInformation"
+        provenance:
+          $ref: "#/components/schemas/Provenance"
+
+    ExtractedItem:
+      type: object
+      additionalProperties: false
+      required: [item_id, category, text, value, unit, abnormal, confidence, evidence]
+      properties:
+        item_id:
+          type: string
+          minLength: 1
+        category:
+          type: string
+          enum:
+            - symptom
+            - observation
+            - measurement
+            - medication
+            - diagnosis_mentioned
+            - follow_up_action
+        text:
+          description: Human-readable statement of the item, for display in review.
+          type: string
+          minLength: 1
+        value:
+          description: Numeric value for a measurement; null otherwise.
+          type: [number, "null"]
+        unit:
+          description: Unit as written in the source (UCUM coding is OPEN); null when not applicable.
+          type: [string, "null"]
+        abnormal:
+          description: Suggested flag for review only, never a clinical finding; null when not assessed.
+          type: [boolean, "null"]
+        confidence:
+          description: Extractor confidence in [0, 1]; null when the extractor provides none.
+          type: [number, "null"]
+          minimum: 0
+          maximum: 1
+        evidence:
+          $ref: "#/components/schemas/Evidence"
+
+    Evidence:
+      description: The exact span of source text that supports the item.
+      type: object
+      additionalProperties: false
+      required: [quote, start, end]
+      properties:
+        quote:
+          type: string
+          minLength: 1
+        start:
+          description: Zero-based start offset in `source.text` (inclusive).
+          type: integer
+          minimum: 0
+        end:
+          description: End offset in `source.text` (exclusive).
+          type: integer
+          minimum: 1
+
+    MissingInformation:
+      description: Something a clinician would normally expect that the source does not mention.
+      type: object
+      additionalProperties: false
+      required: [topic, prompt]
+      properties:
+        topic:
+          type: string
+          minLength: 1
+        prompt:
+          description: Question the clinician may want to ask or record.
+          type: string
+          minLength: 1
+
+    Provenance:
+      type: object
+      additionalProperties: false
+      required: [extractor, mocked, generated_at, source_type]
+      properties:
+        extractor:
+          type: object
+          additionalProperties: false
+          required: [kind, name, version]
+          properties:
+            kind:
+              type: string
+              enum: [deterministic_fixture, model]
+            name:
+              type: string
+              minLength: 1
+            version:
+              type: string
+              minLength: 1
+        mocked:
+          description: True when the result comes from fixtures rather than a real extractor.
+          type: boolean
+        generated_at:
+          type: string
+          format: date-time
+        source_type:
+          $ref: "#/components/schemas/SourceType"
+
+    Problem:
+      description: RFC 9457 problem details.
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+          enum: [invalid_request, extraction_unavailable]

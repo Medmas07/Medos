@@ -120,7 +120,7 @@ Patient access grants, revocation, delegation, and restriction/erasure request e
 
 ## 11. Clinician workflows
 
-Consultation workspaces, consent-aware speech-to-text, deterministic adaptive intake, extraction review, medication safety warnings, alerts, and priority queues are PLANNED. Clinical extraction requires clinician validation. Medication warnings must use deterministic rules or validated sources rather than an LLM alone. AI must not independently diagnose, prescribe, or triage critical cases.
+Consultation workspaces, consent-aware speech-to-text, deterministic adaptive intake, extraction review, medication safety warnings, alerts, and priority queues are PLANNED. Clinical extraction requires clinician validation. Medication warnings must use deterministic rules or validated sources rather than an LLM alone; the [medication safety check contract](../contracts/api/medication-safety/medication-safety-check.v1.yaml) (HC-160) encodes this by allowing only `deterministic_rule_set` or `validated_source` as the safety source and keeping AI explanations optional and advisory. Its provider is OPEN. AI must not independently diagnose, prescribe, or triage critical cases.
 
 ## 12. Research compute-to-data
 
@@ -193,7 +193,7 @@ AI is advisory, replaceable through ports, and subject to appropriate human revi
 | Notification Service | PLANNED | No provider or runtime implementation; stack decided by ADR-0003. |
 | SciAgents Integration | PLANNED | SciAgents exists externally; connector is absent. |
 | Immutable Audit Ledger | OPTIONAL / PLANNED | Governance-only concept; no adapter or ledger. |
-| AI Services | IMPLEMENTED (skeleton) | FastAPI runtime with `/health` and tests (HC-150); no AI capability, library, or provider. |
+| AI Services | IMPLEMENTED (skeleton) / MOCKED extraction | FastAPI runtime (HC-150); provider-neutral `AiProvider` port with a deterministic mock adapter (HC-151); clinical extraction contract v1 with a deterministic fixture mock (HC-152); no real AI capability, library, or provider. |
 | Authentication and persistence | PLANNED | No implementation or selected technology. |
 | IoT | OPTIONAL | PlatformIO placeholder is prepared; hardware/framework/protocol are OPEN. |
 | GitHub templates/workflows | IMPLEMENTED | Templates and manual placeholder workflows exist; product CI is not configured. |

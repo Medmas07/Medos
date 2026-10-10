@@ -46,6 +46,8 @@ The split mirrors ownership: clinical records live in the file of the organizati
 | Synchronization request A ↔ B, approval, audit, simulated proof | `sync-001` (starts `pending`); examples `dec-sync-002`, `evt-003`, `proof-003` |
 | Research project, governance approval, compute-to-data, controlled result, SciAgents | `proj-001`, `rar-001`, `job-001`, `res-001`, `inv-001`; `proj-002` is under review |
 
+**Known divergence:** the MOCKED AI extractor in [`services/ai/`](../services/ai/README.md) (HC-152) was written before this dataset and recognises its own English transcript (headache, fever, "Medication A"), not `script-a-2026-10-10`. Until a follow-up aligns it, the Clinician App demo and the AI service tell different consultation stories. The [medication-safety contract](../contracts/api/medication-safety/medication-safety-check.v1.yaml) examples use the generic role names; map them through `scenarioRoles`.
+
 The demo creates new state at runtime (the new consultation, the step-20 approval, a new research project). Products keep that state locally until the Milestone 2 mock APIs exist.
 
 ## Commands

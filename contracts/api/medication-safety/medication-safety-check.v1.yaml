@@ -1,0 +1,482 @@
+openapi: 3.1.0
+info:
+  title: Medication Safety Check
+  version: 1.0.0
+  description: |
+    Contract HC-160, version 1. Checks a proposed medication against a
+    patient's current medications and returns drug–drug interaction
+    warnings for clinician review.
+
+    Boundary rules carried by this contract:
+
+    - **The safety source is deterministic rules or a validated source,
+      never an LLM.** `provenance.engine.kind` and every warning's
+      `rule_source.kind` only allow `deterministic_rule_set` or
+      `validated_source`.
+    - **AI explanation is optional and separate.** A warning may carry an
+      `explanation` produced by AI Services (HC-164). It is advisory, it is
+      never the reason a warning exists, and the warning stays complete
+      without it.
+    - **The clinician decides.** The check never blocks or approves a
+      prescription. `review_status` is always `pending_clinician_review`.
+    - **"No warnings" is not "safe".** `outcome: no_warnings_found` only
+      means the rule source found no interaction among the medications it
+      could evaluate. Medications it could not evaluate are listed in
+      `unevaluated_medications`. If the check cannot run, consumers must
+      show "check not performed", never "no warnings".
+    - **Stateless and minimised.** The caller sends the authorized
+      medication history it already holds, with the organization each
+      entry came from. The provider never fetches hospital data itself,
+      and requests carry opaque references, never names.
+
+    v1 covers drug–drug interactions only. Allergy, dose, renal, and
+    pregnancy checks are not part of this version.
+
+    Status: this contract has no implementation. Which component provides
+    it is OPEN (see docs/OPEN_QUESTIONS.md). Demo fixtures are HC-161 and
+    the deterministic engine is HC-162.
+paths:
+  /v1/medication-safety-checks:
+    post:
+      operationId: createMedicationSafetyCheck
+      summary: Check a proposed medication against current medications.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SafetyCheckRequest"
+            examples:
+              demoConflict:
+                summary: Fictional demo — Dr. X proposes Medication B for Patient A.
+                value:
+                  patient_ref: patient-a
+                  encounter_ref: encounter-a-001
+                  requested_by: dr-x
+                  proposed_medication:
+                    name: Medication B
+                    code: null
+                  current_medications:
+                    - statement_ref: med-stmt-hospital-b-001
+                      medication:
+                        name: Medication A
+                        code: null
+                      status: active
+                      source:
+                        organization_ref: hospital-b
+                        recorded_at: "2026-09-02T09:30:00Z"
+      responses:
+        "200":
+          description: Check completed. Warnings, if any, await clinician review.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SafetyCheckResult"
+              examples:
+                warningsFound:
+                  summary: Fictional demo — Medication B interacts with Medication A from Hospital B.
+                  value:
+                    check_id: 4f6b1c1e-2a8d-4c55-9a43-0d5c6f1b7e21
+                    contract_version: "1.0"
+                    patient_ref: patient-a
+                    encounter_ref: encounter-a-001
+                    requested_by: dr-x
+                    outcome: warnings_found
+                    review_status: pending_clinician_review
+                    notice: >-
+                      Potential interaction for clinician review. The prescribing
+                      decision belongs to the clinician.
+                    warnings:
+                      - warning_id: warning-1
+                        type: drug_drug_interaction
+                        severity: major
+                        summary: >-
+                          Fictional demo interaction between Medication B and
+                          Medication A.
+                        proposed_medication:
+                          name: Medication B
+                          code: null
+                        conflicting_statement_ref: med-stmt-hospital-b-001
+                        conflicting_medication:
+                          name: Medication A
+                          code: null
+                        conflicting_source:
+                          organization_ref: hospital-b
+                          recorded_at: "2026-09-02T09:30:00Z"
+                        rule_source:
+                          kind: deterministic_rule_set
+                          name: demo-interaction-rules
+                          version: "1.0.0"
+                          rule_id: demo-rule-medb-meda
+                          reference: null
+                        explanation: null
+                    unevaluated_medications: []
+                    provenance:
+                      engine:
+                        kind: deterministic_rule_set
+                        name: demo-medication-safety-engine
+                        version: "1.0.0"
+                      mocked: true
+                      evaluated_at: "2026-10-10T10:15:00Z"
+                noWarningsFound:
+                  summary: No interaction found among evaluable medications; one could not be evaluated.
+                  value:
+                    check_id: 9a0e7d52-6f1b-4b8e-8c1f-3e2d4a5b6c7d
+                    contract_version: "1.0"
+                    patient_ref: patient-a
+                    requested_by: dr-x
+                    outcome: no_warnings_found
+                    review_status: pending_clinician_review
+                    notice: >-
+                      No interaction found among the medications the rule source
+                      could evaluate. This is not a statement that the
+                      prescription is safe.
+                    warnings: []
+                    unevaluated_medications:
+                      - statement_ref: med-stmt-private-001
+                        medication:
+                          name: Medication C
+                          code: null
+                        reason: not_in_rule_source
+                    provenance:
+                      engine:
+                        kind: deterministic_rule_set
+                        name: demo-medication-safety-engine
+                        version: "1.0.0"
+                      mocked: true
+                      evaluated_at: "2026-10-10T10:16:00Z"
+        "400":
+          description: The request does not match this contract.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                invalidRequest:
+                  value:
+                    type: about:blank
+                    title: Invalid medication safety check request
+                    status: 400
+                    detail: "Invalid or missing fields: proposed_medication.name"
+                    code: invalid_request
+        "503":
+          description: |
+            The check could not be performed. Consumers must show that no
+            check was performed and must not present this as "no warnings".
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                unavailable:
+                  value:
+                    type: about:blank
+                    title: Medication safety check unavailable
+                    status: 503
+                    detail: The rule source is unavailable. No check was performed.
+                    code: safety_check_unavailable
+components:
+  schemas:
+    SafetyCheckRequest:
+      type: object
+      additionalProperties: false
+      required: [patient_ref, requested_by, proposed_medication, current_medications]
+      properties:
+        patient_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        encounter_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        requested_by:
+          description: Opaque reference to the accountable clinician.
+          allOf:
+            - $ref: "#/components/schemas/OpaqueRef"
+        proposed_medication:
+          $ref: "#/components/schemas/Medication"
+        current_medications:
+          description: |
+            Authorized medication history assembled by the caller, possibly
+            from several organizations. May be empty.
+          type: array
+          maxItems: 200
+          items:
+            $ref: "#/components/schemas/MedicationStatement"
+
+    Medication:
+      type: object
+      additionalProperties: false
+      required: [name, code]
+      properties:
+        name:
+          description: Display name as recorded at the source.
+          type: string
+          minLength: 1
+          maxLength: 200
+        code:
+          description: Terminology code, if the source provides one. The terminology (for example RxNorm or ATC) is OPEN.
+          oneOf:
+            - $ref: "#/components/schemas/Coding"
+            - type: "null"
+
+    Coding:
+      type: object
+      additionalProperties: false
+      required: [system, code]
+      properties:
+        system:
+          description: URI identifying the code system.
+          type: string
+          minLength: 1
+        code:
+          type: string
+          minLength: 1
+        display:
+          type: string
+
+    MedicationStatement:
+      type: object
+      additionalProperties: false
+      required: [statement_ref, medication, status, source]
+      properties:
+        statement_ref:
+          description: Opaque reference to the statement at its source, so warnings can point back to it.
+          allOf:
+            - $ref: "#/components/schemas/OpaqueRef"
+        medication:
+          $ref: "#/components/schemas/Medication"
+        status:
+          type: string
+          enum: [active, stopped, unknown]
+        source:
+          $ref: "#/components/schemas/StatementSource"
+
+    StatementSource:
+      description: Where the medication statement came from.
+      type: object
+      additionalProperties: false
+      required: [organization_ref]
+      properties:
+        organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        recorded_at:
+          type: string
+          format: date-time
+
+    OpaqueRef:
+      description: Opaque identifier. Must not contain a name or other direct identifier.
+      type: string
+      pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+
+    SafetyCheckResult:
+      type: object
+      additionalProperties: false
+      required:
+        - check_id
+        - contract_version
+        - patient_ref
+        - requested_by
+        - outcome
+        - review_status
+        - notice
+        - warnings
+        - unevaluated_medications
+        - provenance
+      properties:
+        check_id:
+          type: string
+          format: uuid
+        contract_version:
+          const: "1.0"
+        patient_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        encounter_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        requested_by:
+          $ref: "#/components/schemas/OpaqueRef"
+        outcome:
+          type: string
+          enum: [warnings_found, no_warnings_found]
+        review_status:
+          const: pending_clinician_review
+        notice:
+          type: string
+          minLength: 1
+        warnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Warning"
+        unevaluated_medications:
+          description: Current medications the rule source could not evaluate.
+          type: array
+          items:
+            $ref: "#/components/schemas/UnevaluatedMedication"
+        provenance:
+          $ref: "#/components/schemas/Provenance"
+      allOf:
+        - if:
+            properties:
+              outcome:
+                const: warnings_found
+          then:
+            properties:
+              warnings:
+                minItems: 1
+          else:
+            properties:
+              warnings:
+                maxItems: 0
+
+    Warning:
+      type: object
+      additionalProperties: false
+      required:
+        - warning_id
+        - type
+        - severity
+        - summary
+        - proposed_medication
+        - conflicting_statement_ref
+        - conflicting_medication
+        - conflicting_source
+        - rule_source
+        - explanation
+      properties:
+        warning_id:
+          type: string
+          minLength: 1
+        type:
+          const: drug_drug_interaction
+        severity:
+          description: Severity as assigned by the rule source.
+          type: string
+          enum: [contraindicated, major, moderate, minor]
+        summary:
+          description: Short statement of the interaction, taken from the rule source.
+          type: string
+          minLength: 1
+        proposed_medication:
+          $ref: "#/components/schemas/Medication"
+        conflicting_statement_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        conflicting_medication:
+          $ref: "#/components/schemas/Medication"
+        conflicting_source:
+          $ref: "#/components/schemas/StatementSource"
+        rule_source:
+          $ref: "#/components/schemas/RuleSource"
+        explanation:
+          description: Optional advisory AI explanation (HC-164); null when none was produced.
+          oneOf:
+            - $ref: "#/components/schemas/Explanation"
+            - type: "null"
+
+    RuleSource:
+      description: The deterministic rule or validated source that produced the warning.
+      type: object
+      additionalProperties: false
+      required: [kind, name, version, rule_id, reference]
+      properties:
+        kind:
+          $ref: "#/components/schemas/SafetySourceKind"
+        name:
+          type: string
+          minLength: 1
+        version:
+          type: string
+          minLength: 1
+        rule_id:
+          type: string
+          minLength: 1
+        reference:
+          description: Citation or URL for the rule, when the source provides one.
+          type: [string, "null"]
+
+    SafetySourceKind:
+      description: Allowed safety sources. An LLM is deliberately not one of them.
+      type: string
+      enum: [deterministic_rule_set, validated_source]
+
+    Explanation:
+      description: Plain-language explanation of a warning. Advisory; never the safety source.
+      type: object
+      additionalProperties: false
+      required: [text, advisory, generated_by, generated_at]
+      properties:
+        text:
+          type: string
+          minLength: 1
+        advisory:
+          const: true
+        generated_by:
+          type: object
+          additionalProperties: false
+          required: [kind, name, version, mocked]
+          properties:
+            kind:
+              type: string
+              enum: [deterministic_template, model]
+            name:
+              type: string
+              minLength: 1
+            version:
+              type: string
+              minLength: 1
+            mocked:
+              type: boolean
+        generated_at:
+          type: string
+          format: date-time
+
+    UnevaluatedMedication:
+      type: object
+      additionalProperties: false
+      required: [statement_ref, medication, reason]
+      properties:
+        statement_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        medication:
+          $ref: "#/components/schemas/Medication"
+        reason:
+          type: string
+          enum: [not_in_rule_source, ambiguous_medication, status_unknown]
+
+    Provenance:
+      type: object
+      additionalProperties: false
+      required: [engine, mocked, evaluated_at]
+      properties:
+        engine:
+          type: object
+          additionalProperties: false
+          required: [kind, name, version]
+          properties:
+            kind:
+              $ref: "#/components/schemas/SafetySourceKind"
+            name:
+              type: string
+              minLength: 1
+            version:
+              type: string
+              minLength: 1
+        mocked:
+          description: True when results come from fixtures rather than a real engine.
+          type: boolean
+        evaluated_at:
+          type: string
+          format: date-time
+
+    Problem:
+      description: RFC 9457 problem details.
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+          enum: [invalid_request, safety_check_unavailable]
