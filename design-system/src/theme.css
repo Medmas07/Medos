@@ -1,37 +1,83 @@
 /*
- * Design tokens and base typography shared by the web portals.
+ * Design tokens, base typography, and motion utilities shared by the web portals.
  *
  * Consumers import Tailwind first, then this file:
  *   @import "tailwindcss";
  *   @import "@hackcure/design-system/theme.css";
  *
- * Neutrals use Tailwind's default `slate` scale and spacing uses Tailwind's
- * default 4px scale (`--spacing: 0.25rem`). Only brand and status tones are
- * defined here so they can change in one place.
+ * Themes: light is the default; dark applies when <html data-theme="dark">.
+ * Each portal's index.html sets `data-theme` before first paint from the saved
+ * choice or `prefers-color-scheme` (see README.md, "Theming").
+ *
+ * Token families:
+ *   brand-*    mint scale derived from #A7E3D4 (300). On white, 700 is the
+ *              text/icon colour, 800 the solid fill, 600 focus rings/borders;
+ *              300/200/100/50 are fills and highlights.
+ *   paper, surface*, line*, ink*  semantic neutrals that flip per theme.
+ *   primary / on-primary          the solid action colour pair.
+ *   info/success/warning/danger/demo  status tones: 50 background, 200 border,
+ *              600 solid marker (same in both themes), 700 text, 800 strong text.
+ *   slate-*    teal-tinted neutrals that also flip per theme, so existing
+ *              `text-slate-900` / `bg-slate-50` utilities follow the theme.
  */
+
+@import "@fontsource-variable/geist";
+@import "@fontsource/instrument-serif";
 
 /* Generate the utility classes used inside the design-system components. */
 @source "./components";
 
+/* `dark:` follows the resolved theme attribute, not the media query. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 @theme {
-  --font-sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-display: "Instrument Serif", ui-serif, Georgia, serif;
   --font-mono: ui-monospace, "Cascadia Code", "SFMono-Regular", Menlo, Consolas, monospace;
 
-  /* Brand: primary actions, current navigation, focus rings. */
-  --color-brand-50: #f0fdfa;
-  --color-brand-100: #ccfbf1;
-  --color-brand-200: #99f6e4;
-  --color-brand-500: #14b8a6;
-  --color-brand-600: #0d9488;
-  --color-brand-700: #0f766e;
-  --color-brand-800: #115e59;
-  --color-brand-900: #134e4a;
+  /* Brand: mint #A7E3D4 = 300. */
+  --color-brand-50: #f1f9f7;
+  --color-brand-100: #def2ed;
+  --color-brand-200: #c3eae0;
+  --color-brand-300: #a7e3d4;
+  --color-brand-400: #75c7b4;
+  --color-brand-500: #43b19b;
+  --color-brand-600: #309180;
+  --color-brand-700: #227769;
+  --color-brand-800: #195d54;
+  --color-brand-900: #114540;
+  --color-brand-950: #0e3b36;
 
-  /*
-   * Status tones. 50 = background, 200 = border, 600 = marker/icon,
-   * 700 = text, 800 = strong text. Never rely on colour alone: every
-   * toned component also carries text or an icon.
-   */
+  /* Semantic neutrals (light values; dark values below). */
+  --color-paper: #f7fbfa;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-surface-muted: #eef5f3;
+  --color-line: #dbe8e4;
+  --color-line-strong: #c4d6d1;
+  --color-ink: #102e2a;
+  --color-ink-soft: #3f5c57;
+  --color-ink-muted: #557069;
+  --color-primary: #195d54;
+  --color-primary-hover: #114540;
+  --color-on-primary: #ffffff;
+  --color-focus: #309180;
+  /* Sidebar and other brand chrome; always dark, in both themes. */
+  --color-chrome: #0e3b36;
+
+  /* Teal-tinted neutrals replacing Tailwind's slate. */
+  --color-slate-50: #f2f8f6;
+  --color-slate-100: #e7f0ed;
+  --color-slate-200: #dbe8e4;
+  --color-slate-300: #c4d6d1;
+  --color-slate-400: #7a938d;
+  --color-slate-500: #5a736d;
+  --color-slate-600: #4a635d;
+  --color-slate-700: #3f5c57;
+  --color-slate-800: #23403b;
+  --color-slate-900: #102e2a;
+  --color-slate-950: #071a17;
+
   --color-info-50: #eff6ff;
   --color-info-100: #dbeafe;
   --color-info-200: #bfdbfe;
@@ -67,27 +113,146 @@
   --color-demo-600: #7c3aed;
   --color-demo-700: #6d28d9;
   --color-demo-800: #5b21b6;
+  /* Solid fill behind white text (DemoBanner); identical in both themes. */
+  --color-demo-solid: #6d28d9;
+
+  /* Radii: controls 12, cards 16, hero 28. */
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.75rem;
+
+  /* Shadows tinted with the teal ink, never pure black. */
+  --shadow-card: 0 1px 2px rgb(16 46 42 / 0.04), 0 1px 3px rgb(16 46 42 / 0.06);
+  --shadow-lift: 0 14px 34px -14px rgb(16 46 42 / 0.26), 0 2px 6px rgb(16 46 42 / 0.06);
+  --shadow-pop: 0 28px 70px -24px rgb(14 59 54 / 0.42);
+
+  /* Motion: short, ease-out (emil-design-eng). */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  --animate-rise: hc-rise 320ms var(--ease-out) backwards;
+  --animate-page: hc-page 260ms var(--ease-out) backwards;
+  --animate-fade-in: hc-fade 200ms var(--ease-out) backwards;
+}
+
+/*
+ * Dark theme: deep teal surfaces, mint accents. `.hc-chrome` reuses the dark
+ * values so content inside the always-dark sidebar reads correctly in both themes.
+ */
+:root[data-theme="dark"] {
+  --color-chrome: #05140f;
+}
+
+:root[data-theme="dark"],
+.hc-chrome {
+  color-scheme: dark;
+
+  --color-paper: #071a17;
+  --color-surface: #0e2420;
+  --color-surface-raised: #132d28;
+  --color-surface-muted: #153530;
+  --color-line: #22433c;
+  --color-line-strong: #2d554c;
+  --color-ink: #e6f4f0;
+  --color-ink-soft: #b5cec8;
+  --color-ink-muted: #8eaaa3;
+  --color-primary: #a7e3d4;
+  --color-primary-hover: #c3eae0;
+  --color-on-primary: #0e3b36;
+  --color-focus: #a7e3d4;
+
+  /* Brand tints and text steps flip; 300-600 and 950 stay. */
+  --color-brand-50: #0f2b27;
+  --color-brand-100: #133630;
+  --color-brand-200: #1b4840;
+  --color-brand-700: #a7e3d4;
+  --color-brand-800: #c3eae0;
+  --color-brand-900: #def2ed;
+
+  --color-slate-50: #132d28;
+  --color-slate-100: #173530;
+  --color-slate-200: #22433c;
+  --color-slate-300: #2d554c;
+  --color-slate-400: #6b8a83;
+  --color-slate-500: #8eaaa3;
+  --color-slate-600: #a3bdb6;
+  --color-slate-700: #b5cec8;
+  --color-slate-800: #d3e5e0;
+  --color-slate-900: #e6f4f0;
+  --color-slate-950: #f3faf8;
+
+  --color-info-50: #0f2440;
+  --color-info-100: #143057;
+  --color-info-200: #1e4677;
+  --color-info-700: #93c5fd;
+  --color-info-800: #bfdbfe;
+
+  --color-success-50: #0b2a22;
+  --color-success-100: #0f3a2e;
+  --color-success-200: #155342;
+  --color-success-700: #6ee7b7;
+  --color-success-800: #a7f3d0;
+
+  --color-warning-50: #2b210b;
+  --color-warning-100: #3d2e0e;
+  --color-warning-200: #5c4513;
+  --color-warning-700: #fcd34d;
+  --color-warning-800: #fde68a;
+
+  --color-danger-50: #31141a;
+  --color-danger-100: #451b22;
+  --color-danger-200: #6b2a33;
+  --color-danger-700: #fca5a5;
+  --color-danger-800: #fecaca;
+
+  --color-demo-50: #211a3d;
+  --color-demo-100: #2e2352;
+  --color-demo-200: #44357a;
+  --color-demo-600: #8b5cf6;
+  --color-demo-700: #c4b5fd;
+  --color-demo-800: #ddd6fe;
+
+  --shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.03), 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 8px rgb(0 0 0 / 0.2);
+  --shadow-lift: 0 18px 40px -14px rgb(0 0 0 / 0.65), 0 0 0 1px rgb(167 227 212 / 0.1);
+  --shadow-pop: 0 28px 70px -24px rgb(0 0 0 / 0.75);
 }
 
 @layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
-    @apply bg-slate-50 font-sans text-sm leading-6 text-slate-800 antialiased;
+    @apply bg-paper font-sans text-sm leading-6 text-ink antialiased;
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  ::selection {
+    background: var(--color-brand-300);
+    color: var(--color-brand-950);
   }
 
   h1 {
-    @apply text-2xl leading-8 font-semibold tracking-tight text-slate-900;
+    @apply font-display text-[2rem] leading-[1.1] font-normal tracking-[-0.01em] text-ink sm:text-[2.375rem];
+    text-wrap: balance;
   }
 
   h2 {
-    @apply text-lg leading-7 font-semibold text-slate-900;
+    @apply text-lg leading-7 font-semibold tracking-[-0.01em] text-ink;
+    text-wrap: balance;
   }
 
   h3 {
-    @apply text-base leading-6 font-semibold text-slate-900;
+    @apply text-base leading-6 font-semibold text-ink;
   }
 
   h4 {
-    @apply text-xs leading-5 font-semibold tracking-wide text-slate-500 uppercase;
+    @apply text-[11px] leading-5 font-semibold tracking-[0.1em] text-ink-muted uppercase;
   }
 
   code,
@@ -97,6 +262,197 @@
   }
 
   :focus-visible {
-    @apply outline-2 outline-offset-2 outline-brand-600;
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  button,
+  a,
+  [role="button"] {
+    touch-action: manipulation;
+  }
+}
+
+@layer utilities {
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Section label: tiny and loud. */
+  .label-caps {
+    font-size: 11px;
+    line-height: 1.25rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+  }
+
+  /* Staggered entrance for the direct children of a grid or list (max 8 steps). */
+  .hc-stagger > * {
+    animation: var(--animate-rise);
+  }
+  .hc-stagger > :nth-child(2) { animation-delay: 40ms; }
+  .hc-stagger > :nth-child(3) { animation-delay: 80ms; }
+  .hc-stagger > :nth-child(4) { animation-delay: 120ms; }
+  .hc-stagger > :nth-child(5) { animation-delay: 160ms; }
+  .hc-stagger > :nth-child(6) { animation-delay: 200ms; }
+  .hc-stagger > :nth-child(7) { animation-delay: 240ms; }
+  .hc-stagger > :nth-child(n + 8) { animation-delay: 280ms; }
+
+  /* Pressed feedback on tappable elements. */
+  .hc-press {
+    transition: transform 140ms var(--ease-out);
+  }
+  .hc-press:active {
+    transform: scale(0.97);
+  }
+
+  /*
+   * Hover lift. The deeper shadow lives on ::after and only its opacity
+   * animates, so the effect stays on transform and opacity.
+   */
+  .hc-lift {
+    position: relative;
+    isolation: isolate;
+  }
+  .hc-lift::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    box-shadow: var(--shadow-lift);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* Shimmering placeholder block. */
+  .hc-skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--color-surface-muted) 0%,
+      var(--color-brand-50) 50%,
+      var(--color-surface-muted) 100%
+    );
+    background-size: 200% 100%;
+    animation: hc-shimmer 1.3s linear infinite;
+  }
+}
+
+@keyframes hc-shimmer {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}
+
+@keyframes hc-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes hc-page {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@keyframes hc-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/*
+ * Mobile navigation drawer (a modal <dialog>): slides in from the left,
+ * leaves faster than it enters; the backdrop fades.
+ */
+.hc-drawer {
+  margin: 0;
+  inset-block: 0;
+  height: 100dvh;
+  max-height: none;
+  width: min(20rem, 86vw);
+  max-width: none;
+  padding: 0;
+  border: 0;
+  transform: translateX(-100%);
+  transition:
+    transform 180ms var(--ease-out),
+    overlay 180ms allow-discrete,
+    display 180ms allow-discrete;
+}
+.hc-drawer[open] {
+  transform: none;
+  transition-duration: 280ms;
+  transition-timing-function: var(--ease-drawer);
+}
+.hc-drawer::backdrop {
+  background: rgb(5 20 15 / 0.55);
+  opacity: 0;
+  transition:
+    opacity 200ms var(--ease-out),
+    overlay 200ms allow-discrete,
+    display 200ms allow-discrete;
+}
+.hc-drawer[open]::backdrop {
+  opacity: 1;
+}
+@starting-style {
+  .hc-drawer[open] {
+    transform: translateX(-100%);
+  }
+  .hc-drawer[open]::backdrop {
+    opacity: 0;
+  }
+}
+
+/* Lift only where hover is real. */
+@media (hover: hover) and (pointer: fine) {
+  .hc-lift {
+    transition: transform 220ms var(--ease-out);
+  }
+  .hc-lift::after {
+    transition: opacity 220ms var(--ease-out);
+  }
+  .hc-lift:hover {
+    transform: translateY(-2px);
+  }
+  .hc-lift:hover::after {
+    opacity: 1;
+  }
+}
+
+/* Theme switch crossfade (ThemeToggle uses the View Transitions API when available). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 200ms;
+  animation-timing-function: var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .hc-lift:hover,
+  .hc-press:active {
+    transform: none;
+  }
+  .hc-skeleton {
+    animation: none;
+  }
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
   }
 }
