@@ -1,0 +1,114 @@
+openapi: 3.1.0
+info:
+  title: Research Job Orchestration API
+  version: 1.0.0
+  description: |
+    HC-182 D3 Research Service API. It coordinates authorization and Hospital
+    Node execution; it does not execute code or aggregate controlled results.
+paths:
+  /v1/research-jobs:
+    post:
+      operationId: submitResearchJob
+      summary: Submit a governed Compute-to-Data job.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/JobRequest"}
+      responses:
+        "202":
+          description: Job recorded; inspect status and per-node executions.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Job"}
+        "409": {description: Job reference already belongs to another request.}
+        "422": {description: Invalid bounded job request.}
+  /v1/research-jobs/{job_ref}:
+    parameters:
+      - {name: job_ref, in: path, required: true, schema: {$ref: "#/components/schemas/Ref"}}
+      - {name: refresh, in: query, required: false, schema: {type: boolean, default: true}}
+    get:
+      operationId: getResearchJob
+      summary: Read and optionally refresh one job.
+      responses:
+        "200":
+          description: Current job and separate controlled node outcomes.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Job"}
+        "404": {description: Job not found.}
+components:
+  schemas:
+    Ref: {type: string, minLength: 1, maxLength: 100}
+    JobRequest:
+      type: object
+      required: [job_ref, project_ref, authorization_decision_ref, requested_by, purpose, target_organizations, data_scope, algorithm, output_policy]
+      properties:
+        job_ref: {$ref: "#/components/schemas/Ref"}
+        project_ref: {$ref: "#/components/schemas/Ref"}
+        authorization_decision_ref: {$ref: "#/components/schemas/Ref"}
+        requested_by: {$ref: "#/components/schemas/Ref"}
+        purpose: {type: string, minLength: 1, maxLength: 500}
+        target_organizations: {type: array, minItems: 1, maxItems: 20, uniqueItems: true, items: {$ref: "#/components/schemas/Ref"}}
+        data_scope: {$ref: "#/components/schemas/DataScope"}
+        algorithm: {$ref: "#/components/schemas/Algorithm"}
+        output_policy: {$ref: "#/components/schemas/OutputPolicy"}
+    Job:
+      allOf:
+        - {$ref: "#/components/schemas/JobRequest"}
+        - type: object
+          required: [status, executions, mocked]
+          properties:
+            status: {type: string, enum: [queued, authorizing, dispatching, running, completed, denied, failed]}
+            executions: {type: array, items: {$ref: "#/components/schemas/NodeExecution"}}
+            error: {$ref: "#/components/schemas/Problem"}
+            mocked: {type: boolean, const: false}
+    NodeExecution:
+      type: object
+      additionalProperties: false
+      required: [execution_id, organization_ref, status]
+      properties:
+        execution_id: {$ref: "#/components/schemas/Ref"}
+        organization_ref: {$ref: "#/components/schemas/Ref"}
+        status: {type: string, enum: [accepted, authorization_check, queued, running, output_review, completed, denied, failed, cancelled, expired]}
+        result: {$ref: "#/components/schemas/ControlledResult"}
+        error: {$ref: "#/components/schemas/Problem"}
+    DataScope:
+      type: object
+      additionalProperties: false
+      required: [population, variables]
+      properties:
+        population:
+          type: object
+          additionalProperties: false
+          minProperties: 1
+          properties: {age_min: {type: integer, minimum: 0, maximum: 130}, age_max: {type: integer, minimum: 0, maximum: 130}, encounter_from: {type: string, format: date}, encounter_to: {type: string, format: date}}
+        variables: {type: array, minItems: 1, uniqueItems: true, items: {type: string, pattern: "^[A-Za-z][A-Za-z0-9_.-]{0,99}$"}}
+    Algorithm:
+      type: object
+      additionalProperties: false
+      required: [language, artifact_ref, sha256, entrypoint]
+      properties: {language: {type: string, enum: [python]}, artifact_ref: {type: string, minLength: 1, maxLength: 500}, sha256: {type: string, pattern: "^[a-f0-9]{64}$"}, entrypoint: {type: string, pattern: "^[A-Za-z_][A-Za-z0-9_]{0,99}$"}}
+    OutputPolicy:
+      type: object
+      additionalProperties: false
+      required: [kind, minimum_cell_size, require_disclosure_review]
+      properties: {kind: {type: string, enum: [aggregate_table]}, minimum_cell_size: {type: integer, minimum: 1}, require_disclosure_review: {type: boolean, const: true}}
+    ControlledResult:
+      type: object
+      additionalProperties: false
+      required: [outcome, columns, rows, disclosure, provenance]
+      properties:
+        outcome: {type: string, enum: [released, empty, suppressed]}
+        columns: {type: array, uniqueItems: true, items: {type: string}}
+        rows: {type: array, description: Aggregate cells only; never raw or patient-level records., items: {type: array}}
+        disclosure: {type: object}
+        provenance: {type: object}
+    Problem:
+      type: object
+      additionalProperties: false
+      required: [code, message, retryable]
+      properties:
+        code: {type: string, minLength: 1}
+        message: {type: string, minLength: 1}
+        retryable: {type: boolean}
