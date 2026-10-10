@@ -2,8 +2,7 @@
 
 These questions are OPEN. Do not answer them through implementation without the required evidence and ADR.
 
-- Where will the HC-004 web design system live so all three portals can reuse it without a generic `shared/` folder or a non-product entry under `apps/`? (The web framework itself is decided by [ADR-0001](decisions/ADR-0001-web-frontend-technology.md).)
-- Which mobile framework will serve both mobile products, and what is the Android development path?
+- Which mobile framework will serve both mobile products, what is the Android development path, and how will the mobile apps reuse the web design-system tokens ([ADR-0002](decisions/ADR-0002-web-design-system.md))?
 - Which runtimes and frameworks will serve the Hospital Node, Governance Node, and company services?
 - What canonical clinical model, FHIR version, profiles, terminology, and validation strategy are required?
 - Which persistence technologies and data models fit each bounded context?

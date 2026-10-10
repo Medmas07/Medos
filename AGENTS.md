@@ -50,6 +50,7 @@ Surface contradictions rather than guessing. Use the shared [status vocabulary](
 - `services/`: justified AI, Federation, Notification, and Research capabilities.
 - `integrations/`: company/platform integrations such as SciAgents; hospital-local systems belong inside their Node.
 - `contracts/`: versionable cross-component API, event, federation, and message definitions.
+- `design-system/`: web design tokens and presentational React components consumed by the web portals ([ADR-0002](docs/decisions/ADR-0002-web-design-system.md)); no domain logic, data access, or fixtures.
 - `infrastructure/`, `production/`, and `iot/`: technical or environment-specific assets after decisions justify them.
 - `tests/`: cross-system integration and end-to-end tests.
 - `docs/`: durable product, architecture, planning, decisions, and status knowledge.
