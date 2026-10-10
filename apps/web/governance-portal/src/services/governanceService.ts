@@ -6,7 +6,6 @@ import peopleFixtures from '../../../../../demo-data/people.json'
 import researchFixtures from '../../../../../demo-data/research.json'
 import type {
   AccessGrant,
-  AccessGrantInfo,
   GovernanceAuditEvent,
   GovernanceDecision,
   GovernanceNotification,
