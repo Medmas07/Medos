@@ -1,9 +1,11 @@
 import governanceFixtures from '../../../../../demo-data/governance.json'
+import notificationsFixtures from '../../../../../demo-data/notifications.json'
 import organizationsFixtures from '../../../../../demo-data/organizations.json'
 import peopleFixtures from '../../../../../demo-data/people.json'
 import type {
   GovernanceAuditEvent,
   GovernanceDecision,
+  GovernanceNotification,
   HospitalApplication,
   LedgerProof,
   OrganizationInfo,
@@ -27,6 +29,8 @@ const typedGovernance = governanceFixtures as unknown as {
 const typedOrganizations = (organizationsFixtures.organizations ?? []) as unknown as OrganizationInfo[]
 
 const typedPatients = (peopleFixtures.patients ?? []) as unknown as PatientInfo[]
+
+const typedNotifications = (notificationsFixtures.notifications ?? []) as unknown as GovernanceNotification[]
 
 const allStaffAndClinicians = [
   ...((peopleFixtures.staff ?? []) as unknown as PersonInfo[]),
@@ -56,6 +60,20 @@ export const governanceService = {
 
   getLedgerProofs(): LedgerProof[] {
     return typedGovernance.ledgerProofs
+  },
+
+  getOrganizations(): OrganizationInfo[] {
+    return typedOrganizations
+  },
+
+  getFederatedHospitalNodes(): OrganizationInfo[] {
+    return typedOrganizations.filter(
+      (org) => org.type === 'hospital' || org.type === 'private_practice'
+    )
+  },
+
+  getReviewerNotifications(recipientId: string = 'usr-olfa'): GovernanceNotification[] {
+    return typedNotifications.filter((n) => n.recipientId === recipientId)
   },
 
   getOrganization(id: string): OrganizationInfo | undefined {
@@ -90,6 +108,35 @@ export const governanceService = {
 
   getProofForEvent(eventId: string): LedgerProof | undefined {
     return typedGovernance.ledgerProofs.find((p) => p.auditEventId === eventId)
+  },
+
+  getDashboardMetrics() {
+    const applications = this.getHospitalApplications()
+    const syncs = this.getSynchronizationRequests()
+    const research = this.getResearchAccessRequests()
+    const proofs = this.getLedgerProofs()
+    const notifications = this.getReviewerNotifications('usr-olfa')
+    const nodes = this.getFederatedHospitalNodes()
+
+    return {
+      totalApplications: applications.length,
+      pendingApplications: applications.filter(
+        (a) => a.status === 'human_review' || a.status === 'pending'
+      ).length,
+      approvedHospitals: applications.filter((a) => a.status === 'approved').length,
+      totalSyncs: syncs.length,
+      pendingSyncs: syncs.filter((s) => s.status === 'pending').length,
+      approvedSyncs: syncs.filter((s) => s.status === 'approved').length,
+      rejectedSyncs: syncs.filter((s) => s.status === 'rejected').length,
+      totalResearchRequests: research.length,
+      underReviewResearch: research.filter((r) => r.status === 'under_review').length,
+      approvedResearch: research.filter((r) => r.status === 'approved').length,
+      anchoredProofsCount: proofs.length,
+      unreadNotificationsCount: notifications.filter((n) => !n.read).length,
+      onlineNodesCount: nodes.filter((n) => n.node?.status === 'online').length,
+      degradedNodesCount: nodes.filter((n) => n.node?.status === 'degraded').length,
+      pendingNodesCount: nodes.filter((n) => !n.node).length,
+    }
   },
 
   /**

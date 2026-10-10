@@ -87,4 +87,39 @@ describe('Governance Service & Canonical Fixtures', () => {
       expect(computed).toBe(proof.hash)
     }
   })
+
+  it('computes accurate dashboard metrics across all governance domains', () => {
+    const metrics = governanceService.getDashboardMetrics()
+    expect(metrics.totalApplications).toBeGreaterThanOrEqual(4)
+    expect(metrics.pendingApplications).toBe(1)
+    expect(metrics.approvedHospitals).toBe(3)
+    expect(metrics.totalSyncs).toBe(3)
+    expect(metrics.pendingSyncs).toBe(1)
+    expect(metrics.totalResearchRequests).toBe(2)
+    expect(metrics.underReviewResearch).toBe(1)
+    expect(metrics.anchoredProofsCount).toBe(2)
+    expect(metrics.onlineNodesCount).toBeGreaterThanOrEqual(2)
+    expect(metrics.degradedNodesCount).toBe(1)
+  })
+
+  it('retrieves reviewer alerts for Pr Olfa Hamdi', () => {
+    const notifs = governanceService.getReviewerNotifications('usr-olfa')
+    expect(notifs.length).toBeGreaterThanOrEqual(2)
+    expect(notifs.some((n) => n.relatedId === 'sync-001')).toBe(true)
+    expect(notifs.some((n) => n.relatedId === 'app-hospital-c')).toBe(true)
+  })
+
+  it('retrieves federated hospital nodes with node connectivity details', () => {
+    const nodes = governanceService.getFederatedHospitalNodes()
+    expect(nodes.length).toBe(4)
+
+    const babEnnour = nodes.find((n) => n.id === 'org-hospital-a')
+    expect(babEnnour?.node?.status).toBe('online')
+    expect(babEnnour?.node?.dmiState).toBe('connected')
+
+    const bouzid = nodes.find((n) => n.id === 'org-private-practice')
+    expect(bouzid?.node?.status).toBe('degraded')
+    expect(bouzid?.node?.dmiState).toBe('disconnected')
+  })
 })
+

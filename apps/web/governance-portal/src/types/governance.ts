@@ -156,3 +156,15 @@ export interface PatientInfo {
   lastName: string
   city: string
 }
+
+export interface GovernanceNotification {
+  id: string
+  recipientId: string
+  type: string
+  title: string
+  body: string
+  createdAt: string
+  read: boolean
+  relatedId?: string | null
+}
+
