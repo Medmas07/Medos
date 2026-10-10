@@ -12,8 +12,8 @@ def test_serves_openapi_document():
     assert response.json()["info"]["title"] == "Hospital Node"
 
 
-def test_exposes_no_product_routes_yet():
-    assert client.get("/openapi.json").json()["paths"] == {}
+def test_exposes_only_the_health_route():
+    assert list(client.get("/openapi.json").json()["paths"]) == ["/health"]
 
 
 def test_unknown_route_returns_404():
