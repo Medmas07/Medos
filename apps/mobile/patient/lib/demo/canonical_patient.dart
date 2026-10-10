@@ -64,3 +64,36 @@ const demoTimeline = <CanonicalTimelineEvent>[
     kind: 'Consultation',
   ),
 ];
+
+class CanonicalMedication {
+  const CanonicalMedication({
+    required this.name,
+    required this.code,
+    required this.organization,
+    required this.period,
+    required this.status,
+  });
+
+  final String name;
+  final String code;
+  final String organization;
+  final String period;
+  final String status;
+}
+
+const demoMedications = <CanonicalMedication>[
+  CanonicalMedication(
+    name: 'Coagulix',
+    code: 'MED-COAGULIX',
+    organization: 'Hôpital Carthage',
+    period: 'Actif depuis mai 2025',
+    status: 'Actif',
+  ),
+  CanonicalMedication(
+    name: 'Tensiorel',
+    code: 'MED-TENSIOREL',
+    organization: 'Clinique Les Jasmins',
+    period: 'Terminé en janvier 2025',
+    status: 'Terminé',
+  ),
+];

@@ -31,6 +31,13 @@ void main() {
     expect(find.text('MOCKED'), findsOneWidget);
   });
 
+    expect(find.text('Historique des médicaments'), findsOneWidget);
+    expect(find.text('Coagulix'), findsOneWidget);
+    expect(find.text('Tensiorel'), findsOneWidget);
+    expect(find.text('ACTIF'), findsOneWidget);
+    expect(find.text('TERMINÉ'), findsOneWidget);
+  });
+
   testWidgets('renders the federated authorized timeline fixtures', (
     tester,
   ) async {
