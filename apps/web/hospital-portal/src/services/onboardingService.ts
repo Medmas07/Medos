@@ -23,6 +23,11 @@ const organizations = organizationFixtures.organizations as unknown as Organizat
 const staff = peopleFixtures.staff as unknown as StaffMember[]
 const notifications = notificationFixtures.notifications as unknown as PortalNotification[]
 
+/** Read-only fixture views reused by the registration mock. */
+export function listOrganizations(): readonly Organization[] {
+  return organizations
+}
+
 /** Demo persona: the fictional manager of Centre Hospitalier Cap Azur (in onboarding). */
 export const DEMO_ORGANIZATION_ID = 'org-hospital-c'
 export const DEMO_MANAGER_ID = 'usr-mehdi'
@@ -131,8 +136,17 @@ export function deriveSteps(
     )
   } else {
     const questionnaire = application.technicalQuestionnaire
-    states.set('registration', { status: 'completed', detail: 'Candidature soumise.' })
-    states.set('profile', { status: 'completed', detail: 'Profil renseigné.' })
+    const draft = application.status === 'draft'
+    states.set('registration', {
+      status: 'completed',
+      detail: draft ? `Inscription enregistrée (${application.id}).` : 'Candidature soumise.',
+    })
+    states.set(
+      'profile',
+      draft
+        ? { status: 'pending', detail: 'Informations administratives à compléter.' }
+        : { status: 'completed', detail: 'Profil renseigné.' },
+    )
     states.set('documents', documentsState(application))
     states.set('agreements', agreementsState(application))
     states.set(
@@ -166,13 +180,18 @@ export function deriveSteps(
   })
 }
 
-/** Demo scenarios, selected with `?demo=vide` or `?demo=erreur` in the URL. */
-export type DemoScenario = 'nominal' | 'empty' | 'error'
+/**
+ * Demo scenarios, selected with `?demo=vide`, `?demo=erreur`, or
+ * `?demo=echec-inscription` in the URL. `registration-failure` starts like
+ * `empty`, and the first registration submission fails.
+ */
+export type DemoScenario = 'nominal' | 'empty' | 'error' | 'registration-failure'
 
 export function scenarioFromSearch(search: string): DemoScenario {
   const value = new URLSearchParams(search).get('demo')
   if (value === 'vide') return 'empty'
   if (value === 'erreur') return 'error'
+  if (value === 'echec-inscription') return 'registration-failure'
   return 'nominal'
 }
 
@@ -199,7 +218,9 @@ export async function loadOnboardingSnapshot(
   }
 
   const application =
-    scenario === 'empty' ? null : (applications.find((a) => a.organizationId === organizationId) ?? null)
+    scenario === 'empty' || scenario === 'registration-failure'
+      ? null
+      : (applications.find((a) => a.organizationId === organizationId) ?? null)
 
   return {
     organization,
