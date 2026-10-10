@@ -1,8 +1,8 @@
-name: Create linked branch on self-assignment
+name: Keep issue workflow synchronized
 
 on:
   issues:
-    types: [assigned]
+    types: [assigned, closed, reopened]
 
 permissions:
   contents: write
@@ -16,6 +16,7 @@ jobs:
   create-linked-branch:
     # Assignment by another person remains a planning action and creates no branch.
     if: >-
+      github.event.action == 'assigned' &&
       github.event.issue.state == 'open' &&
       github.actor == github.event.assignee.login
     runs-on: ubuntu-latest
@@ -346,4 +347,326 @@ jobs:
             echo "## Project updated"
             echo
             echo "Issue #$ISSUE_NUMBER moved to **In Progress** in Project #$PROJECT_NUMBER."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  sync-dependency-statuses:
+    if: >-
+      github.event.action == 'closed' ||
+      github.event.action == 'reopened'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    env:
+      GH_TOKEN: ${{ secrets.HACKCURE_PROJECT_AUTOMATION }}
+      OWNER: ${{ github.repository_owner }}
+      REPO_NAME: ${{ github.event.repository.name }}
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
+      ISSUE_ACTION: ${{ github.event.action }}
+      PROJECT_OWNER: Medmas07
+      PROJECT_NUMBER: 2
+
+    steps:
+      - name: Validate automation token
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$GH_TOKEN" ]]; then
+            echo "::error::Repository secret HACKCURE_PROJECT_AUTOMATION is not configured."
+            exit 1
+          fi
+
+      - name: Read issues and calculate affected statuses
+        id: affected
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          gh api --paginate \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/$OWNER/$REPO_NAME/issues?state=all&per_page=100" \
+            --slurp > "$RUNNER_TEMP/issues.json"
+
+          python3 - "$ISSUE_NUMBER" "$ISSUE_ACTION" \
+            "$RUNNER_TEMP/issues.json" "$RUNNER_TEMP/affected.tsv" <<'PY'
+          import json
+          import re
+          import sys
+
+          changed_number = int(sys.argv[1])
+          action = sys.argv[2]
+          input_path = sys.argv[3]
+          output_path = sys.argv[4]
+
+          with open(input_path, encoding="utf-8") as source:
+              pages = json.load(source)
+
+          issues = {
+              issue["number"]: issue
+              for page in pages
+              for issue in page
+              if "pull_request" not in issue
+          }
+
+          def dependencies(body):
+              match = re.search(
+                  r"(?ms)^Blocked by:\s*(.*?)(?=^Blocks:|\Z)", body or ""
+              )
+              if not match:
+                  return []
+              return [
+                  int(number)
+                  for number in re.findall(r"(?m)^-\s+#(\d+)\b", match.group(1))
+              ]
+
+          affected = []
+          if action == "closed":
+              affected.append((changed_number, "Done", "force"))
+          else:
+              own_dependencies = dependencies(issues.get(changed_number, {}).get("body"))
+              own_blocked = any(
+                  issues.get(number, {}).get("state") != "closed"
+                  for number in own_dependencies
+              )
+              affected.append(
+                  (changed_number, "Blocked" if own_blocked else "Unblocked", "force")
+              )
+
+          for issue in issues.values():
+              if issue.get("state") != "open" or issue["number"] == changed_number:
+                  continue
+              issue_dependencies = dependencies(issue.get("body"))
+              if changed_number not in issue_dependencies:
+                  continue
+              is_blocked = any(
+                  issues.get(number, {}).get("state") != "closed"
+                  for number in issue_dependencies
+              )
+              affected.append(
+                  (issue["number"], "Blocked" if is_blocked else "Unblocked", "dependent")
+              )
+
+          with open(output_path, "w", encoding="utf-8", newline="") as output:
+              for number, desired, mode in affected:
+                  output.write(f"{number}\t{desired}\t{mode}\n")
+          PY
+
+          count="$(wc -l < "$RUNNER_TEMP/affected.tsv" | tr -d ' ')"
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve Project metadata
+        id: project
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          project_data="$(
+            gh api graphql \
+              -f query='
+                query($owner: String!, $projectNumber: Int!) {
+                  user(login: $owner) {
+                    projectV2(number: $projectNumber) {
+                      id
+                      fields(first: 50) {
+                        nodes {
+                          ... on ProjectV2SingleSelectField {
+                            id
+                            name
+                            options { id name }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              ' \
+              -f owner="$PROJECT_OWNER" \
+              -F projectNumber="$PROJECT_NUMBER"
+          )"
+
+          project_id="$(jq -r '.data.user.projectV2.id // empty' <<< "$project_data")"
+          status_field_id="$(
+            jq -r '
+              .data.user.projectV2.fields.nodes[]
+              | select(.name == "Status")
+              | .id
+            ' <<< "$project_data"
+          )"
+
+          option_id() {
+            local name="$1"
+            jq -r --arg name "$name" '
+              .data.user.projectV2.fields.nodes[]
+              | select(.name == "Status")
+              | .options[]
+              | select(.name == $name)
+              | .id
+            ' <<< "$project_data"
+          }
+
+          done_option_id="$(option_id Done)"
+          blocked_option_id="$(option_id Blocked)"
+          ready_option_id="$(option_id Ready)"
+          if [[ -z "$ready_option_id" ]]; then
+            ready_option_id="$(option_id Todo)"
+          fi
+
+          if [[ -z "$project_id" || -z "$status_field_id" ||
+                -z "$done_option_id" || -z "$blocked_option_id" ||
+                -z "$ready_option_id" ]]; then
+            echo "::error::Could not resolve the Project, Status field, or Done/Blocked/Ready (or Todo) options."
+            exit 1
+          fi
+
+          {
+            echo "project_id=$project_id"
+            echo "status_field_id=$status_field_id"
+            echo "done_option_id=$done_option_id"
+            echo "blocked_option_id=$blocked_option_id"
+            echo "ready_option_id=$ready_option_id"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Synchronize affected Project items
+        shell: bash
+        env:
+          PROJECT_ID: ${{ steps.project.outputs.project_id }}
+          STATUS_FIELD_ID: ${{ steps.project.outputs.status_field_id }}
+          DONE_OPTION_ID: ${{ steps.project.outputs.done_option_id }}
+          BLOCKED_OPTION_ID: ${{ steps.project.outputs.blocked_option_id }}
+          READY_OPTION_ID: ${{ steps.project.outputs.ready_option_id }}
+        run: |
+          set -euo pipefail
+
+          updated=0
+          skipped=0
+
+          while IFS=$'\t' read -r issue_number desired mode; do
+            [[ -n "$issue_number" ]] || continue
+
+            issue_data="$(
+              gh api graphql \
+                -f query='
+                  query($owner: String!, $name: String!, $number: Int!) {
+                    repository(owner: $owner, name: $name) {
+                      issue(number: $number) {
+                        id
+                        projectItems(first: 50) {
+                          nodes {
+                            id
+                            project { id }
+                            fieldValueByName(name: "Status") {
+                              ... on ProjectV2ItemFieldSingleSelectValue { name }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                ' \
+                -f owner="$OWNER" \
+                -f name="$REPO_NAME" \
+                -F number="$issue_number"
+            )"
+
+            issue_id="$(jq -r '.data.repository.issue.id // empty' <<< "$issue_data")"
+            item_id="$(
+              jq -r --arg project_id "$PROJECT_ID" '
+                .data.repository.issue.projectItems.nodes[]
+                | select(.project.id == $project_id)
+                | .id
+              ' <<< "$issue_data"
+            )"
+            current_status="$(
+              jq -r --arg project_id "$PROJECT_ID" '
+                .data.repository.issue.projectItems.nodes[]
+                | select(.project.id == $project_id)
+                | .fieldValueByName.name // ""
+              ' <<< "$issue_data"
+            )"
+
+            if [[ -z "$issue_id" ]]; then
+              echo "::warning::Issue #$issue_number no longer exists; skipping."
+              skipped=$((skipped + 1))
+              continue
+            fi
+
+            if [[ -z "$item_id" ]]; then
+              if [[ "$desired" == "Unblocked" && "$mode" == "dependent" ]]; then
+                echo "Issue #$issue_number is not in Project #$PROJECT_NUMBER; not adding an unchanged item."
+                skipped=$((skipped + 1))
+                continue
+              fi
+
+              item_id="$(
+                gh api graphql \
+                  -f query='
+                    mutation($projectId: ID!, $contentId: ID!) {
+                      addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
+                        item { id }
+                      }
+                    }
+                  ' \
+                  -f projectId="$PROJECT_ID" \
+                  -f contentId="$issue_id" \
+                  --jq '.data.addProjectV2ItemById.item.id'
+              )"
+              current_status=""
+            fi
+
+            case "$desired" in
+              Done) option_id="$DONE_OPTION_ID" ;;
+              Blocked) option_id="$BLOCKED_OPTION_ID" ;;
+              Unblocked)
+                if [[ "$mode" == "dependent" && "$current_status" != "Blocked" ]]; then
+                  echo "Issue #$issue_number is already '$current_status'; not overwriting active work."
+                  skipped=$((skipped + 1))
+                  continue
+                fi
+                option_id="$READY_OPTION_ID"
+                ;;
+              *)
+                echo "::error::Unknown desired status '$desired' for issue #$issue_number."
+                exit 1
+                ;;
+            esac
+
+            if [[ "$current_status" == "$desired" ||
+                  ( "$desired" == "Unblocked" &&
+                    ( "$current_status" == "Ready" || "$current_status" == "Todo" ) ) ]]; then
+              skipped=$((skipped + 1))
+              continue
+            fi
+
+            gh api graphql \
+              -f query='
+                mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                  updateProjectV2ItemFieldValue(
+                    input: {
+                      projectId: $projectId
+                      itemId: $itemId
+                      fieldId: $fieldId
+                      value: {singleSelectOptionId: $optionId}
+                    }
+                  ) {
+                    projectV2Item { id }
+                  }
+                }
+              ' \
+              -f projectId="$PROJECT_ID" \
+              -f itemId="$item_id" \
+              -f fieldId="$STATUS_FIELD_ID" \
+              -f optionId="$option_id" \
+              --silent
+
+            echo "Issue #$issue_number: '$current_status' -> '$desired'."
+            updated=$((updated + 1))
+          done < "$RUNNER_TEMP/affected.tsv"
+
+          {
+            echo "## Dependency statuses synchronized"
+            echo
+            echo "- Trigger: issue #$ISSUE_NUMBER $ISSUE_ACTION"
+            echo "- Affected: ${{ steps.affected.outputs.count }}"
+            echo "- Updated: $updated"
+            echo "- Unchanged/skipped: $skipped"
           } >> "$GITHUB_STEP_SUMMARY"
