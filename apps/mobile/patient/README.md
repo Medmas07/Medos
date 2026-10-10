@@ -2,6 +2,8 @@
 
 ## Purpose and status
 
+HC-017 Consent and access management is IMPLEMENTED at D1 with local fictional grants, visible scope and expiry, and a session-only revoke interaction. It is a demo UI and does not issue, persist, or enforce production consent.
+
 HC-016 Hospital and physician history is IMPLEMENTED at D1 with a local authorized-view list of fictional care encounters, source organizations, physicians, and specialties. It is presentation-only and does not expose hospital persistence.
 
 HC-015 Laboratory results history is IMPLEMENTED at D1 with a local authorized-view list of fictional laboratory results, source organization, reference ranges, and explicit demo status. It is presentation-only and does not interpret results or access hospital persistence.
