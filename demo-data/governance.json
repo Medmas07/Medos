@@ -9,9 +9,9 @@
       "submittedAt": "2026-10-06T15:20:00+01:00",
       "status": "human_review",
       "documents": [
-        { "id": "doc-c-statuts", "title": "Statuts de l'établissement.pdf", "status": "received" },
-        { "id": "doc-c-autorisation", "title": "Autorisation d'exercice.pdf", "status": "received" },
-        { "id": "doc-c-assurance", "title": "Attestation d'assurance.pdf", "status": "missing" }
+        { "id": "doc-c-statuts", "type": "statutes", "title": "Statuts de l'établissement.pdf", "status": "received" },
+        { "id": "doc-c-autorisation", "type": "operating_license", "title": "Autorisation d'exercice.pdf", "status": "received" },
+        { "id": "doc-c-assurance", "type": "insurance_certificate", "title": "Attestation d'assurance.pdf", "status": "missing" }
       ],
       "agreements": [
         { "code": "data_processing_agreement", "title": "Accord de traitement des données", "accepted": true },

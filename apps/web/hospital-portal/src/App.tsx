@@ -21,6 +21,7 @@ import {
   type StepSection,
 } from './services/onboardingService'
 import type { OnboardingSnapshot, StepId } from './types/onboarding'
+import { DocumentsView } from './views/DocumentsView'
 import { OverviewView } from './views/OverviewView'
 import { ProfileView } from './views/ProfileView'
 import { RegistrationView } from './views/RegistrationView'
@@ -147,6 +148,16 @@ export default function App() {
         <ProfileView
           snapshot={load.snapshot}
           consumeSimulatedFailure={failureOnce('profile-failure')}
+          onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
+          onNavigate={navigateTo}
+        />
+      )
+    }
+    if (currentView === 'documents') {
+      return (
+        <DocumentsView
+          snapshot={load.snapshot}
+          consumeSimulatedFailure={failureOnce('document-failure')}
           onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
           onNavigate={navigateTo}
         />
