@@ -12,7 +12,10 @@ from application.federate_patient_query import (
     AuthorizationExpired,
     FederatedQueryRequest,
     FederatePatientQuery,
+    GovernanceUnavailable,
     NoNodesRegistered,
+    SyncAuthorizationDenied,
+    TargetsNotAuthorized,
     UnknownTargets,
 )
 from domain.federated_query import (
@@ -149,6 +152,30 @@ def create_router(federate: FederatePatientQuery) -> APIRouter:
                 "Federated query not authorized",
                 "authorization_denied",
                 f"The authorization expired on {body.authorization.expires_at.date()}.",
+            )
+        except SyncAuthorizationDenied as error:
+            return problem(
+                403,
+                "Federated query not authorized",
+                "authorization_denied",
+                "The Governance Node denied the synchronization authorization: "
+                f"{error.reason.value}.",
+            )
+        except TargetsNotAuthorized as error:
+            return problem(
+                403,
+                "Federated query not authorized",
+                "authorization_denied",
+                "Not covered by the synchronization authorization: "
+                f"{', '.join(error.organization_refs)}",
+            )
+        except GovernanceUnavailable:
+            return problem(
+                503,
+                "Federation unavailable",
+                "federation_unavailable",
+                "The Governance Node could not be reached to check the "
+                "synchronization authorization. No node was asked.",
             )
         except UnknownTargets as error:
             return problem(

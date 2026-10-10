@@ -7,9 +7,10 @@ Coordination capability for authorized communication among autonomous Nodes. Pyt
 - **IMPLEMENTED (D2):**
   - the federated patient query, [`federated-patient-query.v1.yaml`](../../contracts/federation/federated-patient-query.v1.yaml) (HC-141). It asks each registered Hospital Node, merges the answers into a transient timeline, and reports a status for each node.
   - the node registry, [`node-registry.v1.yaml`](../../contracts/federation/node-registry.v1.yaml) (HC-142): register, update, list, get, and remove nodes. Federated queries ask the nodes listed there. It is kept in memory, and its Governance approval references are **not verified**.
+  - temporary sync authorization (HC-144): before any node is asked under a `synchronization_decision`, the service checks it with the Governance Node over real HTTP ([`sync-authorization-check.v1.yaml`](../../contracts/federation/sync-authorization-check.v1.yaml)), then asks only the organizations Governance authorizes. No Governance Node exists yet, so live sync-basis queries return `503` and ask no node. The authorized path is covered by tests only.
   - capability discovery (HC-143): on request, the service calls each registered node's `GET /v1/federation/node` over real HTTP and keeps the latest result per node. No Hospital Node serves that endpoint yet, so live checks report `no_federation_interface` or `unreachable`. The successful path is covered by tests only.
 - **MOCKED:** the Hospital Nodes. The Hospital Node runtime (HC-110) is a skeleton with no Federation endpoint yet, so each organization with a node in [`demo-data/`](../../demo-data/README.md) is simulated in process. **This is not node-to-node exchange and not production security.**
-- **PLANNED:** using discovered capabilities when choosing which nodes to ask, Governance verification of authorizations and approvals (HC-144, HC-131), real node-to-node calls (HC-145), persistent registry storage, authentication of registry writes, and audit events.
+- **PLANNED:** using discovered capabilities when choosing which nodes to ask, Governance verification of patient access grants and registry approvals (HC-131), node-side verification of authorizations, real node-to-node calls (HC-145), persistent registry storage, authentication of registry writes, and audit events.
 
 ## Running locally
 
@@ -65,6 +66,7 @@ Other states to show:
 | `authorization.expires_at` in the past | `403 authorization_denied`; no node is asked |
 | `target_organization_refs: ["org-hospital-c"]` (still in onboarding) | `400 invalid_request` |
 | Missing or malformed fields | `400 invalid_request`, `application/problem+json` |
+| `authorization.basis: "synchronization_decision"` with a valid `expires_at` | `503`: the Governance Node could not be reached, and no node was asked (nothing runs on port 8200 yet) |
 | Started without a seed (empty registry) | `503 federation_unavailable`: "No Hospital Node is registered." |
 
 Registry states to show:
@@ -97,12 +99,13 @@ The grant expires on 2026-10-24. Because the service uses the real clock, the de
 services/federation/
 ├── main.py                     # composition root; create_app(clock, registry_seed)
 ├── registry-seed.demo.json     # fictional demo node registrations
-├── domain/                     # query and aggregation rules; node registration and discovery rules — stdlib only
+├── domain/                     # query, aggregation, registration, discovery, and sync authorization rules — stdlib only
 ├── application/                # FederatePatientQuery, NodeRegistry, DiscoverNodeCapabilities; their ports
 ├── adapters/inbound/http/      # federated query, registry, and discovery routers; problem+json errors; /health
 ├── adapters/outbound/
 │   ├── hospital_node_contract.py        # wire mapping for hospital-node-federation.v1 (reused by HC-145)
 │   ├── http_node_descriptor_client.py   # real HTTP client for GET /v1/federation/node
+│   ├── http_sync_authorization_checker.py  # real HTTP client for the Governance check
 │   ├── in_memory_discovery_store.py     # latest discovery result per node
 │   ├── in_memory_registration_store.py  # RegistrationStore kept in this process
 │   └── simulated_hospital_nodes.py      # SimulatedHospitalNodes (MOCKED)
@@ -138,6 +141,16 @@ services/federation/
 - **Strict parsing.** Anything outside the contract's `NodeDescriptor` is `invalid_response`, including extra fields such as patient counts.
 - **On request only.** Discovery runs when asked, and results are kept in memory. Federated queries do not use capabilities yet.
 
+## Temporary sync authorization boundaries
+
+- **Governance decides; Federation enforces.** The service never approves, extends, or widens a synchronization. It asks the Governance Node at `FEDERATION_GOVERNANCE_URL` (default `http://localhost:8200`, the ADR-0003 port) whether the decision authorizes this requester, patient, scope, and purpose now.
+- **No node is asked unless Governance confirms.** Federation answers `403` with Governance's reason when it denies. It answers `503` when Governance is unreachable, times out (2 s), redirects, or answers outside the contract, including an answer about a different decision.
+- **Only authorized targets.** An authorized query goes only to the organizations Governance names. Requested targets outside them get `403`. This replaces asking every registered node.
+- **Never widened.** If Governance's "authorized" answer has already expired, or its scope does not cover the request, Federation refuses anyway.
+- **Nodes still decide.** Each node enforces the authorization again. The simulated nodes know only the decisions in `demo-data/`, so a decision created at runtime, such as step 20's approval of `sync-001`, is still denied by the simulated node.
+- **Unchanged for patient access grants.** They are patient-issued and are not sent to Governance in this version.
+- **Not production security.** There is no service authentication and no signed token; both are OPEN.
+
 ## Non-responsibilities
 
 It is not a centralized clinical database, does not access Hospital Node tables directly, and does not connect directly to hospital DMI/HIS systems. It cannot grant access; only the Governance-backed basis checked by each node can.
@@ -148,4 +161,5 @@ It is not a centralized clinical database, does not access Hospital Node tables 
 - [`hospital-node-federation.v1.yaml`](../../contracts/federation/hospital-node-federation.v1.yaml): called on each Hospital Node. Simulated in process until the Hospital Node implements it.
 - [`node-registry.v1.yaml`](../../contracts/federation/node-registry.v1.yaml) 1.1: provided by this service. Registry (HC-142) and capability discovery (HC-143). Tests validate every response against it.
 - [`hospital-node-federation.v1.yaml`](../../contracts/federation/hospital-node-federation.v1.yaml) `GET /v1/federation/node`: called over real HTTP by capability discovery.
-- PLANNED: Governance verification of authorizations (HC-144) and audit event contracts.
+- [`sync-authorization-check.v1.yaml`](../../contracts/federation/sync-authorization-check.v1.yaml): provided by the Governance Node, called by this service for every synchronization-decision query (HC-144). Tests drive the client with the contract's own examples.
+- PLANNED: Governance verification of patient access grants, and audit event contracts.

@@ -8,7 +8,8 @@ registry (HC-142); a registered node with no simulation answers as unavailable.
 
 This is not node-to-node exchange and not security: authorization is checked against
 the fictional grants and decisions in demo-data/, standing in for verification with
-the Governance Node (HC-144).
+the Governance Node. The Federation Service's own Governance check for synchronization
+decisions (HC-144) happens before these nodes are asked and does not replace them.
 """
 
 import json
