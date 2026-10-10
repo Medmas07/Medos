@@ -23,6 +23,8 @@ VALID = {
     "port": 8199,
     "storage_dir": "storage/test",
     "mock_clinical_records": "records/test.json",
+    "mock_access_grants": "access.json",
+    "mock_governance_decisions": "governance.json",
 }
 
 
@@ -45,6 +47,7 @@ def test_paths_are_resolved_against_the_config_file(tmp_path):
 
     assert config.storage_dir == (tmp_path / "storage" / "test").resolve()
     assert config.mock_clinical_records == (tmp_path / "records/test.json").resolve()
+    assert config.mock_access_grants == (tmp_path / "access.json").resolve()
 
 
 def test_demo_configs_match_the_canonical_demo_nodes():
@@ -96,6 +99,8 @@ def test_missing_file_stops_startup(tmp_path):
         {**VALID, "port": "8101a"},
         {**VALID, "storage_dir": ""},
         {k: v for k, v in VALID.items() if k != "mock_clinical_records"},
+        {k: v for k, v in VALID.items() if k != "mock_access_grants"},
+        {**VALID, "mock_governance_decisions": ""},
         {**VALID, "organization_ref": "Hôpital A"},
     ],
     ids=[
@@ -106,6 +111,8 @@ def test_missing_file_stops_startup(tmp_path):
         "non-numeric-port",
         "empty-storage",
         "missing-clinical-records",
+        "missing-access-grants",
+        "empty-governance-decisions",
         "non-opaque-ref",
     ],
 )
