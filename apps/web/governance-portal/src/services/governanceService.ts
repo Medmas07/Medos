@@ -2,6 +2,7 @@ import governanceFixtures from '../../../../../demo-data/governance.json'
 import notificationsFixtures from '../../../../../demo-data/notifications.json'
 import organizationsFixtures from '../../../../../demo-data/organizations.json'
 import peopleFixtures from '../../../../../demo-data/people.json'
+import researchFixtures from '../../../../../demo-data/research.json'
 import type {
   GovernanceAuditEvent,
   GovernanceDecision,
@@ -12,6 +13,7 @@ import type {
   PatientInfo,
   PersonInfo,
   ResearchAccessRequest,
+  ResearchProjectInfo,
   SynchronizationRequest,
 } from '../types/governance'
 import { reviewStore } from './reviewStore'
@@ -33,6 +35,8 @@ const typedPatients = (peopleFixtures.patients ?? []) as unknown as PatientInfo[
 
 const typedNotifications = (notificationsFixtures.notifications ?? []) as unknown as GovernanceNotification[]
 
+const typedProjects = (researchFixtures.projects ?? []) as unknown as ResearchProjectInfo[]
+
 const allStaffAndClinicians = [
   ...((peopleFixtures.staff ?? []) as unknown as PersonInfo[]),
   ...((peopleFixtures.clinicians ?? []) as unknown as PersonInfo[]),
@@ -51,6 +55,18 @@ export const governanceService = {
 
   getResearchAccessRequests(): ResearchAccessRequest[] {
     return typedGovernance.researchAccessRequests
+  },
+
+  getResearchAccessRequest(id: string): ResearchAccessRequest | undefined {
+    return this.getResearchAccessRequests().find((r) => r.id === id)
+  },
+
+  getResearchProjects(): ResearchProjectInfo[] {
+    return typedProjects
+  },
+
+  getResearchProject(id: string): ResearchProjectInfo | undefined {
+    return typedProjects.find((p) => p.id === id)
   },
 
   getDecisions(): GovernanceDecision[] {
