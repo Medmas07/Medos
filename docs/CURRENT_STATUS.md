@@ -14,7 +14,7 @@ Status is based on repository inspection, not product intent. Use the [shared vo
 - **Deployment/production preparation — IMPLEMENTED documentation/placeholders:** no deployed runtime or selected provider is implied.
 
 - **AI Services runtime skeleton — VALIDATED (local):** [`services/ai/`](../services/ai/README.md) is a FastAPI service with `GET /health`, framework-free Domain/Application layers, and pytest tests (use case, HTTP, layer boundaries). Its tests, ruff checks, and local `fastapi dev`/`fastapi run` servers were verified. It exposes no real AI capability and is not deployed.
-- **Hospital Node runtime skeleton — IMPLEMENTED:** [`instances/hospital-node/`](../instances/hospital-node/README.md) is a FastAPI app with empty Domain/Application/HTTP layers, pinned dependencies, and pytest tests (OpenAPI served, no product routes, layer boundaries). It exposes no product endpoint, holds no data, and is not deployed.
+- **Hospital Node runtime skeleton — IMPLEMENTED:** [`instances/hospital-node/`](../instances/hospital-node/README.md) is a FastAPI app with pinned dependencies and pytest tests (use case, HTTP, layer boundaries). Its only endpoint is `GET /health` (HC-111, D2): a liveness check reporting no capabilities and a notice that the node holds no clinical data. Tests, ruff, and a local `fastapi run` server were checked. It holds no data and is not deployed.
 - **AI provider port — IMPLEMENTED, provider MOCKED:** the provider-neutral `AiProvider` port (HC-151) lives in `services/ai/application/`. Its only adapter is a deterministic mock, reported at `GET /ai-provider`. Outputs carry provenance and stay pending human review. No real model is called.
 
 ## Not implemented
@@ -22,7 +22,7 @@ Status is based on repository inspection, not product intent. Use the [shared vo
 - **Web products — PLANNED:** Hospital Portal, Governance Portal, and Research Portal contain documentation only. Their technology (React + TypeScript + Vite SPA) is CONFIRMED by [ADR-0001](decisions/ADR-0001-web-frontend-technology.md), but no portal has been scaffolded.
 - **Mobile products — PLANNED:** Patient App and Clinician App contain documentation only. Flutter + Dart and the Android development path are CONFIRMED by [ADR-0004](decisions/ADR-0004-mobile-technology.md); no dependencies, application code, or generated platform project exists.
 - **Backend runtime strategy — CONFIRMED:** [ADR-0003](decisions/ADR-0003-backend-runtime-strategy.md) selects Python + FastAPI for every Node and service. Only the AI Services and Hospital Node skeletons exist so far (see Implemented); no other runtime has been created.
-- **Hospital Node — PLANNED beyond its skeleton:** no local API, storage, identity, consent, audit, health endpoint, configuration, or Federation implementation.
+- **Hospital Node — PLANNED beyond its skeleton:** no local clinical API, storage, identity, consent, audit, configuration, or Federation implementation; its health endpoint is liveness only.
 - **Governance Node — PLANNED:** no runtime, policy engine, authorization, audit persistence, or ledger adapter.
 - **DMI Adapter — PLANNED:** its Hospital Node-local boundary exists, but no port, mapping, configuration, fixture, or implementation.
 - **Federation Service — partially IMPLEMENTED with MOCKED nodes:** the runtime serves the federated patient query (HC-141, see Mocked behavior). Real node registry, capability discovery, node identity, Governance verification of authorizations, node-to-node exchange, synchronization, and audit are PLANNED.
