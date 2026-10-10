@@ -12,7 +12,7 @@ def test_serves_openapi_document():
     assert response.json()["info"]["title"] == "Hospital Node"
 
 
-def test_exposes_only_health_federation_audit_and_access_grant_routes():
+def test_exposes_only_documented_hospital_node_routes():
     assert set(client.get("/openapi.json").json()["paths"]) == {
         "/health",
         "/v1/federation/node",
@@ -20,6 +20,8 @@ def test_exposes_only_health_federation_audit_and_access_grant_routes():
         "/v1/audit/events",
         "/v1/patients/{patient_ref}/access-grants",
         "/v1/patients/{patient_ref}/access-grants/{grant_ref}/revocation",
+        "/v1/research-executions",
+        "/v1/research-executions/{execution_id}",
     }
 
 

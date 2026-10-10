@@ -24,7 +24,12 @@ def test_reports_the_configured_hospital_identity():
 
 
 def test_reports_the_served_capabilities():
-    assert status().capabilities == ("patient_history", "audit_events", "access_grants")
+    assert status().capabilities == (
+        "patient_history",
+        "audit_events",
+        "access_grants",
+        "research_execution",
+    )
 
 
 def test_reports_the_clinical_repository_summary():

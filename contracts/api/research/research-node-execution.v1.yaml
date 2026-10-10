@@ -8,9 +8,11 @@ info:
     The node independently enforces Governance authorization and never exposes
     its database, DMI, raw records, patient identifiers, or row-level output.
 
-    IMPLEMENTED contract with MOCKED fictional examples. No service, execution
-    agent, sandbox, authorization verifier, aggregator, or output validator
-    implements it. Authentication, isolation, package policy, and disclosure
+    IMPLEMENTED contract with MOCKED fictional examples. The HC-183 Hospital
+    Node agent implements it for one bounded, installed aggregate over the
+    visibly MOCKED local repository. It validates the authorization envelope
+    but does not authenticate its issuer. Arbitrary code execution, sandboxing,
+    durable state, authentication, package policy, and production disclosure
     technology remain OPEN.
 paths:
   /v1/research-executions:
