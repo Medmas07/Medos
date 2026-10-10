@@ -27,6 +27,8 @@ import { DecisionView } from './views/DecisionView'
 import { DmiView } from './views/DmiView'
 import { DocumentsView } from './views/DocumentsView'
 import { HumanReviewView } from './views/HumanReviewView'
+import { NodeConfigurationView } from './views/NodeConfigurationView'
+import { NodeDownloadView } from './views/NodeDownloadView'
 import { OverviewView } from './views/OverviewView'
 import { ProfileView } from './views/ProfileView'
 import { RegistrationView } from './views/RegistrationView'
@@ -220,6 +222,19 @@ export default function App() {
     }
     if (currentView === 'decision') {
       return <DecisionView snapshot={load.snapshot} onNavigate={navigateTo} />
+    }
+    if (currentView === 'node-configuration') {
+      return <NodeConfigurationView snapshot={load.snapshot} onNavigate={navigateTo} />
+    }
+    if (currentView === 'node-download') {
+      return (
+        <NodeDownloadView
+          snapshot={load.snapshot}
+          consumeSimulatedFailure={failureOnce('download-failure')}
+          onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
+          onNavigate={navigateTo}
+        />
+      )
     }
     const index = load.snapshot.steps.findIndex((s) => s.id === currentView)
     return <StepPlaceholderView step={load.snapshot.steps[index]} position={index + 1} />

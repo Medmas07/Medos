@@ -12,6 +12,7 @@ import type {
   StaffMember,
   StepId,
 } from '../types/onboarding'
+import { nodeRefFor } from './nodeConfigService'
 
 /**
  * MOCKED onboarding service. It reads the canonical fictional fixtures in the
@@ -152,9 +153,21 @@ export function deriveSteps(
     const delivered: StepState = node
       ? { status: 'completed', detail: `Nœud ${node.id} (v${node.version}).` }
       : { status: 'pending', detail: 'Configuration non générée.' }
-    states.set('node-configuration', delivered)
-    states.set('node-download', delivered)
-    states.set('node-installation', delivered)
+    // Without an installed node, approval makes the configuration ready (HC-060);
+    // download and installation remain to do.
+    states.set(
+      'node-configuration',
+      node ? delivered : { status: 'completed', detail: `Configuration prête : ${nodeRefFor(organization.id)}.` },
+    )
+    states.set(
+      'node-download',
+      node
+        ? delivered
+        : application.nodePackage
+          ? { status: 'completed', detail: `Package téléchargé : ${application.nodePackage.fileName}.` }
+          : { status: 'pending', detail: 'Package non téléchargé.' },
+    )
+    states.set('node-installation', node ? delivered : { status: 'pending', detail: 'Installation non commencée.' })
     states.set(
       'node-status',
       !node
@@ -221,6 +234,8 @@ export function deriveSteps(
  * failure scenarios start like `empty`. Each makes the first matching request
  * fail. `?demo=decision-approuvee` and `?demo=decision-refusee` start like
  * `nominal` and simulate a Governance decision published for the application.
+ * `?demo=echec-telechargement` starts like `decision-approuvee`, and the first
+ * Node package preparation fails.
  */
 export type DemoScenario =
   | 'nominal'
@@ -236,6 +251,7 @@ export type DemoScenario =
   | 'refresh-failure'
   | 'decision-approved'
   | 'decision-rejected'
+  | 'download-failure'
 
 export function scenarioFromSearch(search: string): DemoScenario {
   const value = new URLSearchParams(search).get('demo')
@@ -251,6 +267,7 @@ export function scenarioFromSearch(search: string): DemoScenario {
   if (value === 'echec-actualisation') return 'refresh-failure'
   if (value === 'decision-approuvee') return 'decision-approved'
   if (value === 'decision-refusee') return 'decision-rejected'
+  if (value === 'echec-telechargement') return 'download-failure'
   return 'nominal'
 }
 
@@ -337,8 +354,8 @@ export async function loadOnboardingSnapshot(
     application: loaded,
     decision: decisions.find((d) => d.id === loaded?.decisionId) ?? null,
   }
-  if (loaded && (scenario === 'decision-approved' || scenario === 'decision-rejected')) {
-    decided = withSimulatedDecision(organization, loaded, scenario === 'decision-approved' ? 'approved' : 'rejected')
+  if (loaded && (scenario === 'decision-approved' || scenario === 'download-failure' || scenario === 'decision-rejected')) {
+    decided = withSimulatedDecision(organization, loaded, scenario === 'decision-rejected' ? 'rejected' : 'approved')
   }
   const { application } = decided
 
