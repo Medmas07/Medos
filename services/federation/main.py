@@ -1,3 +1,4 @@
+import os
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -15,6 +16,9 @@ from adapters.inbound.http.node_capabilities import (
 )
 from adapters.inbound.http.node_registry import create_router as create_registry_router
 from adapters.outbound.http_node_descriptor_client import HttpNodeDescriptorClient
+from adapters.outbound.http_sync_authorization_checker import (
+    HttpSyncAuthorizationChecker,
+)
 from adapters.outbound.in_memory_discovery_store import InMemoryDiscoveryStore
 from adapters.outbound.in_memory_registration_store import InMemoryRegistrationStore
 from adapters.outbound.simulated_hospital_nodes import SimulatedHospitalNodes
@@ -23,11 +27,16 @@ from application.federate_patient_query import FederatePatientQuery
 from application.node_registry import NodeRegistry
 from infrastructure.registry_seed import load_seed, seed_path_from_env
 
+# Suggested Governance Node port (ADR-0003).
+DEFAULT_GOVERNANCE_URL = "http://localhost:8200"
+
 
 def create_app(
     clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     registry_seed: Path | None = None,
     node_transport=None,
+    governance_url: str = DEFAULT_GOVERNANCE_URL,
+    governance_transport=None,
 ) -> FastAPI:
     registry = NodeRegistry(store=InMemoryRegistrationStore(), clock=clock)
     if registry_seed:
@@ -43,6 +52,10 @@ def create_app(
     federate = FederatePatientQuery(
         registry=registry,
         nodes=SimulatedHospitalNodes(clock=clock),
+        # Real HTTP check with the Governance Node for synchronization decisions (HC-144).
+        sync_authorizations=HttpSyncAuthorizationChecker(
+            governance_url, transport=governance_transport
+        ),
         clock=clock,
     )
     app = FastAPI(title="Federation Service", version=SERVICE_VERSION)
@@ -54,4 +67,7 @@ def create_app(
     return app
 
 
-app = create_app(registry_seed=seed_path_from_env())
+app = create_app(
+    registry_seed=seed_path_from_env(),
+    governance_url=os.environ.get("FEDERATION_GOVERNANCE_URL", DEFAULT_GOVERNANCE_URL),
+)

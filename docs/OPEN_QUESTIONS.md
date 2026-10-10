@@ -10,6 +10,7 @@ These questions are OPEN. Do not answer them through implementation without the 
 - How will consent, legal authority, revocation, retention, restriction, and erasure differ by jurisdiction?
 - Which transport and protocol will carry Federation queries, synchronization, and node discovery?
 - How will node identity, signing, authorization tokens, key rotation, and trust establishment work?
+- How does a Hospital Node verify a synchronization authorization itself, and should Governance issue signed, time-limited tokens instead of answering online checks? HC-144 implements only the Federation Service's online check ([`sync-authorization-check.v1.yaml`](../contracts/federation/sync-authorization-check.v1.yaml)), without service authentication.
 - Who may register, update, or remove entries in the Federation [node registry](../contracts/federation/node-registry.v1.yaml), and where are registrations persisted? In v1 the writes are unauthenticated and the registry is in memory; the Governance approval each registration cites is not verified.
 - How is one patient matched across organizations? The [Federation contracts](../contracts/federation/README.md) carry an ecosystem-level `patient_ref` that each Hospital Node maps to its local identifier; the matching and enrolment process is undecided.
 - Is an Immutable Audit Ledger required, and if so which permissioned ledger technology is justified?
