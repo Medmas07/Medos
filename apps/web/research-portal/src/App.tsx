@@ -21,6 +21,7 @@ import {
 import type { PageId, ResearchSnapshot } from './types/research'
 import { DashboardView } from './views/DashboardView'
 import { HomeView } from './views/HomeView'
+import { NewProjectView } from './views/NewProjectView'
 import { PagePlaceholderView } from './views/PagePlaceholderView'
 
 type ViewId = 'home' | PageId
@@ -126,6 +127,15 @@ export default function App() {
     }
     if (currentView === 'dashboard') {
       return <DashboardView snapshot={load.snapshot} onNavigate={navigateTo} />
+    }
+    if (currentView === 'new-project') {
+      return (
+        <NewProjectView
+          snapshot={load.snapshot}
+          onCreated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
+          onNavigate={navigateTo}
+        />
+      )
     }
     const page = load.snapshot.pages.find((p) => p.id === currentView)!
     const section = PAGE_DEFINITIONS.find((d) => d.id === currentView)!.section

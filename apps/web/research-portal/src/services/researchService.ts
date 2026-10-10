@@ -36,6 +36,9 @@ const organizations = organizationFixtures.organizations as unknown as Organizat
 const staff = peopleFixtures.staff as unknown as StaffMember[]
 const notifications = notificationFixtures.notifications as unknown as PortalNotification[]
 
+/** Every fixture project; a new project's identifier must not reuse one of theirs. */
+export const FIXTURE_PROJECTS: readonly ResearchProject[] = projects
+
 /** Demo persona: the fictional principal investigator of the cardiometabolic research lab. */
 export const DEMO_RESEARCHER_ID = 'usr-aymen'
 
