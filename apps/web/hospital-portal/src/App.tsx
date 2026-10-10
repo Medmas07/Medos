@@ -21,6 +21,7 @@ import {
 } from './services/onboardingService'
 import type { OnboardingSnapshot, StepId } from './types/onboarding'
 import { OverviewView } from './views/OverviewView'
+import { RegistrationView } from './views/RegistrationView'
 import { StepPlaceholderView } from './views/StepPlaceholderView'
 
 type ViewId = 'overview' | StepId
@@ -119,6 +120,17 @@ export default function App() {
     }
     if (currentView === 'overview') {
       return <OverviewView snapshot={load.snapshot} onNavigate={navigateTo} />
+    }
+    if (currentView === 'registration') {
+      return (
+        <RegistrationView
+          snapshot={load.snapshot}
+          failFirstSubmission={scenarioFromSearch(window.location.search) === 'registration-failure'}
+          // Local state only: a reload returns to the fixture snapshot.
+          onRegistered={(snapshot) => setLoad({ kind: 'ready', snapshot })}
+          onNavigate={navigateTo}
+        />
+      )
     }
     const index = load.snapshot.steps.findIndex((s) => s.id === currentView)
     return <StepPlaceholderView step={load.snapshot.steps[index]} position={index + 1} />
