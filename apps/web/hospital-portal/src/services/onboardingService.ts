@@ -1,0 +1,213 @@
+import governanceFixtures from '../../../../../demo-data/governance.json'
+import notificationFixtures from '../../../../../demo-data/notifications.json'
+import organizationFixtures from '../../../../../demo-data/organizations.json'
+import peopleFixtures from '../../../../../demo-data/people.json'
+import type {
+  HospitalApplication,
+  OnboardingSnapshot,
+  OnboardingStep,
+  Organization,
+  PortalNotification,
+  StaffMember,
+  StepId,
+} from '../types/onboarding'
+
+/**
+ * MOCKED onboarding service. It reads the canonical fictional fixtures in the
+ * browser and simulates latency; there is no onboarding API yet. The portal only
+ * displays Governance decisions: nothing here can approve an application.
+ */
+
+const applications = governanceFixtures.hospitalApplications as unknown as HospitalApplication[]
+const organizations = organizationFixtures.organizations as unknown as Organization[]
+const staff = peopleFixtures.staff as unknown as StaffMember[]
+const notifications = notificationFixtures.notifications as unknown as PortalNotification[]
+
+/** Demo persona: the fictional manager of Centre Hospitalier Cap Azur (in onboarding). */
+export const DEMO_ORGANIZATION_ID = 'org-hospital-c'
+export const DEMO_MANAGER_ID = 'usr-mehdi'
+
+export type StepSection = 'onboarding' | 'node'
+
+export interface StepDefinition {
+  id: StepId
+  label: string
+  /** Shorter label for the sidebar, where a status badge shares the row. */
+  navLabel: string
+  ticket: string
+  section: StepSection
+}
+
+/** Portal pages in workflow order, as in the product vision's onboarding workflow. */
+export const STEP_DEFINITIONS: readonly StepDefinition[] = [
+  { id: 'registration', label: 'Inscription', navLabel: 'Inscription', ticket: 'HC-051', section: 'onboarding' },
+  { id: 'profile', label: "Profil de l'établissement", navLabel: 'Profil', ticket: 'HC-052', section: 'onboarding' },
+  { id: 'documents', label: 'Documents administratifs', navLabel: 'Documents', ticket: 'HC-053', section: 'onboarding' },
+  { id: 'agreements', label: 'Accords', navLabel: 'Accords', ticket: 'HC-054', section: 'onboarding' },
+  { id: 'technical', label: 'Questionnaire technique', navLabel: 'Questionnaire technique', ticket: 'HC-055', section: 'onboarding' },
+  { id: 'dmi', label: 'Questionnaire DMI / SIH', navLabel: 'DMI / SIH', ticket: 'HC-056', section: 'onboarding' },
+  { id: 'automated-review', label: 'Revue automatisée', navLabel: 'Contrôles', ticket: 'HC-057', section: 'onboarding' },
+  { id: 'human-review', label: 'Validation humaine', navLabel: 'Revue humaine', ticket: 'HC-058', section: 'onboarding' },
+  { id: 'decision', label: 'Décision de gouvernance', navLabel: 'Décision', ticket: 'HC-059', section: 'onboarding' },
+  { id: 'node-configuration', label: 'Configuration du nœud', navLabel: 'Configuration', ticket: 'HC-060', section: 'node' },
+  { id: 'node-download', label: 'Téléchargement du nœud', navLabel: 'Téléchargement', ticket: 'HC-061', section: 'node' },
+  { id: 'node-installation', label: "Guide d'installation", navLabel: 'Installation', ticket: 'HC-062', section: 'node' },
+  { id: 'node-status', label: 'État du nœud', navLabel: 'État du nœud', ticket: 'HC-063', section: 'node' },
+]
+
+const LOCKED_DETAIL = "Disponible après approbation par l'Autorité de gouvernance."
+
+type StepState = Pick<OnboardingStep, 'status' | 'detail'>
+
+function plural(count: number, word: string): string {
+  return `${count} ${word}${count > 1 ? 's' : ''}`
+}
+
+function documentsState(application: HospitalApplication): StepState {
+  const missing = application.documents.filter((d) => d.status !== 'received').length
+  if (application.documents.length === 0) return { status: 'pending', detail: 'Aucun document déposé.' }
+  if (missing > 0) return { status: 'attention', detail: `${plural(missing, 'document')} à fournir.` }
+  return { status: 'completed', detail: `${plural(application.documents.length, 'document')} reçu(s).` }
+}
+
+function agreementsState(application: HospitalApplication): StepState {
+  if (application.agreements.length === 0) return { status: 'pending', detail: 'Aucun accord accepté.' }
+  const open = application.agreements.filter((a) => !a.accepted).length
+  if (open > 0) return { status: 'attention', detail: `${plural(open, 'accord')} non accepté(s).` }
+  return { status: 'completed', detail: 'Tous les accords sont acceptés.' }
+}
+
+function automatedReviewState(application: HospitalApplication): StepState {
+  const automated = application.reviewSteps.filter(
+    (s) => s.step === 'completeness_check' || s.step === 'assisted_review',
+  )
+  if (automated.length === 0 || automated.some((s) => s.status === 'pending')) {
+    return { status: 'pending', detail: 'Vérifications automatiques non lancées.' }
+  }
+  const findings = automated.reduce((sum, s) => sum + s.findings.length, 0)
+  if (findings > 0) {
+    return { status: 'attention', detail: `Terminée avec ${plural(findings, 'remarque')} (indicatives).` }
+  }
+  return { status: 'completed', detail: 'Terminée sans remarque.' }
+}
+
+function humanReviewState(application: HospitalApplication): StepState {
+  const step = application.reviewSteps.find((s) => s.step === 'human_review')
+  if (!step) return { status: 'pending', detail: 'Pas encore transmise en revue humaine.' }
+  if (step.status === 'pending') {
+    return { status: 'in_progress', detail: "En cours auprès de l'Autorité de gouvernance." }
+  }
+  return { status: 'completed', detail: "Revue humaine terminée par l'Autorité de gouvernance." }
+}
+
+/** Derives the display state of every portal step from fixture data. Pure. */
+export function deriveSteps(
+  organization: Organization,
+  application: HospitalApplication | null,
+): OnboardingStep[] {
+  const states = new Map<StepId, StepState>()
+
+  if (!application) {
+    states.set('registration', { status: 'pending', detail: 'Aucune candidature soumise.' })
+  } else if (application.status === 'approved') {
+    for (const def of STEP_DEFINITIONS) {
+      if (def.section === 'onboarding') states.set(def.id, { status: 'completed', detail: 'Terminé.' })
+    }
+    states.set('decision', { status: 'completed', detail: "Approuvé par l'Autorité de gouvernance." })
+    const node = organization.node
+    const delivered: StepState = node
+      ? { status: 'completed', detail: `Nœud ${node.id} (v${node.version}).` }
+      : { status: 'pending', detail: 'Configuration non générée.' }
+    states.set('node-configuration', delivered)
+    states.set('node-download', delivered)
+    states.set('node-installation', delivered)
+    states.set(
+      'node-status',
+      !node
+        ? { status: 'pending', detail: 'Nœud non installé.' }
+        : node.status === 'online'
+          ? { status: 'completed', detail: 'Nœud en ligne.' }
+          : { status: 'attention', detail: `Nœud ${node.status === 'degraded' ? 'dégradé' : 'hors ligne'}.` },
+    )
+  } else {
+    const questionnaire = application.technicalQuestionnaire
+    states.set('registration', { status: 'completed', detail: 'Candidature soumise.' })
+    states.set('profile', { status: 'completed', detail: 'Profil renseigné.' })
+    states.set('documents', documentsState(application))
+    states.set('agreements', agreementsState(application))
+    states.set(
+      'technical',
+      questionnaire
+        ? { status: 'completed', detail: 'Questionnaire complété.' }
+        : { status: 'pending', detail: 'Questionnaire non complété.' },
+    )
+    states.set(
+      'dmi',
+      questionnaire?.dmiSystem
+        ? { status: 'completed', detail: `DMI déclaré : ${questionnaire.dmiSystem}.` }
+        : { status: 'pending', detail: 'DMI / SIH non décrit.' },
+    )
+    states.set('automated-review', automatedReviewState(application))
+    states.set('human-review', humanReviewState(application))
+    states.set(
+      'decision',
+      application.status === 'rejected'
+        ? { status: 'attention', detail: "Candidature rejetée par l'Autorité de gouvernance." }
+        : { status: 'pending', detail: "Décision de l'Autorité de gouvernance attendue." },
+    )
+  }
+
+  return STEP_DEFINITIONS.map((def) => {
+    const fallback: StepState =
+      def.section === 'node'
+        ? { status: 'locked', detail: LOCKED_DETAIL }
+        : { status: 'pending', detail: 'Non commencé.' }
+    return { id: def.id, label: def.label, ticket: def.ticket, ...(states.get(def.id) ?? fallback) }
+  })
+}
+
+/** Demo scenarios, selected with `?demo=vide` or `?demo=erreur` in the URL. */
+export type DemoScenario = 'nominal' | 'empty' | 'error'
+
+export function scenarioFromSearch(search: string): DemoScenario {
+  const value = new URLSearchParams(search).get('demo')
+  if (value === 'vide') return 'empty'
+  if (value === 'erreur') return 'error'
+  return 'nominal'
+}
+
+export interface LoadOptions {
+  scenario?: DemoScenario
+  /** Simulated network latency in milliseconds. */
+  delayMs?: number
+}
+
+export async function loadOnboardingSnapshot(
+  organizationId: string,
+  managerId: string,
+  { scenario = 'nominal', delayMs = 400 }: LoadOptions = {},
+): Promise<OnboardingSnapshot> {
+  await new Promise((resolve) => setTimeout(resolve, delayMs))
+
+  if (scenario === 'error') {
+    throw new Error("Le service d'adhésion simulé est indisponible (scénario de démonstration).")
+  }
+  const organization = organizations.find((o) => o.id === organizationId)
+  const manager = staff.find((p) => p.id === managerId && p.organizationId === organizationId)
+  if (!organization || !manager) {
+    throw new Error(`Établissement ou responsable inconnu : ${organizationId} / ${managerId}.`)
+  }
+
+  const application =
+    scenario === 'empty' ? null : (applications.find((a) => a.organizationId === organizationId) ?? null)
+
+  return {
+    organization,
+    manager,
+    application,
+    steps: deriveSteps(organization, application),
+    notifications: notifications
+      .filter((n) => n.recipientId === managerId && (application !== null || n.relatedId === null))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+  }
+}

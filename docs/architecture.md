@@ -181,10 +181,10 @@ AI is advisory, replaceable through ports, and subject to appropriate human revi
 | Documentation and planning | IMPLEMENTED | Product vision, architecture, plans, templates, and guidance exist. |
 | Patient App | PLANNED | Stack decided by ADR-0004; no dependencies, generated native project, or application code. |
 | Clinician App | PLANNED | Stack decided by ADR-0004; no dependencies, generated native project, or application code. |
-| Hospital Portal | PLANNED | No UI code; stack decided by ADR-0001. |
+| Hospital Portal | IMPLEMENTED (shell, D1) | HC-050 shell with MOCKED fixture-backed onboarding dashboard; onboarding pages (HC-051 to HC-063) and onboarding contracts PLANNED. |
 | Governance Portal | PLANNED | No UI code; stack decided by ADR-0001. |
 | Research Portal | PLANNED | No UI code or notebook execution; stack decided by ADR-0001. |
-| Web design system | IMPLEMENTED | Tokens, components, and showcase at D1 (ADR-0002); no portal consumes it yet. |
+| Web design system | IMPLEMENTED | Tokens, components, and showcase at D1 (ADR-0002); consumed by the Hospital Portal and Governance Portal shells. |
 | Canonical demo data | MOCKED | Fictional JSON fixtures with integrity checks (ADR-0005); read by the Federation Service's simulated nodes (HC-141). |
 | Hospital Node | IMPLEMENTED (skeleton) | FastAPI runtime skeleton (HC-110) with a liveness `GET /health` (HC-111); configuration and clinical APIs PLANNED; must provide the HC-140 Federation contract, not yet implemented. |
 | Governance Node | PLANNED | Boundary documented; runtime not implemented; stack decided by ADR-0003. |
