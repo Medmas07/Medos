@@ -5,7 +5,7 @@ import pytest
 
 from adapters.dmi.mock_local_dmi import SYSTEM_NAME, MockLocalDmi
 from application.dmi_source import DmiUnavailable
-from domain.dmi import PatientIdentity, RecordType, RejectedEntry
+from domain.dmi import PatientIdentity, RecordType, RejectedEntry, RejectionReason
 from infrastructure.config import load_config
 from tests.conftest import CONFIG_DIR, DEMO_NOW
 from tests.dmi_port_contract import check_dmi_source
@@ -130,8 +130,14 @@ def test_unreadable_entries_are_rejected_and_the_rest_returned(tmp_path):
 
     assert refs(extract) == set()
     assert extract.rejected == (
-        RejectedEntry("enc-a-2024-leila-er", RecordType.ENCOUNTERS, "missing_field"),
-        RejectedEntry("labReports[0]", RecordType.LAB_REPORTS, "invalid_value"),
+        RejectedEntry(
+            "enc-a-2024-leila-er",
+            RecordType.ENCOUNTERS,
+            RejectionReason.MISSING_FIELD,
+        ),
+        RejectedEntry(
+            "labReports[0]", RecordType.LAB_REPORTS, RejectionReason.INVALID_VALUE
+        ),
     )
     # Another patient's records are untouched by those entries.
     karim = dmi_for("hospital-a", records).extract_patient(
