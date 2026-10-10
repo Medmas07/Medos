@@ -12,11 +12,12 @@ def test_serves_openapi_document():
     assert response.json()["info"]["title"] == "Hospital Node"
 
 
-def test_exposes_only_health_and_the_federation_interface():
+def test_exposes_only_health_federation_and_audit_routes():
     assert set(client.get("/openapi.json").json()["paths"]) == {
         "/health",
         "/v1/federation/node",
         "/v1/federation/queries",
+        "/v1/audit/events",
     }
 
 

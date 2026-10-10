@@ -1,0 +1,243 @@
+openapi: 3.1.0
+info:
+  title: Hospital Node Audit Events
+  version: 1.0.0
+  description: |
+    Contract HC-116, version 1. The audit trail a Hospital Node keeps of
+    the patient history queries it handles (hospital-node-federation.v1,
+    `POST /v1/federation/queries`). Each node serves its own trail; there
+    is no central audit store.
+
+    Boundary rules carried by this contract:
+
+    - **The node owns its trail.** Events describe what this node did with
+      the data it holds. Other components read them through this API only.
+    - **No clinical content.** An event names the patient, the requester,
+      the purpose, the scope, the authorization, and the references of the
+      records disclosed. It never carries a record's content.
+    - **Refusals are audited too.** A query denied by the node is recorded
+      with outcome `denied` and no disclosed reference. A request rejected
+      as invalid (`400`) is not recorded: nothing was parsed or disclosed.
+    - **No audit, no disclosure.** The node records the event before it
+      answers; if it cannot, it discloses nothing.
+    - **Append-only.** Events are never changed or removed through this
+      API.
+
+    `durable` says whether events survive a restart of the node. It is
+    `false` while persistence is OPEN.
+
+    Status: served by the Hospital Node runtime (HC-116), which keeps
+    events in memory. Who may read the trail, and how callers are
+    authenticated, are OPEN; the demo runtime does not authenticate them.
+    Anchoring audit proofs in the Governance ledger is OPTIONAL and not
+    part of this version.
+paths:
+  /v1/audit/events:
+    get:
+      operationId: listAuditEvents
+      summary: List this node's audit events, newest first.
+      parameters:
+        - name: patient_ref
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/OpaqueRef"
+        - name: query_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: outcome
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/Outcome"
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 50
+      responses:
+        "200":
+          description: Matching events, newest first. May be empty.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditEventList"
+              examples:
+                patientA:
+                  summary: Fictional demo — Hospital B's trail for Patient A.
+                  value:
+                    node_ref: node-hospital-b
+                    organization_ref: org-hospital-b
+                    durable: false
+                    events:
+                      - event_id: 6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b
+                        recorded_at: "2026-10-10T10:05:00+01:00"
+                        action: patient_history_query
+                        outcome: denied
+                        query_id: 1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f
+                        patient_ref: pat-a
+                        requested_by:
+                          organization_ref: org-hospital-a
+                          actor_ref: clin-x
+                        purpose: Recherche
+                        scope: [medications]
+                        authorization:
+                          basis: patient_access_grant
+                          ref: grant-a-drx
+                        disclosed_entry_refs: []
+                      - event_id: 2a3b4c5d-6e7f-4a8b-9c0d-1e2f3a4b5c6d
+                        recorded_at: "2026-10-10T10:00:02+01:00"
+                        action: patient_history_query
+                        outcome: disclosed
+                        query_id: 0b9f6c2e-3d41-4a8e-9f57-1c2d3e4f5a6b
+                        patient_ref: pat-a
+                        requested_by:
+                          organization_ref: org-hospital-a
+                          actor_ref: clin-x
+                        purpose: Consultation de cardiologie
+                        scope: [medications]
+                        authorization:
+                          basis: patient_access_grant
+                          ref: grant-a-drx
+                        disclosed_entry_refs: [med-b-leila-coagulix]
+                empty:
+                  summary: No event matches, for example after a restart.
+                  value:
+                    node_ref: node-hospital-a
+                    organization_ref: org-hospital-a
+                    durable: false
+                    events: []
+        "400":
+          description: A filter does not match this contract.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                invalidLimit:
+                  value:
+                    type: about:blank
+                    title: Invalid audit query
+                    status: 400
+                    detail: "Invalid or unknown parameters: limit"
+                    code: invalid_request
+components:
+  schemas:
+    AuditEventList:
+      type: object
+      additionalProperties: false
+      required: [node_ref, organization_ref, durable, events]
+      properties:
+        node_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        durable:
+          description: Whether these events survive a restart of the node.
+          type: boolean
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditEvent"
+
+    AuditEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - event_id
+        - recorded_at
+        - action
+        - outcome
+        - query_id
+        - patient_ref
+        - requested_by
+        - purpose
+        - scope
+        - authorization
+        - disclosed_entry_refs
+      properties:
+        event_id:
+          type: string
+          format: uuid
+        recorded_at:
+          type: string
+          format: date-time
+        action:
+          type: string
+          enum: [patient_history_query]
+        outcome:
+          $ref: "#/components/schemas/Outcome"
+        query_id:
+          description: The query_id of the Federation query.
+          type: string
+          format: uuid
+        patient_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        requested_by:
+          type: object
+          additionalProperties: false
+          required: [organization_ref, actor_ref]
+          properties:
+            organization_ref:
+              $ref: "#/components/schemas/OpaqueRef"
+            actor_ref:
+              $ref: "#/components/schemas/OpaqueRef"
+        purpose:
+          type: string
+          minLength: 1
+          maxLength: 200
+        scope:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            enum: [encounters, medications, lab_reports]
+        authorization:
+          description: The basis the query cited, as a reference.
+          type: object
+          additionalProperties: false
+          required: [basis, ref]
+          properties:
+            basis:
+              type: string
+              enum: [patient_access_grant, synchronization_decision]
+            ref:
+              $ref: "#/components/schemas/OpaqueRef"
+        disclosed_entry_refs:
+          description: References of the records disclosed. Empty when denied or when nothing was inside the scope.
+          type: array
+          items:
+            $ref: "#/components/schemas/OpaqueRef"
+
+    Outcome:
+      type: string
+      enum: [disclosed, denied]
+
+    OpaqueRef:
+      description: Opaque identifier. Must not contain a name or other direct identifier.
+      type: string
+      pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+
+    Problem:
+      description: RFC 9457 problem details.
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+          enum: [invalid_request]

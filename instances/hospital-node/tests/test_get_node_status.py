@@ -23,8 +23,8 @@ def test_reports_the_configured_hospital_identity():
     assert (status().node_ref, status().organization_ref) == ("node-test", "org-test")
 
 
-def test_reports_the_patient_history_capability():
-    assert status().capabilities == ("patient_history",)
+def test_reports_the_served_capabilities():
+    assert status().capabilities == ("patient_history", "audit_events")
 
 
 def test_reports_the_clinical_repository_summary():

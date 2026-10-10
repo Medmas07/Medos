@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-CONFIRMED autonomous hospital-controlled boundary. Its stack (Python + FastAPI, one process per hospital from one codebase, flat layer layout that keeps `adapters/dmi/`) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED (HC-110): a FastAPI app with Clean/Hexagonal layers, pinned dependencies, and tests. Per-hospital configuration loading is IMPLEMENTED at D2 (HC-112). Its clinical repository is **MOCKED** at D2 (HC-113): fictional demo records, read-only, in memory. It serves `GET /health` (HC-111, IMPLEMENTED at D2) and the [patient history API](#patient-history-api-hc-114) (HC-114, IMPLEMENTED at D2): its side of the Federation contract, whose authorization check is **MOCKED** against fictional grants and decisions. Queries are not audited yet; the consent/access and audit APIs (HC-115, HC-116) are PLANNED. It is expected to become a separately packaged/containerized instance; container choices remain OPEN.
+CONFIRMED autonomous hospital-controlled boundary. Its stack (Python + FastAPI, one process per hospital from one codebase, flat layer layout that keeps `adapters/dmi/`) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED (HC-110): a FastAPI app with Clean/Hexagonal layers, pinned dependencies, and tests. Per-hospital configuration loading is IMPLEMENTED at D2 (HC-112). Its clinical repository is **MOCKED** at D2 (HC-113): fictional demo records, read-only, in memory. It serves `GET /health` (HC-111, IMPLEMENTED at D2) and the [patient history API](#patient-history-api-hc-114) (HC-114, IMPLEMENTED at D2): its side of the Federation contract, whose authorization check is **MOCKED** against fictional grants and decisions. Every query it answers or refuses is recorded in its own [audit trail](#audit-event-api-hc-116) (HC-116, IMPLEMENTED at D2), kept **in memory only** and readable through an unauthenticated API. The consent/access API (HC-115) is PLANNED. It is expected to become a separately packaged/containerized instance; container choices remain OPEN.
 
 ## Running locally
 
@@ -92,7 +92,7 @@ The node trusts its own copy of each basis, never the `expires_at` stated in the
 
 Not done at D2:
 
-- **Audit is PLANNED (HC-116).** The contract says every query is recorded in the node's audit trail; this runtime does not record queries yet.
+- Every query this node answers or refuses is recorded in its [audit trail](#audit-event-api-hc-116), in memory only.
 - The descriptor always reports `online`: the records are in memory, so the node always reaches them. The demo data's disconnected private-practice DMI is shown only by the simulated nodes.
 - A medication has only a start date, so its `occurred_at` is that date at midnight UTC.
 - The node's identity is not authenticated, and callers are not authenticated; both are OPEN.
@@ -112,17 +112,45 @@ curl -s -X POST localhost:8102/v1/federation/queries -H 'content-type: applicati
 
 `grant-a-drx` expires on 2026-10-24. The node uses the real clock, so this request is refused with `403` after that date unless the fixtures are updated.
 
+## Audit event API (HC-116)
+
+IMPLEMENTED at D2; events are kept **in memory only**. The node keeps its own audit trail of the patient history queries it handles and serves it as [`hospital-audit-events.v1.yaml`](../../contracts/api/hospital-audit/hospital-audit-events.v1.yaml). There is no central audit store: each node answers only for itself.
+
+What is recorded (`application/get_patient_history.py`, `domain/audit_event.py`):
+
+- One event per query the node answers (`disclosed`) or refuses (`denied`): event id, time, `query_id` from the Federation Service, patient, requesting organization and actor, purpose, scope, authorization basis and reference, and the references of the records disclosed.
+- **No clinical content.** Disclosed records are named by reference only (for example `med-b-leila-coagulix`), never by code, dosage, or result.
+- A refusal is recorded with no disclosed reference. A request rejected as invalid (`400`) is not recorded: nothing was parsed or disclosed.
+- **No audit, no disclosure.** The event is recorded before the answer is returned; if recording fails, the error propagates and nothing is disclosed.
+- Append-only: the API has no write or delete operation.
+
+`GET /v1/audit/events` lists events newest first. Optional filters: `patient_ref`, `query_id`, `outcome` (`disclosed` or `denied`), and `limit` (1–500, default 50). An unknown, repeated, or invalid parameter returns `400 invalid_request` (`application/problem+json`). The response carries the node's identity and `durable: false`.
+
+Not done at D2:
+
+- **Not durable.** `adapters/outbound/in_memory_audit_log.py` keeps events in the process; a restart starts an empty trail, and nothing is written to `storage_dir`. Persistence is OPEN ([ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md)).
+- **Readers are not authenticated.** The trail names patients and requesters, so who may read it is a real question; it is OPEN. Keep the node on `127.0.0.1` and never expose it: `python main.py` listens there, but `fastapi run` listens on every interface unless given `--host 127.0.0.1`.
+- Only patient history queries are audited. Descriptor reads, health checks, and anchoring audit proofs in the Governance ledger (OPTIONAL) are not part of this version.
+
+Demo, after the Federation timeline request in the [patient history demo](#patient-history-api-hc-114) and the same request with another purpose:
+
+```bash
+curl -s 'localhost:8102/v1/audit/events?patient_ref=pat-a'
+```
+
+Hospital B lists two events, newest first: `denied` for the other purpose with no disclosed reference, then `disclosed` with `enc-b-2026-leila` and `med-b-leila-coagulix`. Each event carries the Federation Service's `query_id`, so the same query can be traced in every node's trail. Hospital A and the private practice list only their own events.
+
 ## Health endpoint (HC-111)
 
-`GET /health` is a liveness check. It returns `200` with the node kind, version, the configured `node_ref` and `organization_ref`, its `capabilities` (`patient_history`), the clinical repository's record counts and `mocked` flag, and a notice stating that the identity comes from fictional demo configuration, that the repository and authorization are MOCKED, that queries are not audited yet, and that it is not a production health check:
+`GET /health` is a liveness check. It returns `200` with the node kind, version, the configured `node_ref` and `organization_ref`, its `capabilities` (`patient_history`, `audit_events`), the clinical repository's record counts and `mocked` flag, and a notice stating that the identity comes from fictional demo configuration, that the repository and authorization are MOCKED, that the audit trail is in memory and its readers are not authenticated, and that it is not a production health check:
 
 ```json
-{"status": "ok", "node": "hospital-node", "version": "0.1.0", "node_ref": "node-hospital-a", "organization_ref": "org-hospital-a", "capabilities": ["patient_history"], "clinical_records": {"mocked": true, "encounters": 3, "medications": 1, "lab_reports": 2}, "notice": "Hospital Node (HC-111 to HC-114). ..."}
+{"status": "ok", "node": "hospital-node", "version": "0.1.0", "node_ref": "node-hospital-a", "organization_ref": "org-hospital-a", "capabilities": ["patient_history", "audit_events"], "clinical_records": {"mocked": true, "encounters": 3, "medications": 1, "lab_reports": 2}, "notice": "Hospital Node (HC-111 to HC-114, HC-116). ..."}
 ```
 
 The counts contain no patient data.
 
-It does not check storage, DMI connectivity, or Federation reachability; none exists yet. Deployment health checks are PLANNED in HC-223. Besides `/health` and the two Federation operations, only FastAPI's generated `/openapi.json` and `/docs` are served.
+It does not check storage, DMI connectivity, or Federation reachability; none exists yet. Deployment health checks are PLANNED in HC-223. Besides `/health`, the two Federation operations, and `/v1/audit/events`, only FastAPI's generated `/openapi.json` and `/docs` are served.
 
 ## Layout
 
@@ -130,10 +158,10 @@ It does not check storage, DMI connectivity, or Federation reachability; none ex
 instances/hospital-node/
 ├── main.py                     # composition root: loads configuration, builds the FastAPI app
 ├── config/                     # fictional per-hospital demo configurations
-├── domain/                     # NodeIdentity, NodeStatus, clinical records, history query — stdlib only
-├── application/                # get_node_status and get_patient_history use cases; ClinicalRepository and AuthorizationVerifier ports; imports only domain
-├── adapters/inbound/http/      # /health and /v1/federation routers, Pydantic wire models
-├── adapters/outbound/          # MOCKED fixture clinical repository (HC-113) and authorization verifier (HC-114)
+├── domain/                     # NodeIdentity, NodeStatus, clinical records, history query, audit event — stdlib only
+├── application/                # get_node_status, get_patient_history, list_audit_events use cases; ClinicalRepository, AuthorizationVerifier, AuditLog ports; imports only domain
+├── adapters/inbound/http/      # /health, /v1/federation, and /v1/audit routers, Pydantic wire models
+├── adapters/outbound/          # MOCKED fixture clinical repository (HC-113) and authorization verifier (HC-114); in-memory audit log (HC-116)
 ├── infrastructure/             # configuration loading and validation
 ├── adapters/dmi/               # PLANNED hospital-local DMI Adapter (HC-120+)
 ├── contracts/                  # reserved for Node-local contract documents
@@ -149,7 +177,7 @@ instances/hospital-node/
 - Local storage and clinical source-data control.
 - Consent/authorization enforcement at the local boundary.
 - Local audit generation and Federation interface.
-- Per-hospital configuration loading, liveness health check, and patient history API (IMPLEMENTED); clinical repository and authorization check (MOCKED); future consent/access and audit APIs, authenticated identity/RBAC, and events.
+- Per-hospital configuration loading, liveness health check, patient history API, and in-memory audit trail (IMPLEMENTED); clinical repository and authorization check (MOCKED); future consent/access API, durable audit storage, authenticated identity/RBAC, and events.
 
 ## Communication boundaries
 
@@ -161,7 +189,9 @@ The Hospital Node does not own ethics approval, global research approval, compan
 
 ## Expected contracts
 
-Each Hospital Node must provide [`hospital-node-federation.v1.yaml`](../../contracts/federation/hospital-node-federation.v1.yaml) (HC-140): a node descriptor and authorized, scoped patient queries that the node enforces itself. This runtime serves both operations (HC-114) with MOCKED records and MOCKED authorization; it does not audit queries yet.
+Each Hospital Node must provide [`hospital-node-federation.v1.yaml`](../../contracts/federation/hospital-node-federation.v1.yaml) (HC-140): a node descriptor and authorized, scoped patient queries that the node enforces itself. This runtime serves both operations (HC-114) with MOCKED records and MOCKED authorization, and audits every query (HC-116).
+
+It also provides [`hospital-audit-events.v1.yaml`](../../contracts/api/hospital-audit/hospital-audit-events.v1.yaml) (HC-116): its own audit trail of those queries.
 
 PLANNED local clinical API, DMI port, consent/authorization, audit-event, and research-execution contracts. `/health` is Node-local and has no versioned contract.
 
