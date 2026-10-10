@@ -54,10 +54,16 @@ export interface ApplicationDocument {
   upload?: DocumentUpload
 }
 
+export type AgreementCode = 'data_processing_agreement' | 'governance_charter'
+
 export interface ApplicationAgreement {
-  code: string
+  code: AgreementCode
   title: string
   accepted: boolean
+  /** Version of the agreement text that was accepted. */
+  version?: string
+  acceptedAt?: string
+  acceptedById?: string
 }
 
 export interface TechnicalQuestionnaire {

@@ -80,8 +80,12 @@ function documentsState(application: HospitalApplication): StepState {
 }
 
 function agreementsState(application: HospitalApplication): StepState {
-  if (application.agreements.length === 0) return { status: 'pending', detail: 'Aucun accord accepté.' }
+  const total = application.agreements.length
   const open = application.agreements.filter((a) => !a.accepted).length
+  if (total === 0 || open === total) return { status: 'pending', detail: 'Aucun accord accepté.' }
+  if (open > 0 && application.status === 'draft') {
+    return { status: 'in_progress', detail: `${total - open} / ${total} accords acceptés.` }
+  }
   if (open > 0) return { status: 'attention', detail: `${plural(open, 'accord')} non accepté(s).` }
   return { status: 'completed', detail: 'Tous les accords sont acceptés.' }
 }
@@ -193,10 +197,10 @@ export function deriveSteps(
 
 /**
  * Demo scenarios, selected with `?demo=vide`, `?demo=erreur`,
- * `?demo=echec-inscription`, `?demo=echec-profil`, or `?demo=echec-document`
- * in the URL. The registration and profile failure scenarios start like
- * `empty`; the document failure scenario starts like `nominal`. Each makes the
- * first matching submission fail.
+ * `?demo=echec-inscription`, `?demo=echec-profil`, `?demo=echec-document`, or
+ * `?demo=echec-accord` in the URL. The registration, profile, and agreement
+ * failure scenarios start like `empty`; the document failure scenario starts
+ * like `nominal`. Each makes the first matching submission fail.
  */
 export type DemoScenario =
   | 'nominal'
@@ -205,6 +209,7 @@ export type DemoScenario =
   | 'registration-failure'
   | 'profile-failure'
   | 'document-failure'
+  | 'agreement-failure'
 
 export function scenarioFromSearch(search: string): DemoScenario {
   const value = new URLSearchParams(search).get('demo')
@@ -213,6 +218,7 @@ export function scenarioFromSearch(search: string): DemoScenario {
   if (value === 'echec-inscription') return 'registration-failure'
   if (value === 'echec-profil') return 'profile-failure'
   if (value === 'echec-document') return 'document-failure'
+  if (value === 'echec-accord') return 'agreement-failure'
   return 'nominal'
 }
 
@@ -239,7 +245,10 @@ export async function loadOnboardingSnapshot(
   }
 
   const application =
-    scenario === 'empty' || scenario === 'registration-failure' || scenario === 'profile-failure'
+    scenario === 'empty' ||
+    scenario === 'registration-failure' ||
+    scenario === 'profile-failure' ||
+    scenario === 'agreement-failure'
       ? null
       : (applications.find((a) => a.organizationId === organizationId) ?? null)
 
