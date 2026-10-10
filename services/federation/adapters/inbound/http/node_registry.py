@@ -58,7 +58,7 @@ def to_wire(registration: NodeRegistration) -> dict:
     }
 
 
-def _not_found(node_ref: str) -> JSONResponse:
+def not_found(node_ref: str) -> JSONResponse:
     return problem(
         404, "Node not found", "node_not_found", f"{node_ref} is not registered."
     )
@@ -81,7 +81,7 @@ def create_router(registry: NodeRegistry) -> APIRouter:
         try:
             return JSONResponse(to_wire(registry.get(node_ref)))
         except NodeNotFound:
-            return _not_found(node_ref)
+            return not_found(node_ref)
 
     @router.put(PATH + "/{node_ref}")
     def register_node(node_ref: NodeRefPath, body: RegistrationBody) -> JSONResponse:
@@ -113,7 +113,7 @@ def create_router(registry: NodeRegistry) -> APIRouter:
         try:
             registry.deregister(node_ref)
         except NodeNotFound:
-            return _not_found(node_ref)
+            return not_found(node_ref)
         return Response(status_code=204)
 
     return router

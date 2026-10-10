@@ -64,3 +64,5 @@ The Hospital Node does not own ethics approval, global research approval, compan
 Each Hospital Node must provide [`hospital-node-federation.v1.yaml`](../../contracts/federation/hospital-node-federation.v1.yaml) (HC-140): a node descriptor and authorized, scoped patient queries that the node enforces itself. The contract is defined; no Node implements it yet.
 
 PLANNED local clinical API, DMI port, consent/authorization, audit-event, and research-execution contracts. `/health` is Node-local and has no versioned contract.
+
+The Federation Service's capability discovery (HC-143) calls `GET /v1/federation/node` on each registered node. This runtime does not serve it yet, so discovery reports it as `no_federation_interface`.
