@@ -16,6 +16,7 @@ Status is based on repository inspection, not product intent. Use the [shared vo
 
 - **Web products — PLANNED:** Hospital Portal, Governance Portal, and Research Portal contain documentation only.
 - **Mobile products — PLANNED:** Patient App and Clinician App contain documentation only; no mobile framework or `android/`/`ios/` project exists.
+- **Backend runtime strategy — CONFIRMED, not implemented:** [ADR-0003](decisions/ADR-0003-backend-runtime-strategy.md) selects Python + FastAPI for every Node and service. No backend runtime has been created in the repository.
 - **Hospital Node — PLANNED:** no runtime, local API, storage, identity, consent, audit, health endpoint, or Federation implementation.
 - **Governance Node — PLANNED:** no runtime, policy engine, authorization, audit persistence, or ledger adapter.
 - **DMI Adapter — PLANNED:** its Hospital Node-local boundary exists, but no port, mapping, configuration, fixture, or implementation.

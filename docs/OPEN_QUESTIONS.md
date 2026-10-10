@@ -4,7 +4,7 @@ These questions are OPEN. Do not answer them through implementation without the 
 
 - Which web framework and build tool will serve all three web portals?
 - Which mobile framework will serve both mobile products, and what is the Android development path?
-- Which runtimes and frameworks will serve the Hospital Node, Governance Node, and company services?
+- How will one Hospital Node codebase load per-hospital configuration (identity, port, storage) for several demo hospitals? (The runtime itself is decided by [ADR-0003](decisions/ADR-0003-backend-runtime-strategy.md).)
 - What canonical clinical model, FHIR version, profiles, terminology, and validation strategy are required?
 - Which persistence technologies and data models fit each bounded context?
 - Which authentication provider and identity architecture will serve patients, clinicians, researchers, organizations, and Nodes?

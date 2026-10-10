@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-CONFIRMED Governance / Ethics Authority boundary; its runtime is PLANNED and not implemented.
+CONFIRMED Governance / Ethics Authority boundary; its runtime is PLANNED and not implemented. Its stack (Python + FastAPI) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md); HC-130 creates the runtime.
 
 ## Responsibilities and owned concepts
 
