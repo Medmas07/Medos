@@ -72,7 +72,7 @@ Other states to show:
 | `authorization.expires_at` in the past | `403 authorization_denied`; no node is asked |
 | `target_organization_refs: ["org-hospital-c"]` (still in onboarding) | `400 invalid_request` |
 | Missing or malformed fields | `400 invalid_request`, `application/problem+json` |
-| `authorization.basis: "synchronization_decision"` with a valid `expires_at` | `503`: the Governance Node could not be reached, and no node was asked (nothing runs on port 8200 yet) |
+| `authorization.basis: "synchronization_decision"` with a valid `expires_at` | `503`: the Governance Node could not be reached, and no node was asked (the Governance Node does not serve this check yet: running on port 8200 it answers `404`, and stopped it cannot be reached; both are refused) |
 | Started without a seed (empty registry) | `503 federation_unavailable`: "No Hospital Node is registered." |
 
 Registry states to show:

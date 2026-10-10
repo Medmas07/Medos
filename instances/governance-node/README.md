@@ -2,7 +2,53 @@
 
 ## Purpose and status
 
-CONFIRMED Governance / Ethics Authority boundary; its runtime is PLANNED and not implemented. Its stack (Python + FastAPI) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md); HC-130 creates the runtime.
+CONFIRMED Governance / Ethics Authority boundary. Its stack (Python + FastAPI, one process) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED at D2 (HC-130): a FastAPI app with Clean/Hexagonal layers, pinned dependencies, tests, and a liveness `GET /health`. **It serves no governance API yet:** hospital approval (HC-131), synchronization requests (HC-132), research requests (HC-133), audit (HC-134), policy (HC-135), and consent evaluation (HC-136) are PLANNED, so the Node records and authorizes nothing. There is no persistence, no authentication, and no ledger adapter. It is not deployed.
+
+## Running locally
+
+From this directory (POSIX shell; on Windows activate with `.venv\Scripts\activate`).
+
+| Purpose | Command |
+|---|---|
+| Create environment | `python3 -m venv .venv && . .venv/bin/activate` |
+| Install (dev) | `pip install -r requirements-dev.txt` |
+| Server on port 8200 | `python main.py` |
+| Dev server with reload | `fastapi dev main.py --port 8200` |
+| Tests | `pytest` |
+| Lint / format check | `ruff check . && ruff format --check .` |
+| Production-mode server (preview) | `fastapi run main.py --port 8200` |
+
+`python main.py` listens on `127.0.0.1:8200`, the ADR-0003 port that the Federation Service already calls (`FEDERATION_GOVERNANCE_URL`). `fastapi dev` and `fastapi run` need `--port 8200`.
+
+## Runtime skeleton (HC-130)
+
+IMPLEMENTED at D2. One process, so there is no per-instance configuration file. The identity is the fictional Governance / Ethics Authority of the demo dataset, set in `main.py`: node `node-governance`, organization `org-governance` ([`demo-data/organizations.json`](../../demo-data/organizations.json)). It is not authenticated.
+
+```text
+main.py                         # composition root: identity, FastAPI app, routers
+domain/                         # NodeIdentity (opaque refs), NodeStatus and its notice
+application/get_node_status.py  # use case; declares capabilities as their APIs land
+adapters/inbound/http/health.py # GET /health
+tests/                          # use case, HTTP, and layer-boundary tests
+```
+
+`GET /health` is a liveness check only:
+
+```json
+{
+  "status": "ok",
+  "node": "governance-node",
+  "version": "0.1.0",
+  "node_ref": "node-governance",
+  "organization_ref": "org-governance",
+  "capabilities": [],
+  "notice": "Governance Node runtime skeleton (HC-130). ... Liveness only; not a production health check."
+}
+```
+
+`capabilities` stays empty until a governance API is served. Every other route answers `404`. In particular, the Federation Service's synchronization authorization check (`POST /v1/synchronization-authorizations/{decision_ref}/checks`) gets `404`, which it treats as unavailable, so it still refuses those queries with `503`. A test checks that only `/health` is served, so each new route must come with its ticket.
+
+`domain/` and `application/` use the standard library only; FastAPI and Pydantic stay in `adapters/` and `main.py`, as the layer-boundary test checks.
 
 ## Responsibilities and owned concepts
 
