@@ -32,8 +32,29 @@ export interface ResearchProject {
   population: string
   variables: string[]
   participatingOrganizationIds: string[]
-  protocolDocument: { id: string; title: string } | null
+  protocolDocument: ProjectDocumentRef | null
+  /** Optional supporting documents; absent on fixture projects. */
+  supportingDocuments?: ProjectDocumentRef[]
   researchAccessRequestId: string | null
+}
+
+/** Metadata of a file deposited in this portal (HC-093); its content is never read. */
+export interface DocumentUpload {
+  fileName: string
+  sizeBytes: number
+  mediaType: string
+  uploadedAt: string
+}
+
+export type ProjectDocumentType = 'protocol' | 'data_management_plan' | 'information_notice'
+
+export interface ProjectDocumentRef {
+  id: string
+  title: string
+  /** Set for a supporting document; the protocol is `protocolDocument`. */
+  type?: Exclude<ProjectDocumentType, 'protocol'>
+  /** Only set for a document deposited in this portal (session state). */
+  upload?: DocumentUpload
 }
 
 export interface ResearchAccessRequest {

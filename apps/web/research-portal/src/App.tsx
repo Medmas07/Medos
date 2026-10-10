@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   AppShell,
   Badge,
@@ -23,6 +23,7 @@ import { DashboardView } from './views/DashboardView'
 import { HomeView } from './views/HomeView'
 import { NewProjectView } from './views/NewProjectView'
 import { PagePlaceholderView } from './views/PagePlaceholderView'
+import { ProtocolView } from './views/ProtocolView'
 
 type ViewId = 'home' | PageId
 
@@ -69,6 +70,14 @@ export default function App() {
       cancelled = true
     }
   }, [attempt])
+
+  // The upload-failure scenario interrupts the first document upload once per page load.
+  const uploadFailureUsed = useRef(false)
+  const consumeUploadFailure = () => {
+    if (scenarioFromSearch(window.location.search) !== 'upload-failure' || uploadFailureUsed.current) return false
+    uploadFailureUsed.current = true
+    return true
+  }
 
   const retry = () => {
     setLoad({ kind: 'loading' })
@@ -133,6 +142,16 @@ export default function App() {
         <NewProjectView
           snapshot={load.snapshot}
           onCreated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
+          onNavigate={navigateTo}
+        />
+      )
+    }
+    if (currentView === 'protocol') {
+      return (
+        <ProtocolView
+          snapshot={load.snapshot}
+          consumeSimulatedFailure={consumeUploadFailure}
+          onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
           onNavigate={navigateTo}
         />
       )
