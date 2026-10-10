@@ -90,3 +90,27 @@ def test_missing_timezone_or_review_before_execution_is_rejected():
     reversed_order = execution()
     reversed_order.result["disclosure"]["checked_at"] = "2026-10-10T11:59:59+00:00"
     assert validate(reversed_order).error.code == "output_timestamp_invalid"
+
+
+def test_sandbox_evidence_is_checked_when_present():
+    node = execution()
+    node.result["sandbox"] = {
+        "mode": "isolated_process",
+        "python_isolated": True,
+        "site_packages_disabled": True,
+        "environment_cleared": True,
+        "network": "denied",
+        "filesystem": "denied_after_startup",
+        "wall_time_seconds": 2.0,
+        "max_input_bytes": 262144,
+        "max_output_bytes": 65536,
+        "os_resource_limits": "parent_enforced",
+    }
+    passed = validate(node)
+    assert passed.status.value == "passed"
+    assert "sandbox_controls" in passed.checks
+
+    node.result["sandbox"]["network"] = "allowed"
+    rejected = validate(node)
+    assert rejected.status.value == "rejected"
+    assert rejected.error.code == "output_sandbox_invalid"

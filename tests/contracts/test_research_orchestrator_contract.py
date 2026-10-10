@@ -98,6 +98,7 @@ def test_output_validation_has_explicit_passed_and_rejected_states():
             "disclosure_policy",
             "provenance_binding",
             "timestamp_order",
+            "sandbox_controls",
             "bounded_columns",
             "minimum_cell_size",
         ],
