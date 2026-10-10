@@ -13,7 +13,9 @@ RESULTS = OPERATION["responses"]["200"]["content"]["application/json"]["examples
 result_schema = validator(CONTRACT, "FederatedQueryResult")
 problem_schema = validator(CONTRACT, "Problem")
 
-client = TestClient(create_app(clock=lambda: DEMO_NOW, registry_seed=DEMO_SEED))
+client = TestClient(
+    create_app(clock=lambda: DEMO_NOW, registry_seed=DEMO_SEED, node_mode="simulated")
+)
 
 
 def post(body, app_client=client):
@@ -134,7 +136,11 @@ def test_empty_registry_returns_503():
 
 
 def test_deregistered_node_is_no_longer_asked():
-    app_client = TestClient(create_app(clock=lambda: DEMO_NOW, registry_seed=DEMO_SEED))
+    app_client = TestClient(
+        create_app(
+            clock=lambda: DEMO_NOW, registry_seed=DEMO_SEED, node_mode="simulated"
+        )
+    )
     assert (
         app_client.delete("/v1/registry/nodes/node-private-practice").status_code == 204
     )
@@ -149,5 +155,5 @@ def test_deregistered_node_is_no_longer_asked():
 def test_health_labels_the_mock():
     body = client.get("/health").json()
     assert body["status"] == "ok"
-    assert body["mocked"] is True
+    assert (body["nodes"], body["mocked"]) == ("simulated", True)
     assert "not node-to-node exchange" in body["notice"]

@@ -10,11 +10,12 @@ from adapters.inbound.http.federated_query import (
     register_problem_handler,
 )
 from adapters.inbound.http.health import SERVICE_VERSION
-from adapters.inbound.http.health import router as health_router
+from adapters.inbound.http.health import create_router as create_health_router
 from adapters.inbound.http.node_capabilities import (
     create_router as create_capabilities_router,
 )
 from adapters.inbound.http.node_registry import create_router as create_registry_router
+from adapters.outbound.http_hospital_node_client import HttpHospitalNodeClient
 from adapters.outbound.http_node_descriptor_client import HttpNodeDescriptorClient
 from adapters.outbound.http_sync_authorization_checker import (
     HttpSyncAuthorizationChecker,
@@ -29,6 +30,8 @@ from infrastructure.registry_seed import load_seed, seed_path_from_env
 
 # Suggested Governance Node port (ADR-0003).
 DEFAULT_GOVERNANCE_URL = "http://localhost:8200"
+# "http": real calls to registered nodes (HC-145). "simulated": MOCKED nodes (HC-141).
+NODE_MODES = ("http", "simulated")
 
 
 def create_app(
@@ -37,7 +40,10 @@ def create_app(
     node_transport=None,
     governance_url: str = DEFAULT_GOVERNANCE_URL,
     governance_transport=None,
+    node_mode: str = "http",
 ) -> FastAPI:
+    if node_mode not in NODE_MODES:
+        raise ValueError(f"node_mode must be one of {NODE_MODES}, not {node_mode!r}.")
     registry = NodeRegistry(store=InMemoryRegistrationStore(), clock=clock)
     if registry_seed:
         load_seed(registry, registry_seed)
@@ -48,10 +54,13 @@ def create_app(
         store=InMemoryDiscoveryStore(),
         clock=clock,
     )
-    # Federated queries stay MOCKED until real node-to-node calls exist (HC-145).
     federate = FederatePatientQuery(
         registry=registry,
-        nodes=SimulatedHospitalNodes(clock=clock),
+        nodes=(
+            HttpHospitalNodeClient(registry, transport=node_transport)
+            if node_mode == "http"
+            else SimulatedHospitalNodes(clock=clock)
+        ),
         # Real HTTP check with the Governance Node for synchronization decisions (HC-144).
         sync_authorizations=HttpSyncAuthorizationChecker(
             governance_url, transport=governance_transport
@@ -59,7 +68,7 @@ def create_app(
         clock=clock,
     )
     app = FastAPI(title="Federation Service", version=SERVICE_VERSION)
-    app.include_router(health_router)
+    app.include_router(create_health_router(node_mode))
     app.include_router(create_registry_router(registry))
     app.include_router(create_capabilities_router(discovery))
     app.include_router(create_router(federate))
@@ -70,4 +79,5 @@ def create_app(
 app = create_app(
     registry_seed=seed_path_from_env(),
     governance_url=os.environ.get("FEDERATION_GOVERNANCE_URL", DEFAULT_GOVERNANCE_URL),
+    node_mode=os.environ.get("FEDERATION_NODES", "http"),
 )

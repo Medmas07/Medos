@@ -94,4 +94,4 @@ Each Hospital Node must provide [`hospital-node-federation.v1.yaml`](../../contr
 
 PLANNED local clinical API, DMI port, consent/authorization, audit-event, and research-execution contracts. `/health` is Node-local and has no versioned contract.
 
-The Federation Service's capability discovery (HC-143) calls `GET /v1/federation/node` on each registered node. This runtime does not serve it yet, so discovery reports it as `no_federation_interface`.
+The Federation Service calls this runtime over real HTTP at the `base_url` it has in the node registry: `GET /v1/federation/node` for capability discovery (HC-143) and `POST /v1/federation/queries` for federated queries (HC-145). This runtime serves neither yet, so discovery reports `no_federation_interface` and queries report the node `unavailable`. The demo ports in `config/` (8101, 8102, 8104) match the Federation Service's [`registry-seed.demo.json`](../../services/federation/registry-seed.demo.json).

@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
@@ -83,15 +84,23 @@ class SyncAuthorizationChecker(Protocol):
     ) -> SyncAuthorization: ...
 
 
+@dataclass(frozen=True)
+class NodeAnswer:
+    entries: tuple[Entry, ...]
+    # What the node said in its provenance: it answered from fixtures.
+    mocked: bool
+
+
 class HospitalNodeClient(Protocol):
     """Port to contracts/federation/hospital-node-federation.v1.yaml.
 
-    Raises NodeDenied, NodeUnavailable, or NodeTimeout. Real node-to-node calls are HC-145.
+    Raises NodeDenied, NodeUnavailable, or NodeTimeout. `mocked` is true when the client
+    itself simulates nodes (HC-141) rather than calling them (HC-145).
     """
 
     mocked: bool
 
-    def query(self, node: NodeRef, query: NodeQuery) -> tuple[Entry, ...]: ...
+    def query(self, node: NodeRef, query: NodeQuery) -> NodeAnswer: ...
 
 
 @dataclass(frozen=True)
@@ -136,12 +145,15 @@ class FederatePatientQuery:
             requested_by=request.requested_by,
             authorization=request.authorization,
         )
+        # Nodes are asked in parallel so one slow node does not hold up the others.
+        with ThreadPoolExecutor(max_workers=len(targets)) as pool:
+            node_results = tuple(pool.map(lambda node: self._ask(node, query), targets))
         return FederatedResult(
             query_id=query.query_id,
             patient_ref=request.patient_ref,
             scope=request.scope,
-            node_results=tuple(self._ask(node, query) for node in targets),
-            mocked=self._nodes.mocked,
+            node_results=node_results,
+            mocked=self._nodes.mocked or any(r.mocked for r in node_results),
             aggregated_at=self._clock(),
         )
 
@@ -188,7 +200,7 @@ class FederatePatientQuery:
 
     def _ask(self, node: NodeRef, query: NodeQuery) -> NodeResult:
         try:
-            entries = self._nodes.query(node, query)
+            answer = self._nodes.query(node, query)
         except NodeDenied:
             return NodeResult(
                 node, NodeStatus.DENIED, problem_code="authorization_denied"
@@ -199,4 +211,6 @@ class FederatePatientQuery:
             )
         except NodeTimeout:
             return NodeResult(node, NodeStatus.TIMEOUT, problem_code="node_timeout")
-        return NodeResult(node, NodeStatus.OK, entries=entries)
+        return NodeResult(
+            node, NodeStatus.OK, entries=answer.entries, mocked=answer.mocked
+        )

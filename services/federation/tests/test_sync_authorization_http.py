@@ -38,6 +38,7 @@ def api(governance):
             clock=lambda: DEMO_NOW,
             registry_seed=DEMO_SEED,
             governance_transport=httpx.MockTransport(governance),
+            node_mode="simulated",
         )
     )
 

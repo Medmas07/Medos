@@ -10,6 +10,7 @@ from application.federate_patient_query import (
     NodeTimeout,
     NodeUnavailable,
     GovernanceUnavailable,
+    NodeAnswer,
     NoNodesRegistered,
     SyncAuthorizationDenied,
     TargetsNotAuthorized,
@@ -66,7 +67,11 @@ class FakeNodes:
         answer = self.answers[node]
         if isinstance(answer, Exception):
             raise answer
-        return answer
+        return (
+            answer
+            if isinstance(answer, NodeAnswer)
+            else NodeAnswer(answer, mocked=False)
+        )
 
 
 def request(
