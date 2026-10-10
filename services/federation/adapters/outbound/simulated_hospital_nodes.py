@@ -1,13 +1,14 @@
-"""MOCKED Hospital Nodes and node registry for the D2 demo (HC-141).
+"""MOCKED Hospital Nodes for the D2 demo (HC-141).
 
-The Hospital Node runtime (HC-110) does not serve this contract yet, so each approved
-organization in demo-data/ is simulated in process. Each simulated node reads only the records file its own
-organization holds, and speaks the wire format of hospital-node-federation.v1.yaml.
+The Hospital Node runtime (HC-110) does not serve this contract yet, so each
+organization with a node in demo-data/ is simulated in process. Each simulated node
+reads only the records file its own organization holds, and speaks the wire format of
+hospital-node-federation.v1.yaml. Which nodes are asked comes from the real node
+registry (HC-142); a registered node with no simulation answers as unavailable.
 
-This is not node-to-node exchange and not security:
-- authorization is checked against the fictional grants and decisions in demo-data/,
-  standing in for verification with the Governance Node (HC-144);
-- the registry is organizations.json, standing in for the node registry (HC-142).
+This is not node-to-node exchange and not security: authorization is checked against
+the fictional grants and decisions in demo-data/, standing in for verification with
+the Governance Node (HC-144).
 """
 
 import json
@@ -16,11 +17,7 @@ from datetime import datetime
 from pathlib import Path
 
 from adapters.outbound.hospital_node_contract import entries_from_wire, query_to_wire
-from application.federate_patient_query import (
-    NodeDenied,
-    NodeUnavailable,
-    RegistryUnavailable,
-)
+from application.federate_patient_query import NodeDenied, NodeUnavailable
 from domain.federated_query import Entry, NodeQuery, NodeRef
 
 DEMO_DATA = Path(__file__).resolve().parents[4] / "demo-data"
@@ -34,25 +31,7 @@ FIXTURE_SCOPE = {
 
 
 def _load(demo_data: Path, name: str) -> dict:
-    try:
-        return json.loads((demo_data / name).read_text())
-    except (OSError, ValueError) as error:
-        raise RegistryUnavailable(f"Cannot read demo data {name}.") from error
-
-
-class DemoNodeRegistry:
-    """Approved organizations that run a node, from demo-data/organizations.json."""
-
-    def __init__(self, demo_data: Path = DEMO_DATA) -> None:
-        self._demo_data = demo_data
-
-    def approved_nodes(self) -> tuple[NodeRef, ...]:
-        organizations = _load(self._demo_data, "organizations.json")["organizations"]
-        return tuple(
-            NodeRef(organization_ref=o["id"], node_ref=o["node"]["id"])
-            for o in organizations
-            if o["governanceStatus"] == "approved" and o["node"]
-        )
+    return json.loads((demo_data / name).read_text())
 
 
 class SimulatedHospitalNode:

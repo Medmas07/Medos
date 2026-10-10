@@ -2,10 +2,7 @@ import copy
 
 import pytest
 
-from adapters.outbound.simulated_hospital_nodes import (
-    DemoNodeRegistry,
-    SimulatedHospitalNodes,
-)
+from adapters.outbound.simulated_hospital_nodes import SimulatedHospitalNodes
 from tests.conftest import DEMO_NOW, contract, validator
 
 NODE_CONTRACT = contract("hospital-node-federation.v1.yaml")
@@ -42,14 +39,6 @@ def handle(organization, request):
     errors = list(schema.iter_errors(body))
     assert not errors, errors[0].message
     return status, body
-
-
-def test_registry_lists_approved_organizations_with_a_node():
-    assert {n.organization_ref for n in DemoNodeRegistry().approved_nodes()} == {
-        "org-hospital-a",
-        "org-hospital-b",
-        "org-private-practice",
-    }
 
 
 def test_each_node_discloses_only_records_it_holds():

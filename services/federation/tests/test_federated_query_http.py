@@ -1,21 +1,10 @@
 import copy
-from pathlib import Path
 
 import pytest
-from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from adapters.inbound.http.federated_query import (
-    create_router,
-    register_problem_handler,
-)
-from adapters.outbound.simulated_hospital_nodes import (
-    DemoNodeRegistry,
-    SimulatedHospitalNodes,
-)
-from application.federate_patient_query import FederatePatientQuery
 from main import create_app
-from tests.conftest import DEMO_NOW, contract, validator
+from tests.conftest import DEMO_NOW, DEMO_SEED, contract, validator
 
 CONTRACT = contract("federated-patient-query.v1.yaml")
 OPERATION = CONTRACT["paths"]["/v1/federated-queries"]["post"]
@@ -24,7 +13,7 @@ RESULTS = OPERATION["responses"]["200"]["content"]["application/json"]["examples
 result_schema = validator(CONTRACT, "FederatedQueryResult")
 problem_schema = validator(CONTRACT, "Problem")
 
-client = TestClient(create_app(clock=lambda: DEMO_NOW))
+client = TestClient(create_app(clock=lambda: DEMO_NOW, registry_seed=DEMO_SEED))
 
 
 def post(body, app_client=client):
@@ -134,20 +123,27 @@ def test_unapproved_target_is_rejected():
     assert "org-hospital-c" in response.json()["detail"]
 
 
-def test_unreadable_registry_returns_503():
-    federate = FederatePatientQuery(
-        registry=DemoNodeRegistry(demo_data=Path("/nonexistent")),
-        nodes=SimulatedHospitalNodes(clock=lambda: DEMO_NOW),
-        clock=lambda: DEMO_NOW,
-    )
-    app = FastAPI()
-    app.include_router(create_router(federate))
-    register_problem_handler(app)
-    response = post(REQUESTS["drXTimeline"]["value"], TestClient(app))
+def test_empty_registry_returns_503():
+    empty = TestClient(create_app(clock=lambda: DEMO_NOW))
+    response = post(REQUESTS["drXTimeline"]["value"], empty)
     assert (response.status_code, response.json()["code"]) == (
         503,
         "federation_unavailable",
     )
+    assert response.json()["detail"] == "No Hospital Node is registered."
+
+
+def test_deregistered_node_is_no_longer_asked():
+    app_client = TestClient(create_app(clock=lambda: DEMO_NOW, registry_seed=DEMO_SEED))
+    assert (
+        app_client.delete("/v1/registry/nodes/node-private-practice").status_code == 204
+    )
+    result = post(REQUESTS["drXTimeline"]["value"], app_client).json()
+    assert [r["node_ref"] for r in result["node_results"]] == [
+        "node-hospital-a",
+        "node-hospital-b",
+    ]
+    assert result["completeness"] == "complete"
 
 
 def test_health_labels_the_mock():

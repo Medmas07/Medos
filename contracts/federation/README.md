@@ -6,6 +6,7 @@ Versioned communication between Hospital Nodes, the Federation Service, and thei
 |---|---|---|
 | [`hospital-node-federation.v1.yaml`](hospital-node-federation.v1.yaml) | Every Hospital Node | IMPLEMENTED as OpenAPI 3.1 with fictional examples (HC-140); no Node provides it yet, only simulated nodes inside the Federation Service (HC-141) |
 | [`federated-patient-query.v1.yaml`](federated-patient-query.v1.yaml) | Federation Service | IMPLEMENTED as OpenAPI 3.1 with fictional examples (HC-140); served by [`services/federation/`](../../services/federation/README.md) with MOCKED nodes (HC-141) |
+| [`node-registry.v1.yaml`](node-registry.v1.yaml) | Federation Service | IMPLEMENTED as OpenAPI 3.1 with fictional examples; served by [`services/federation/`](../../services/federation/README.md) (HC-142). Approval references are not verified |
 
 ## How they fit together
 
@@ -25,4 +26,6 @@ Clinician App / Patient App
 
 The two files share most component schemas (`Entry`, `Authorization`, `Scope`, `Problem`, and others). They are duplicated so each file stands alone, and the [contract tests](../../tests/contracts/) fail if they drift apart.
 
-Not in v1: node registry listing (HC-142), Governance verification of the authorization (HC-144), audit event format, and research Compute-to-Data execution, which has its own boundary.
+The node registry lists which node serves which organization, where to reach it, and the Governance decision it cites. It routes; it does not approve. Organization approval belongs to the Governance Node, and the registry reports each approval reference as `verified: false` until a Governance approval API exists (HC-131).
+
+Not in v1: capability discovery (HC-143), Governance verification of the authorization (HC-144), audit event format, and research Compute-to-Data execution, which has its own boundary.
