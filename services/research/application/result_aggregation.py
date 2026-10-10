@@ -5,12 +5,9 @@ from domain.research_job import (
     ControlledAggregation,
     JobError,
     NodeExecution,
+    OutputValidationStatus,
     ResearchJob,
 )
-
-
-class ControlledResultError(ValueError):
-    """A node result is unsafe or incompatible with this bounded aggregator."""
 
 
 class ControlledResultAggregator:
@@ -23,7 +20,13 @@ class ControlledResultAggregator:
 
         try:
             for execution in job.executions:
-                outcome = self._validate(execution, job)
+                if (
+                    execution.output_validation.status
+                    is not OutputValidationStatus.PASSED
+                    or execution.result is None
+                ):
+                    raise ValueError("output has not passed release validation")
+                outcome = execution.result["outcome"]
                 if outcome == "empty":
                     empty.append(execution.organization_ref)
                 elif outcome == "suppressed":
@@ -31,7 +34,7 @@ class ControlledResultAggregator:
                 else:
                     count, percentage = execution.result["rows"][0]
                     released.append((execution, count, percentage))
-        except (KeyError, TypeError, ControlledResultError):
+        except (KeyError, TypeError, ValueError):
             return ControlledAggregation(
                 status=AggregationStatus.FAILED,
                 mocked=any(item.mocked for item in job.executions),
@@ -88,59 +91,3 @@ class ControlledResultAggregator:
             provenance=provenance,
             mocked=mocked,
         )
-
-    def _validate(self, execution: NodeExecution, job: ResearchJob) -> str:
-        result = execution.result
-        if not isinstance(result, dict):
-            raise ControlledResultError
-        outcome = result.get("outcome")
-        if outcome not in {"released", "empty", "suppressed"}:
-            raise ControlledResultError
-
-        disclosure = result.get("disclosure")
-        provenance = result.get("provenance")
-        if not isinstance(disclosure, dict) or not isinstance(provenance, dict):
-            raise ControlledResultError
-        if (
-            disclosure.get("minimum_cell_size")
-            != job.output_policy["minimum_cell_size"]
-        ):
-            raise ControlledResultError
-        if provenance.get("algorithm_sha256") != job.algorithm["sha256"]:
-            raise ControlledResultError
-        if (
-            provenance.get("authorization_decision_ref")
-            != job.authorization_decision_ref
-            or provenance.get("source_organization_ref") != execution.organization_ref
-        ):
-            raise ControlledResultError
-
-        columns = result.get("columns")
-        rows = result.get("rows")
-        if outcome in {"empty", "suppressed"}:
-            if rows != []:
-                raise ControlledResultError
-            if outcome == "suppressed" and (
-                columns != [] or disclosure.get("status") != "suppressed"
-            ):
-                raise ControlledResultError
-            if outcome == "empty" and disclosure.get("status") != "passed":
-                raise ControlledResultError
-            return outcome
-
-        if columns != list(self.COLUMNS) or disclosure.get("status") != "passed":
-            raise ControlledResultError
-        if not isinstance(rows, list) or len(rows) != 1 or len(rows[0]) != 2:
-            raise ControlledResultError
-        count, percentage = rows[0]
-        minimum = job.output_policy["minimum_cell_size"]
-        if (
-            not isinstance(count, int)
-            or isinstance(count, bool)
-            or count < minimum
-            or not isinstance(percentage, (int, float))
-            or isinstance(percentage, bool)
-            or not 0 <= percentage <= 100
-        ):
-            raise ControlledResultError
-        return outcome

@@ -86,3 +86,57 @@ def test_controlled_aggregation_exposes_coverage_without_patient_rows():
     assert schema.is_valid(aggregation)
     aggregation["patient_refs"] = ["pat-a"]
     assert not schema.is_valid(aggregation)
+
+
+def test_output_validation_has_explicit_passed_and_rejected_states():
+    schema = validator(ORCHESTRATION, "#/components/schemas/OutputValidation")
+    passed = {
+        "status": "passed",
+        "checks": [
+            "controlled_result_schema",
+            "metadata_schema",
+            "disclosure_policy",
+            "provenance_binding",
+            "timestamp_order",
+            "bounded_columns",
+            "minimum_cell_size",
+        ],
+    }
+    assert schema.is_valid(passed)
+
+    rejected = {
+        "status": "rejected",
+        "checks": ["controlled_result_schema"],
+        "error": {
+            "code": "output_schema_invalid",
+            "message": "The Hospital Node output did not pass release validation.",
+            "retryable": False,
+        },
+    }
+    assert schema.is_valid(rejected)
+    rejected["patient_refs"] = ["pat-a"]
+    assert not schema.is_valid(rejected)
+
+
+def test_controlled_node_result_contract_rejects_unlisted_patient_data():
+    schema = validator(ORCHESTRATION, "#/components/schemas/ControlledResult")
+    result = {
+        "outcome": "released",
+        "columns": ["participant_count", "hba1c_above_7_pct"],
+        "rows": [[42, 25.0]],
+        "disclosure": {
+            "status": "passed",
+            "minimum_cell_size": 10,
+            "checked_at": "2026-10-10T12:00:01+00:00",
+        },
+        "provenance": {
+            "algorithm_sha256": "7da3c4f53384d2c0bf4e50f736e6e0242e57a77cf18720f62e16c13c49d79801",
+            "authorization_decision_ref": "dec-rar-001",
+            "executed_at": "2026-10-10T12:00:00+00:00",
+            "source_organization_ref": "org-hospital-a",
+            "source_node_ref": "node-hospital-a",
+        },
+    }
+    assert schema.is_valid(result)
+    result["provenance"]["patient_refs"] = ["pat-a"]
+    assert not schema.is_valid(result)

@@ -13,6 +13,8 @@ def test_unconfigured_runtime_is_visibly_degraded_and_fails_closed():
     assert health.json()["status"] == "degraded"
     assert health.json()["mocked"] is False
     assert "controlled_aggregation" in health.json()["capabilities"]
+    assert "research_output_validation" in health.json()["capabilities"]
+    assert health.json()["depth"] == "D4"
 
     submitted = client.post(
         "/v1/research-jobs", json=request("job-runtime-unconfigured")

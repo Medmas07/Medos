@@ -1,5 +1,11 @@
 from application.result_aggregation import ControlledResultAggregator
-from domain.research_job import ExecutionStatus, NodeExecution, ResearchJob
+from domain.research_job import (
+    ExecutionStatus,
+    NodeExecution,
+    OutputValidation,
+    OutputValidationStatus,
+    ResearchJob,
+)
 
 
 SHA = "7da3c4f53384d2c0bf4e50f736e6e0242e57a77cf18720f62e16c13c49d79801"
@@ -27,6 +33,7 @@ def execution(organization, outcome, *, row=None, mocked=False):
         organization_ref=organization,
         status=ExecutionStatus.COMPLETED,
         mocked=mocked,
+        output_validation=OutputValidation(OutputValidationStatus.PASSED),
         result={
             "outcome": outcome,
             "columns": columns,
@@ -77,11 +84,3 @@ def test_all_empty_and_all_suppressed_have_explicit_non_released_states():
     assert empty.rows == ()
     assert suppressed.status.value == "suppressed"
     assert suppressed.rows == ()
-
-
-def test_invalid_provenance_fails_closed():
-    node = execution("org-hospital-a", "released", row=[20, 10.0])
-    node.result["provenance"]["source_organization_ref"] = "org-hospital-b"
-    result = ControlledResultAggregator().aggregate(job(node))
-    assert result.status.value == "failed"
-    assert result.error.code == "invalid_controlled_result"

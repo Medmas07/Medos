@@ -59,11 +59,19 @@ class ExecutionStub:
                 "outcome": "released",
                 "columns": ["participant_count", "hba1c_above_7_pct"],
                 "rows": [[42, 25.0]],
-                "disclosure": {"status": "passed", "minimum_cell_size": 10},
+                "disclosure": {
+                    "status": "passed",
+                    "minimum_cell_size": 10,
+                    "checked_at": "2026-10-10T12:00:01+00:00",
+                },
                 "provenance": {
                     "algorithm_sha256": "7da3c4f53384d2c0bf4e50f736e6e0242e57a77cf18720f62e16c13c49d79801",
                     "authorization_decision_ref": "dec-rar-001",
                     "source_organization_ref": source,
+                    "source_node_ref": execution.organization_ref.replace(
+                        "org-", "node-", 1
+                    ),
+                    "executed_at": "2026-10-10T12:00:00+00:00",
                 },
             },
         )
@@ -109,6 +117,9 @@ def test_authorized_job_dispatches_and_aggregates_controlled_results():
     assert completed.aggregation.included_organization_refs == (
         "org-hospital-a",
         "org-hospital-b",
+    )
+    assert all(
+        item.output_validation.status.value == "passed" for item in completed.executions
     )
 
 
@@ -165,7 +176,11 @@ def test_invalid_node_output_fails_closed_and_is_not_exposed():
     orchestrator.submit(job("job-invalid-output"))
     failed = orchestrator.read("job-invalid-output")
     assert failed.status is JobStatus.FAILED
-    assert failed.error.code == "invalid_controlled_result"
-    assert failed.aggregation.status.value == "failed"
-    assert all(item.result is None for item in failed.executions)
-    assert all(item.error.code == "output_rejected" for item in failed.executions)
+    assert failed.error.code == "output_rejected"
+    assert failed.aggregation.status.value == "not_available"
+    accepted, rejected = failed.executions
+    assert accepted.output_validation.status.value == "passed"
+    assert accepted.result is not None
+    assert rejected.output_validation.status.value == "rejected"
+    assert rejected.output_validation.error.code == "output_provenance_invalid"
+    assert rejected.result is None
