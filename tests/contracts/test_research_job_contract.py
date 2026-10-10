@@ -14,6 +14,7 @@ STATES = CONTRACT["paths"]["/v1/research-executions/{execution_id}"]["get"][
 ]["200"]["content"]["application/json"]["examples"]
 request_schema = validator(CONTRACT, "#/components/schemas/ExecutionRequest")
 execution_schema = validator(CONTRACT, "#/components/schemas/Execution")
+sandbox_schema = validator(CONTRACT, "#/components/schemas/SandboxEvidence")
 
 
 def changed(document, mutate):
@@ -83,4 +84,26 @@ def test_released_result_keeps_hospital_provenance():
     assert (provenance["source_organization_ref"], provenance["source_node_ref"]) == (
         "org-hospital-a",
         "node-hospital-a",
+    )
+
+
+def test_sandbox_evidence_exposes_bounded_controls_without_claiming_containers():
+    evidence = {
+        "mode": "isolated_process",
+        "python_isolated": True,
+        "site_packages_disabled": True,
+        "environment_cleared": True,
+        "network": "denied",
+        "filesystem": "denied_after_startup",
+        "wall_time_seconds": 2.0,
+        "max_input_bytes": 262144,
+        "max_output_bytes": 65536,
+        "os_resource_limits": "parent_enforced",
+    }
+    assert sandbox_schema.is_valid(evidence)
+    assert not sandbox_schema.is_valid(
+        changed(evidence, lambda d: d.update(network="allowed"))
+    )
+    assert not sandbox_schema.is_valid(
+        changed(evidence, lambda d: d.update(containerized=True))
     )

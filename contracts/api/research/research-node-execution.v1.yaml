@@ -9,11 +9,12 @@ info:
     its database, DMI, raw records, patient identifiers, or row-level output.
 
     IMPLEMENTED contract with MOCKED fictional examples. The HC-183 Hospital
-    Node agent implements it for one bounded, installed aggregate over the
-    visibly MOCKED local repository. It validates the authorization envelope
-    but does not authenticate its issuer. Arbitrary code execution, sandboxing,
-    durable state, authentication, package policy, and production disclosure
-    technology remain OPEN.
+    Node agent implements one bounded, installed aggregate over the visibly
+    MOCKED local repository. HC-186 runs that aggregate in a restricted child
+    process and reports its controls. It validates the authorization envelope
+    but does not authenticate its issuer. Arbitrary submitted-code execution,
+    container isolation, durable state, authentication, and production
+    disclosure technology remain OPEN.
 paths:
   /v1/research-executions:
     post:
@@ -239,6 +240,22 @@ components:
         rows: {type: array, description: Aggregate cells only; never raw or patient-level records., items: {type: array, items: {type: [string, number, integer, boolean, "null"]}}}
         disclosure: {$ref: "#/components/schemas/Disclosure"}
         provenance: {$ref: "#/components/schemas/Provenance"}
+        sandbox: {$ref: "#/components/schemas/SandboxEvidence"}
+    SandboxEvidence:
+      type: object
+      additionalProperties: false
+      required: [mode, python_isolated, site_packages_disabled, environment_cleared, network, filesystem, wall_time_seconds, max_input_bytes, max_output_bytes, os_resource_limits]
+      properties:
+        mode: {type: string, const: isolated_process}
+        python_isolated: {type: boolean, const: true}
+        site_packages_disabled: {type: boolean, const: true}
+        environment_cleared: {type: boolean, const: true}
+        network: {type: string, const: denied}
+        filesystem: {type: string, const: denied_after_startup}
+        wall_time_seconds: {type: number, const: 2.0}
+        max_input_bytes: {type: integer, const: 262144}
+        max_output_bytes: {type: integer, const: 65536}
+        os_resource_limits: {type: string, enum: [posix_rlimit, parent_enforced]}
     Disclosure:
       type: object
       additionalProperties: false
@@ -253,6 +270,6 @@ components:
       type: object
       additionalProperties: false
       required: [code, message, retryable]
-      properties: {code: {type: string, enum: [invalid_request, authorization_denied, authorization_expired, scope_denied, execution_conflict, execution_not_found, execution_failed, output_rejected, cancelled, expired]}, message: {type: string, minLength: 1, maxLength: 500}, retryable: {type: boolean}}
+      properties: {code: {type: string, enum: [invalid_request, authorization_denied, authorization_expired, scope_denied, execution_conflict, execution_not_found, execution_failed, package_policy_denied, unsupported_population, sandbox_resource_exceeded, sandbox_timeout, sandbox_violation, sandbox_invalid_output, output_rejected, cancelled, expired]}, message: {type: string, minLength: 1, maxLength: 500}, retryable: {type: boolean}}
     Ref: {type: string, minLength: 1, maxLength: 100, pattern: "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"}
     Name: {type: string, minLength: 1, maxLength: 100, pattern: "^[a-z][a-z0-9_]*$"}

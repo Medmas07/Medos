@@ -2,6 +2,8 @@
 
 ## Purpose and status
 
+HC-012 Federated patient medical timeline is IMPLEMENTED at D1 with a local, deterministic timeline assembled from three fictional organizations. It is an authorized-view presentation demo; it does not contact Hospital Nodes or load clinical persistence.
+
 HC-011 Patient dashboard is IMPLEMENTED at D1: the home view summarizes a fictional authorized view with source and event counts, a visible MOCKED label, and no hospital data access. It is a demo boundary, not production integration.
 
 IMPLEMENTED at D1 for HC-010: a Flutter Android shell provides four navigable destinations (`Accueil`, `Parcours`, `Accès`, `Profil`) plus explicit content, loading, empty, and error states. It uses the fictional HC-005 Patient A identity and permanently labels demo content. Feature content beyond the shell remains PLANNED.

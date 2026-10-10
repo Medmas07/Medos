@@ -8,10 +8,9 @@ Hospital Node HTTP boundaries, validates controlled outputs before release,
 and aggregates only outputs that pass. It does not execute researcher code or
 read hospital storage.
 
-The orchestration code and its boundary behavior are test-validated. Live
-cross-process integration is **not VALIDATED** because the Governance research
-authorization endpoint is not implemented. The HC-183 Hospital-side provider
-exists, but a live job still fails closed when Governance cannot verify it.
+The orchestration code and its boundary behavior are test-validated. The
+Governance Node serves the research authorization endpoint (HC-133). Run locally with the Governance Node (HC-133) and Hospital Nodes A and B, a job under a decision whose scope the HC-183 aggregate can run (`hba1c`, encounter dates) completes on both nodes with output validation passed; the fictional cohorts are below the minimum cell size, so the aggregate is suppressed. Jobs outside the decision (a variable, organization, project, requester, or population it does not cover) are denied by Governance before any node is asked. Under `dec-rar-001` (ages 40–79), no job can complete: the HC-183 aggregate refuses age bounds, and Governance refuses a job without them as wider than approved. Live
+integration is **not VALIDATED** beyond that local run.
 With no endpoints configured, `/health` reports `degraded` and a submitted job
 fails with `governance_unavailable`.
 

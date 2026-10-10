@@ -3,9 +3,23 @@ info:
   title: Governance Research Authorization Check
   version: 1.0.0
   description: |
-    Consumer contract required by HC-182. The Governance Node owns the decision
-    and remains unimplemented; the Research Service must fail closed when this
-    boundary is unavailable.
+    Consumer contract required by HC-182, provided by the Governance Node
+    (HC-133). The Governance Node owns the decision; the Research Service
+    must fail closed when this boundary is unavailable.
+
+    The Governance Node answers for the research access decisions it holds
+    (contracts/api/governance/research-requests.v1.yaml). An unknown
+    reference, or a decision on another subject, is `404`. Otherwise the
+    answer is `approved` only if the decision approved the request, is valid
+    now, is for this project, is requested by the project's principal
+    investigator or the request's submitter, and covers every target
+    organization, every variable, and the population (each requested bound
+    inside the requested project population). Otherwise it is `denied` with
+    the first failing `reason_code`, in this order: `not_approved`,
+    `not_yet_valid`, `expired`, `project_mismatch`, `requester_mismatch`,
+    `organization_not_approved`, `variable_not_approved`,
+    `population_exceeded`. `purpose` is not compared, and the minimum output
+    cell size of the decision is not carried here (OPEN).
 paths:
   /v1/research-authorizations/check:
     post:
@@ -16,12 +30,45 @@ paths:
         content:
           application/json:
             schema: {$ref: "#/components/schemas/AuthorizationCheck"}
+            examples:
+              job001:
+                summary: Fictional demo — job-001 of proj-001 under dec-rar-001.
+                value:
+                  decision_ref: dec-rar-001
+                  project_ref: proj-001
+                  requested_by: usr-aymen
+                  purpose: Aggregate cardiometabolic risk research
+                  target_organization_refs: [org-hospital-a, org-hospital-b]
+                  data_scope:
+                    population: {age_min: 40, age_max: 79, encounter_from: "2024-01-01", encounter_to: "2026-12-31"}
+                    variables: [age_band, hba1c]
       responses:
         "200":
           description: Governance-owned authorization result.
           content:
             application/json:
               schema: {$ref: "#/components/schemas/AuthorizationDecision"}
+              examples:
+                approved:
+                  summary: Fictional demo — dec-rar-001 covers job-001 on the demo date.
+                  value:
+                    decision_ref: dec-rar-001
+                    status: approved
+                    approved_organization_refs: [org-hospital-a, org-hospital-b]
+                    approved_variables: [age_band, sex, hba1c, treated_hypertension]
+                    authority_organization_ref: org-governance
+                    valid_until: "2027-07-20T15:00:00+01:00"
+                denied:
+                  summary: Fictional demo — a job asking for a variable dec-rar-001 does not cover.
+                  value:
+                    decision_ref: dec-rar-001
+                    status: denied
+                    approved_organization_refs: []
+                    approved_variables: []
+                    authority_organization_ref: org-governance
+                    valid_until: "2027-07-20T15:00:00+01:00"
+                    reason_code: variable_not_approved
+        "400": {description: The check does not match this contract.}
         "404": {description: Decision not found.}
 components:
   schemas:
