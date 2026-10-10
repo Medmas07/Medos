@@ -3,5 +3,6 @@
   "node_ref": "node-hospital-b",
   "organization_ref": "org-hospital-b",
   "port": 8102,
-  "storage_dir": "../.storage/hospital-b"
+  "storage_dir": "../.storage/hospital-b",
+  "mock_clinical_records": "../../../demo-data/records/hospital-b.json"
 }

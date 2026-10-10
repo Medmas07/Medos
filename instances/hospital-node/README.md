@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-CONFIRMED autonomous hospital-controlled boundary. Its stack (Python + FastAPI, one process per hospital from one codebase, flat layer layout that keeps `adapters/dmi/`) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED (HC-110): a FastAPI app with Clean/Hexagonal layers, pinned dependencies, and tests. Per-hospital configuration loading is IMPLEMENTED at D2 (HC-112). Its only endpoint is `GET /health` (HC-111, IMPLEMENTED at D2). **It holds no clinical data.** The clinical repository and APIs (HC-113 to HC-116) are PLANNED. It is expected to become a separately packaged/containerized instance; container choices remain OPEN.
+CONFIRMED autonomous hospital-controlled boundary. Its stack (Python + FastAPI, one process per hospital from one codebase, flat layer layout that keeps `adapters/dmi/`) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED (HC-110): a FastAPI app with Clean/Hexagonal layers, pinned dependencies, and tests. Per-hospital configuration loading is IMPLEMENTED at D2 (HC-112). Its clinical repository is **MOCKED** at D2 (HC-113): fictional demo records, read-only, in memory. Its only endpoint is `GET /health` (HC-111, IMPLEMENTED at D2). **No API discloses clinical records yet**; the patient history, consent/access, and audit APIs (HC-114 to HC-116) are PLANNED. It is expected to become a separately packaged/containerized instance; container choices remain OPEN.
 
 ## Running locally
 
@@ -29,7 +29,8 @@ One codebase runs as one process per hospital ([ADR-0003](../../docs/decisions/A
 | `node_ref` | Opaque node id, following the Federation contract's `OpaqueRef` pattern. |
 | `organization_ref` | Opaque id of the hospital organization that controls this node. |
 | `port` | Local port, 1024–65535. |
-| `storage_dir` | This hospital's local storage directory. A relative path is resolved against the configuration file. Nothing reads or writes it until HC-113. `.storage/` is git-ignored. |
+| `storage_dir` | This hospital's local storage directory. A relative path is resolved against the configuration file. Nothing reads or writes it yet: persistence is OPEN, so the mock repository stays in memory. `.storage/` is git-ignored. |
+| `mock_clinical_records` | This hospital's fictional records file for the [mock clinical repository](#mock-clinical-repository-hc-113), resolved like `storage_dir`. The demo configurations point to their own file in [`demo-data/records/`](../../demo-data/records/). |
 | `notice` | Optional free-text note. |
 
 The node refuses to start if the variable is unset, the file cannot be read, or any field is missing, unknown, or invalid. It never falls back to another hospital's identity.
@@ -44,13 +45,35 @@ The fictional demo configurations in [`config/`](config/) match the approved nod
 
 Hospital C is still in onboarding in the demo data and has no node, so it has no configuration; ADR-0003 reserves port 8103 for it. This is demo configuration only: the identity is not authenticated, and it is not a production configuration or secret store.
 
+## Mock clinical repository (HC-113)
+
+MOCKED at D2. `application/clinical_repository.py` defines the `ClinicalRepository` port: one patient's records held by this node (`patient_records`) and record counts (`summary`). It does not check authorization; the APIs that disclose records (HC-114, HC-115) must. An unknown patient gets the same empty answer as a patient with no records here.
+
+`domain/clinical_record.py` is a minimal hospital-local model: encounters, medications, and lab reports. Its field names follow the record shapes of [`hospital-node-federation.v1.yaml`](../../contracts/federation/hospital-node-federation.v1.yaml); the FHIR mapping is OPEN. References must be opaque ids and times must carry a UTC offset. Lab flags are kept as assigned at the source; the node does not interpret results.
+
+`adapters/outbound/fixture_clinical_repository.py` implements the port. At startup it reads the one file named by `mock_clinical_records` and keeps the records in memory:
+
+- The file must be marked `"fictional": true` and its `heldBy` must equal this node's `organization_ref`. Otherwise, or if a record is malformed, the node refuses to start. A node never loads another hospital's records.
+- It is read-only. Nothing is written to `storage_dir` or back to `demo-data/`.
+- Patient references are the dataset's ids (`pat-a`), as in the Federation contract; per-hospital local identifiers are not mapped.
+
+This is not real clinical storage and not a DMI integration: the DMI Adapter (HC-120+) is PLANNED and persistence is OPEN.
+
+| Node | Encounters | Medications | Lab reports |
+|---|---|---|---|
+| Hospital A | 3 | 1 | 2 |
+| Hospital B | 2 | 1 | 1 |
+| Private practice | 2 | 2 | 0 |
+
 ## Health endpoint (HC-111)
 
-`GET /health` is a liveness check. It returns `200` with the node kind, version, the configured `node_ref` and `organization_ref`, an empty `capabilities` list, and a notice stating that the identity comes from fictional demo configuration, that the instance holds no clinical data, and that it is not a production health check:
+`GET /health` is a liveness check. It returns `200` with the node kind, version, the configured `node_ref` and `organization_ref`, an empty `capabilities` list, the clinical repository's record counts and `mocked` flag, and a notice stating that the identity comes from fictional demo configuration, that the repository is MOCKED, that no clinical API is served, and that it is not a production health check:
 
 ```json
-{"status": "ok", "node": "hospital-node", "version": "0.1.0", "node_ref": "node-hospital-a", "organization_ref": "org-hospital-a", "capabilities": [], "notice": "Hospital Node runtime skeleton (HC-111, HC-112). ..."}
+{"status": "ok", "node": "hospital-node", "version": "0.1.0", "node_ref": "node-hospital-a", "organization_ref": "org-hospital-a", "capabilities": [], "clinical_records": {"mocked": true, "encounters": 3, "medications": 1, "lab_reports": 2}, "notice": "Hospital Node runtime skeleton (HC-111 to HC-113). ..."}
 ```
+
+The counts contain no patient data.
 
 It does not check storage, DMI connectivity, or Federation reachability; none exists yet. Deployment health checks are PLANNED in HC-223. Besides `/health`, only FastAPI's generated `/openapi.json` and `/docs` are served.
 
@@ -60,13 +83,14 @@ It does not check storage, DMI connectivity, or Federation reachability; none ex
 instances/hospital-node/
 ├── main.py                     # composition root: loads configuration, builds the FastAPI app
 ├── config/                     # fictional per-hospital demo configurations
-├── domain/                     # NodeIdentity, NodeStatus — stdlib only
-├── application/                # get_node_status use case; imports only domain
+├── domain/                     # NodeIdentity, NodeStatus, clinical records — stdlib only
+├── application/                # get_node_status use case, ClinicalRepository port; imports only domain
 ├── adapters/inbound/http/      # /health router and Pydantic response model
+├── adapters/outbound/          # MOCKED fixture clinical repository (HC-113)
 ├── infrastructure/             # configuration loading and validation
 ├── adapters/dmi/               # PLANNED hospital-local DMI Adapter (HC-120+)
 ├── contracts/                  # reserved for Node-local contract documents
-└── tests/                      # app and layer-boundary tests
+└── tests/                      # domain, use case, adapter, app, and layer-boundary tests
 ```
 
 `tests/test_layer_boundaries.py` fails if `domain/` or `application/` imports anything other than inner layers or the standard library.
@@ -78,7 +102,7 @@ instances/hospital-node/
 - Local storage and clinical source-data control.
 - Consent/authorization enforcement at the local boundary.
 - Local audit generation and Federation interface.
-- Per-hospital configuration loading and liveness health check (IMPLEMENTED); future local API, authenticated identity/RBAC, and events.
+- Per-hospital configuration loading and liveness health check (IMPLEMENTED); mock clinical repository (MOCKED); future local API, authenticated identity/RBAC, and events.
 
 ## Communication boundaries
 

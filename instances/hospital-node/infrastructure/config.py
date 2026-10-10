@@ -23,9 +23,11 @@ class ConfigError(RuntimeError):
 class HospitalNodeConfig:
     identity: NodeIdentity
     port: int
-    # Local storage location for this hospital only. Nothing reads or writes it until
-    # the clinical repository exists (HC-113).
+    # Local storage location for this hospital only. Nothing reads or writes it yet:
+    # persistence is OPEN, so the HC-113 mock repository keeps its records in memory.
     storage_dir: Path
+    # This hospital's fictional demo records file, loaded by the MOCKED repository.
+    mock_clinical_records: Path
 
 
 class _ConfigFile(BaseModel):
@@ -36,6 +38,7 @@ class _ConfigFile(BaseModel):
     organization_ref: str
     port: int = Field(ge=1024, le=65535)
     storage_dir: str = Field(min_length=1)
+    mock_clinical_records: str = Field(min_length=1)
 
 
 def config_path_from_env() -> Path:
@@ -58,9 +61,10 @@ def load_config(path: Path) -> HospitalNodeConfig:
         ) from error
     except (ValidationError, InvalidNodeIdentity) as error:
         raise ConfigError(f"Invalid hospital configuration {path}: {error}") from error
-    # A relative storage_dir is resolved against the configuration file, not the CWD.
+    # Relative paths are resolved against the configuration file, not the CWD.
     return HospitalNodeConfig(
         identity=identity,
         port=raw.port,
         storage_dir=(path.parent / raw.storage_dir).resolve(),
+        mock_clinical_records=(path.parent / raw.mock_clinical_records).resolve(),
     )
