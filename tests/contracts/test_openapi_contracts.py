@@ -4,9 +4,11 @@ import pytest
 import yaml
 from openapi_spec_validator import validate
 
-from conftest import CONTRACTS, FEDERATION, validator
+from conftest import CONTRACTS, EVENTS, FEDERATION, validator
 
-CONTRACT_FILES = sorted([*CONTRACTS.rglob("*.v*.yaml"), *FEDERATION.rglob("*.v*.yaml")])
+CONTRACT_FILES = sorted(
+    [*CONTRACTS.rglob("*.v*.yaml"), *FEDERATION.rglob("*.v*.yaml"), *EVENTS.rglob("*.v*.yaml")]
+)
 
 
 HTTP_METHODS = {"get", "put", "post", "delete", "options", "head", "patch", "trace"}

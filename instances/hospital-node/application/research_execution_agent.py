@@ -32,6 +32,14 @@ class ExecutionNotFoundError(LookupError):
     pass
 
 
+class LocalExecutionError(RuntimeError):
+    def __init__(self, code: str, message: str, retryable: bool = False) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
+        self.retryable = retryable
+
+
 class ResearchAuthorizationError(PermissionError):
     def __init__(self, code: str) -> None:
         super().__init__(code)
@@ -69,6 +77,16 @@ class ResearchExecutionAgent:
                 updated_at=now,
                 mocked=self.executor.mocked,
                 result=result,
+            )
+        except LocalExecutionError as error:
+            execution = ResearchExecution(
+                request=request,
+                node_ref=self.identity.node_ref,
+                organization_ref=self.identity.organization_ref,
+                status=ResearchExecutionStatus.FAILED,
+                updated_at=now,
+                mocked=self.executor.mocked,
+                error=ExecutionProblem(error.code, error.message, error.retryable),
             )
         except Exception:
             execution = ResearchExecution(

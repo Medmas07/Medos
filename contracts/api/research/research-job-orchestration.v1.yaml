@@ -87,7 +87,7 @@ components:
         checks:
           type: array
           uniqueItems: true
-          items: {type: string, enum: [controlled_result_schema, metadata_schema, disclosure_policy, provenance_binding, timestamp_order, bounded_columns, minimum_cell_size]}
+          items: {type: string, enum: [controlled_result_schema, metadata_schema, disclosure_policy, provenance_binding, timestamp_order, sandbox_controls, bounded_columns, minimum_cell_size]}
         error: {$ref: "#/components/schemas/Problem"}
     ControlledAggregation:
       type: object
@@ -151,6 +151,22 @@ components:
         rows: {type: array, description: Aggregate cells only; never raw or patient-level records., items: {type: array}}
         disclosure: {$ref: "#/components/schemas/NodeDisclosure"}
         provenance: {$ref: "#/components/schemas/NodeProvenance"}
+        sandbox: {$ref: "#/components/schemas/SandboxEvidence"}
+    SandboxEvidence:
+      type: object
+      additionalProperties: false
+      required: [mode, python_isolated, site_packages_disabled, environment_cleared, network, filesystem, wall_time_seconds, max_input_bytes, max_output_bytes, os_resource_limits]
+      properties:
+        mode: {type: string, const: isolated_process}
+        python_isolated: {type: boolean, const: true}
+        site_packages_disabled: {type: boolean, const: true}
+        environment_cleared: {type: boolean, const: true}
+        network: {type: string, const: denied}
+        filesystem: {type: string, const: denied_after_startup}
+        wall_time_seconds: {type: number, const: 2.0}
+        max_input_bytes: {type: integer, const: 262144}
+        max_output_bytes: {type: integer, const: 65536}
+        os_resource_limits: {type: string, enum: [posix_rlimit, parent_enforced]}
     NodeDisclosure:
       type: object
       additionalProperties: false

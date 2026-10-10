@@ -1,0 +1,578 @@
+openapi: 3.1.0
+info:
+  title: Notification Event Contract
+  version: 1.0.0
+  description: |
+    Contract HC-201, version 1. The asynchronous cross-component notification
+    event and delivery envelope contract for the Federated Healthcare Ecosystem.
+
+    Ecosystem components (Hospital Nodes, Governance Node, Research Service,
+    AI Services) emit notification events through this contract to notify
+    patients, relatives, clinicians, researchers, hospital administrators,
+    and governance reviewers without coupling source business workflows to
+    concrete delivery providers or push platforms.
+
+    Boundary rules carried by this contract:
+
+    - **Payload minimization.** Events carry human-readable summaries,
+      localized titles, and opaque references (`grant_ref`, `sync_request_ref`,
+      `job_ref`). They NEVER carry raw clinical records, consultation notes,
+      full lab reports, diagnostic images, or SQL queries.
+    - **No autonomous clinical authority.** Any clinical alert (`alert`) is
+      strictly advisory (`advisory: true`) and advisory provenance is
+      mandatory. Medical decisions remain with accountable clinicians.
+    - **Explicit recipient roles.** Every event targets an opaque recipient
+      reference (`recipient_ref`) and specifies an authorized recipient role
+      (`patient`, `relative`, `clinician`, `governance_reviewer`,
+      `hospital_admin`, `researcher`).
+    - **Canonical event categories.** Standardized notification categories
+      align with the canonical ecosystem capabilities:
+      - `access_granted`: patient consent or access grant recorded (HC-115).
+      - `new_record`: new clinical record synchronized at a Hospital Node.
+      - `delegation_granted`: access delegated to a trusted relative (HC-010).
+      - `request_status`: status update on an application or restriction request.
+      - `alert`: advisory clinical notice or abnormal finding for human review.
+      - `review_requested`: governance or hospital validation requiring human action.
+      - `job_completed`: research Compute-to-Data job completed with aggregated result.
+    - **Provenance and demo flag.** Every event carries an originating source,
+      creation timestamp, schema version, and `fictional: true` when operating
+      with demo fixtures.
+    - **Delivery isolation.** The Notification Service (HC-202) coordinates
+      routing and delivery through dedicated provider adapters (in-app, mobile push,
+      email). Delivery errors or retries do not affect originating source transactions.
+
+    Status: IMPLEMENTED as OpenAPI 3.1 specification at depth D1 with canonical
+    fictional examples (HC-201). Runtime delivery service is PLANNED under HC-202.
+servers:
+  - url: http://localhost:8700
+    description: Local Notification Service runtime (development and preview only).
+paths:
+  /v1/events/notifications:
+    post:
+      operationId: publishNotificationEvent
+      summary: Ingest an asynchronous cross-component notification event.
+      description: |
+        Asynchronous intake. Emitting services publish notification events
+        using this standard envelope. Returns `202 Accepted` with a tracking
+        receipt once the event is validated and queued for routing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationEventEnvelope"
+            examples:
+              accessGranted:
+                summary: Fictional demo — Patient A access grant notification (notif-001).
+                value:
+                  event_id: evt-notif-001
+                  event_type: notification.access_granted
+                  occurred_at: "2026-10-10T09:00:00+01:00"
+                  source: hospital-node-a
+                  schema_version: "1.0.0"
+                  correlation_id: corr-grant-a-drx
+                  payload:
+                    notification_id: notif-001
+                    recipient_ref: pat-a
+                    recipient_role: patient
+                    category: access_granted
+                    priority: normal
+                    title: Accès accordé
+                    body: Dr Youssef Gharbi peut consulter votre historique jusqu'au 24/10/2026.
+                    related_resource:
+                      resource_type: access_grant
+                      resource_ref: grant-a-drx
+                    channels:
+                      - in_app
+                      - push
+                    fictional: true
+              clinicalAlert:
+                summary: Fictional demo — Clinician advisory alert for abnormal lab result (notif-005).
+                value:
+                  event_id: evt-notif-005
+                  event_type: notification.alert
+                  occurred_at: "2026-09-30T16:00:00+01:00"
+                  source: hospital-node-b
+                  schema_version: "1.0.0"
+                  correlation_id: corr-alert-b-hba1c
+                  payload:
+                    notification_id: notif-005
+                    recipient_ref: clin-x
+                    recipient_role: clinician
+                    category: alert
+                    priority: high
+                    title: Résultat anormal
+                    body: HbA1c au-dessus de la plage de référence pour Karim Haddad.
+                    related_resource:
+                      resource_type: lab_report
+                      resource_ref: alert-b-hba1c
+                    channels:
+                      - in_app
+                    alert_metadata:
+                      advisory: true
+                      requires_human_review: true
+                      finding_type: abnormal_lab_value
+                    fictional: true
+              reviewRequested:
+                summary: Fictional demo — Governance reviewer review request (notif-006).
+                value:
+                  event_id: evt-notif-006
+                  event_type: notification.review_requested
+                  occurred_at: "2026-10-10T09:05:00+01:00"
+                  source: governance-node
+                  schema_version: "1.0.0"
+                  correlation_id: corr-sync-001
+                  payload:
+                    notification_id: notif-006
+                    recipient_ref: usr-olfa
+                    recipient_role: governance_reviewer
+                    category: review_requested
+                    priority: high
+                    title: Nouvelle demande de synchronisation
+                    body: HU Bab Ennour demande une synchronisation avec HR Oued Zitoun.
+                    related_resource:
+                      resource_type: sync_request
+                      resource_ref: sync-001
+                    channels:
+                      - in_app
+                      - email
+                    fictional: true
+              jobCompleted:
+                summary: Fictional demo — Research execution completion (notif-009).
+                value:
+                  event_id: evt-notif-009
+                  event_type: notification.job_completed
+                  occurred_at: "2026-09-12T10:05:30+01:00"
+                  source: research-service
+                  schema_version: "1.0.0"
+                  correlation_id: corr-job-001
+                  payload:
+                    notification_id: notif-009
+                    recipient_ref: usr-aymen
+                    recipient_role: researcher
+                    category: job_completed
+                    priority: normal
+                    title: Exécution terminée
+                    body: Le résultat contrôlé du projet « Facteurs de risque cardiométaboliques » est disponible.
+                    related_resource:
+                      resource_type: research_job
+                      resource_ref: job-001
+                    channels:
+                      - in_app
+                    fictional: true
+      responses:
+        "202":
+          description: Event successfully ingested and queued for routing.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationEventReceipt"
+              examples:
+                accepted:
+                  summary: Ingestion receipt with tracking details.
+                  value:
+                    receipt_id: rct-notif-001
+                    event_id: evt-notif-001
+                    status: queued
+                    queued_at: "2026-10-10T09:00:01+01:00"
+                    recipient_ref: pat-a
+                    fictional: true
+        "400":
+          description: The event does not conform to the notification contract.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                invalidEvent:
+                  summary: Validation failure due to missing recipient or invalid category.
+                  value:
+                    type: "https://hackcure.org/errors/invalid-notification-event"
+                    title: Invalid Notification Event
+                    status: 400
+                    detail: The notification event payload is missing required field 'recipient_ref'.
+  /v1/events/notifications/{event_id}:
+    parameters:
+      - name: event_id
+        in: path
+        required: true
+        description: Unique identifier of the notification event.
+        schema:
+          type: string
+    get:
+      operationId: getNotificationEventStatus
+      summary: Retrieve the processing and delivery status of a published event.
+      description: |
+        Returns the ingestion and dispatch progress of a previously published
+        notification event, including delivery statuses across requested channels.
+      responses:
+        "200":
+          description: Event status and per-channel delivery records.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationEventStatus"
+              examples:
+                delivered:
+                  summary: Successfully delivered event across requested channels.
+                  value:
+                    event_id: evt-notif-001
+                    status: processed
+                    received_at: "2026-10-10T09:00:00+01:00"
+                    deliveries:
+                      - channel: in_app
+                        status: delivered
+                        dispatched_at: "2026-10-10T09:00:02+01:00"
+                      - channel: push
+                        status: delivered
+                        dispatched_at: "2026-10-10T09:00:03+01:00"
+                    fictional: true
+        "404":
+          description: Event ID not found.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                notFound:
+                  summary: Unknown event identifier.
+                  value:
+                    type: "https://hackcure.org/errors/event-not-found"
+                    title: Event Not Found
+                    status: 404
+                    detail: No notification event found matching ID 'evt-unknown'.
+components:
+  schemas:
+    NotificationEventEnvelope:
+      type: object
+      description: Envelope encapsulating an asynchronous notification event.
+      additionalProperties: false
+      required:
+        - event_id
+        - event_type
+        - occurred_at
+        - source
+        - schema_version
+        - payload
+      properties:
+        event_id:
+          type: string
+          description: Unique identifier for the event.
+          example: evt-notif-001
+        event_type:
+          type: string
+          description: Canonical event type classification.
+          pattern: "^notification\\.[a-z_]+$"
+          example: notification.access_granted
+        occurred_at:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp when the business event occurred.
+          example: "2026-10-10T09:00:00+01:00"
+        source:
+          type: string
+          description: Originating node or service boundary.
+          enum:
+            - hospital-node-a
+            - hospital-node-b
+            - hospital-node-c
+            - governance-node
+            - research-service
+            - ai-services
+          example: hospital-node-a
+        schema_version:
+          type: string
+          description: Semantic version of this event contract.
+          example: "1.0.0"
+        correlation_id:
+          type: string
+          description: Optional correlation identifier linking to originating workflow.
+          example: corr-grant-a-drx
+        payload:
+          $ref: "#/components/schemas/NotificationPayload"
+
+    NotificationPayload:
+      type: object
+      description: Minimized notification message payload.
+      additionalProperties: false
+      required:
+        - notification_id
+        - recipient_ref
+        - recipient_role
+        - category
+        - priority
+        - title
+        - body
+        - channels
+      properties:
+        notification_id:
+          type: string
+          description: Unique identifier for the notification item.
+          example: notif-001
+        recipient_ref:
+          type: string
+          description: Opaque identifier of the target user or actor.
+          example: pat-a
+        recipient_role:
+          $ref: "#/components/schemas/RecipientRole"
+        category:
+          $ref: "#/components/schemas/NotificationCategory"
+        priority:
+          $ref: "#/components/schemas/Priority"
+        title:
+          type: string
+          description: Localized plain-text title of the notification.
+          maxLength: 120
+          example: Accès accordé
+        body:
+          type: string
+          description: |
+            Localized plain-text summary body. Minimized content only;
+            never contains raw clinical records or database dumps.
+          maxLength: 500
+          example: Dr Youssef Gharbi peut consulter votre historique jusqu'au 24/10/2026.
+        related_resource:
+          $ref: "#/components/schemas/RelatedResource"
+        channels:
+          type: array
+          description: Target delivery channels requested for this notification.
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/Channel"
+        alert_metadata:
+          $ref: "#/components/schemas/AlertMetadata"
+        fictional:
+          type: boolean
+          description: True when using demo or fictional fixtures.
+          default: true
+          example: true
+
+    NotificationCategory:
+      type: string
+      description: Categorization of the notification event.
+      enum:
+        - access_granted
+        - new_record
+        - delegation_granted
+        - request_status
+        - alert
+        - review_requested
+        - job_completed
+      example: access_granted
+
+    RecipientRole:
+      type: string
+      description: Authorized functional role of the notification recipient.
+      enum:
+        - patient
+        - relative
+        - clinician
+        - governance_reviewer
+        - hospital_admin
+        - researcher
+      example: patient
+
+    Priority:
+      type: string
+      description: Urgency and delivery priority.
+      enum:
+        - low
+        - normal
+        - high
+        - urgent
+      default: normal
+      example: normal
+
+    Channel:
+      type: string
+      description: Supported delivery channel mechanism.
+      enum:
+        - in_app
+        - push
+        - email
+        - sms
+      example: in_app
+
+    RelatedResource:
+      type: object
+      description: Opaque pointer to the related domain entity.
+      additionalProperties: false
+      required:
+        - resource_type
+        - resource_ref
+      properties:
+        resource_type:
+          type: string
+          description: Type of related domain resource.
+          enum:
+            - access_grant
+            - sync_request
+            - hospital_application
+            - research_job
+            - lab_report
+            - consultation
+            - restriction_request
+            - delegation
+          example: access_grant
+        resource_ref:
+          type: string
+          description: Opaque entity reference ID.
+          example: grant-a-drx
+
+    AlertMetadata:
+      type: object
+      description: Mandatory advisory metadata for clinical alerts.
+      additionalProperties: false
+      required:
+        - advisory
+        - requires_human_review
+      properties:
+        advisory:
+          type: boolean
+          description: Must be true. AI/automated alerts are strictly advisory.
+          enum: [true]
+          example: true
+        requires_human_review:
+          type: boolean
+          description: Must be true. Clinical action requires human clinician validation.
+          enum: [true]
+          example: true
+        finding_type:
+          type: string
+          description: High-level classification of the finding.
+          example: abnormal_lab_value
+
+    NotificationEventReceipt:
+      type: object
+      description: Acknowledgment receipt returned upon event ingestion.
+      additionalProperties: false
+      required:
+        - receipt_id
+        - event_id
+        - status
+        - queued_at
+        - recipient_ref
+      properties:
+        receipt_id:
+          type: string
+          description: Unique tracking ID for the intake receipt.
+          example: rct-notif-001
+        event_id:
+          type: string
+          description: Corresponding event identifier.
+          example: evt-notif-001
+        status:
+          type: string
+          description: Ingestion status.
+          enum:
+            - queued
+            - rejected
+          example: queued
+        queued_at:
+          type: string
+          format: date-time
+          description: Timestamp when queued for delivery.
+          example: "2026-10-10T09:00:01+01:00"
+        recipient_ref:
+          type: string
+          description: Opaque recipient reference.
+          example: pat-a
+        fictional:
+          type: boolean
+          description: True when running against demo or mock storage.
+          default: true
+          example: true
+
+    NotificationEventStatus:
+      type: object
+      description: Processing and dispatch status of a published notification event.
+      additionalProperties: false
+      required:
+        - event_id
+        - status
+        - received_at
+        - deliveries
+      properties:
+        event_id:
+          type: string
+          description: Event identifier.
+          example: evt-notif-001
+        status:
+          type: string
+          description: Overall event processing status.
+          enum:
+            - pending
+            - processed
+            - failed
+          example: processed
+        received_at:
+          type: string
+          format: date-time
+          description: Ingestion timestamp.
+          example: "2026-10-10T09:00:00+01:00"
+        deliveries:
+          type: array
+          description: Status breakdown per delivery channel.
+          items:
+            $ref: "#/components/schemas/ChannelDeliveryRecord"
+        fictional:
+          type: boolean
+          description: True when operating on mock state.
+          default: true
+          example: true
+
+    ChannelDeliveryRecord:
+      type: object
+      description: Delivery attempt record for a specific channel.
+      additionalProperties: false
+      required:
+        - channel
+        - status
+      properties:
+        channel:
+          $ref: "#/components/schemas/Channel"
+        status:
+          type: string
+          description: Delivery state for this channel.
+          enum:
+            - pending
+            - delivered
+            - failed
+            - suppressed
+          example: delivered
+        dispatched_at:
+          type: string
+          format: date-time
+          description: Timestamp of delivery attempt.
+          example: "2026-10-10T09:00:02+01:00"
+        failure_reason:
+          type: string
+          description: Error explanation if status is failed.
+          example: push_token_unregistered
+
+    Problem:
+      type: object
+      description: RFC 9457 Problem Details object.
+      additionalProperties: true
+      required:
+        - type
+        - title
+        - status
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI identifying the problem type.
+          example: "https://hackcure.org/errors/invalid-notification-event"
+        title:
+          type: string
+          description: Short human-readable summary of the problem.
+          example: Invalid Notification Event
+        status:
+          type: integer
+          description: HTTP status code.
+          example: 400
+        detail:
+          type: string
+          description: Human-readable explanation specific to this occurrence.
+          example: The notification event payload is missing required field 'recipient_ref'.

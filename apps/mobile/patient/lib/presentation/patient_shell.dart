@@ -158,12 +158,7 @@ class _ContentView extends StatelessWidget {
   Widget build(BuildContext context) {
     final content = switch (index) {
       0 => const _DashboardContent(),
-      1 => const _PlannedContent(
-        icon: Icons.timeline_rounded,
-        title: 'Parcours médical fédéré',
-        message:
-            'La chronologie autorisée sera livrée par HC-012. Ce shell ne charge encore aucun dossier clinique.',
-      ),
+      1 => const _TimelineContent(),
       2 => const _PlannedContent(
         icon: Icons.shield_outlined,
         title: 'Consentements et accès',
@@ -390,6 +385,92 @@ class _ProfileContent extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _TimelineContent extends StatelessWidget {
+  const _TimelineContent();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Parcours médical fédéré',
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Une vue longitudinale composée de sources autorisées.',
+          style: TextStyle(color: PatientColors.muted, fontSize: 16),
+        ),
+        const SizedBox(height: 18),
+        for (var index = 0; index < demoTimeline.length; index++)
+          _TimelineEventCard(
+            event: demoTimeline[index],
+            isLast: index == demoTimeline.length - 1,
+          ),
+      ],
+    );
+  }
+}
+
+class _TimelineEventCard extends StatelessWidget {
+  const _TimelineEventCard({required this.event, required this.isLast});
+
+  final CanonicalTimelineEvent event;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            children: [
+              const Icon(Icons.circle, size: 12, color: PatientColors.brand),
+              if (!isLast)
+                Container(
+                  width: 2,
+                  height: 72,
+                  color: PatientColors.brandSoft,
+                ),
+            ],
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(event.date, style: const TextStyle(color: PatientColors.muted)),
+                    const SizedBox(height: 4),
+                    Text(event.title, style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 4),
+                    Text(event.organization, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 8),
+                    Text(event.summary),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        _StatusPill(label: event.kind),
+                        const SizedBox(width: 8),
+                        const _StatusPill(label: 'AUTORISÉ'),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
