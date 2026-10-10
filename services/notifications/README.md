@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-PLANNED capability for authorized notifications to patients, clinicians, researchers, hospital administrators, and governance reviewers. No provider, protocol, runtime, or delivery code exists.
+PLANNED capability for authorized notifications to patients, clinicians, researchers, hospital administrators, and governance reviewers. No provider, protocol, runtime, or delivery code exists. When HC-202 creates the runtime, it is a separate Python + FastAPI project per [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md).
 
 ## Responsibilities and owned concepts
 

@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-PLANNED coordination capability for authorized communication among autonomous Nodes. No runtime or contract implementation exists.
+PLANNED coordination capability for authorized communication among autonomous Nodes. No runtime or contract implementation exists. When its first runtime ticket needs one, it is a separate Python + FastAPI project per [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md).
 
 ## Responsibilities and owned concepts
 

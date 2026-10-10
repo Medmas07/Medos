@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-CONFIRMED autonomous hospital-controlled boundary; its runtime is PLANNED and not implemented. It is expected to become a separately packaged/containerized instance after runtime decisions.
+CONFIRMED autonomous hospital-controlled boundary; its runtime is PLANNED and not implemented. Its stack (Python + FastAPI, one process per hospital from one codebase, flat layer layout that keeps `adapters/dmi/`) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md); HC-110 creates the runtime. It is expected to become a separately packaged/containerized instance; container choices remain OPEN.
 
 ## Responsibilities and owned concepts
 
