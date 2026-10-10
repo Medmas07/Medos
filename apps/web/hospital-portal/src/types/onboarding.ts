@@ -10,6 +10,8 @@ export interface NodeSummary {
   version: string
   lastSyncAt: string
   dmiState: 'connected' | 'disconnected'
+  /** Set on nodes created by a demo scenario rather than read from the fixtures. */
+  simulated?: boolean
 }
 
 export interface Organization {

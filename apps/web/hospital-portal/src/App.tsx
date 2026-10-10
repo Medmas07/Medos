@@ -30,11 +30,11 @@ import { HumanReviewView } from './views/HumanReviewView'
 import { InstallationView } from './views/InstallationView'
 import { NodeConfigurationView } from './views/NodeConfigurationView'
 import { NodeDownloadView } from './views/NodeDownloadView'
+import { NodeStatusView } from './views/NodeStatusView'
 import { OverviewView } from './views/OverviewView'
 import { ProfileView } from './views/ProfileView'
 import { RegistrationView } from './views/RegistrationView'
 import { TechnicalView } from './views/TechnicalView'
-import { StepPlaceholderView } from './views/StepPlaceholderView'
 
 type ViewId = 'overview' | StepId
 
@@ -246,8 +246,13 @@ export default function App() {
         />
       )
     }
-    const index = load.snapshot.steps.findIndex((s) => s.id === currentView)
-    return <StepPlaceholderView step={load.snapshot.steps[index]} position={index + 1} />
+    return (
+      <NodeStatusView
+        snapshot={load.snapshot}
+        consumeSimulatedFailure={failureOnce('node-status-failure')}
+        onNavigate={navigateTo}
+      />
+    )
   }
 
   return (
