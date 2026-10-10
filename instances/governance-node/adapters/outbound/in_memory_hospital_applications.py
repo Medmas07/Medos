@@ -147,4 +147,5 @@ def _decision(raw: dict, applications: list[dict]) -> HospitalApprovalDecision:
         decided_at=decided_at,
         rationale=raw["rationale"],
         conditions=tuple(raw["conditions"]),
+        policy_ref=raw["policyId"],
     )

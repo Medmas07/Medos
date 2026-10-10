@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Governance Node Research Access Requests
-  version: 1.0.0
+  version: 1.1.0
   description: |
     Contract HC-133, version 1. The Governance / Ethics Authority's research
     access interface: a research project submits a data-access request, a
@@ -22,9 +22,10 @@ info:
     - **An approval only narrows the request.** It names the participating
       organizations (among those approved by the Authority,
       hospital-approval.v1.yaml), the variables (among those requested),
-      its validity (1 to 12 months, D2 demo policy), and the minimum output
-      cell size (at least 10, D2 demo policy). The population is the one
-      requested.
+      its validity, and the minimum output cell size, within the
+      governance policy in effect (governance-policies.v1.yaml, HC-135;
+      demo policy v1: 1 to 12 months, at least 10, and no version is ever
+      looser). The population is the one requested.
     - **Compute-to-Data only.** An approval never authorizes exporting
       records; code runs inside the Hospital Nodes and only controlled
       aggregates leave them.
@@ -245,6 +246,7 @@ paths:
                     outcome: approved
                     decided_by_ref: usr-olfa
                     decided_at: "2026-10-10T10:00:00+01:00"
+                    policy_ref: pol-governance-v1
                     rationale: Protocole conforme, finalité de recherche et périmètre proportionné.
                     conditions: [Aucune donnée individuelle en sortie.]
                     approved_organization_refs: [org-hospital-b]
@@ -584,7 +586,7 @@ components:
           type: string
           enum: [approved, rejected]
         rationale:
-          description: At least 20 characters once trimmed.
+          description: At least the governance policy's `review.minimum_rationale_length` once trimmed (20 in demo policy v1, never less).
           type: string
           maxLength: 2000
         conditions:
@@ -611,12 +613,18 @@ components:
                 $ref: "#/components/schemas/Variable"
             - type: "null"
         validity_months:
-          description: For an approval, 1 to 12; null for a rejection.
+          description: |
+            For an approval, 1 to the governance policy's
+            `research.maximum_validity_months` (12 in demo policy v1, never
+            more); null for a rejection.
           oneOf:
             - type: integer
             - type: "null"
         minimum_cell_size:
-          description: For an approval, at least 10; null for a rejection.
+          description: |
+            For an approval, at least the governance policy's
+            `research.minimum_cell_size` (10 in demo policy v1, never less);
+            null for a rejection.
           oneOf:
             - type: integer
             - type: "null"
@@ -629,6 +637,7 @@ components:
         - outcome
         - decided_by_ref
         - decided_at
+        - policy_ref
         - rationale
         - conditions
         - approved_organization_refs
@@ -647,6 +656,12 @@ components:
           $ref: "#/components/schemas/OpaqueRef"
         decided_at:
           $ref: "#/components/schemas/Timestamp"
+        policy_ref:
+          description: |
+            The governance policy version the decision was made under
+            (governance-policies.v1.yaml, HC-135). A later version never
+            changes a decision already made.
+          $ref: "#/components/schemas/OpaqueRef"
         rationale:
           type: string
         conditions:

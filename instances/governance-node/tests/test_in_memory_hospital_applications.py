@@ -15,6 +15,7 @@ from domain.hospital_approval import (
     Outcome,
     decide,
 )
+from tests.test_policy import DEMO_POLICY
 from tests.conftest import DEMO_DATA, DEMO_NOW
 
 GOVERNANCE = DEMO_DATA / "governance.json"
@@ -55,6 +56,7 @@ def test_record_refuses_an_application_decided_in_the_meantime():
         hospital_c,
         FixtureReviewerDirectory.load(DEMO_DATA / "people.json").reviewer("usr-olfa"),
         DecisionDraft(Outcome.REJECTED, "Dossier insuffisant à ce stade.", (), True),
+        DEMO_POLICY,
         DEMO_NOW,
     )
     s.record(*reversed(first))
@@ -75,7 +77,7 @@ def test_concurrent_decisions_record_only_one():
     recorded = []
 
     def attempt(draft: DecisionDraft) -> None:
-        decision, decided = decide(hospital_c, olfa, draft, DEMO_NOW)
+        decision, decided = decide(hospital_c, olfa, draft, DEMO_POLICY, DEMO_NOW)
         try:
             s.record(decided, decision)
             recorded.append(decision)

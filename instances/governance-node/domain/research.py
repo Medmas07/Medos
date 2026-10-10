@@ -3,7 +3,9 @@
 Same review rules as the Governance Portal's research form (HC-078), enforced here
 because the Governance Node, not a company-managed portal, decides. An approval only
 narrows the request, and the Research Service checks it before each job
-(contracts/api/research/research-authorization-check.v1.yaml).
+(contracts/api/research/research-authorization-check.v1.yaml). The longest validity, the
+smallest output cell size, and the minimum rationale length come from the governance
+policy in effect (HC-135), which the decision cites.
 """
 
 import calendar
@@ -14,17 +16,15 @@ from enum import Enum
 
 from domain.hospital_approval import (
     GOVERNANCE_REVIEWER_ROLE,
-    MIN_RATIONALE_LENGTH,
     InvalidDecision,
     Issue,
     Outcome,
     Reviewer,
     ReviewerNotAllowed,
+    rationale_issues,
 )
+from domain.policy import GovernancePolicy
 
-# D2 demo policy, as in dec-rar-001.
-MAX_VALIDITY_MONTHS = 12
-MINIMUM_CELL_SIZE_FLOOR = 10
 AUTHORITY_ORGANIZATION_REF = "org-governance"
 
 _OPAQUE_REF = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}")
@@ -208,6 +208,8 @@ class ResearchDecision:
     approved_variables: tuple[str, ...] = ()
     minimum_cell_size: int | None = None
     valid_until: datetime | None = None
+    # The governance policy version it was decided under (HC-135).
+    policy_ref: str | None = None
 
     def __post_init__(self) -> None:
         approved = self.outcome is Outcome.APPROVED
@@ -326,15 +328,9 @@ def review_issues(
     request: ResearchRequest,
     draft: ResearchDecisionDraft,
     approved_organizations: frozenset[str],
+    policy: GovernancePolicy,
 ) -> list[Issue]:
-    issues = []
-    if len(draft.rationale.strip()) < MIN_RATIONALE_LENGTH:
-        issues.append(
-            Issue(
-                "rationale",
-                f"The rationale must have at least {MIN_RATIONALE_LENGTH} characters.",
-            )
-        )
+    issues = rationale_issues(draft.rationale, policy)
     if draft.outcome is Outcome.REJECTED:
         if _clean(draft.conditions):
             issues.append(Issue("conditions", "A rejection carries no condition."))
@@ -375,20 +371,20 @@ def review_issues(
                 "Approve at least one of the requested variables, and only those.",
             )
         )
-    months = draft.validity_months
-    if months is None or not 1 <= months <= MAX_VALIDITY_MONTHS:
+    months, longest = draft.validity_months, policy.maximum_research_validity_months
+    if months is None or not 1 <= months <= longest:
         issues.append(
             Issue(
                 "validity_months",
-                f"The validity must be between 1 and {MAX_VALIDITY_MONTHS} months.",
+                f"The validity must be between 1 and {longest} months.",
             )
         )
-    cell = draft.minimum_cell_size
-    if cell is None or cell < MINIMUM_CELL_SIZE_FLOOR:
+    cell, smallest = draft.minimum_cell_size, policy.minimum_cell_size
+    if cell is None or cell < smallest:
         issues.append(
             Issue(
                 "minimum_cell_size",
-                f"The minimum cell size must be at least {MINIMUM_CELL_SIZE_FLOOR}.",
+                f"The minimum cell size must be at least {smallest}.",
             )
         )
     return issues
@@ -400,6 +396,7 @@ def decide(
     reviewer: Reviewer | None,
     draft: ResearchDecisionDraft,
     approved_organizations: frozenset[str],
+    policy: GovernancePolicy,
     now: datetime,
 ) -> tuple[ResearchDecision, ResearchRequest]:
     """The decision and the decided request, or why it cannot be recorded."""
@@ -410,7 +407,7 @@ def decide(
             f"{request.decision_ref}."
         )
     _check_reviewer(request, reviewer)
-    issues = review_issues(request, draft, approved_organizations)
+    issues = review_issues(request, draft, approved_organizations, policy)
     if issues:
         raise InvalidDecision(issues)
     if now.tzinfo is None:
@@ -437,6 +434,7 @@ def decide(
         ),
         minimum_cell_size=draft.minimum_cell_size if approved else None,
         valid_until=add_months(now, draft.validity_months) if approved else None,
+        policy_ref=policy.policy_ref,
     )
     return decision, replace(request, decision_ref=decision.decision_ref)
 

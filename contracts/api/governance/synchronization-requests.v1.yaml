@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Governance Node Synchronization Requests
-  version: 1.0.0
+  version: 1.1.0
   description: |
     Contract HC-132, version 1. The Governance / Ethics Authority's
     synchronization request interface: a hospital submits a request to
@@ -21,13 +21,15 @@ info:
       A decision cannot be changed or recorded twice.
     - **Approval requires every check.** The Node checks that both
       organizations are distinct and approved by the Authority
-      (hospital-approval.v1.yaml), the consent basis, and the duration.
-      While a check fails, only a rejection is possible. A basis the Node
-      cannot verify itself (`signed_consent_form`, `emergency_override`)
-      must be confirmed by the reviewer.
+      (hospital-approval.v1.yaml), the consent basis, and the duration,
+      under the governance policy in effect (governance-policies.v1.yaml).
+      While a check fails, only a rejection is possible. A basis the
+      policy does not accept fails; a basis it marks `manual` (in demo
+      policy v1, `signed_consent_form` and `emergency_override`) must be
+      confirmed by the reviewer.
     - **Temporary by construction.** An approval lasts `approved_days`
-      from the decision, at most the requested duration and never beyond
-      the patient grant it relies on. `status` is evaluated when
+      from the decision, at most the requested duration, never beyond the
+      policy's longest synchronization or the patient grant it relies on. `status` is evaluated when
       answering: an approved request whose authorization has ended is
       `expired`.
     - **No clinical data.** Requests and decisions hold opaque references
@@ -261,6 +263,7 @@ paths:
                     outcome: approved
                     decided_by_ref: usr-olfa
                     decided_at: "2026-10-10T10:00:00+01:00"
+                    policy_ref: pol-governance-v1
                     rationale: Finalité de soins, périmètre limité, autorisation du patient active.
                     conditions: []
                     approved_days: 13
@@ -390,9 +393,11 @@ components:
         basis:
           description: |
             `patient_grant`: an access grant of the patient, named by
-            `access_grant_ref`. `signed_consent_form` and
-            `emergency_override` cannot be verified by the Node and must
-            be confirmed by the reviewer. `none` cannot be approved.
+            `access_grant_ref`. Whether each basis is accepted, and checked
+            by the Node or confirmed by the reviewer, is set by the
+            governance policy in effect; in demo policy v1,
+            `signed_consent_form` and `emergency_override` must be confirmed
+            by the reviewer. `none` cannot be approved.
           type: string
           enum: [patient_grant, signed_consent_form, emergency_override, none]
         access_grant_ref:
@@ -550,7 +555,9 @@ components:
         max_approved_days:
           description: |
             The longest approval possible now: the requested duration,
-            never beyond the patient grant. 0 when none is possible.
+            never beyond the governance policy's
+            `synchronization.maximum_duration_days` (governance-policies.v1.yaml)
+            or the patient grant. 0 when none is possible.
           type: integer
           minimum: 0
         decision:
@@ -588,7 +595,7 @@ components:
           type: string
           enum: [approved, rejected]
         rationale:
-          description: At least 20 characters once trimmed.
+          description: At least the governance policy's `review.minimum_rationale_length` once trimmed (20 in demo policy v1, never less).
           type: string
           maxLength: 2000
         conditions:
@@ -619,6 +626,7 @@ components:
         - outcome
         - decided_by_ref
         - decided_at
+        - policy_ref
         - rationale
         - conditions
         - approved_days
@@ -635,6 +643,12 @@ components:
           $ref: "#/components/schemas/OpaqueRef"
         decided_at:
           $ref: "#/components/schemas/Timestamp"
+        policy_ref:
+          description: |
+            The governance policy version the decision was made under
+            (governance-policies.v1.yaml, HC-135). A later version never
+            changes a decision already made.
+          $ref: "#/components/schemas/OpaqueRef"
         rationale:
           type: string
         conditions:

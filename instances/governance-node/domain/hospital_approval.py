@@ -1,7 +1,8 @@
 """The Governance / Ethics Authority's decision on a hospital application (HC-131).
 
 Same rules as the Governance Portal's review form (HC-073), enforced here because the
-Governance Node, not a company-managed portal, decides.
+Governance Node, not a company-managed portal, decides. The minimum rationale length
+comes from the governance policy in effect (HC-135), which the decision cites.
 """
 
 from dataclasses import dataclass, replace
@@ -9,9 +10,9 @@ from datetime import datetime
 from enum import Enum
 
 from domain.hospital_application import ApplicationStatus, HospitalApplication
+from domain.policy import GovernancePolicy
 
 GOVERNANCE_REVIEWER_ROLE = "governance_reviewer"
-MIN_RATIONALE_LENGTH = 20
 
 
 class Outcome(str, Enum):
@@ -45,6 +46,8 @@ class HospitalApprovalDecision:
     decided_at: datetime
     rationale: str
     conditions: tuple[str, ...] = ()
+    # The governance policy version it was decided under (HC-135).
+    policy_ref: str | None = None
 
 
 @dataclass(frozen=True)
@@ -80,17 +83,20 @@ def check_reviewer(application: HospitalApplication, reviewer: Reviewer | None) 
         )
 
 
+def rationale_issues(rationale: str, policy: GovernancePolicy) -> list[Issue]:
+    """The policy's minimum rationale length, for every kind of decision."""
+    length = policy.minimum_rationale_length
+    if len(rationale.strip()) < length:
+        return [
+            Issue("rationale", f"The rationale must have at least {length} characters.")
+        ]
+    return []
+
+
 def review_issues(
-    application: HospitalApplication, draft: DecisionDraft
+    application: HospitalApplication, draft: DecisionDraft, policy: GovernancePolicy
 ) -> list[Issue]:
-    issues = []
-    if len(draft.rationale.strip()) < MIN_RATIONALE_LENGTH:
-        issues.append(
-            Issue(
-                "rationale",
-                f"The rationale must have at least {MIN_RATIONALE_LENGTH} characters.",
-            )
-        )
+    issues = rationale_issues(draft.rationale, policy)
     if application.findings.count and not draft.findings_acknowledged:
         issues.append(
             Issue(
@@ -120,6 +126,7 @@ def decide(
     application: HospitalApplication,
     reviewer: Reviewer | None,
     draft: DecisionDraft,
+    policy: GovernancePolicy,
     decided_at: datetime,
 ) -> tuple[HospitalApprovalDecision, HospitalApplication]:
     """The decision and the decided application, or why it cannot be recorded."""
@@ -133,7 +140,7 @@ def decide(
             )
         )
     check_reviewer(application, reviewer)
-    issues = review_issues(application, draft)
+    issues = review_issues(application, draft, policy)
     if issues:
         raise InvalidDecision(issues)
     if decided_at.tzinfo is None:
@@ -147,6 +154,7 @@ def decide(
         decided_at=decided_at,
         rationale=draft.rationale.strip(),
         conditions=_clean(draft.conditions),
+        policy_ref=policy.policy_ref,
     )
     decided = replace(
         application,

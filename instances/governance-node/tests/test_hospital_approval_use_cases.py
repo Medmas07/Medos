@@ -19,6 +19,7 @@ from domain.hospital_approval import (
     Outcome,
     Reviewer,
 )
+from tests.test_policy import DEMO_POLICIES
 from tests.conftest import DEMO_NOW
 from tests.test_audit_use_cases import FakeAuditTrail
 
@@ -111,6 +112,7 @@ def test_decides_and_stores_the_decision_at_the_clock_time():
         APPROVE,
         store,
         FakeReviewers(),
+        DEMO_POLICIES,
         audit,
         lambda: DEMO_NOW,
     )
@@ -139,6 +141,7 @@ def test_a_second_decision_is_refused():
         APPROVE,
         store,
         FakeReviewers(),
+        DEMO_POLICIES,
         audit,
         lambda: DEMO_NOW,
     )
@@ -150,6 +153,7 @@ def test_a_second_decision_is_refused():
             replace(APPROVE, outcome=Outcome.REJECTED),
             store,
             FakeReviewers(),
+            DEMO_POLICIES,
             audit,
             lambda: DEMO_NOW,
         )
@@ -167,6 +171,7 @@ def test_unknown_application():
             APPROVE,
             FakeStore([]),
             FakeReviewers(),
+            DEMO_POLICIES,
             FakeAuditTrail(),
             lambda: DEMO_NOW,
         )

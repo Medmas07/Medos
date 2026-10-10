@@ -13,6 +13,7 @@ from domain.hospital_approval import (
     Reviewer,
     decide,
 )
+from domain.policy import PolicyHistory
 
 # Awaiting a human first, then still being checked, then decided.
 _STATUS_ORDER = (
@@ -74,14 +75,21 @@ def decide_application(
     draft: DecisionDraft,
     store: HospitalApplicationStore,
     reviewers: ReviewerDirectory,
+    policies: PolicyHistory,
     audit: AuditTrail,
     clock: Callable[[], datetime],
 ) -> HospitalApprovalDecision:
+    """Decided under the governance policy in effect now, which it cites."""
     application = store.application(application_ref)
     if application is None:
         raise ApplicationNotFound(application_ref)
+    now = clock()
     decision, decided = decide(
-        application, reviewers.reviewer(reviewer_ref), draft, clock()
+        application,
+        reviewers.reviewer(reviewer_ref),
+        draft,
+        policies.in_effect(now),
+        now,
     )
     store.record(decided, decision)
     record(
