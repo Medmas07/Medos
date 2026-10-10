@@ -56,7 +56,7 @@ def test_hospital_adapter_forwards_governance_scope_without_inventing_it(monkeyp
                 "node_ref": "node-hospital-a",
                 "status": "accepted",
                 "accepted_at": "2026-10-10T12:00:00+01:00",
-                "mocked": False,
+                "mocked": True,
             }
         )
 
@@ -73,6 +73,7 @@ def test_hospital_adapter_forwards_governance_scope_without_inventing_it(monkeyp
         {"org-hospital-a": "http://hospital-a:8101"}
     ).submit(job(), "org-hospital-a", authorization)
     assert execution.status is ExecutionStatus.ACCEPTED
+    assert execution.mocked is True
     forwarded = captured["json"]["authorization"]
     assert forwarded["decision_ref"] == authorization.decision_ref
     assert forwarded["approved_organization_refs"] == ["org-hospital-a"]

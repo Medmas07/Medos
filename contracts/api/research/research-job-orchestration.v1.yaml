@@ -1,10 +1,11 @@
 openapi: 3.1.0
 info:
   title: Research Job Orchestration API
-  version: 1.0.0
+  version: 1.1.0
   description: |
-    HC-182 D3 Research Service API. It coordinates authorization and Hospital
-    Node execution; it does not execute code or aggregate controlled results.
+    HC-182/HC-184 D3 Research Service API. It coordinates authorization and
+    Hospital Node execution, then aggregates only validated controlled results.
+    It never executes submitted code or reads Hospital Node persistence.
 paths:
   /v1/research-jobs:
     post:
@@ -57,22 +58,55 @@ components:
       allOf:
         - {$ref: "#/components/schemas/JobRequest"}
         - type: object
-          required: [status, executions, mocked]
+          required: [status, executions, aggregation, mocked]
           properties:
             status: {type: string, enum: [queued, authorizing, dispatching, running, completed, denied, failed]}
             executions: {type: array, items: {$ref: "#/components/schemas/NodeExecution"}}
+            aggregation: {$ref: "#/components/schemas/ControlledAggregation"}
             error: {$ref: "#/components/schemas/Problem"}
             mocked: {type: boolean, const: false}
     NodeExecution:
       type: object
       additionalProperties: false
-      required: [execution_id, organization_ref, status]
+      required: [execution_id, organization_ref, status, mocked]
       properties:
         execution_id: {$ref: "#/components/schemas/Ref"}
         organization_ref: {$ref: "#/components/schemas/Ref"}
         status: {type: string, enum: [accepted, authorization_check, queued, running, output_review, completed, denied, failed, cancelled, expired]}
         result: {$ref: "#/components/schemas/ControlledResult"}
         error: {$ref: "#/components/schemas/Problem"}
+        mocked: {type: boolean}
+    ControlledAggregation:
+      type: object
+      additionalProperties: false
+      required: [status, columns, rows, included_organization_refs, excluded_organization_refs, mocked]
+      properties:
+        status: {type: string, enum: [pending, not_available, released, partial, empty, suppressed, failed]}
+        columns: {type: array, uniqueItems: true, items: {type: string}}
+        rows: {type: array, description: Cross-node aggregate cells only; never raw or patient-level records., items: {type: array}}
+        included_organization_refs: {type: array, uniqueItems: true, items: {$ref: "#/components/schemas/Ref"}}
+        excluded_organization_refs: {type: array, uniqueItems: true, items: {$ref: "#/components/schemas/Ref"}}
+        disclosure: {$ref: "#/components/schemas/AggregationDisclosure"}
+        provenance: {$ref: "#/components/schemas/AggregationProvenance"}
+        mocked: {type: boolean}
+        error: {$ref: "#/components/schemas/Problem"}
+    AggregationDisclosure:
+      type: object
+      additionalProperties: false
+      required: [status, minimum_cell_size, suppressed_organization_count]
+      properties:
+        status: {type: string, enum: [passed, partial]}
+        minimum_cell_size: {type: integer, minimum: 1}
+        suppressed_organization_count: {type: integer, minimum: 0}
+    AggregationProvenance:
+      type: object
+      additionalProperties: false
+      required: [algorithm_sha256, authorization_decision_ref, source_organization_refs, excluded_organization_refs]
+      properties:
+        algorithm_sha256: {type: string, pattern: "^[a-f0-9]{64}$"}
+        authorization_decision_ref: {$ref: "#/components/schemas/Ref"}
+        source_organization_refs: {type: array, uniqueItems: true, items: {$ref: "#/components/schemas/Ref"}}
+        excluded_organization_refs: {type: array, uniqueItems: true, items: {$ref: "#/components/schemas/Ref"}}
     DataScope:
       type: object
       additionalProperties: false

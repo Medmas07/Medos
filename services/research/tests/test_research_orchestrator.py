@@ -30,8 +30,9 @@ class AuthorizationStub:
 
 
 class ExecutionStub:
-    def __init__(self, *, fail_organization=None):
+    def __init__(self, *, fail_organization=None, invalid_organization=None):
         self.fail_organization = fail_organization
+        self.invalid_organization = invalid_organization
         self.submitted = []
 
     def submit(self, job, organization_ref, authorization):
@@ -45,15 +46,25 @@ class ExecutionStub:
         )
 
     def read(self, execution):
+        source = (
+            "org-wrong"
+            if execution.organization_ref == self.invalid_organization
+            else execution.organization_ref
+        )
         return NodeExecution(
             execution.execution_id,
             execution.organization_ref,
             ExecutionStatus.COMPLETED,
             result={
                 "outcome": "released",
-                "columns": ["participant_count"],
-                "rows": [[42]],
+                "columns": ["participant_count", "hba1c_above_7_pct"],
+                "rows": [[42, 25.0]],
                 "disclosure": {"status": "passed", "minimum_cell_size": 10},
+                "provenance": {
+                    "algorithm_sha256": "7da3c4f53384d2c0bf4e50f736e6e0242e57a77cf18720f62e16c13c49d79801",
+                    "authorization_decision_ref": "dec-rar-001",
+                    "source_organization_ref": source,
+                },
             },
         )
 
@@ -81,7 +92,7 @@ def job(job_ref="job-001"):
     )
 
 
-def test_authorized_job_dispatches_and_returns_unaggregated_controlled_results():
+def test_authorized_job_dispatches_and_aggregates_controlled_results():
     execution = ExecutionStub()
     orchestrator = ResearchOrchestrator(AuthorizationStub(), execution)
 
@@ -93,7 +104,12 @@ def test_authorized_job_dispatches_and_returns_unaggregated_controlled_results()
     assert completed.status is JobStatus.COMPLETED
     assert len(completed.executions) == 2
     assert all(item.result["outcome"] == "released" for item in completed.executions)
-    assert not hasattr(completed, "result")  # aggregation belongs to HC-184
+    assert completed.aggregation.status.value == "released"
+    assert completed.aggregation.rows == ((84, 25.0),)
+    assert completed.aggregation.included_organization_refs == (
+        "org-hospital-a",
+        "org-hospital-b",
+    )
 
 
 def test_denied_job_never_reaches_a_hospital_node():
@@ -126,7 +142,7 @@ def test_expired_authorization_never_reaches_a_hospital_node():
     assert execution.submitted == []
 
 
-def test_partial_node_failure_is_explicit_and_does_not_aggregate():
+def test_partial_node_failure_is_explicit_and_aggregation_is_unavailable():
     execution = ExecutionStub(fail_organization="org-hospital-b")
     orchestrator = ResearchOrchestrator(AuthorizationStub(), execution)
     running = orchestrator.submit(job("job-partial"))
@@ -138,3 +154,18 @@ def test_partial_node_failure_is_explicit_and_does_not_aggregate():
         ExecutionStatus.COMPLETED,
         ExecutionStatus.FAILED,
     }
+    assert failed.aggregation.status.value == "not_available"
+
+
+def test_invalid_node_output_fails_closed_and_is_not_exposed():
+    orchestrator = ResearchOrchestrator(
+        AuthorizationStub(),
+        ExecutionStub(invalid_organization="org-hospital-b"),
+    )
+    orchestrator.submit(job("job-invalid-output"))
+    failed = orchestrator.read("job-invalid-output")
+    assert failed.status is JobStatus.FAILED
+    assert failed.error.code == "invalid_controlled_result"
+    assert failed.aggregation.status.value == "failed"
+    assert all(item.result is None for item in failed.executions)
+    assert all(item.error.code == "output_rejected" for item in failed.executions)

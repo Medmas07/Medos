@@ -130,7 +130,7 @@ research code -> Research Portal/Service -> Governance authorization
               -> researcher
 ```
 
-Compute-to-Data is the preferred CONFIRMED model. Execution, isolation, approved packages, aggregation, disclosure review, and sandbox technology remain OPEN. Unrestricted export of raw hospital databases to researcher machines is not the target architecture.
+Compute-to-Data is the preferred CONFIRMED model. HC-183 implements one bounded local aggregate and HC-184 implements its controlled cross-node aggregation without reconstructing suppressed cells. General-purpose execution, isolation, approved packages, aggregation, production disclosure review, and sandbox technology remain OPEN. Unrestricted export of raw hospital databases to researcher machines is not the target architecture.
 
 ## 13. Communication contracts
 
@@ -190,7 +190,7 @@ AI is advisory, replaceable through ports, and subject to appropriate human revi
 | Governance Node | PLANNED | Boundary documented; runtime not implemented; stack decided by ADR-0003. |
 | DMI Adapter | PLANNED | Hospital-local boundary documented; no adapter. |
 | Federation Service | IMPLEMENTED (D2/D3) | Contracts in `contracts/federation/` (HC-140). Federated patient query over real HTTP to registered nodes by default (HC-145), with HC-141's MOCKED simulated nodes as an explicit opt-in. In-memory node registry with unverified Governance approval references (HC-142). Real HTTP capability discovery (HC-143), used to route queries around nodes that cannot answer (HC-146). Retries and an in-memory circuit breaker for node calls (HC-147). Governance checks of synchronization decisions (HC-144). No Hospital Node or Governance Node serves these interfaces yet. |
-| Research Service | IMPLEMENTED (D3), integration not VALIDATED | HC-182 orchestrates Governance authorization and HC-180 Hospital Node executions through application-owned ports and real HTTP adapters. It fails closed and exposes separate controlled node outcomes. Downstream Governance and HC-183 providers do not yet exist; no code execution, aggregation, output validation, sandbox, durable persistence, authentication, or production integration. |
+| Research Service | IMPLEMENTED (D3), integration not VALIDATED | HC-182 orchestrates Governance authorization and HC-180 Hospital Node executions through application-owned ports and real HTTP adapters. HC-184 validates and aggregates the bounded HC-183 participant-count/HbA1c results, preserving empty, suppressed, partial, unavailable, and invalid-output states. It never reconstructs suppressed cells or accesses hospital persistence. The Governance provider does not yet exist; no arbitrary code execution, general-purpose aggregation, sandbox, durable persistence, authentication, or production disclosure integration. |
 | Notification Service | PLANNED | No provider or runtime implementation; stack decided by ADR-0003. |
 | SciAgents Integration | PLANNED | SciAgents exists externally; repository-side contract defined (HC-170); connector is absent. |
 | Immutable Audit Ledger | OPTIONAL / PLANNED | Governance-only concept; no adapter or ledger. |

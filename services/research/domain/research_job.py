@@ -27,6 +27,16 @@ class ExecutionStatus(StrEnum):
     EXPIRED = "expired"
 
 
+class AggregationStatus(StrEnum):
+    PENDING = "pending"
+    NOT_AVAILABLE = "not_available"
+    RELEASED = "released"
+    PARTIAL = "partial"
+    EMPTY = "empty"
+    SUPPRESSED = "suppressed"
+    FAILED = "failed"
+
+
 @dataclass(frozen=True)
 class JobError:
     code: str
@@ -52,6 +62,20 @@ class NodeExecution:
     status: ExecutionStatus
     result: dict | None = None
     error: JobError | None = None
+    mocked: bool = False
+
+
+@dataclass(frozen=True)
+class ControlledAggregation:
+    status: AggregationStatus
+    columns: tuple[str, ...] = ()
+    rows: tuple[tuple[object, ...], ...] = ()
+    included_organization_refs: tuple[str, ...] = ()
+    excluded_organization_refs: tuple[str, ...] = ()
+    disclosure: dict | None = None
+    provenance: dict | None = None
+    mocked: bool = False
+    error: JobError | None = None
 
 
 @dataclass
@@ -67,6 +91,9 @@ class ResearchJob:
     output_policy: dict
     status: JobStatus = JobStatus.QUEUED
     executions: list[NodeExecution] = field(default_factory=list)
+    aggregation: ControlledAggregation = field(
+        default_factory=lambda: ControlledAggregation(AggregationStatus.PENDING)
+    )
     error: JobError | None = None
 
     def matches_request(self, other: "ResearchJob") -> bool:
