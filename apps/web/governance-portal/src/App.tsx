@@ -17,6 +17,10 @@ import { NotificationsView } from './components/views/NotificationsView'
 import { governanceService } from './services/governanceService'
 import { notificationStore, applyReadOverrides, countNotifications, notificationRows } from './services/notificationService'
 import { reviewStore } from './services/reviewStore'
+import { authService } from './services/authService'
+import { DemoAuthModal } from './components/auth/DemoAuthModal'
+import { DemoSessionBanner } from './components/auth/DemoSessionBanner'
+import { UnauthorizedStateView } from './components/auth/UnauthorizedStateView'
 
 type ViewId =
   | 'overview'
@@ -31,10 +35,14 @@ type ViewId =
 export default function App() {
   const [currentView, setCurrentView] = useState<ViewId>('overview')
   const [inspectedProofId, setInspectedProofId] = useState<string>('proof-003')
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+
   // Simulated decisions (HC-073) change the counts below; re-render when they do.
   useSyncExternalStore(reviewStore.subscribe, reviewStore.getSnapshot)
   // Re-render when notification read state changes (HC-200).
   useSyncExternalStore(notificationStore.subscribe, () => notificationStore.getSnapshot())
+  // HC-210: Reactive demo authentication session.
+  const session = useSyncExternalStore(authService.subscribe, authService.getSnapshot)
 
   // Sync with URL hash if present
   useEffect(() => {
@@ -174,35 +182,77 @@ export default function App() {
     },
   ]
 
+  const isAuthorized = authService.isAuthorizedForGovernance(session)
+
   return (
-    <AppShell
-      productName="Portail de Gouvernance"
-      productContext="Autorité de Gouvernance et d'Éthique Fédérée"
-      banner={
-        <DemoBanner>
-          Démonstration D1. Données fictives (HC-005) & preuves de registre simulées. Aucun accès direct aux bases hospitalières.
-        </DemoBanner>
-      }
-      navigation={<SideNav label="Navigation principale" sections={navigationSections} />}
-      sidebarFooter={
-        <div className="space-y-1">
-          <div className="font-semibold text-slate-800">Pr Olfa Hamdi</div>
-          <div className="text-slate-500">Réviseure de gouvernance (usr-olfa)</div>
-          <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-slate-600">
-            <span className="size-2 rounded-full bg-emerald-500" />
-            <span>Nœud de Gouvernance en ligne</span>
+    <>
+      <AppShell
+        productName="Portail de Gouvernance"
+        productContext="Autorité de Gouvernance et d'Éthique Fédérée"
+        banner={
+          <div>
+            <DemoSessionBanner session={session} onOpenAuthModal={() => setIsAuthModalOpen(true)} />
+            <DemoBanner>
+              Démonstration D1. Données fictives (HC-005) & preuves de registre simulées. Aucun accès direct aux bases hospitalières.
+            </DemoBanner>
           </div>
-        </div>
-      }
-    >
-      {currentView === 'overview' && <OverviewView onNavigate={(v) => navigateTo(v as ViewId)} />}
-      {currentView === 'onboarding' && <HospitalOnboardingView />}
-      {currentView === 'synchronizations' && <DataSyncView />}
-      {currentView === 'research' && <ResearchRequestsView />}
-      {currentView === 'audit' && <AuditExplorerView onInspectProof={handleInspectProof} />}
-      {currentView === 'notifications' && <NotificationsView />}
-      {currentView === 'verifier' && <VerifierView initialProofId={inspectedProofId} />}
-      {currentView === 'states' && <StateShowcaseView />}
-    </AppShell>
+        }
+        navigation={<SideNav label="Navigation principale" sections={navigationSections} />}
+        sidebarFooter={
+          session ? (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-800">{session.identity.displayName}</span>
+                <Badge
+                  tone={session.identity.role === 'governance_reviewer' ? 'success' : 'warning'}
+                  dot={session.identity.role === 'governance_reviewer'}
+                >
+                  {session.identity.role === 'governance_reviewer' ? 'Réviseure' : session.identity.role}
+                </Badge>
+              </div>
+              <div className="text-slate-500">{session.identity.organizationName}</div>
+              <div className="flex items-center justify-between pt-1 text-[11px] text-slate-600">
+                <span className="font-mono">{session.identity.id}</span>
+                <button
+                  type="button"
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="font-medium text-brand-700 hover:underline"
+                >
+                  Changer de rôle…
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <div className="font-semibold text-slate-500">Non authentifié</div>
+              <button
+                type="button"
+                onClick={() => setIsAuthModalOpen(true)}
+                className="text-xs font-medium text-brand-700 hover:underline"
+              >
+                Se connecter (Démo)…
+              </button>
+            </div>
+          )
+        }
+      >
+        {!isAuthorized ? (
+          <UnauthorizedStateView session={session} onOpenAuthModal={() => setIsAuthModalOpen(true)} />
+        ) : (
+          <>
+            {currentView === 'overview' && <OverviewView onNavigate={(v) => navigateTo(v as ViewId)} />}
+            {currentView === 'onboarding' && <HospitalOnboardingView />}
+            {currentView === 'synchronizations' && <DataSyncView />}
+            {currentView === 'research' && <ResearchRequestsView />}
+            {currentView === 'audit' && <AuditExplorerView onInspectProof={handleInspectProof} />}
+            {currentView === 'notifications' && <NotificationsView />}
+            {currentView === 'verifier' && <VerifierView initialProofId={inspectedProofId} />}
+            {currentView === 'states' && <StateShowcaseView />}
+          </>
+        )}
+      </AppShell>
+
+      <DemoAuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+    </>
   )
 }
