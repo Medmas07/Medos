@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   AppShell,
   Badge,
@@ -17,10 +17,14 @@ import {
   loadOnboardingSnapshot,
   scenarioFromSearch,
   STEP_DEFINITIONS,
+  type DemoScenario,
   type StepSection,
 } from './services/onboardingService'
 import type { OnboardingSnapshot, StepId } from './types/onboarding'
+import { AgreementsView } from './views/AgreementsView'
+import { DocumentsView } from './views/DocumentsView'
 import { OverviewView } from './views/OverviewView'
+import { ProfileView } from './views/ProfileView'
 import { RegistrationView } from './views/RegistrationView'
 import { StepPlaceholderView } from './views/StepPlaceholderView'
 
@@ -69,6 +73,14 @@ export default function App() {
   const retry = () => {
     setLoad({ kind: 'loading' })
     setAttempt((n) => n + 1)
+  }
+
+  // Failure scenarios fail the first matching submission once per page load.
+  const usedFailures = useRef(new Set<DemoScenario>())
+  const failureOnce = (scenario: DemoScenario) => () => {
+    if (scenarioFromSearch(window.location.search) !== scenario || usedFailures.current.has(scenario)) return false
+    usedFailures.current.add(scenario)
+    return true
   }
 
   const navigateTo = (view: ViewId) => {
@@ -125,9 +137,39 @@ export default function App() {
       return (
         <RegistrationView
           snapshot={load.snapshot}
-          failFirstSubmission={scenarioFromSearch(window.location.search) === 'registration-failure'}
+          consumeSimulatedFailure={failureOnce('registration-failure')}
           // Local state only: a reload returns to the fixture snapshot.
           onRegistered={(snapshot) => setLoad({ kind: 'ready', snapshot })}
+          onNavigate={navigateTo}
+        />
+      )
+    }
+    if (currentView === 'profile') {
+      return (
+        <ProfileView
+          snapshot={load.snapshot}
+          consumeSimulatedFailure={failureOnce('profile-failure')}
+          onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
+          onNavigate={navigateTo}
+        />
+      )
+    }
+    if (currentView === 'documents') {
+      return (
+        <DocumentsView
+          snapshot={load.snapshot}
+          consumeSimulatedFailure={failureOnce('document-failure')}
+          onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
+          onNavigate={navigateTo}
+        />
+      )
+    }
+    if (currentView === 'agreements') {
+      return (
+        <AgreementsView
+          snapshot={load.snapshot}
+          consumeSimulatedFailure={failureOnce('agreement-failure')}
+          onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
           onNavigate={navigateTo}
         />
       )

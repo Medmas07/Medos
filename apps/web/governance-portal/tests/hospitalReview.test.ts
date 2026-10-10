@@ -156,6 +156,9 @@ describe('Simulated decisions in the portal state (HC-073)', () => {
     const after = governanceService.getDashboardMetrics()
     expect(after.pendingApplications).toBe(before.pendingApplications - 1)
     expect(after.approvedHospitals).toBe(before.approvedHospitals + 1)
+    // The pending approval list (HC-072) no longer shows the decided application.
+    expect(governanceService.getPendingHospitalApplications()).toEqual([])
+    expect(governanceService.getHospitalApplication('app-hospital-c')?.status).toBe('approved')
   })
 
   it('returns to the canonical fixtures on reset', () => {

@@ -59,7 +59,7 @@ export interface PatientLocalIdentifier {
   value: string
 }
 
-export interface AccessGrantInfo {
+export interface AccessGrant {
   id: string
   patientId: string
   granteeId: string
@@ -70,6 +70,8 @@ export interface AccessGrantInfo {
   expiresAt: string
   revokedAt: string | null
 }
+
+export type AccessGrantInfo = AccessGrant
 
 export interface ConsentInfo {
   basis: 'patient_grant' | 'signed_consent_form' | 'emergency_override' | 'none'
@@ -160,6 +162,19 @@ export interface OrganizationInfo {
     lastSyncAt: string
     dmiState: string
   } | null
+}
+
+/** A patient's access grant (demo-data/access.json), referenced by a synchronization's consent. */
+export interface AccessGrant {
+  id: string
+  patientId: string
+  granteeId: string
+  scope: string[]
+  purpose: string
+  status: 'active' | 'expired' | 'revoked'
+  grantedAt: string
+  expiresAt: string
+  revokedAt: string | null
 }
 
 export interface PersonInfo {

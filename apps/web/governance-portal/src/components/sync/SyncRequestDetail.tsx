@@ -24,9 +24,10 @@ const SCOPE_DEFINITIONS: Record<string, { label: string; description: string }> 
 
 interface SyncRequestDetailProps {
   request: SynchronizationRequest
+  reviewForm?: React.ReactNode
 }
 
-export function SyncRequestDetail({ request }: SyncRequestDetailProps) {
+export function SyncRequestDetail({ request, reviewForm }: SyncRequestDetailProps) {
   const reqOrg = governanceService.getOrganization(request.requesterOrganizationId)
   const tgtOrg = governanceService.getOrganization(request.targetOrganizationId)
   const patient = governanceService.getPatient(request.patientId)
@@ -327,8 +328,9 @@ export function SyncRequestDetail({ request }: SyncRequestDetailProps) {
               }`}
           >
             <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold">
-                Décision de Gouvernance : {decision.outcome === 'approved' ? 'Autorisée' : 'Refusée'}
+              <div className="text-sm font-semibold flex items-center gap-2">
+                <span>Décision de Gouvernance : {decision.outcome === 'approved' ? 'Autorisée' : 'Refusée'}</span>
+                {decision.simulated && <DemoBadge>Simulée — non persistée</DemoBadge>}
               </div>
               <div className="text-[11px] opacity-75">
                 Instruction par {governanceService.getPersonName(decision.decidedById)} le {new Date(decision.decidedAt).toLocaleDateString('fr-TN')}
@@ -355,6 +357,8 @@ export function SyncRequestDetail({ request }: SyncRequestDetailProps) {
               </div>
             )}
           </div>
+        ) : reviewForm ? (
+          reviewForm
         ) : (
           <Alert tone="warning" title="Instruction d'Arbitrage en Attente">
             Cette demande est en attente d'arbitrage par l'Autorité d'Éthique & Gouvernance. Aucun flux de données ne peut être activé entre les nœuds tant que l'autorisation n'a pas été formellement signée.

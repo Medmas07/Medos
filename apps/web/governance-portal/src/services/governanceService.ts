@@ -4,6 +4,7 @@ import notificationsFixtures from '../../../../../demo-data/notifications.json'
 import organizationsFixtures from '../../../../../demo-data/organizations.json'
 import peopleFixtures from '../../../../../demo-data/people.json'
 import type {
+  AccessGrant,
   AccessGrantInfo,
   GovernanceAuditEvent,
   GovernanceDecision,
@@ -29,13 +30,13 @@ const typedGovernance = governanceFixtures as unknown as {
   ledgerProofs: LedgerProof[]
 }
 
+const typedAccessGrants = (accessFixtures.accessGrants ?? []) as unknown as AccessGrant[]
+
 const typedOrganizations = (organizationsFixtures.organizations ?? []) as unknown as OrganizationInfo[]
 
 const typedPatients = (peopleFixtures.patients ?? []) as unknown as PatientInfo[]
 
 const typedNotifications = (notificationsFixtures.notifications ?? []) as unknown as GovernanceNotification[]
-
-const typedAccessGrants = (accessFixtures.accessGrants ?? []) as unknown as AccessGrantInfo[]
 
 const allStaffAndClinicians = [
   ...((peopleFixtures.staff ?? []) as unknown as PersonInfo[]),
@@ -49,19 +50,32 @@ export const governanceService = {
     return typedGovernance.hospitalApplications.map((app) => simulated[app.id] ?? app)
   },
 
+  // Read through getHospitalApplications so simulated decisions (HC-073) leave the queue.
+  getPendingHospitalApplications(): HospitalApplication[] {
+    return this.getHospitalApplications().filter(
+      (app) => app.status === 'human_review' || app.status === 'pending'
+    )
+  },
+
+  getHospitalApplication(id: string): HospitalApplication | undefined {
+    return this.getHospitalApplications().find((app) => app.id === id)
+  },
+
+  // Fixtures merged with the SIMULATED decisions recorded in this session (HC-076).
   getSynchronizationRequests(): SynchronizationRequest[] {
-    return typedGovernance.synchronizationRequests
+    const simulated = reviewStore.getSnapshot().synchronizationRequests
+    return typedGovernance.synchronizationRequests.map((req) => simulated[req.id] ?? req)
   },
 
   getSynchronizationRequest(id: string): SynchronizationRequest | undefined {
     return this.getSynchronizationRequests().find((s) => s.id === id)
   },
 
-  getAccessGrants(): AccessGrantInfo[] {
+  getAccessGrants(): AccessGrant[] {
     return typedAccessGrants
   },
 
-  getAccessGrant(id: string | null): AccessGrantInfo | undefined {
+  getAccessGrant(id: string | null): AccessGrant | undefined {
     if (!id) return undefined
     return typedAccessGrants.find((g) => g.id === id)
   },

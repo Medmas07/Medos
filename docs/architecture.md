@@ -181,10 +181,10 @@ AI is advisory, replaceable through ports, and subject to appropriate human revi
 | Documentation and planning | IMPLEMENTED | Product vision, architecture, plans, templates, and guidance exist. |
 | Patient App | PLANNED | Stack decided by ADR-0004; no dependencies, generated native project, or application code. |
 | Clinician App | PLANNED | Stack decided by ADR-0004; no dependencies, generated native project, or application code. |
-| Hospital Portal | IMPLEMENTED (shell, D1) | HC-050 shell with MOCKED fixture-backed onboarding dashboard; registration flow (HC-051) with MOCKED submission; other onboarding pages (HC-052 to HC-063) and onboarding contracts PLANNED. |
+| Hospital Portal | IMPLEMENTED (shell, D1) | HC-050 shell with MOCKED fixture-backed onboarding dashboard; registration flow (HC-051), organization profile (HC-052), document upload (HC-053), and agreements workflow (HC-054) with MOCKED submission; other onboarding pages (HC-055 to HC-063) and onboarding contracts PLANNED. |
 | Governance Portal | PLANNED | No UI code; stack decided by ADR-0001. |
-| Research Portal | PLANNED | No UI code or notebook execution; stack decided by ADR-0001. |
-| Web design system | IMPLEMENTED | Tokens, components, and showcase at D1 (ADR-0002); consumed by the Hospital Portal and Governance Portal shells. |
+| Research Portal | IMPLEMENTED (shell, D1) | HC-090 shell with MOCKED fixture-backed project list and Governance decision display; Compute-to-Data pages locked without a valid approval. Research pages (HC-091 to HC-102), notebook execution, and Research Service contracts PLANNED. |
+| Web design system | IMPLEMENTED | Tokens, components, and showcase at D1 (ADR-0002); consumed by the Hospital Portal, Governance Portal, and Research Portal shells. |
 | Canonical demo data | MOCKED | Fictional JSON fixtures with integrity checks (ADR-0005); read by the Federation Service's simulated nodes (HC-141). |
 | Hospital Node | IMPLEMENTED (skeleton) / MOCKED data | FastAPI runtime (HC-110) with a liveness `GET /health` (HC-111), per-hospital configuration (HC-112), a MOCKED clinical repository (HC-113), the HC-140 Federation contract with MOCKED authorization (HC-114), an in-memory audit trail (HC-116), and an access grants API over a MOCKED in-memory store (HC-115); persistence and the DMI Adapter PLANNED. |
 | Governance Node | PLANNED | Boundary documented; runtime not implemented; stack decided by ADR-0003. |
