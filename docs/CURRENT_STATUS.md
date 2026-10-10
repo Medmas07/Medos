@@ -13,6 +13,7 @@ Status is based on repository inspection, not product intent. Use the [shared vo
 - **Deployment/production preparation — IMPLEMENTED documentation/placeholders:** no deployed runtime or selected provider is implied.
 
 - **AI Services runtime skeleton — VALIDATED (local):** [`services/ai/`](../services/ai/README.md) is a FastAPI service with `GET /health`, framework-free Domain/Application layers, and pytest tests (use case, HTTP, layer boundaries). Its tests, ruff checks, and local `fastapi dev`/`fastapi run` servers were verified. It exposes no AI capability and is not deployed.
+- **AI provider port — IMPLEMENTED, provider MOCKED:** the provider-neutral `AiProvider` port (HC-151) lives in `services/ai/application/`. Its only adapter is a deterministic mock, reported at `GET /ai-provider`. Outputs carry provenance and stay pending human review. No real model is called.
 
 ## Not implemented
 
@@ -26,7 +27,7 @@ Status is based on repository inspection, not product intent. Use the [shared vo
 - **Notification Service — PLANNED:** no provider, transport, event processing, or delivery code.
 - **Research Service and Compute-to-Data — PLANNED:** no orchestrator, sandbox, Hospital Node agent, execution, or controlled-output validation.
 - **SciAgents Integration — PLANNED:** SciAgents exists externally, but this repository has no connector or contract implementation.
-- **AI capabilities — PLANNED:** no AI library, provider, model, extraction, explanation, or clinical validation code exists. Only the runtime skeleton is implemented.
+- **AI capabilities — PLANNED:** no AI library, provider, model, extraction, explanation, or clinical validation code exists. Only the runtime skeleton and the provider port with a mock adapter are implemented.
 - **Blockchain / Immutable Audit Ledger — OPTIONAL / PLANNED:** no `AuditLedgerPort`, adapter, simulated ledger, or real ledger exists.
 - **Authentication, authorization, RBAC, and organization identity — PLANNED:** no production or demo implementation exists.
 - **Persistence and canonical/FHIR model — PLANNED:** no database, ORM, schema, FHIR server, or profile is selected.
@@ -36,7 +37,9 @@ Status is based on repository inspection, not product intent. Use the [shared vo
 
 ## Mocked behavior
 
-No product mock implementation currently exists. Planning documents permit future fictional fixtures and deterministic demo behavior, but those plans are not implementation.
+- **AI provider — MOCKED:** `DeterministicMockAiProvider` returns fixed `[MOCK]` templates. It is not AI and not validated intelligence.
+
+No other product mock implementation currently exists. Planning documents permit future fictional fixtures and deterministic demo behavior, but those plans are not implementation.
 
 ## Validated behavior
 
