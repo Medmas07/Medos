@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Federation Node Registry
-  version: 1.0.0
+  version: 1.1.0
   description: |
     Contract HC-142, version 1. The Federation Service's directory of
     Hospital Nodes: which node serves which organization, where to reach
@@ -27,8 +27,20 @@ info:
       hospital-node-federation version this Federation Service speaks
       (`1.0`); otherwise it is rejected with `400`.
 
-    Node health and supported scopes are capability discovery (HC-143) and
-    are not part of this version. Who may call the write operations, and
+    **Capability discovery (added in 1.1, HC-143).** The Federation Service
+    asks a registered node for its descriptor (`GET /v1/federation/node` of
+    hospital-node-federation.v1) at the node's registered `base_url`, and
+    keeps the latest result per node. Discovery runs only when requested.
+
+    - Capabilities are what the node said about itself at `checked_at`. They
+      are not verified, and a node may report `mocked: true`.
+    - Every check has an `outcome`. A failed check is reported as a failure
+      (`unreachable`, `no_federation_interface`, `invalid_response`), never
+      as "no capabilities" and never as "no data".
+    - A node whose descriptor names another node or organization gets
+      `identity_mismatch`, and its claimed capabilities are not kept.
+    - After a node's `base_url` changes, its earlier result no longer applies
+      and the node is `not_checked` until discovery runs again. Who may call the write operations, and
     how a node proves its identity, are OPEN (docs/OPEN_QUESTIONS.md). In
     v1 these operations are unauthenticated.
 paths:
@@ -197,6 +209,103 @@ paths:
           description: The node was removed.
         "404":
           $ref: "#/components/responses/NotFound"
+  /v1/registry/discovery:
+    post:
+      operationId: discoverAllNodes
+      summary: Ask every registered node for its capabilities now.
+      responses:
+        "200":
+          description: One result per registered node, ordered by `node_ref`. Empty when nothing is registered.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscoveryList"
+              examples:
+                demoNodes:
+                  summary: >-
+                    Fictional demo — Hospital A's runtime answers but has no
+                    Federation interface yet; Hospital B reports its
+                    capabilities; nothing listens for the private practice.
+                  value:
+                    notice: >-
+                      Capabilities are what each node reported about itself at
+                      checked_at. A failed check means the node could not be
+                      described, not that it holds no data.
+                    results:
+                      - node_ref: node-hospital-a
+                        base_url: http://localhost:8101
+                        outcome: no_federation_interface
+                        checked_at: "2026-10-10T10:00:00+01:00"
+                        detail: >-
+                          http://localhost:8101/v1/federation/node answered 404:
+                          the node does not serve the Federation interface.
+                        capabilities: null
+                      - node_ref: node-hospital-b
+                        base_url: http://localhost:8102
+                        outcome: discovered
+                        checked_at: "2026-10-10T10:00:00+01:00"
+                        detail: Capabilities reported by the node.
+                        capabilities:
+                          status: online
+                          contract_versions: ["1.0"]
+                          supported_scopes: [encounters, lab_reports, medications]
+                          mocked: true
+                      - node_ref: node-private-practice
+                        base_url: http://localhost:8104
+                        outcome: unreachable
+                        checked_at: "2026-10-10T10:00:01+01:00"
+                        detail: Cannot connect to http://localhost:8104/v1/federation/node.
+                        capabilities: null
+  /v1/registry/nodes/{node_ref}/capabilities:
+    parameters:
+      - name: node_ref
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/OpaqueRef"
+    get:
+      operationId: getNodeCapabilities
+      summary: Latest capability check of one node.
+      responses:
+        "200":
+          description: The latest result, or `not_checked`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscoveryResult"
+              examples:
+                notChecked:
+                  value:
+                    node_ref: node-hospital-b
+                    base_url: http://localhost:8102
+                    outcome: not_checked
+                    checked_at: null
+                    detail: Not checked since the node was registered at this URL.
+                    capabilities: null
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: discoverNodeCapabilities
+      summary: Ask one node for its capabilities now.
+      responses:
+        "200":
+          description: The new result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscoveryResult"
+              examples:
+                identityMismatch:
+                  summary: The node at Hospital B's URL says it is another node.
+                  value:
+                    node_ref: node-hospital-b
+                    base_url: http://localhost:8102
+                    outcome: identity_mismatch
+                    checked_at: "2026-10-10T10:05:00+01:00"
+                    detail: The node at this URL identifies as node-hospital-a of org-hospital-a.
+                    capabilities: null
+        "404":
+          $ref: "#/components/responses/NotFound"
 components:
   responses:
     NotFound:
@@ -279,6 +388,103 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/NodeRegistration"
+
+    DiscoveryList:
+      type: object
+      additionalProperties: false
+      required: [notice, results]
+      properties:
+        notice:
+          type: string
+          minLength: 1
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiscoveryResult"
+
+    DiscoveryResult:
+      type: object
+      additionalProperties: false
+      required: [node_ref, base_url, outcome, checked_at, detail, capabilities]
+      properties:
+        node_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        base_url:
+          $ref: "#/components/schemas/BaseUrl"
+        outcome:
+          description: |
+            `discovered`: the node described itself. `incompatible`: it did, but
+            answers no hospital-node-federation version this service speaks.
+            `identity_mismatch`: the node at this URL names another node or
+            organization. `no_federation_interface`: the URL answers but does not
+            serve the Federation interface. `unreachable`: no connection or no
+            answer in time. `invalid_response`: the answer is not a valid
+            NodeDescriptor. `not_checked`: no check since registration at this URL.
+          type: string
+          enum:
+            - discovered
+            - incompatible
+            - identity_mismatch
+            - no_federation_interface
+            - unreachable
+            - invalid_response
+            - not_checked
+        checked_at:
+          type: [string, "null"]
+          format: date-time
+        detail:
+          type: string
+          minLength: 1
+        capabilities:
+          oneOf:
+            - $ref: "#/components/schemas/Capabilities"
+            - type: "null"
+      allOf:
+        - if:
+            properties:
+              outcome:
+                enum: [discovered, incompatible]
+          then:
+            properties:
+              capabilities:
+                $ref: "#/components/schemas/Capabilities"
+          else:
+            properties:
+              capabilities:
+                type: "null"
+        - if:
+            properties:
+              outcome:
+                const: not_checked
+          then:
+            properties:
+              checked_at:
+                type: "null"
+          else:
+            properties:
+              checked_at:
+                type: string
+
+    Capabilities:
+      description: What the node reported about itself. Not verified.
+      type: object
+      additionalProperties: false
+      required: [status, contract_versions, supported_scopes, mocked]
+      properties:
+        status:
+          type: string
+          enum: [online, degraded]
+        contract_versions:
+          $ref: "#/components/schemas/ContractVersions"
+        supported_scopes:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum: [encounters, medications, lab_reports]
+        mocked:
+          description: True when the node says it answers from fixtures.
+          type: boolean
 
     BaseUrl:
       description: Absolute http(s) URL of the node's Federation interface, without credentials, query, or fragment.
