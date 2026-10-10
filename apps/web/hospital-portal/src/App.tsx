@@ -23,6 +23,7 @@ import {
 import type { OnboardingSnapshot, StepId } from './types/onboarding'
 import { AgreementsView } from './views/AgreementsView'
 import { AutomatedReviewView } from './views/AutomatedReviewView'
+import { DecisionView } from './views/DecisionView'
 import { DmiView } from './views/DmiView'
 import { DocumentsView } from './views/DocumentsView'
 import { HumanReviewView } from './views/HumanReviewView'
@@ -109,7 +110,7 @@ export default function App() {
     STEP_DEFINITIONS.filter((d) => d.section === section).map((def) => {
       const step = snapshot?.steps.find((s) => s.id === def.id)
       const badge =
-        step && (step.status === 'attention' || step.status === 'in_progress') ? (
+        step && (step.status === 'attention' || step.status === 'in_progress' || step.status === 'rejected') ? (
           <Badge tone={stepStatusDisplay[step.status].tone} dot>
             {stepStatusDisplay[step.status].label}
           </Badge>
@@ -216,6 +217,9 @@ export default function App() {
           onNavigate={navigateTo}
         />
       )
+    }
+    if (currentView === 'decision') {
+      return <DecisionView snapshot={load.snapshot} onNavigate={navigateTo} />
     }
     const index = load.snapshot.steps.findIndex((s) => s.id === currentView)
     return <StepPlaceholderView step={load.snapshot.steps[index]} position={index + 1} />

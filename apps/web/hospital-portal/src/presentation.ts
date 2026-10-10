@@ -7,6 +7,7 @@ export const stepStatusDisplay: Record<StepStatus, { label: string; tone: Tone }
   in_progress: { label: 'En cours', tone: 'info' },
   pending: { label: 'À faire', tone: 'neutral' },
   locked: { label: 'Verrouillé', tone: 'neutral' },
+  rejected: { label: 'Rejetée', tone: 'danger' },
 }
 
 export const applicationStatusDisplay: Record<HospitalApplication['status'], { label: string; tone: Tone }> = {
