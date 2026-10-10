@@ -237,7 +237,7 @@ function HospitalsForm({
             <legend className="font-medium text-slate-800">Écosystème fédéré</legend>
             <div className="grid gap-3 sm:grid-cols-2">
               {HEALTHCARE_ORGANIZATIONS.map((o) => (
-                <div key={o.id} className="space-y-2 rounded-md border border-slate-200 p-3">
+                <div key={o.id} className="space-y-2 rounded-xl border border-slate-200 p-3">
                   <CheckboxField
                     label={o.name}
                     hint={`${typeLabels[o.type] ?? o.type} · ${o.city}. ${eligibilityDisplay[hospitalEligibility(o)].hint}`}
@@ -259,7 +259,7 @@ function HospitalsForm({
             </p>
           )}
 
-          <div className="rounded-md bg-slate-50 p-4">
+          <div className="rounded-xl bg-slate-50 p-4">
             <h2 className="mb-2 text-sm font-semibold text-slate-900">
               Hospital Nodes sollicités après autorisation ({selected.length})
             </h2>

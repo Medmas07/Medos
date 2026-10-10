@@ -170,7 +170,7 @@ export function NewProjectView({ snapshot, onCreated, onNavigate }: NewProjectVi
                 hint={`La question de recherche et ce que le projet cherche à décrire ou mesurer (${draft.summary.trim().length}/${SUMMARY_MAX}).`}
                 disabled={submitting}
               />
-              <dl className="grid gap-4 rounded-md bg-slate-50 p-4 sm:grid-cols-3">
+              <dl className="grid gap-4 rounded-xl bg-slate-50 p-4 sm:grid-cols-3">
                 <div>
                   <dt className="text-xs text-slate-500">Chercheur principal</dt>
                   <dd className="font-medium text-slate-900">

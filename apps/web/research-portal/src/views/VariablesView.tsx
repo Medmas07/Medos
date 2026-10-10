@@ -270,7 +270,7 @@ function VariablesForm({
             disabled={saving}
           />
 
-          <div className="rounded-md bg-slate-50 p-4">
+          <div className="rounded-xl bg-slate-50 p-4">
             <h2 className="mb-2 text-sm font-semibold text-slate-900">
               Variables demandées à chaque Hospital Node ({selected.length}/{MAX_VARIABLES})
             </h2>

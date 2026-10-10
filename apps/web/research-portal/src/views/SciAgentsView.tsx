@@ -37,18 +37,18 @@ function Boundary() {
       description="SciAgents est un système externe existant : ce portail ne le réimplémente pas et l'interroge par un contrat versionné."
     >
       <ol className="grid gap-3 text-sm md:grid-cols-3">
-        <li className="rounded-md border border-slate-200 p-3">
+        <li className="rounded-xl border border-slate-200 p-3">
           <p className="font-semibold text-slate-900">1. Portail de Recherche</p>
           <p className="mt-1 text-slate-600">Prépare la question, des références opaques et deux concepts biomédicaux non identifiants.</p>
         </li>
-        <li className="rounded-md border border-slate-200 p-3">
+        <li className="rounded-xl border border-slate-200 p-3">
           <p className="font-semibold text-slate-900">2. Contrat HC-170 et adaptateur</p>
           <p className="mt-1 text-slate-600">
             <code className="text-xs">scientific-investigation.v1</code> ; l'adaptateur serveur (HC-171) est implémenté et la
             connexion du portail (HC-172) reste planifiée.
           </p>
         </li>
-        <li className="rounded-md border border-slate-200 p-3">
+        <li className="rounded-xl border border-slate-200 p-3">
           <p className="font-semibold text-slate-900">3. SciAgents (externe)</p>
           <p className="mt-1 text-slate-600">
             Renvoie hypothèses, éléments à l'appui, contradictions et citations, à usage de recherche uniquement.
@@ -228,14 +228,14 @@ function InvestigationPanel({ entry, onNavigate }: { entry: InvestigationEntry; 
 
       <InvestigationOutcome entry={entry} onNavigate={onNavigate} />
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="hc-stagger grid gap-6 md:grid-cols-2">
         <Card title="Contexte transmis" description="Ce que la demande HC-170 peut porter : jamais de données brutes.">
           {entry.context.length === 0 ? (
             <p className="text-sm text-slate-500">Aucun résultat contrôlé n'accompagne la question.</p>
           ) : (
             <ul className="space-y-2 text-sm">
               {entry.context.map((c) => (
-                <li key={c.controlledResultId} className="rounded-md border border-slate-200 p-2">
+                <li key={c.controlledResultId} className="rounded-xl border border-slate-200 p-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <code className="text-xs text-slate-700">{c.controlledResultId}</code>
                     {c.released ? (
@@ -251,7 +251,7 @@ function InvestigationPanel({ entry, onNavigate }: { entry: InvestigationEntry; 
           )}
           <details className="mt-3 text-sm">
             <summary className="cursor-pointer text-slate-700">Corps de la demande HC-170 (non envoyé)</summary>
-            <pre className="mt-2 overflow-x-auto rounded-md bg-slate-50 p-3 text-xs text-slate-800">
+            <pre className="mt-2 overflow-x-auto rounded-xl bg-slate-50 p-3 text-xs text-slate-800">
               {JSON.stringify(investigationRequest(entry), null, 2)}
             </pre>
           </details>
@@ -335,7 +335,7 @@ export function SciAgentsView({ snapshot, onNavigate }: SciAgentsViewProps) {
                         className={`w-full rounded-lg border p-3 text-left text-sm focus:ring-2 focus:ring-brand-600/20 focus:outline-none ${
                           e.investigation.id === entry.investigation.id
                             ? 'border-brand-600 bg-brand-50'
-                            : 'border-slate-200 bg-white hover:bg-slate-50'
+                            : 'border-slate-200 bg-surface hover:bg-brand-50/60'
                         }`}
                       >
                         <code className="text-xs text-slate-700">{e.investigation.id}</code>

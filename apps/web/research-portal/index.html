@@ -4,6 +4,20 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7fbfa" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#071a17" />
+    <script>
+      // Apply the saved or system theme before first paint (design-system README, "Theming").
+      (function () {
+        var dark = window.matchMedia('(prefers-color-scheme: dark)').matches
+        var saved = null
+        try {
+          saved = window.localStorage.getItem('hc-theme')
+        } catch (e) {}
+        document.documentElement.dataset.theme =
+          saved === 'light' || saved === 'dark' ? saved : dark ? 'dark' : 'light'
+      })()
+    </script>
     <title>Portail de Recherche — Federated Healthcare Ecosystem</title>
     <meta name="description" content="Governed research portal (Compute-to-Data) for the Federated Healthcare Ecosystem (demo, fictional data)." />
   </head>

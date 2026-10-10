@@ -91,7 +91,7 @@ function ResultPanel({ entry, onNavigate }: { entry: ControlledResultEntry; onNa
         n'est versé dans aucun dossier médical. Son interprétation relève du chercheur et du protocole autorisé.
       </Alert>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="hc-stagger grid gap-6 md:grid-cols-2">
         <Card title="Provenance">
           <dl className="space-y-3 text-sm">
             <Field label="Décision de gouvernance">{entry.source?.decisionId ?? summary.decision?.id ?? 'Inconnue'}</Field>
@@ -124,7 +124,7 @@ function ResultPanel({ entry, onNavigate }: { entry: ControlledResultEntry; onNa
         <Card title="Hospital Nodes combinés" description="Chaque nœud a exécuté le code localement ; seul son agrégat est sorti.">
           <ul className="space-y-2 text-sm">
             {entry.sourceOrganizations.map((org) => (
-              <li key={org.id} className="rounded-md border border-slate-200 p-2">
+              <li key={org.id} className="rounded-xl border border-slate-200 p-2">
                 <span className="font-medium text-slate-900">{org.name}</span>
                 {org.node && <code className="ml-2 text-xs text-slate-500">{org.node.id}</code>}
               </li>
@@ -264,7 +264,7 @@ export function ResultsView({ snapshot, onNavigate }: ResultsViewProps) {
                         aria-pressed={r.result.id === entry.result.id}
                         onClick={() => setSelectedId(r.result.id)}
                         className={`w-full rounded-lg border p-3 text-left text-sm focus:ring-2 focus:ring-brand-600/20 focus:outline-none ${
-                          r.result.id === entry.result.id ? 'border-brand-600 bg-brand-50' : 'border-slate-200 bg-white hover:bg-slate-50'
+                          r.result.id === entry.result.id ? 'border-brand-600 bg-brand-50' : 'border-slate-200 bg-surface hover:bg-brand-50/60'
                         }`}
                       >
                         <code className="text-xs text-slate-700">{r.result.id}</code>
