@@ -86,7 +86,7 @@ def test_nodes_that_cannot_answer_are_reported_not_asked_in_registry_order():
 
     result = federate(nodes, capabilities=capabilities)(request())
 
-    assert [node for node, _ in nodes.asked] == [B]
+    assert {node for node, _ in nodes.asked} == {B}
     assert [(r.node, r.status, r.problem_code) for r in result.node_results] == [
         (A, NodeStatus.NOT_ASKED, "no_federation_interface"),
         (B, NodeStatus.OK, None),
@@ -112,4 +112,5 @@ def test_when_no_node_can_answer_none_is_asked():
 def test_a_node_deregistered_meanwhile_is_still_asked():
     nodes = FakeNodes({A: (), B: (), C: ()})
     federate(nodes, capabilities=FakeCapabilities({}))(request())
-    assert [node for node, _ in nodes.asked] == [A, B, C]
+    assert {node for node, _ in nodes.asked} == {A, B, C}
+    assert len(nodes.asked) == 3

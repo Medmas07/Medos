@@ -1,4 +1,5 @@
 import os
+import time
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -25,6 +26,7 @@ from adapters.outbound.in_memory_registration_store import InMemoryRegistrationS
 from adapters.outbound.simulated_hospital_nodes import SimulatedHospitalNodes
 from application.discover_capabilities import DiscoverNodeCapabilities
 from application.federate_patient_query import FederatePatientQuery
+from application.node_failures import NodeCircuitBreaker, RetryPolicy
 from application.node_registry import NodeRegistry
 from infrastructure.registry_seed import load_seed, seed_path_from_env
 
@@ -41,6 +43,9 @@ def create_app(
     governance_url: str = DEFAULT_GOVERNANCE_URL,
     governance_transport=None,
     node_mode: str = "http",
+    retry_policy: RetryPolicy = RetryPolicy(),
+    breaker_clock: Callable[[], float] = time.monotonic,
+    sleep: Callable[[float], None] = time.sleep,
 ) -> FastAPI:
     if node_mode not in NODE_MODES:
         raise ValueError(f"node_mode must be one of {NODE_MODES}, not {node_mode!r}.")
@@ -54,10 +59,15 @@ def create_app(
         store=InMemoryDiscoveryStore(),
         clock=clock,
     )
+    breaker = NodeCircuitBreaker(clock=breaker_clock)
     federate = FederatePatientQuery(
         registry=registry,
         nodes=(
-            HttpHospitalNodeClient(registry, transport=node_transport)
+            HttpHospitalNodeClient(
+                registry,
+                timeout_seconds=retry_policy.attempt_timeout_seconds,
+                transport=node_transport,
+            )
             if node_mode == "http"
             else SimulatedHospitalNodes(clock=clock)
         ),
@@ -68,6 +78,10 @@ def create_app(
         # Route around nodes whose last check shows they cannot answer (HC-146). Discovery
         # describes real nodes, so it says nothing about simulated ones.
         capabilities=discovery if node_mode == "http" else None,
+        # Retries and circuit breaker for real node calls only (HC-147).
+        retry=retry_policy if node_mode == "http" else None,
+        breaker=breaker if node_mode == "http" else None,
+        sleep=sleep,
         clock=clock,
     )
     app = FastAPI(title="Federation Service", version=SERVICE_VERSION)

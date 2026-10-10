@@ -36,7 +36,10 @@ def network(hospital_b_mocked=True, hospital_b=None):
 def api(transport):
     return TestClient(
         create_app(
-            clock=lambda: DEMO_NOW, registry_seed=DEMO_SEED, node_transport=transport
+            clock=lambda: DEMO_NOW,
+            registry_seed=DEMO_SEED,
+            node_transport=transport,
+            sleep=lambda seconds: None,
         )
     )
 

@@ -106,7 +106,8 @@ def test_asks_every_approved_node_with_one_query_id_and_maps_failures():
 
     result = federate(nodes)(request())
 
-    assert [node for node, _ in nodes.asked] == [A, B, C]
+    assert {node for node, _ in nodes.asked} == {A, B, C}
+    assert len(nodes.asked) == 3
     assert {query.query_id for _, query in nodes.asked} == {"query-1"}
     assert [(r.status, r.problem_code) for r in result.node_results] == [
         (NodeStatus.DENIED, "authorization_denied"),
@@ -134,7 +135,7 @@ def test_expired_authorization_asks_no_node():
 def test_targets_restrict_the_nodes_asked():
     nodes = FakeNodes({B: ()})
     result = federate(nodes)(request(targets=("org-hospital-b",)))
-    assert [node for node, _ in nodes.asked] == [B]
+    assert {node for node, _ in nodes.asked} == {B}
     assert result.completeness is Completeness.COMPLETE
 
 
@@ -185,7 +186,7 @@ def test_sync_decision_asks_only_the_targets_governance_authorizes():
 
     result = federate(nodes, sync=sync)(sync_request())
 
-    assert [node for node, _ in nodes.asked] == [B]
+    assert {node for node, _ in nodes.asked} == {B}
     assert result.completeness is Completeness.COMPLETE
     assert sync.calls == [
         {

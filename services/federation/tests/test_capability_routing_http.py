@@ -38,6 +38,7 @@ def api(node_mode="http"):
             clock=lambda: DEMO_NOW,
             registry_seed=DEMO_SEED,
             node_transport=transport,
+            sleep=lambda seconds: None,
             node_mode=node_mode,
         )
     )

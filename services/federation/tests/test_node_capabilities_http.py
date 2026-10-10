@@ -37,6 +37,7 @@ def api():
         clock=lambda: DEMO_NOW,
         registry_seed=DEMO_SEED,
         node_transport=httpx.MockTransport(demo_nodes),
+        sleep=lambda seconds: None,
     )
     return TestClient(app)
 
@@ -98,6 +99,7 @@ def test_a_node_claiming_another_identity_is_flagged():
             clock=lambda: DEMO_NOW,
             registry_seed=DEMO_SEED,
             node_transport=httpx.MockTransport(impostor),
+            sleep=lambda seconds: None,
         )
     )
     result = checked(

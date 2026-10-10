@@ -8,7 +8,8 @@ Coordination capability for authorized communication among autonomous Nodes. Pyt
   - the federated patient query, [`federated-patient-query.v1.yaml`](../../contracts/federation/federated-patient-query.v1.yaml) (HC-141). It asks each registered Hospital Node, merges the answers into a transient timeline, and reports a status for each node.
   - the node registry, [`node-registry.v1.yaml`](../../contracts/federation/node-registry.v1.yaml) (HC-142): register, update, list, get, and remove nodes. Federated queries ask the nodes listed there. It is kept in memory, and its Governance approval references are **not verified**.
   - temporary sync authorization (HC-144): before any node is asked under a `synchronization_decision`, the service checks it with the Governance Node over real HTTP ([`sync-authorization-check.v1.yaml`](../../contracts/federation/sync-authorization-check.v1.yaml)), then asks only the organizations Governance authorizes. No Governance Node exists yet, so live sync-basis queries return `503` and ask no node. The authorized path is covered by tests only.
-  - real node-to-node communication (HC-145), the default: each registered node is asked over HTTP at its registered `base_url` (`POST /v1/federation/queries` of [`hospital-node-federation.v1.yaml`](../../contracts/federation/hospital-node-federation.v1.yaml)), in parallel, with a 3-second timeout. Answers are parsed strictly. No Hospital Node serves that endpoint yet, so live queries report every node `unavailable`. The successful path is covered by tests only.
+  - real node-to-node communication (HC-145), the default: each registered node is asked over HTTP at its registered `base_url` (`POST /v1/federation/queries` of [`hospital-node-federation.v1.yaml`](../../contracts/federation/hospital-node-federation.v1.yaml)), in parallel, with a 2-second timeout per attempt. Answers are parsed strictly. No Hospital Node serves that endpoint yet, so live queries report every node `unavailable`. The successful path is covered by tests only.
+  - failure handling (HC-147), in `http` mode: a node that cannot be reached, answers `503`, or times out is retried once with the same `query_id`, within a 5-second budget per query. After 3 consecutive failed queries a node is paused for 30 seconds and reported `not_asked` with `circuit_open`, then asked again.
   - capability-aware routing (HC-146): in `http` mode, a node whose latest capability check shows it cannot answer the query is not asked and is reported `not_asked` with the reason. A node never checked, unreachable, or answering discovery badly is still asked.
   - capability discovery (HC-143): on request, the service calls each registered node's `GET /v1/federation/node` over real HTTP and keeps the latest result per node. No Hospital Node serves that endpoint yet, so live checks report `no_federation_interface` or `unreachable`. The successful path is covered by tests only.
 - **MOCKED, opt-in only:** `FEDERATION_NODES=simulated` replaces the HTTP calls with HC-141's simulated Hospital Nodes, built from [`demo-data/`](../../demo-data/README.md), so the Patient A demo works before real nodes exist. `/health` and every result say `mocked: true` in that mode. **That mode is not node-to-node exchange and not production security.**
@@ -106,7 +107,7 @@ services/federation/
 ├── main.py                     # composition root; create_app(clock, registry_seed)
 ├── registry-seed.demo.json     # fictional demo node registrations
 ├── domain/                     # query, aggregation, registration, discovery, and sync authorization rules — stdlib only
-├── application/                # FederatePatientQuery, NodeRegistry, DiscoverNodeCapabilities; their ports
+├── application/                # FederatePatientQuery, NodeRegistry, DiscoverNodeCapabilities, their ports; node_failures (retry policy, circuit breaker)
 ├── adapters/inbound/http/      # federated query, registry, and discovery routers; problem+json errors; /health
 ├── adapters/outbound/
 │   ├── hospital_node_contract.py        # strict wire mapping for hospital-node-federation.v1
@@ -161,8 +162,21 @@ services/federation/
 - **Status mapping.** `403` → `denied`. A timeout → `timeout`. A connection error, `404`, `503`, another status, a redirect, or non-JSON → `unavailable`.
 - **Strict answers.** The answer is parsed with models mirroring the contract (`extra="forbid"`). An answer is rejected, and the node reported `unavailable`, if it has unknown fields (for example a patient name), is about another query, patient, or node, contains an entry held by another node, or contains an entry outside the requested scope. Nothing from a rejected answer reaches the result.
 - **Honest provenance.** A federated result is `mocked: true` when any node said it answered from fixtures, as the contract requires. Real HTTP does not by itself mean real data.
-- **Parallel, bounded.** Nodes are asked in parallel. A slow node times out without hiding the others.
+- **Parallel, bounded.** Nodes are asked in parallel. A slow node times out without hiding the others (see Failure handling).
 - **Not production security.** There is no mutual TLS or service authentication; node identity and trust remain OPEN.
+
+## Failure handling (HC-147)
+
+Real node calls only (`FEDERATION_NODES=http`). The simulated nodes fail by fixture, not by network, so they get neither retries nor a breaker.
+
+- **Retry what may pass, once.** A connection error, a `503`, or a timeout is retried after 0.2 seconds with the **same `query_id`**, so the node can recognise the repeat in its audit trail.
+- **Never retried:** a `403` refusal, a `404` or other status, a redirect, or an answer outside the contract. These will not fix themselves.
+- **Bounded time.** Each attempt has a 2-second timeout. A retry starts only if a full attempt still fits in the 5-second budget of the query (`RetryPolicy` in [`application/node_failures.py`](application/node_failures.py)).
+- **Circuit breaker.** After 3 consecutive queries a node did not answer, the node is not called for 30 seconds. It is reported `not_asked` with `circuit_open`, and the result is `partial`. After the pause the next query asks it again: an answer closes the circuit, and another failure pauses it again.
+- **What counts as a failure:** unavailable, timed out, or an answer outside the contract. A `403` refusal is an answer, so it does not count.
+- **Limits.** Breaker state is in memory, per `node_ref`, and resets on restart. A node that moves to a new `base_url` keeps its circuit until the pause ends. Several queries arriving just after a pause may all probe the node.
+
+Live, with Hospital A's runtime on 8101 and nothing on 8102 or 8104: the first three queries take about 0.23 seconds each. Hospital A's `404` is not retried, while the other two are retried once after the pause. The fourth query returns at once, with all three nodes `not_asked`/`circuit_open`.
 
 ## Temporary sync authorization boundaries
 
