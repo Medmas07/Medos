@@ -1,15 +1,17 @@
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import {
   Alert,
   Badge,
   Button,
   Card,
+  DemoBadge,
   EmptyState,
   PageHeader,
   Table,
   type Tone,
 } from '@hackcure/design-system'
 import { governanceService } from '../../services/governanceService'
+import { reviewStore } from '../../services/reviewStore'
 import {
   SYNC_FILTERS,
   SYNC_FILTER_LABELS,
@@ -23,6 +25,10 @@ import {
   type SyncListRow,
   type SyncListStatus,
 } from '../../services/syncRequestList'
+import { SyncReviewForm } from '../review/SyncReviewForm'
+
+/** The reviewer signed in to this demo portal (fictional, HC-005). */
+const REVIEWER_ID = 'usr-olfa'
 
 const STATUS_TONES: Record<SyncListStatus, Tone> = {
   pending: 'warning',
@@ -34,6 +40,9 @@ const STATUS_TONES: Record<SyncListStatus, Tone> = {
 const formatDate = (iso: string) => new Date(iso).toLocaleDateString('fr-TN')
 
 export function DataSyncView() {
+  // Re-render when a simulated decision is recorded or the demo is reset (HC-076).
+  const reviewState = useSyncExternalStore(reviewStore.subscribe, reviewStore.getSnapshot)
+  const simulatedSyncCount = Object.keys(reviewState.synchronizationRequests).length
   // Statuses are evaluated once per visit: an authorization that has lapsed shows as expired.
   const [now] = useState(() => new Date())
   const rows = syncListRows(
@@ -51,7 +60,6 @@ export function DataSyncView() {
   const selectedSync = selectedRow?.request
   const reqOrg = selectedSync ? governanceService.getOrganization(selectedSync.requesterOrganizationId) : undefined
   const tgtOrg = selectedSync ? governanceService.getOrganization(selectedSync.targetOrganizationId) : undefined
-  const patient = selectedSync ? governanceService.getPatient(selectedSync.patientId) : undefined
   const decision = selectedSync ? governanceService.getDecision(selectedSync.decisionId) : undefined
   const proof = decision ? governanceService.getProofForEvent(
     governanceService.getAuditEvents().find((e) => e.subjectId === decision.id)?.id ?? ''
@@ -64,7 +72,13 @@ export function DataSyncView() {
         title="Synchronisations Inter-Hospitalières de Soins"
         description="Autorisation et gouvernance des échanges ciblés entre établissements hospitaliers pour la continuité du parcours de soins."
         actions={
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrer par statut">
+          <div className="flex flex-wrap items-center gap-2">
+            {simulatedSyncCount > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => reviewStore.reset()}>
+                Réinitialiser la démo
+              </Button>
+            )}
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrer par statut">
             {SYNC_FILTERS.map((f) => (
               <Button
                 key={f}
@@ -76,6 +90,7 @@ export function DataSyncView() {
                 {SYNC_FILTER_LABELS[f]} ({counts[f]})
               </Button>
             ))}
+            </div>
           </div>
         }
       />
@@ -224,11 +239,19 @@ export function DataSyncView() {
                       : 'border-danger-200 bg-danger-50 text-danger-800'
                   }`}
                 >
-                  <div className="font-semibold">
-                    Décision d'arbitrage : {decision.outcome === 'approved' ? 'Autorisée' : 'Refusée'}
-                    {selectedRow?.status === 'expired' && ' — expirée'}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold">
+                      Décision d'arbitrage : {decision.outcome === 'approved' ? 'Autorisée' : 'Refusée'}
+                      {selectedRow?.status === 'expired' && ' — expirée'}
+                    </span>
+                    {decision.simulated && <DemoBadge>Simulée — non persistée</DemoBadge>}
                   </div>
                   <p className="mt-1">« {decision.rationale} »</p>
+                  {selectedRow?.status === 'active' && selectedRow.validUntil && (
+                    <p className="mt-1 font-medium">
+                      Autorisation temporaire valable jusqu'au {formatDate(selectedRow.validUntil)}.
+                    </p>
+                  )}
                   {selectedRow?.status === 'expired' && selectedRow.validUntil && (
                     <p className="mt-1 font-medium text-slate-700">
                       Autorisation expirée le {formatDate(selectedRow.validUntil)} : elle ne permet plus aucun échange.
@@ -244,6 +267,11 @@ export function DataSyncView() {
                       </ul>
                     </div>
                   )}
+                  {decision.simulated && (
+                    <p className="mt-2 text-slate-600">
+                      Décidée par {governanceService.getPersonName(decision.decidedById)} le {formatDate(decision.decidedAt)}. Enregistrée dans l'état local du portail uniquement : l'API de synchronisation du Nœud de Gouvernance (HC-132) est planifiée, aucun nœud hospitalier n'en est informé et aucune preuve n'est ancrée.
+                    </p>
+                  )}
                   {proof && (
                     <div className="mt-2 flex items-center gap-1.5 border-t border-success-200/60 pt-2 font-mono text-[11px]">
                       <span className="text-slate-600">Empreinte ancrée :</span>
@@ -251,12 +279,21 @@ export function DataSyncView() {
                     </div>
                   )}
                 </div>
+              ) : selectedSync.status === 'pending' ? (
+                <SyncReviewForm
+                  key={selectedSync.id}
+                  context={{
+                    request: selectedSync,
+                    requester: reqOrg,
+                    target: tgtOrg,
+                    grant: governanceService.getAccessGrant(selectedSync.consent.accessGrantId),
+                  }}
+                  reviewer={governanceService.getPerson(REVIEWER_ID)}
+                  reviewerName={governanceService.getPersonName(REVIEWER_ID)}
+                />
               ) : (
-                <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs">
-                  <div className="font-semibold text-amber-900">Demande en cours d'instruction</div>
-                  <p className="mt-1 text-amber-800">
-                    L'Autorité vérifie la conformité de la finalité et le consentement du patient ({patient?.federatedId}) avant émission du jeton d'autorisation fédéré.
-                  </p>
+                <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                  Aucune décision n'est associée à cette demande.
                 </div>
               )}
             </Card>

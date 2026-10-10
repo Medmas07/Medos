@@ -1,8 +1,10 @@
+import accessFixtures from '../../../../../demo-data/access.json'
 import governanceFixtures from '../../../../../demo-data/governance.json'
 import notificationsFixtures from '../../../../../demo-data/notifications.json'
 import organizationsFixtures from '../../../../../demo-data/organizations.json'
 import peopleFixtures from '../../../../../demo-data/people.json'
 import type {
+  AccessGrant,
   GovernanceAuditEvent,
   GovernanceDecision,
   GovernanceNotification,
@@ -26,6 +28,8 @@ const typedGovernance = governanceFixtures as unknown as {
   auditEvents: GovernanceAuditEvent[]
   ledgerProofs: LedgerProof[]
 }
+
+const typedAccessGrants = (accessFixtures.accessGrants ?? []) as unknown as AccessGrant[]
 
 const typedOrganizations = (organizationsFixtures.organizations ?? []) as unknown as OrganizationInfo[]
 
@@ -56,8 +60,15 @@ export const governanceService = {
     return this.getHospitalApplications().find((app) => app.id === id)
   },
 
+  // Fixtures merged with the SIMULATED decisions recorded in this session (HC-076).
   getSynchronizationRequests(): SynchronizationRequest[] {
-    return typedGovernance.synchronizationRequests
+    const simulated = reviewStore.getSnapshot().synchronizationRequests
+    return typedGovernance.synchronizationRequests.map((req) => simulated[req.id] ?? req)
+  },
+
+  getAccessGrant(id: string | null): AccessGrant | undefined {
+    if (!id) return undefined
+    return typedAccessGrants.find((g) => g.id === id)
   },
 
   getResearchAccessRequests(): ResearchAccessRequest[] {
