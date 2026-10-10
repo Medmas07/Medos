@@ -2,7 +2,7 @@
 
 ## Status
 
-IoT support is prepared but no hardware or embedded framework has been selected.
+IoT is OPTIONAL. PlatformIO preparation is IMPLEMENTED, but no product IoT behavior, hardware, board, embedded framework, or protocol is selected.
 
 ## Purpose
 
@@ -10,7 +10,7 @@ This directory is reserved for embedded or connected-device components if requir
 
 ## PlatformIO
 
-PlatformIO is the intended project tooling for embedded development if IoT is required.
+PlatformIO is the prepared project tooling for embedded development if IoT is required.
 
 The target platform, board and framework will be selected after the hardware requirements are known.
 

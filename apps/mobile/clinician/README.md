@@ -1,3 +1,22 @@
-# Clinician Application
+# Clinician App
 
-Reserved for authorized patient search and history, consultation workspaces, speech-to-text, adaptive intake, AI-assisted extraction, lab-result assistance, medication safety, alerts, priority queues, and notifications. It may later serve public/private physicians, nurses, and clinics; role behavior and mobile framework remain undecided.
+## Purpose and status
+
+PLANNED mobile product for authorized clinician workflows serving physicians, nurses, and clinics. No mobile framework or application code exists.
+
+## Responsibilities and owned concepts
+
+- Authorized patient lists, longitudinal views, consultation workspace, alerts, and priority presentation.
+- Consent-aware speech-to-text, adaptive intake, extraction review, lab review, and medication-warning presentation.
+
+## Communication boundaries
+
+The Clinician App consumes authorized context through explicit APIs and never accesses hospital databases directly. Clinical AI output is advisory and subject to clinician review.
+
+## Non-responsibilities
+
+It does not have autonomous diagnostic or prescription authority, make Governance decisions, or treat LLM output as validated clinical truth.
+
+## Expected contracts
+
+PLANNED authorization, patient-view, consultation, extraction-review, medication-safety, alert, queue, and notification contracts.

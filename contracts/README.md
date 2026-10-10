@@ -1,10 +1,24 @@
 # Communication Contracts
 
-This is the canonical home for significant, versionable definitions exchanged across bounded contexts. It contains definitions, not business implementations or executable infrastructure.
+## Purpose and status
 
-- `api/`: future OpenAPI definitions, endpoint conventions, request/response shapes, errors, authentication conventions, and versioning.
-- `events/`: future cross-component event definitions. Possible names such as `hospital.approved`, `consent.updated`, or `research.requested` are illustrative only.
-- `schemas/`: future shared wire schemas for organization, patient references, consent, authorization, research requests, audit events, and notifications. Domain models remain locally owned.
-- `federation/`: Hospital Node communication definitions for node identity, capability discovery, authorization tokens, synchronization, scope, expiration, signatures, result envelopes, and errors.
+This is the canonical location for significant, versionable cross-component communication definitions. The directory structure is IMPLEMENTED; concrete contracts are PLANNED and absent.
 
-Do not invent APIs, final schemas, event infrastructure, or cryptography here. Components must not bypass contracts through direct database access or shared persistence models.
+## Responsibilities and owned concepts
+
+- `api/`: API specifications such as OpenAPI, request/response formats, errors, authentication conventions, and versioning.
+- `events/`: asynchronous cross-component event definitions and envelopes.
+- `federation/`: Hospital Node/Governance/Federation communication, identity, authorization, scope, synchronization, results, and errors.
+- `schemas/`: technology-neutral shared message schemas.
+
+## Communication boundaries
+
+Contracts describe stable communication across bounded contexts. They must be versionable and owned by the communicating boundary.
+
+## Non-responsibilities
+
+Contracts do not describe internal persistence, share database tables, centralize domain models, implement brokers/APIs, or bypass application-owned ports.
+
+## Expected contracts
+
+Add only validated definitions required by an implemented ticket. Examples in planning or architecture are not final schemas.

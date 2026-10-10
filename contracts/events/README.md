@@ -1,3 +1,3 @@
 # Event Contracts
 
-Place validated, versioned cross-component event definitions here. Event examples in the architecture documentation are not final contracts, and no broker is selected.
+Status: PLANNED. Place validated, versioned asynchronous event definitions here. Examples in architecture/planning are not final contracts, and no broker or event implementation is selected.

@@ -1,3 +1,3 @@
 # API Contracts
 
-Place validated, versioned cross-component API definitions here. No endpoints or technology choices are defined yet.
+Status: PLANNED. Place validated, versioned cross-component API specifications here. No endpoint, OpenAPI document, authentication convention, or technology choice is implemented.

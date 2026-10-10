@@ -1,3 +1,3 @@
 # Shared Wire Schemas
 
-Place validated, versioned wire-format schemas here. Do not use this directory to centralize bounded-context domain models.
+Status: PLANNED. Place validated, versioned, technology-neutral message schemas here. No schema exists; never use this directory to centralize domain models or persistence tables.

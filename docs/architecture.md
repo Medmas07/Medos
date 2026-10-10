@@ -1,164 +1,193 @@
 # Architecture
 
-## Ecosystem overview
+This document uses the shared [status vocabulary](README.md#status-vocabulary). The [canonical product vision](product/FEDERATED_HEALTHCARE_ECOSYSTEM.md) takes precedence for product scope.
 
-HackCure is structured as a federated healthcare ecosystem. Autonomous Hospital Nodes retain clinical source data. A separate Ethics / Governance Instance controls institutional validation, synchronization and research authorization, policy and consent governance, and immutable audit integration. Company-managed applications and services provide portals, node distribution, research tooling, billing/subscriptions, and releases without assuming the governance authority's decision rights.
+## 1. Architecture status
 
-The structure reserves boundaries; it does not select frameworks, databases, protocols, or deployment products.
+The federated model, trust boundaries, local data control, Clean / Hexagonal dependency rule, contract-based communication, local DMI placement, Governance-owned authorization, external SciAgents Integration, and advisory AI role are CONFIRMED constraints. Runtime stacks, databases, protocols, hosting, providers, and concrete implementations remain OPEN. Most capabilities below are PLANNED, not implemented.
 
-## Actors
+## 2. Product context
 
-- Patients consume authorized medical views and manage consent, access grants, delegation, and requests.
-- Clinicians include public and private physicians, nurses, and clinics operating within granted access.
-- Hospitals own and operate autonomous nodes and control their clinical source data.
-- The ethics/governance authority validates institutions and authorizes synchronization and research.
-- Researchers submit governed projects and compute-to-data jobs and receive controlled results.
-- The company manages product distribution and research-platform operations, but does not approve its own governance requests.
+The ecosystem connects hospitals, patients, clinicians, researchers, company-managed product surfaces, and an independent Governance / Ethics Authority. Hospital Nodes retain clinical source data; authorized views and controlled computation cross boundaries without assuming unrestricted central replication.
 
-## Trust boundaries
+## 3. System boundaries
+
+- User products: Hospital Portal, Governance Portal, Research Portal, Patient App, Clinician App.
+- Autonomous instances: Hospital Node and Governance Node.
+- Supporting capabilities: AI Services, Federation Service, Notification Service, Research Service.
+- External boundaries: SciAgents Integration and future third-party adapters.
+- Communication definitions: repository-level `contracts/`.
+
+No generic backend, shared database, or shared dumping-ground component exists.
+
+## 4. Trust boundaries
 
 ```text
-Company infrastructure != Ethics authority
+Company infrastructure != Governance / Ethics Authority
 Hospital A            != Hospital B
 Researcher            != Hospital data owner
-Patient application   != Hospital database
+Patient App           != Hospital database
+Clinician App         != Hospital database
 AI system             != Clinical authority
 ```
 
-Authentication, authorization, minimization, and audit must be designed at every crossed boundary. AI output is advisory where clinical consequences exist and requires appropriate human or clinical validation.
+Every crossing requires explicit identity, authorization, scope, minimization, and audit as applicable.
 
-## Company-managed components
+## 5. Bounded contexts
 
-Company-managed surfaces may include the hospital onboarding portal, node distribution and release tooling, the researcher platform, and billing/subscriptions. Company operation does not grant governance decision authority or ownership of hospital clinical data.
+### Hospital Node
 
-## Ethics / Governance components
+CONFIRMED autonomous hospital-controlled boundary for local clinical integration, storage, consent enforcement, audit generation, DMI Adapter ownership, and federation interfaces. Its runtime is PLANNED.
 
-The governance portal and Governance Node form the ethics-authority boundary. Future responsibilities include the hospital registry, institutional validation, policies, synchronization and research authorization, consent governance, audit exploration, and ledger verification. Governance decisions are controlled by the governance instance, not by company services.
+### Governance Node
 
-## Hospital Nodes
+CONFIRMED Governance / Ethics Authority boundary for hospital approval, synchronization and research authorization, policy evaluation, governance audit, and OPTIONAL Immutable Audit Ledger integration. It does not own hospital clinical databases. Its runtime is PLANNED.
 
-Each Hospital Node is an autonomous, eventually containerized deployable instance. Its future boundary may contain local APIs, identity/RBAC, clinical data, a FHIR or other canonical clinical model, consent, audit, synchronization, events/notifications, local storage, health checks, and DMI adapter integration.
+### Hospital Portal
 
-Nodes must not share database tables with central services or other hospitals. No central component may use direct SQL access to a Hospital Node. Specific storage, FHIR server, framework, and container technology remain undecided.
+PLANNED company-managed web portal for onboarding submissions, questionnaire, review status, and Node package access. It does not make governance decisions.
 
-## Patient application
+### Governance Portal
 
-The patient mobile product will consume authorized API views for medical timelines, consultations, medications, lab results, consent, clinician access, family delegation, restriction/erasure requests, notifications, and medication safety information. It never connects directly to a hospital database and does not own raw clinical source data.
+PLANNED web interface operated conceptually by the Governance / Ethics Authority for review, authorization, audit exploration, and proof verification.
 
-## Clinician application
+### Research Portal
 
-The clinician mobile product will provide an authorized workspace for search, history, consultations, intake, speech-to-text, AI-assisted extraction, laboratory assistance, medication safety, alerts, priority queues, and notifications. Role-specific behavior and the mobile framework remain open decisions.
+PLANNED company-managed web product for research projects, access requests, a Colab-like interface, Compute-to-Data status, controlled results, and SciAgents access.
 
-## Research platform
+### Patient App
 
-The research portal is the researcher-facing surface for onboarding, subscriptions, projects, requests, documents, dataset requirements, a future Colab-like workspace, monitoring, SciAgents access, and controlled results. Research services orchestrate approved work; they do not directly access hospital persistence.
+PLANNED mobile product consuming authorized federated views and managing access/consent interactions. It never connects directly to hospital persistence.
 
-## AI services
+### Clinician App
 
-Python is confirmed for future AI components such as clinical extraction, summarization, document analysis, priority assistance, medication explanation, and LLM orchestration. No library or web framework is selected. AI remains outside clinical authority and must be accessed through explicit ports and contracts.
+PLANNED mobile product consuming authorized patient context for consultation and safety workflows. AI output remains advisory and clinician-reviewed.
 
-## Integrations
+### AI Services
 
-External systems are isolated behind adapter boundaries in `integrations/` and application-owned ports. Integration representations must not leak into domain models.
+Python is CONFIRMED. Extraction, summarization, document review, medication explanations, prioritization explanations, and research assistance are PLANNED. Frameworks, providers, and models are OPEN.
 
-### DMI / legacy systems
+### Federation
 
-```text
-Legacy DMI / HIS -> hospital-specific adapter -> mapping / normalization -> canonical clinical model
-```
+PLANNED coordination for node discovery, authorization, cross-node queries, synchronization, aggregation, failures, and audit. It must not become a central clinical database.
 
-There is no assumed universal DMI implementation. Hospital-specific adapters may be introduced only when actual systems and mappings are known.
+### Notifications
 
-### SciAgents
+PLANNED delivery of authorized patient, clinician, researcher, hospital, and governance notifications. Providers and protocols are OPEN.
 
-SciAgents is an external system to integrate, not reimplement. Its eventual boundary may contain a client, request/response schemas, authentication, timeouts, error mapping, and experiment provenance.
+### SciAgents Integration
 
-## Communication contracts
+SciAgents is an existing external system. This repository's PLANNED responsibility is the integration contract, adapter, authentication boundary, mapping, error handling, provenance, and Research Portal connection—not SciAgents implementation.
 
-Components communicate through explicit contracts, ports, APIs, events, or federation interfaces. A component must not directly depend on another component's internal persistence model. Significant cross-component contracts belong under `contracts/` and must be versionable.
+## 6. Hospital Node internal boundary
 
-Allowed:
-
-```text
-Patient App -> Patient API contract -> Federation service
-Hospital Node -> Sync contract -> Governance Node
-```
-
-Forbidden:
-
-```text
-Research service -> direct SQL access -> Hospital database
-Patient app -> direct database connection
-```
-
-Within every business backend, dependencies point inward:
+A future Hospital Node may contain application/domain logic surrounded by local API, identity/RBAC, persistence, DMI, Federation, audit, and event adapters. Dependencies point inward:
 
 ```text
 infrastructure / framework -> adapters -> application -> domain
 ```
 
-The Domain knows no framework, database, ORM, broker, external API, Docker, cloud provider, or infrastructure library. Application-defined ports isolate external details; adapters implement those ports. Do not scaffold layers or speculative interfaces until a use case needs them.
+Domain remains independent of frameworks, databases, blockchain, AI providers, Docker, and cloud services.
 
-## Federation
-
-Federation supports node identity and discovery, explicit data scope, temporary authorization, synchronization requests, signatures, expiration, result envelopes, and error handling. `contracts/federation/` is the canonical location for these definitions when validated. Federation coordinates autonomous nodes and must not become a centralized clinical database.
-
-## Compute-to-data
+## 7. DMI adapter boundary
 
 ```text
-Research Portal -> Research Service -> Research Job Contract
-                -> Governance authorization -> Hospital Node execution boundary
-                -> Controlled result -> Research Service
+Legacy DMI / HIS -> Hospital-specific DMI Adapter
+                 -> Hospital Node canonical clinical model
+                 -> FHIR / internal clinical representation
 ```
 
-The intended direction sends approved code or jobs to authorized execution environments rather than downloading raw clinical data. Execution, isolation, review, and result-disclosure mechanisms remain open decisions.
+The DMI Adapter is PLANNED at `instances/hospital-node/adapters/dmi/`. Only the corresponding Hospital Node owns its implementation, mappings, and configuration. A central service connecting directly to every hospital DMI is forbidden.
 
-## Blockchain / immutable audit boundary
+## 8. Governance and authorization
+
+The company may operate product surfaces but is not the Governance / Ethics Authority. Hospital approval, synchronization authorization, research authorization, and governance policies belong to the Governance Node. Authorization should eventually encode identity, purpose, scope, duration, policy, and consent/legal authority, with auditable decisions.
+
+## 9. Blockchain / immutable ledger boundary
 
 ```text
-Governance Application -> AuditLedgerPort <- BlockchainAdapter -> Permissioned Ledger
+Governance Application -> AuditLedgerPort <- Blockchain Adapter
+                                           -> Permissioned Immutable Audit Ledger
 ```
 
-Blockchain is an outbound adapter detail and never the clinical database. A future ledger may hold only minimized proofs such as event or authorization IDs, resource hashes, timestamps, versions, signatures, and organization identifiers—never raw medical data.
+Ledger integration is OPTIONAL / PLANNED and belongs inside Governance. It may anchor minimized IDs, hashes, timestamps, versions, signatures, and organization identifiers. Patient records, diagnoses, prescriptions, lab results, consultation notes, images, and raw FHIR resources are forbidden on-chain. Blockchain is never the clinical database.
 
-## Data ownership
+## 10. Patient access and consent
 
-- Clinical source data is owned or controlled by Hospital Nodes.
-- Governance decisions are owned or controlled by the governance instance.
-- Research projects are managed by the company research platform subject to governance authorization.
-- Audit proofs may be anchored in a governance ledger.
-- Mobile applications consume authorized views and do not gain raw-data ownership.
+Patient access grants, revocation, delegation, and restriction/erasure request experiences are PLANNED. Authorized views do not transfer source-data ownership. Consent is not a substitute for legal authority, policy, identity, or technical authorization; exact semantics remain OPEN.
 
-## Consent and authorization
+## 11. Clinician workflows
 
-Consent and authorization cross trust boundaries and require explicit, auditable contracts. Consent does not replace legal authority, purpose limitation, or access control. Detailed policy semantics, identity model, jurisdiction, retention, and revocation behavior remain open.
+Consultation workspaces, consent-aware speech-to-text, deterministic adaptive intake, extraction review, medication safety warnings, alerts, and priority queues are PLANNED. Clinical extraction requires clinician validation. Medication warnings must use deterministic rules or validated sources rather than an LLM alone. AI must not independently diagnose, prescribe, or triage critical cases.
 
-## Runtime environments
-
-- Development supports implementation and debugging after a stack is selected.
-- Preview validates production builds and production-like boundaries with non-production secrets.
-- Production is the user-facing environment and requires explicit deployment decisions and validation.
-
-IoT remains optional. Hardware, firmware framework, and device/backend protocol are undecided.
-
-## Deployment strategy
+## 12. Research compute-to-data
 
 ```text
-Development -> Lint / Tests -> Build -> Local Production Preview
-            -> Integration / E2E Validation -> Deployment
+research code -> Research Portal/Service -> Governance authorization
+              -> Hospital Node execution boundary -> controlled result
+              -> researcher
 ```
 
-Hospital and Governance Nodes are separate deployable trust boundaries. Concrete packaging, topology, hosting, databases, and Docker adoption require accepted decisions. See [deployment documentation](deployment/README.md).
+Compute-to-Data is the preferred CONFIRMED model. Execution, isolation, approved packages, aggregation, disclosure review, and sandbox technology remain OPEN. Unrestricted export of raw hospital databases to researcher machines is not the target architecture.
 
-## Testing strategy
+## 13. Communication contracts
 
-Within components, prioritize Domain tests and Application/use-case tests before adapter integration. `tests/integration/` and `tests/e2e/` are reserved for future contract, cross-service integration, federation, deployment, and end-to-end journey tests. No technology-specific test framework is selected.
+Cross-component communication uses explicit, versionable APIs, events, Federation contracts, schemas, or application ports. Repository-level definitions belong in `contracts/`. Contracts describe communication and must not expose internal tables or create direct SQL coupling.
 
-## Open questions
+## 14. Data ownership
 
-- Which workflows and acceptance criteria are validated for the hackathon MVP?
-- Which canonical clinical model and interoperability profiles are required?
-- Which jurisdictions, privacy obligations, threat model, and consent semantics apply?
-- How are organizations, nodes, patients, clinicians, and researchers identified?
-- Which synchronization and compute-to-data protocols meet the authorization model?
-- Which runtime stacks, persistence technologies, ledger, and deployment topology are justified?
+- Hospital Nodes control clinical source data and local persistence.
+- The Governance Node controls governance decisions and authorization/audit records.
+- The Research Portal manages projects subject to Governance authorization.
+- Mobile products consume authorized views.
+- The company orchestrates its services but does not gain unrestricted clinical ownership.
+- The OPTIONAL ledger anchors governance proofs only.
+
+## 15. Runtime and deployment model
+
+Hospital Nodes and the Governance Node are distinct deployable trust boundaries. Hospital Nodes are expected to become containerized, but container/runtime choices are OPEN pending ADRs. Web/mobile stacks, service runtimes, persistence, hosting, and topology are likewise OPEN.
+
+## 16. Development / preview / production
+
+- **Development:** implementation and debugging after stack selection.
+- **Preview:** production-like build and integration validation with non-production secrets.
+- **Production:** explicitly approved user-facing deployment.
+
+Target validation flow: `Development -> Lint/Tests -> Build -> Preview -> Integration/E2E -> Deployment`. Build success alone is not deployment validation.
+
+## 17. Security principles
+
+Use least privilege, explicit identity, scoped and expiring authorization, auditability, data minimization, secret isolation, and denial by default across trust boundaries. Do not place secrets or real patient data in Git or fixtures. Concrete authentication, cryptography, retention, privacy jurisdiction, and threat controls remain OPEN.
+
+## 18. AI principles
+
+AI is advisory, replaceable through ports, and subject to appropriate human review. Provider SDKs stay outside Domain. Mocked AI is not validated intelligence. Research output does not silently become clinical truth.
+
+## 19. Current implementation status
+
+| Area | Status | Notes |
+|---|---|---|
+| Repository structure | IMPLEMENTED | Boundary folders and README documentation exist. |
+| Documentation and planning | IMPLEMENTED | Product vision, architecture, plans, templates, and guidance exist. |
+| Patient App | PLANNED | No framework or application code. |
+| Clinician App | PLANNED | No framework or application code. |
+| Hospital Portal | PLANNED | No UI code. |
+| Governance Portal | PLANNED | No UI code. |
+| Research Portal | PLANNED | No UI code or notebook execution. |
+| Hospital Node | PLANNED | Boundary documented; runtime not implemented. |
+| Governance Node | PLANNED | Boundary documented; runtime not implemented. |
+| DMI Adapter | PLANNED | Hospital-local boundary documented; no adapter. |
+| Federation Service | PLANNED | No contracts or runtime implementation. |
+| Notification Service | PLANNED | No provider or runtime implementation. |
+| SciAgents Integration | PLANNED | SciAgents exists externally; connector is absent. |
+| Immutable Audit Ledger | OPTIONAL / PLANNED | Governance-only concept; no adapter or ledger. |
+| AI Services | PLANNED | Python CONFIRMED; libraries and implementation absent. |
+| Authentication and persistence | PLANNED | No implementation or selected technology. |
+| IoT | OPTIONAL | PlatformIO placeholder is prepared; hardware/framework/protocol are OPEN. |
+| GitHub templates/workflows | IMPLEMENTED | Templates and manual placeholder workflows exist; product CI is not configured. |
+
+See [CURRENT_STATUS.md](CURRENT_STATUS.md) before claiming implementation.
+
+## 20. Open questions
+
+Technology, interoperability, security, and deployment decisions that remain unresolved are maintained in [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md). Do not answer them without evidence and an accepted ADR where required.

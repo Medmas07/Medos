@@ -1,3 +1,22 @@
-# Patient Application
+# Patient App
 
-Reserved for an authorized unified medical timeline, hospital and physician history, consultations, medications, lab results, consent management, clinician access grants, family delegation, restriction/erasure requests, notifications, and medication safety information. It consumes authorized views and never connects directly to hospital storage. No mobile framework is selected.
+## Purpose and status
+
+PLANNED mobile product for authorized patient views and access-management experiences. No mobile framework or application code exists.
+
+## Responsibilities and owned concepts
+
+- Longitudinal views across organizations, event details, medications, labs, and notifications.
+- User interactions for physician access, revocation, family delegation, consent, and restriction/erasure requests.
+
+## Communication boundaries
+
+The Patient App consumes authorized views through explicit Federation/Hospital Node-facing API contracts. It does not directly access or own hospital databases.
+
+## Non-responsibilities
+
+It is not the clinical source of record, a Governance decision maker, or a guarantee of unconditional medical-record deletion.
+
+## Expected contracts
+
+PLANNED patient-view, timeline, medication, consent/access-grant, request-status, and notification contracts.
