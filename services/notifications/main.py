@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from adapters.inbound.http.clinician_alerts import create_clinician_alerts_router
 from adapters.inbound.http.health import create_health_router
 from adapters.inbound.http.router import create_router
 from adapters.outbound.channel_providers import (
@@ -15,6 +16,7 @@ from adapters.outbound.in_memory_store import InMemoryNotificationStore
 from application.use_cases import (
     GetNotificationEventStatusUseCase,
     IngestNotificationEventUseCase,
+    ListClinicianAlertsUseCase,
     ListRecipientNotificationsUseCase,
 )
 from domain.models import Channel
@@ -40,6 +42,7 @@ ingest_use_case = IngestNotificationEventUseCase(
 )
 get_status_use_case = GetNotificationEventStatusUseCase(store=store)
 list_recipient_use_case = ListRecipientNotificationsUseCase(store=store)
+list_clinician_alerts_use_case = ListClinicianAlertsUseCase(store=store)
 
 app = FastAPI(
     title="Notification Service",
@@ -66,6 +69,11 @@ app.include_router(
         ingest_use_case=ingest_use_case,
         get_status_use_case=get_status_use_case,
         list_recipient_use_case=list_recipient_use_case,
+    )
+)
+app.include_router(
+    create_clinician_alerts_router(
+        list_alerts_use_case=list_clinician_alerts_use_case,
     )
 )
 

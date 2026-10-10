@@ -33,6 +33,10 @@ class NotificationStorePort(Protocol):
         self, recipient_ref: str
     ) -> list[NotificationEvent]: ...
 
+    def list_alerts_for_clinician(
+        self, clinician_ref: str
+    ) -> list[NotificationEvent]: ...
+
 
 class DeliveryProviderPort(Protocol):
     """Port for delivering notifications to concrete channels."""

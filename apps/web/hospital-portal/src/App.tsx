@@ -35,10 +35,11 @@ import { ProfileView } from './views/ProfileView'
 import { RegistrationView } from './views/RegistrationView'
 import { TechnicalView } from './views/TechnicalView'
 import { StepPlaceholderView } from './views/StepPlaceholderView'
+import { ClinicianAlertsView } from './views/ClinicianAlertsView'
 
-type ViewId = 'overview' | StepId
+type ViewId = 'overview' | 'clinician-alerts' | StepId
 
-const VIEW_IDS: readonly string[] = ['overview', ...STEP_DEFINITIONS.map((d) => d.id)]
+const VIEW_IDS: readonly string[] = ['overview', 'clinician-alerts', ...STEP_DEFINITIONS.map((d) => d.id)]
 
 function viewFromHash(): ViewId {
   const hash = window.location.hash.replace('#', '')
@@ -125,6 +126,7 @@ export default function App() {
     { items: [navItem('overview', 'Tableau de bord')] },
     { title: "Parcours d'adhésion", items: stepItems('onboarding') },
     { title: 'Hospital Node', items: stepItems('node') },
+    { title: 'HC-203 · Notifications', items: [navItem('clinician-alerts', '⚡ Alertes clinicien')] },
   ]
 
   const renderContent = () => {
@@ -245,6 +247,9 @@ export default function App() {
           onNavigate={navigateTo}
         />
       )
+    }
+    if (currentView === 'clinician-alerts') {
+      return <ClinicianAlertsView />
     }
     const index = load.snapshot.steps.findIndex((s) => s.id === currentView)
     return <StepPlaceholderView step={load.snapshot.steps[index]} position={index + 1} />
