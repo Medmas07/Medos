@@ -60,9 +60,9 @@ class FixtureClinicalRepository:
             )
         try:
             return cls(
-                tuple(_encounter(e) for e in fixture["encounters"]),
-                tuple(_medication(m) for m in fixture["medications"]),
-                tuple(_lab_report(r) for r in fixture["labReports"]),
+                tuple(encounter_from_fixture(e) for e in fixture["encounters"]),
+                tuple(medication_from_fixture(m) for m in fixture["medications"]),
+                tuple(lab_report_from_fixture(r) for r in fixture["labReports"]),
             )
         except (KeyError, TypeError, ValueError, InvalidClinicalRecord) as error:
             raise ClinicalFixtureError(
@@ -117,7 +117,7 @@ def _optional_date(value: str | None) -> date | None:
     return date.fromisoformat(value) if value else None
 
 
-def _encounter(e: dict) -> Encounter:
+def encounter_from_fixture(e: dict) -> Encounter:
     return Encounter(
         record_ref=e["id"],
         patient_ref=e["patientId"],
@@ -130,7 +130,7 @@ def _encounter(e: dict) -> Encounter:
     )
 
 
-def _medication(m: dict) -> Medication:
+def medication_from_fixture(m: dict) -> Medication:
     return Medication(
         record_ref=m["id"],
         patient_ref=m["patientId"],
@@ -144,7 +144,7 @@ def _medication(m: dict) -> Medication:
     )
 
 
-def _lab_report(r: dict) -> LabReport:
+def lab_report_from_fixture(r: dict) -> LabReport:
     return LabReport(
         record_ref=r["id"],
         patient_ref=r["patientId"],
