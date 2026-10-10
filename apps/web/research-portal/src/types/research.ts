@@ -33,7 +33,16 @@ export interface ResearchProject {
   population: string
   /** Structured eligibility criteria set in this portal (HC-094); absent on fixture projects. */
   populationCriteria?: PopulationCriteria
+  /** French labels of the requested variables, read by the Governance review. */
   variables: string[]
+  /**
+   * Names of the requested variables, `DataScope.variables` of the HC-180
+   * execution contract, in the order of `variables`. Set in this portal
+   * (HC-095); absent on fixture projects.
+   */
+  variableNames?: string[]
+  /** Why each requested variable is needed (HC-095); absent on fixture projects. */
+  variablesJustification?: string
   participatingOrganizationIds: string[]
   protocolDocument: ProjectDocumentRef | null
   /** Optional supporting documents; absent on fixture projects. */
