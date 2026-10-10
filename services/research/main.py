@@ -1,4 +1,4 @@
-"""HC-182/HC-184 D3 Research Service composition root."""
+"""HC-182/HC-184 D3 and HC-185 D4 Research Service composition root."""
 
 from fastapi import FastAPI
 
@@ -22,11 +22,11 @@ orchestrator = ResearchOrchestrator(
 
 app = FastAPI(
     title="Research Job Orchestrator",
-    version="0.3.0",
+    version="0.4.0",
     description=(
         "D3 Compute-to-Data orchestration over Governance and Hospital Node "
-        "HTTP boundaries with bounded controlled-result aggregation. No submitted "
-        "code execution or hospital data access."
+        "HTTP boundaries with D4 output validation and bounded controlled-result "
+        "aggregation. No submitted code execution or hospital data access."
     ),
 )
 app.include_router(create_router(orchestrator))
@@ -39,9 +39,13 @@ def health() -> dict:
     return {
         "status": "ready" if ready else "degraded",
         "service": "research",
-        "depth": "D3",
+        "depth": "D4",
         "mocked": False,
-        "capabilities": ["research_job_orchestration", "controlled_aggregation"],
+        "capabilities": [
+            "research_job_orchestration",
+            "controlled_aggregation",
+            "research_output_validation",
+        ],
         "boundaries": {
             "governance_configured": bool(settings.governance_url),
             "configured_organizations": configured_nodes,

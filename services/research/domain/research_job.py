@@ -37,11 +37,25 @@ class AggregationStatus(StrEnum):
     FAILED = "failed"
 
 
+class OutputValidationStatus(StrEnum):
+    PENDING = "pending"
+    PASSED = "passed"
+    REJECTED = "rejected"
+    NOT_APPLICABLE = "not_applicable"
+
+
 @dataclass(frozen=True)
 class JobError:
     code: str
     message: str
     retryable: bool
+
+
+@dataclass(frozen=True)
+class OutputValidation:
+    status: OutputValidationStatus
+    checks: tuple[str, ...] = ()
+    error: JobError | None = None
 
 
 @dataclass(frozen=True)
@@ -63,6 +77,9 @@ class NodeExecution:
     result: dict | None = None
     error: JobError | None = None
     mocked: bool = False
+    output_validation: OutputValidation = field(
+        default_factory=lambda: OutputValidation(OutputValidationStatus.PENDING)
+    )
 
 
 @dataclass(frozen=True)
