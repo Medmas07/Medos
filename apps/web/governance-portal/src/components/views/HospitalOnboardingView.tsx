@@ -1,11 +1,14 @@
-import { useState, useSyncExternalStore } from 'react'
+import { useId, useState, useSyncExternalStore } from 'react'
 import {
+  Alert,
   Badge,
   Button,
   Card,
   DemoBadge,
+  EmptyState,
   PageHeader,
   Table,
+  TextField,
 } from '@hackcure/design-system'
 import { governanceService } from '../../services/governanceService'
 import { isAwaitingReview } from '../../services/hospitalReview'
@@ -17,16 +20,49 @@ import { HospitalReviewForm } from '../review/HospitalReviewForm'
 const REVIEWER_ID = 'usr-olfa'
 
 export function HospitalOnboardingView() {
+  const searchInputId = useId()
   // Re-render when a simulated decision is recorded or the demo is reset (HC-073).
   const reviewState = useSyncExternalStore(reviewStore.subscribe, reviewStore.getSnapshot)
   const simulatedCount = reviewState.decisions.length
   const applications = governanceService.getHospitalApplications()
-  const [filter, setFilter] = useState<'all' | 'pending' | 'approved'>('all')
+  const [filter, setFilter] = useState<'pending' | 'all' | 'approved'>('pending')
+  const [searchQuery, setSearchQuery] = useState<string>('')
   const [selectedAppId, setSelectedAppId] = useState<string>('app-hospital-c')
 
+  const pendingApps = governanceService.getPendingHospitalApplications()
+  const approvedApps = applications.filter((app) => app.status === 'approved')
+
+  // Calculate pending queue metrics
+  const missingDocsCount = pendingApps.reduce(
+    (acc, app) => acc + app.documents.filter((d) => d.status === 'missing').length,
+    0
+  )
+  const advisoryFindingsCount = pendingApps.reduce((acc, app) => {
+    const aiStep = app.reviewSteps.find((s) => s.step === 'assisted_review')
+    return acc + (aiStep?.findings.length ?? 0)
+  }, 0)
+
   const filteredApps = applications.filter((app) => {
-    if (filter === 'pending') return app.status === 'human_review' || app.status === 'pending'
-    if (filter === 'approved') return app.status === 'approved'
+    // Status filter
+    if (filter === 'pending' && !pendingApps.some((p) => p.id === app.id)) {
+      return false
+    }
+    if (filter === 'approved' && app.status !== 'approved') {
+      return false
+    }
+
+    // Search query filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim()
+      const org = governanceService.getOrganization(app.organizationId)
+      const matchesOrg = org?.name.toLowerCase().includes(q) || org?.city.toLowerCase().includes(q)
+      const matchesId = app.id.toLowerCase().includes(q)
+      const matchesDmi = app.technicalQuestionnaire?.dmiSystem.toLowerCase().includes(q)
+      if (!matchesOrg && !matchesId && !matchesDmi) {
+        return false
+      }
+    }
+
     return true
   })
 
@@ -40,16 +76,23 @@ export function HospitalOnboardingView() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Gouvernance des Nœuds Hospitaliers"
-        title="Dossiers d'Adhésion des Établissements"
+        eyebrow="Gouvernance des Nœuds Hospitaliers (HC-072)"
+        title="File des Demandes d'Adhésion Hospitalière"
         description="Instruction des demandes de raccordement des hôpitaux et cliniques à l'écosystème fédéré. Les hôpitaux conservent le contrôle exclusif de leurs données sources."
         actions={
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {simulatedCount > 0 && (
               <Button variant="ghost" size="sm" onClick={() => reviewStore.reset()}>
                 Réinitialiser la démo ({simulatedCount} décision{simulatedCount > 1 ? 's' : ''} simulée{simulatedCount > 1 ? 's' : ''})
               </Button>
             )}
+            <Button
+              variant={filter === 'pending' ? 'primary' : 'secondary'}
+              size="sm"
+              onClick={() => setFilter('pending')}
+            >
+              À Réviser ({pendingApps.length})
+            </Button>
             <Button
               variant={filter === 'all' ? 'primary' : 'secondary'}
               size="sm"
@@ -58,39 +101,114 @@ export function HospitalOnboardingView() {
               Tous ({applications.length})
             </Button>
             <Button
-              variant={filter === 'pending' ? 'primary' : 'secondary'}
-              size="sm"
-              onClick={() => setFilter('pending')}
-            >
-              À Réviser ({applications.filter((a) => a.status === 'human_review').length})
-            </Button>
-            <Button
               variant={filter === 'approved' ? 'primary' : 'secondary'}
               size="sm"
               onClick={() => setFilter('approved')}
             >
-              Approuvés ({applications.filter((a) => a.status === 'approved').length})
+              Approuvés ({approvedApps.length})
             </Button>
           </div>
         }
       />
 
+      {/* KPI & Summary Banner */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className="border-l-4 border-l-amber-500">
+          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Dossiers en attente
+          </div>
+          <div className="mt-2 text-2xl font-bold text-slate-900">{pendingApps.length}</div>
+          <p className="mt-1 text-xs text-amber-700 font-medium">
+            Examen humain requis par l'Autorité
+          </p>
+        </Card>
+
+        <Card className="border-l-4 border-l-rose-500">
+          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Pièces manquantes
+          </div>
+          <div className="mt-2 text-2xl font-bold text-slate-900">{missingDocsCount}</div>
+          <p className="mt-1 text-xs text-slate-600">
+            Une approbation exige au moins une condition
+          </p>
+        </Card>
+
+        <Card className="border-l-4 border-l-sky-500">
+          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Alertes IA Consultatives
+          </div>
+          <div className="mt-2 text-2xl font-bold text-slate-900">{advisoryFindingsCount}</div>
+          <p className="mt-1 text-xs text-slate-600">
+            Avis non-contraignant pour le réviseur
+          </p>
+        </Card>
+
+        <Card className="border-l-4 border-l-emerald-500">
+          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Réviseur habilité
+          </div>
+          <div className="mt-2 text-base font-bold text-slate-900">{governanceService.getPersonName(REVIEWER_ID)}</div>
+          <p className="mt-1 text-xs text-slate-600">
+            Réf: {REVIEWER_ID} • Décision humaine exclusive
+          </p>
+        </Card>
+      </div>
+
+      {/* Invariants & Safety Reminder */}
+      <Alert tone="info" title="Principe d'Indépendance et Souveraineté Hospitalière">
+        L'Autorité de Gouvernance instruit les dossiers d'adhésion technique et éthique. Elle n'héberge aucune donnée clinique locale et n'intervient pas dans les bases DMI des établissements. L'assistance algorithmique est strictement consultative.
+      </Alert>
+
+      {/* Search and Filters toolbar */}
+      <Card>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="w-full sm:max-w-md">
+            <TextField
+              id={searchInputId}
+              label="Rechercher un établissement ou une référence"
+              placeholder="Ex: Cap Azur, Bizerte, MediDossier, app-hospital-c..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              hint="Filtre instantané sur le nom, la ville, le DMI ou la référence du dossier"
+            />
+          </div>
+          {searchQuery && (
+            <div className="flex items-center gap-2 pt-2 sm:pt-0">
+              <Button size="sm" variant="secondary" onClick={() => setSearchQuery('')}>
+                Effacer la recherche
+              </Button>
+            </div>
+          )}
+        </div>
+      </Card>
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* Table of applications */}
         <div className="lg:col-span-7">
-          <Card title="File des Demandes d'Adhésion" flush>
+          <Card
+            title={
+              filter === 'pending'
+                ? "Demandes d'Adhésion en Attente de Revue"
+                : filter === 'approved'
+                  ? "Dossiers d'Adhésion Validés"
+                  : "Toutes les Demandes d'Adhésion"
+            }
+            flush
+          >
             <Table<HospitalApplication>
-              caption="Liste des demandes d'adhésion des établissements hospitaliers"
+              caption="File des demandes d'adhésion hospitalière en attente ou traitées"
               columns={[
                 {
                   key: 'organization',
-                  header: 'Établissement',
+                  header: 'Établissement & Ville',
                   render: (app) => {
                     const org = governanceService.getOrganization(app.organizationId)
                     return (
                       <div>
-                        <div className="font-medium text-slate-900">{org?.name ?? app.organizationId}</div>
-                        <div className="text-xs text-slate-500">{org?.city ?? 'Tunisie'} • Réf: {app.id}</div>
+                        <div className="font-semibold text-slate-900">{org?.name ?? app.organizationId}</div>
+                        <div className="text-xs text-slate-500">
+                          {org?.city ?? 'Tunisie'} • Ref: <span className="font-mono text-slate-600">{app.id}</span>
+                        </div>
                       </div>
                     )
                   },
@@ -112,6 +230,28 @@ export function HospitalOnboardingView() {
                   },
                 },
                 {
+                  key: 'documents',
+                  header: 'Pièces',
+                  render: (app) => {
+                    if (app.documents.length === 0) {
+                      return <span className="text-xs text-slate-400">Non suivies</span>
+                    }
+                    const missing = app.documents.filter((d) => d.status === 'missing').length
+                    if (missing > 0) {
+                      return (
+                        <Badge tone="danger">
+                          {missing} manquante{missing > 1 ? 's' : ''}
+                        </Badge>
+                      )
+                    }
+                    return (
+                      <Badge tone="success">
+                        {app.documents.length}/{app.documents.length} reçues
+                      </Badge>
+                    )
+                  },
+                },
+                {
                   key: 'ai-assistance',
                   header: 'Assistance IA',
                   render: (app) => {
@@ -121,7 +261,9 @@ export function HospitalOnboardingView() {
                       <div className="flex items-center gap-1">
                         <DemoBadge>Consultative</DemoBadge>
                         {aiStep.findings.length > 0 && (
-                          <span className="text-xs text-amber-700">({aiStep.findings.length} obs.)</span>
+                          <span className="text-xs font-semibold text-amber-700">
+                            ({aiStep.findings.length} obs.)
+                          </span>
                         )}
                       </div>
                     )
@@ -143,6 +285,30 @@ export function HospitalOnboardingView() {
               ]}
               rows={filteredApps}
               getRowKey={(item) => item.id}
+              empty={
+                <div className="p-8">
+                  <EmptyState
+                    title="Aucun dossier trouvé"
+                    description={
+                      searchQuery
+                        ? `Aucun établissement ne correspond à la recherche "${searchQuery}".`
+                        : "Aucune demande d'adhésion ne correspond au filtre sélectionné."
+                    }
+                    action={
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          setFilter('all')
+                          setSearchQuery('')
+                        }}
+                      >
+                        Réinitialiser les filtres
+                      </Button>
+                    }
+                  />
+                </div>
+              }
             />
           </Card>
         </div>
@@ -247,6 +413,23 @@ export function HospitalOnboardingView() {
                         ) : (
                           <Badge tone="danger">Manquant</Badge>
                         )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Agreements */}
+              {selectedApp.agreements.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-600">
+                    Engagements Juridiques et Éthiques
+                  </h4>
+                  <ul className="mt-2 space-y-1 text-xs">
+                    {selectedApp.agreements.map((agr) => (
+                      <li key={agr.code} className="flex items-center justify-between rounded bg-slate-50 px-2.5 py-1">
+                        <span className="text-slate-700">{agr.title}</span>
+                        {agr.accepted ? <Badge tone="success">Accepté</Badge> : <Badge tone="danger">Non accepté</Badge>}
                       </li>
                     ))}
                   </ul>

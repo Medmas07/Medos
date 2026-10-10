@@ -2,9 +2,13 @@
 
 ## Purpose and status
 
-- **IMPLEMENTED (D1):** Governance Portal shell (HC-070, [#71](https://github.com/Medmas07/Hackcure_hackathon/issues/71)), Governance dashboard (HC-071, [#72](https://github.com/Medmas07/Hackcure_hackathon/issues/72)), hospital approval review (HC-073, [#74](https://github.com/Medmas07/Hackcure_hackathon/issues/74)), synchronization request list (HC-074, [#75](https://github.com/Medmas07/Hackcure_hackathon/issues/75)), and research access request list (HC-077, [#78](https://github.com/Medmas07/Hackcure_hackathon/issues/78)) at initial depth D1. Built with React 19 + TypeScript + Vite SPA as decided in [ADR-0001](../../../docs/decisions/ADR-0001-web-frontend-technology.md) and styled with Tailwind CSS v4 and the shared [design system](../../../design-system/README.md) ([ADR-0002](../../../docs/decisions/ADR-0002-web-design-system.md)).
-- **Checked on 2026-10-10:** Tests (Vitest suite covering canonical demo-data loading, dashboard metrics calculation, federated nodes status, hash verification, state behavior, the hospital review rules, the synchronization list rules, and the research access request list rules) all pass. Fixed dev port is `5174`.
+- **IMPLEMENTED (D1):** Governance Portal shell (HC-070, [#71](https://github.com/Medmas07/Hackcure_hackathon/issues/71)), Governance dashboard (HC-071, [#72](https://github.com/Medmas07/Hackcure_hackathon/issues/72)), pending hospital approval list (HC-072, [#73](https://github.com/Medmas07/Hackcure_hackathon/issues/73)), hospital approval review (HC-073, [#74](https://github.com/Medmas07/Hackcure_hackathon/issues/74)), synchronization request list (HC-074, [#75](https://github.com/Medmas07/Hackcure_hackathon/issues/75)), approve/reject synchronization request (HC-076, [#77](https://github.com/Medmas07/Hackcure_hackathon/issues/77)), and research access request list (HC-077, [#78](https://github.com/Medmas07/Hackcure_hackathon/issues/78)) at initial depth D1. Built with React 19 + TypeScript + Vite SPA as decided in [ADR-0001](../../../docs/decisions/ADR-0001-web-frontend-technology.md) and styled with Tailwind CSS v4 and the shared [design system](../../../design-system/README.md) ([ADR-0002](../../../docs/decisions/ADR-0002-web-design-system.md)).
+- **Checked on 2026-10-10:** `npm test` (Vitest suite covering canonical demo-data loading, the pending hospital approval list, dashboard metrics calculation, federated nodes status, hash verification, state behavior, the hospital review rules, the synchronization list rules, the synchronization review rules, and the research access request list rules) all pass. Fixed dev port is `5174`.
 - **Mocking strategy:** Consumes canonical fictional fixtures from `demo-data/` ([ADR-0005](../../../docs/decisions/ADR-0005-canonical-demo-data.md)). Simulated local ledger proofs (SHA-256) and advisory AI annotations are explicitly marked with `DemoBanner` and `DemoBadge`. No direct access to hospital clinical databases.
+
+## Pending hospital approval list (HC-072)
+
+IMPLEMENTED at D1, from the canonical fixtures. **Adhésions Hospitalières** opens on the applications awaiting review (`human_review` or `pending`), with queue counts (pending files, missing documents, advisory AI findings), a search on name, city, DMI system, or reference, a documents column showing missing pieces, and an empty state with a way back to all applications. The queue is read through `governanceService.getPendingHospitalApplications()`, so an application decided in the session (HC-073) leaves it until the demo is reset.
 
 ## Hospital approval review (HC-073)
 
@@ -30,7 +34,27 @@ IMPLEMENTED at D1, read-only, from the canonical fixtures. **Synchronisations So
 
 Requests are ordered pending first, then authorized, expired, and rejected, newest first within each. Filters by status show their counts, and a filter with no result shows an empty state with a way back to all requests. The rules live in `src/services/syncRequestList.ts` and are unit-tested; statuses use the browser clock, evaluated when the page opens. In the demo data, `sync-002` (approved until 2026-03-12) therefore shows as expired, and the detail panel says so too.
 
-The request detail (HC-075) and approving or rejecting a request (HC-076) are separate tickets.
+The request detail is a separate ticket (HC-075).
+
+## Approve or reject a synchronization request (HC-076)
+
+IMPLEMENTED at D1; the recorded decision is **SIMULATED**. A pending request (`sync-001` in the demo data) shows the Authority's decision form in its detail panel.
+
+Deterministic checks, computed in `src/services/syncReview.ts` and unit-tested:
+
+| Check | Conforme | Non conforme | À vérifier |
+|---|---|---|---|
+| Établissements agréés | requester and holder are two distinct organizations approved by the Authority | otherwise | — |
+| Base d’autorisation | the patient grant exists, is active, not revoked or expired, is for this patient, and covers the requested scope | no basis, or any grant problem | signed consent form or emergency override: not verifiable in the portal |
+| Durée | at least one day is possible | the patient grant has lapsed | — |
+
+- **The authorization never outlasts the patient's grant.** The approved duration defaults to, and may not exceed, the requested duration capped by the grant's expiry. In the demo, 30 days are requested, `grant-a-drx` ends on 2026-10-24, and so at most 13 days can be approved; a shortened duration is added to the decision's conditions.
+- Approval is disabled while any check fails; a motivated refusal is always possible. A check the portal cannot verify must be confirmed by the reviewer.
+- A rationale of at least 20 characters is required; conditions are optional.
+- Only a governance reviewer outside both the requesting and the holding organizations may decide, and a decided request cannot be decided again.
+- After a confirmation step and a short simulated delay, the decision (temporary, with its `validUntil`) and a `decision_recorded` audit event (references only) are kept in the same local store as HC-073. The list then shows the request as authorized until its end date, the sidebar badge and dashboard counts drop, and the audit views list the event as not anchored. **Réinitialiser la démo** or a reload returns to the fixtures.
+
+Not done at D1: nothing is sent to the Governance Node (its synchronization API, HC-132, is PLANNED) or to any Hospital Node. Federation queries and the Hospital Nodes' MOCKED authorization still read only the canonical fixtures, so a simulated approval authorizes no real exchange. No ledger proof is created, and the reviewer is the fictional demo reviewer, not an authenticated user.
 
 ## Research access request list (HC-077)
 
