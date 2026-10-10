@@ -43,7 +43,8 @@ class SynchronizationStore(Protocol):
     def submit(
         self, new_request: Callable[[str], SynchronizationRequest]
     ) -> SynchronizationRequest:
-        """Store the request built with the next free reference, and return it."""
+        """Store the request built with the next free reference, and return it. The
+        builder runs while the store is locked and must not call the store."""
         ...
 
     def record(

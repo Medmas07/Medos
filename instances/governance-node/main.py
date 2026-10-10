@@ -9,6 +9,12 @@ from adapters.inbound.http.health import create_router as create_health_router
 from adapters.inbound.http.hospital_approval import (
     create_router as create_hospital_approval_router,
 )
+from adapters.inbound.http.research_authorization import (
+    create_router as create_research_authorization_router,
+)
+from adapters.inbound.http.research_requests import (
+    create_router as create_research_router,
+)
 from adapters.inbound.http.sync_authorization import (
     create_router as create_sync_authorization_router,
 )
@@ -20,6 +26,7 @@ from adapters.outbound.fixture_reviewer_directory import FixtureReviewerDirector
 from adapters.outbound.in_memory_hospital_applications import (
     InMemoryHospitalApplicationStore,
 )
+from adapters.outbound.in_memory_research import InMemoryResearchStore
 from adapters.outbound.in_memory_synchronization import InMemorySynchronizationStore
 from application.get_node_status import NODE_VERSION
 from domain.node_identity import NodeIdentity
@@ -53,6 +60,10 @@ def create_app(
     # MOCKED (HC-132): patient grants belong to the Hospital Nodes (HC-115); until
     # consent governance (HC-136), the Node reads the fictional seed grants.
     grants = FixturePatientGrantDirectory.load(demo_data / "access.json")
+    # HC-133: in memory, seeded from fictional requests and projects; lost on restart.
+    research = InMemoryResearchStore.load(
+        demo_data / "governance.json", demo_data / "research.json"
+    )
     app = FastAPI(title="Governance Node", version=NODE_VERSION)
     app.include_router(create_health_router(identity))
     app.include_router(create_hospital_approval_router(applications, reviewers, clock))
@@ -62,6 +73,8 @@ def create_app(
         )
     )
     app.include_router(create_sync_authorization_router(synchronizations, clock))
+    app.include_router(create_research_router(research, reviewers, applications, clock))
+    app.include_router(create_research_authorization_router(research, clock))
     return app
 
 

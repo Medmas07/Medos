@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sys
 from datetime import date, datetime
 from pathlib import Path
@@ -27,6 +28,8 @@ DATETIME_SUFFIXES = ("At",)
 DATE_KEYS = {"birthDate", "startDate", "endDate", "referenceDate"}
 
 # The only fields a simulated ledger proof may anchor (see AGENTS.md blockchain rules).
+# research-authorization-check.v1.yaml variable names.
+VARIABLE_NAME = re.compile(r"[A-Za-z][A-Za-z0-9_.-]{0,99}")
 ALLOWED_PROOF_FIELDS = {"eventId", "decisionId", "outcome", "decidedAt", "organizationIds", "version"}
 
 RECORD_COLLECTIONS = ("encounters", "medications", "labReports")
@@ -149,6 +152,33 @@ def check(print_proof_hashes: bool = False) -> list[str]:
             print(f"{proof['id']}: {expected}")
         if proof["hash"] != expected:
             errors.append(f"{proof['id']}: hash does not match anchored payload")
+
+    # Research data scopes use the contract variable names, and an authorization only
+    # narrows its request (contracts/api/research/, HC-133).
+    projects = {p["id"]: p for p in files["research.json"]["projects"]}
+    for project in projects.values():
+        for variable in project["dataScope"]["variables"]:
+            if not VARIABLE_NAME.fullmatch(variable):
+                errors.append(f"{project['id']}: variable {variable!r} is not a contract name")
+    requests = {r["id"]: r for r in governance["researchAccessRequests"]}
+    for decision in governance["decisions"]:
+        authorization = decision.get("researchAuthorization")
+        if decision["subjectType"] != "research_access_request":
+            if authorization:
+                errors.append(f"{decision['id']}: research authorization on another subject")
+            continue
+        if (decision["outcome"] == "approved") != bool(authorization):
+            errors.append(f"{decision['id']}: an approval, and only an approval, has a research authorization")
+            continue
+        if not authorization:
+            continue
+        project = projects[requests[decision["subjectId"]]["projectId"]]
+        if not set(authorization["approvedOrganizationIds"]) <= set(project["participatingOrganizationIds"]):
+            errors.append(f"{decision['id']}: authorizes an organization outside its project")
+        if not set(authorization["approvedVariables"]) <= set(project["dataScope"]["variables"]):
+            errors.append(f"{decision['id']}: authorizes a variable outside its project")
+        if authorization["minimumCellSize"] < 10:
+            errors.append(f"{decision['id']}: minimum cell size below the demo policy of 10")
 
     # Canonical scenario invariants (docs/planning/demo-scenario.md).
     roles = manifest["scenarioRoles"]

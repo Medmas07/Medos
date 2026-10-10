@@ -97,7 +97,7 @@ An approval states exactly what it authorizes, in the shape the [research execut
 
 After a confirmation step and a short simulated delay, the decision and its `decision_recorded` audit event (references only) join the local store used by HC-073 and HC-076: the list status, sidebar badge, dashboard counts, and audit views follow, and **Réinitialiser la démo** or a reload returns to the fixtures. A rejection is shown in red; previously every decision was shown as approved.
 
-Not done at D1: nothing is sent to the Governance Node (its research API, HC-133, is PLANNED), the Research Service, or any Hospital Node, so a simulated approval authorizes no execution. No ledger proof is created, and the reviewer is the fictional demo reviewer, not an authenticated user. The request list itself is HC-077.
+Not done at D1: nothing is sent to the Governance Node (its research request API, HC-133, exists, but the portal does not call it yet), the Research Service, or any Hospital Node, so a simulated approval authorizes no execution. No ledger proof is created, and the reviewer is the fictional demo reviewer, not an authenticated user. The request list itself is HC-077.
 
 ## Governance audit timeline (HC-079)
 
