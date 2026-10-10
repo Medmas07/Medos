@@ -2,6 +2,8 @@
 
 ## Purpose and status
 
+HC-011 Patient dashboard is IMPLEMENTED at D1: the home view summarizes a fictional authorized view with source and event counts, a visible MOCKED label, and no hospital data access. It is a demo boundary, not production integration.
+
 IMPLEMENTED at D1 for HC-010: a Flutter Android shell provides four navigable destinations (`Accueil`, `Parcours`, `Accès`, `Profil`) plus explicit content, loading, empty, and error states. It uses the fictional HC-005 Patient A identity and permanently labels demo content. Feature content beyond the shell remains PLANNED.
 
 Flutter + Dart and the Android-first development path are CONFIRMED by [ADR-0004](../../../docs/decisions/ADR-0004-mobile-technology.md). The shell was generated with Flutter 3.44.6 / Dart 3.12.2; exact resolved packages are recorded in `pubspec.lock`.
