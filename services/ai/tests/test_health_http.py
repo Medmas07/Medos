@@ -13,11 +13,11 @@ def test_health_reports_skeleton_status():
     assert response.json() == {
         "status": "ok",
         "service": "ai-services",
-        "version": "0.1.0",
-        "capabilities": [],
+        "version": "0.2.0",
+        "capabilities": ["clinical-extraction:mocked"],
         "notice": ADVISORY_NOTICE,
     }
 
 
 def test_unknown_route_returns_404():
-    assert client.get("/extract").status_code == 404
+    assert client.get("/does-not-exist").status_code == 404
