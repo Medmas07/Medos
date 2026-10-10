@@ -3,7 +3,12 @@
 Same review rules as the Governance Portal's synchronization form (HC-076), enforced
 here because the Governance Node, not a company-managed portal, decides. An approval is
 a temporary authorization that the Federation Service checks before each exchange
-(contracts/federation/sync-authorization-check.v1.yaml).
+(contracts/federation/sync-authorization-check.v1.yaml). The consent bases accepted, how
+each is checked, the longest authorization, and the minimum rationale length come from
+the governance policy in effect (HC-135), which the decision cites. A patient grant is
+evaluated against the grants the target organization's Hospital Node holds, when
+reviewing and again before each exchange (HC-136): a grant withdrawn there stops the
+authorization.
 """
 
 import math
@@ -14,15 +19,18 @@ from enum import Enum
 
 from domain.hospital_approval import (
     GOVERNANCE_REVIEWER_ROLE,
-    MIN_RATIONALE_LENGTH,
     InvalidDecision,
     Issue,
     Outcome,
     Reviewer,
     ReviewerNotAllowed,
+    rationale_issues,
 )
+from domain.policy import MAX_SYNC_DURATION_DAYS, ConsentMode, GovernancePolicy
 
-MAX_DURATION_DAYS = 365
+# The contract's limit on a requested duration; the policy may approve less.
+MAX_DURATION_DAYS = MAX_SYNC_DURATION_DAYS
+
 _OPAQUE_REF = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}")
 _REQUEST_REF = re.compile(r"sync-[A-Za-z0-9._:-]{1,123}")
 
@@ -164,6 +172,8 @@ class SynchronizationDecision:
     # Set for an approval only: the temporary authorization.
     approved_days: int | None = None
     valid_until: datetime | None = None
+    # The governance policy version it was decided under (HC-135).
+    policy_ref: str | None = None
 
     def __post_init__(self) -> None:
         approved = self.outcome is Outcome.APPROVED
@@ -198,6 +208,10 @@ class ReviewContext:
     # The grant named by the consent; None if it names none or an unknown one.
     grant: PatientGrant | None
     now: datetime
+    # The governance policy in effect at `now`.
+    policy: GovernancePolicy
+    # Why the grant could not be looked up, when its holder could not answer.
+    grant_unavailable: str | None = None
 
 
 def status_at(
@@ -212,24 +226,38 @@ def status_at(
     return RequestStatus.ACTIVE if now < decision.valid_until else RequestStatus.EXPIRED
 
 
-def max_approved_days(request: SynchronizationRequest, context: ReviewContext) -> int:
-    """The requested duration, never beyond the patient grant. 0: none possible."""
-    if request.consent.basis is not ConsentBasis.PATIENT_GRANT or context.grant is None:
-        return request.duration_days
-    seconds_left = (context.grant.expires_at - context.now).total_seconds()
-    days_left = math.floor(seconds_left / timedelta(days=1).total_seconds())
-    return max(0, min(request.duration_days, days_left))
-
-
-def _grant_problem(
+def _grant_days_left(
     request: SynchronizationRequest, context: ReviewContext
+) -> int | None:
+    if request.consent.basis is not ConsentBasis.PATIENT_GRANT or context.grant is None:
+        return None
+    seconds_left = (context.grant.expires_at - context.now).total_seconds()
+    return max(0, math.floor(seconds_left / timedelta(days=1).total_seconds()))
+
+
+def max_approved_days(request: SynchronizationRequest, context: ReviewContext) -> int:
+    """The requested duration, never beyond the policy's longest authorization or the
+    patient grant. 0: none possible."""
+    limits = [request.duration_days, context.policy.maximum_sync_duration_days]
+    grant_days = _grant_days_left(request, context)
+    if grant_days is not None:
+        limits.append(grant_days)
+    return min(limits)
+
+
+def grant_problem(
+    request: SynchronizationRequest, grant: PatientGrant | None, now: datetime
 ) -> str | None:
-    grant, ref = context.grant, request.consent.access_grant_ref
+    """Why the patient grant does not support this request now; None if it does."""
+    ref = request.consent.access_grant_ref
     if grant is None:
-        return f"Grant {ref} is unknown to the Governance Node."
+        return (
+            f"Grant {ref} is unknown to the Hospital Node of "
+            f"{request.target_organization_ref}."
+        )
     if grant.revoked:
         return f"Grant {ref} was revoked."
-    if not grant.active_at(context.now):
+    if not grant.active_at(now):
         return f"Grant {ref} expired on {grant.expires_at.isoformat()}."
     if grant.patient_ref != request.patient_ref:
         return f"Grant {ref} concerns another patient."
@@ -254,12 +282,28 @@ def checks(request: SynchronizationRequest, context: ReviewContext) -> list[Chec
     )
 
     basis = request.consent.basis
+    policy = context.policy
+    mode = policy.consent_mode(basis.value)
     if basis is ConsentBasis.NONE:
         consent = Check(
             "consent", CheckState.FAIL, "No patient grant or legal basis is given."
         )
-    elif basis is ConsentBasis.PATIENT_GRANT:
-        problem = _grant_problem(request, context)
+    elif mode is None:
+        consent = Check(
+            "consent",
+            CheckState.FAIL,
+            f"Governance policy v{policy.version} does not accept {basis.value} as a "
+            "consent basis.",
+        )
+    elif mode is ConsentMode.VERIFIED and context.grant_unavailable:
+        consent = Check(
+            "consent",
+            CheckState.FAIL,
+            f"Grant {request.consent.access_grant_ref} could not be verified: "
+            f"{context.grant_unavailable}",
+        )
+    elif mode is ConsentMode.VERIFIED:
+        problem = grant_problem(request, context.grant, context.now)
         consent = Check(
             "consent",
             CheckState.FAIL if problem else CheckState.PASS,
@@ -282,15 +326,21 @@ def checks(request: SynchronizationRequest, context: ReviewContext) -> list[Chec
 
     most = max_approved_days(request, context)
     asked = request.duration_days
+    grant_days = _grant_days_left(request, context)
     if most >= asked:
         detail = f"{asked} days requested."
-    elif most >= 1:
+    elif most < 1:
+        detail = "No duration is possible before the patient grant ends."
+    elif grant_days is not None and grant_days == most:
         detail = (
             f"{asked} days requested, limited to {most} days by the end of the "
             "patient grant."
         )
     else:
-        detail = "No duration is possible before the patient grant ends."
+        detail = (
+            f"{asked} days requested, limited to {most} days by governance policy "
+            f"v{policy.version}."
+        )
     duration = Check(
         "duration", CheckState.PASS if most >= 1 else CheckState.FAIL, detail
     )
@@ -315,14 +365,7 @@ def _check_reviewer(request: SynchronizationRequest, reviewer: Reviewer | None) 
 def review_issues(
     request: SynchronizationRequest, draft: SyncDecisionDraft, context: ReviewContext
 ) -> list[Issue]:
-    issues = []
-    if len(draft.rationale.strip()) < MIN_RATIONALE_LENGTH:
-        issues.append(
-            Issue(
-                "rationale",
-                f"The rationale must have at least {MIN_RATIONALE_LENGTH} characters.",
-            )
-        )
+    issues = rationale_issues(draft.rationale, context.policy)
     if draft.outcome is Outcome.REJECTED:
         if _clean(draft.conditions):
             issues.append(Issue("conditions", "A rejection carries no condition."))
@@ -397,6 +440,7 @@ def decide(
         conditions=_clean(draft.conditions),
         approved_days=draft.approved_days if approved else None,
         valid_until=now + timedelta(days=draft.approved_days) if approved else None,
+        policy_ref=context.policy.policy_ref,
     )
     return decision, replace(request, decision_ref=decision.decision_ref)
 
@@ -412,6 +456,9 @@ class DenialReason(str, Enum):
     PATIENT_MISMATCH = "patient_mismatch"
     SCOPE_EXCEEDED = "scope_exceeded"
     PURPOSE_MISMATCH = "purpose_mismatch"
+    # Last, once everything else holds: the patient grant the approval relies on is no
+    # longer active at the target organization's Hospital Node (HC-136).
+    REVOKED = "revoked"
 
 
 @dataclass(frozen=True)
@@ -480,6 +527,30 @@ def check_authorization(
         scope=request.scope,
         purpose=request.purpose,
         valid_until=decision.valid_until,
+    )
+
+
+def relies_on_patient_grant(request: SynchronizationRequest) -> bool:
+    return request.consent.basis is ConsentBasis.PATIENT_GRANT
+
+
+def reverify_consent(
+    result: AuthorizationCheck,
+    request: SynchronizationRequest,
+    grant: PatientGrant | None,
+    now: datetime,
+) -> AuthorizationCheck:
+    """An authorization stands only while its patient grant still supports it at the
+    Hospital Node that holds it: revoked, expired, or unknown there denies it."""
+    if not result.authorized or not relies_on_patient_grant(request):
+        return result
+    if grant_problem(request, grant, now) is None:
+        return result
+    return AuthorizationCheck(
+        result.decision_ref,
+        DenialReason.REVOKED,
+        result.checked_at,
+        valid_until=result.valid_until,
     )
 
 

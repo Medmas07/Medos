@@ -34,6 +34,7 @@ from application.synchronization import (
     list_requests,
     submit_request,
 )
+from domain.policy import PolicyHistory
 from domain.hospital_approval import InvalidDecision, Outcome, ReviewerNotAllowed
 from domain.synchronization import (
     MAX_DURATION_DAYS,
@@ -48,11 +49,17 @@ from domain.synchronization import (
     SynchronizationRequest,
 )
 
-NOTICE = (
+_NOTICE = (
     "Fictional demo synchronization requests, held in memory by the Governance Node: "
     "requests and decisions are lost on restart, requests are not authenticated, and "
-    "patient grants are checked against fictional demo grants (MOCKED)."
 )
+# How patient grants are checked, by grant source (HC-136).
+NOTICES = {
+    "fixture": _NOTICE
+    + "patient grants are checked against fictional demo grants (MOCKED).",
+    "http": _NOTICE
+    + "patient grants are checked with the Hospital Node holding them, over HTTP.",
+}
 
 Ref = Annotated[str, Field(pattern=OPAQUE_REF.pattern)]
 
@@ -136,6 +143,7 @@ def _decision(decision: SynchronizationDecision) -> dict:
         "outcome": decision.outcome.value,
         "decided_by_ref": decision.decided_by_ref,
         "decided_at": decision.decided_at.isoformat(),
+        "policy_ref": decision.policy_ref,
         "rationale": decision.rationale,
         "conditions": list(decision.conditions),
         "approved_days": decision.approved_days,
@@ -182,13 +190,14 @@ def create_router(
     reviewers: ReviewerDirectory,
     grants: PatientGrantDirectory,
     applications: HospitalApplicationStore,
+    policies: PolicyHistory,
     audit: AuditTrail,
     clock: Callable[[], datetime],
 ) -> APIRouter:
     router = APIRouter(prefix="/v1/synchronization-requests", tags=["synchronization"])
 
     def view(request_ref: str) -> RequestView:
-        return get_request(request_ref, store, grants, applications, clock)
+        return get_request(request_ref, store, grants, applications, policies, clock)
 
     @router.get("")
     def list_synchronization_requests(status: str | None = None) -> JSONResponse:
@@ -199,7 +208,10 @@ def create_router(
             return _invalid(f"status must be one of: {allowed}")
         rows = list_requests(store, clock(), wanted)
         return JSONResponse(
-            {"notice": NOTICE, "requests": [_summary(*row) for row in rows]}
+            {
+                "notice": NOTICES.get(grants.mode, NOTICES["http"]),
+                "requests": [_summary(*row) for row in rows],
+            }
         )
 
     @router.post("")
@@ -261,6 +273,7 @@ def create_router(
                 reviewers,
                 grants,
                 applications,
+                policies,
                 audit,
                 clock,
             )

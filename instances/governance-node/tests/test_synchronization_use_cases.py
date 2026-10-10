@@ -4,6 +4,7 @@ from datetime import timedelta
 import pytest
 
 from application.synchronization import (
+    GrantsUnavailable,
     RequestNotFound,
     check_sync_authorization,
     decide_request,
@@ -13,7 +14,7 @@ from application.synchronization import (
 )
 from domain.hospital_application import ApplicationStatus, Findings, HospitalApplication
 from domain.audit import AuditOutcome
-from domain.hospital_approval import Outcome, Reviewer
+from domain.hospital_approval import InvalidDecision, Outcome, Reviewer
 from domain.synchronization import (
     CheckState,
     Consent,
@@ -26,6 +27,7 @@ from domain.synchronization import (
     SyncDecisionDraft,
     SynchronizationDecision,
 )
+from tests.test_policy import DEMO_POLICIES
 from tests.conftest import DEMO_NOW
 from tests.test_audit_use_cases import FakeAuditTrail
 from tests.test_synchronization import GRANT_A, PURPOSE, SYNC_001
@@ -78,8 +80,21 @@ class FakeApplications:
 
 
 class FakeGrants:
-    def grant(self, ref):
-        return {"grant-a-drx": GRANT_A}.get(ref)
+    """Test double at the PatientGrantDirectory port: what Hospital B holds."""
+
+    mode = "fake"
+
+    def __init__(self, grants=(GRANT_A,), holder="org-hospital-b") -> None:
+        self.grants = {g.grant_ref: g for g in grants}
+        self.holder = holder
+        self.asked = []
+
+    def grant(self, holder_organization_ref, patient_ref, grant_ref):
+        self.asked.append((holder_organization_ref, patient_ref, grant_ref))
+        grant = self.grants.get(grant_ref)
+        if holder_organization_ref != self.holder or grant is None:
+            return None
+        return grant if grant.patient_ref == patient_ref else None
 
 
 class FakeReviewers:
@@ -149,7 +164,12 @@ def test_organization_approval_comes_from_hospital_approvals():
 
     def organizations(applications):
         view = get_request(
-            "sync-001", store, FakeGrants(), applications, lambda: DEMO_NOW
+            "sync-001",
+            store,
+            FakeGrants(),
+            applications,
+            DEMO_POLICIES,
+            lambda: DEMO_NOW,
         )
         return view.checks[0].state
 
@@ -179,7 +199,9 @@ def test_submit_then_decide_then_check():
         DEMO_NOW,
     )
 
-    view = get_request("sync-001", store, FakeGrants(), APPROVED, lambda: DEMO_NOW)
+    view = get_request(
+        "sync-001", store, FakeGrants(), APPROVED, DEMO_POLICIES, lambda: DEMO_NOW
+    )
     assert (view.status, view.max_approved_days) == (RequestStatus.PENDING, 13)
 
     decision = decide_request(
@@ -190,6 +212,7 @@ def test_submit_then_decide_then_check():
         FakeReviewers(),
         FakeGrants(),
         APPROVED,
+        DEMO_POLICIES,
         audit,
         lambda: DEMO_NOW,
     )
@@ -197,10 +220,10 @@ def test_submit_then_decide_then_check():
 
     later = DEMO_NOW + timedelta(minutes=30)
     assert check_sync_authorization(
-        "dec-sync-001", ASK, store, audit, lambda: later
+        "dec-sync-001", ASK, store, FakeGrants(), audit, lambda: later
     ).authorized
     expired = check_sync_authorization(
-        "dec-sync-001", ASK, store, audit, lambda: decision.valid_until
+        "dec-sync-001", ASK, store, FakeGrants(), audit, lambda: decision.valid_until
     )
     assert expired.reason is DenialReason.EXPIRED
 
@@ -251,7 +274,9 @@ def test_unknown_requests_and_decisions():
     audit = FakeAuditTrail()
 
     with pytest.raises(RequestNotFound):
-        get_request("sync-404", store, FakeGrants(), APPROVED, lambda: DEMO_NOW)
+        get_request(
+            "sync-404", store, FakeGrants(), APPROVED, DEMO_POLICIES, lambda: DEMO_NOW
+        )
     with pytest.raises(RequestNotFound):
         decide_request(
             "sync-404",
@@ -261,11 +286,14 @@ def test_unknown_requests_and_decisions():
             FakeReviewers(),
             FakeGrants(),
             APPROVED,
+            DEMO_POLICIES,
             audit,
             lambda: DEMO_NOW,
         )
     assert (
-        check_sync_authorization("dec-x", ASK, store, audit, lambda: DEMO_NOW).reason
+        check_sync_authorization(
+            "dec-x", ASK, store, FakeGrants(), audit, lambda: DEMO_NOW
+        ).reason
         is DenialReason.NOT_FOUND
     )
     # The contract answers a denial, so it is audited.
@@ -275,11 +303,136 @@ def test_unknown_requests_and_decisions():
 
 def test_grant_directory_port_is_used_for_the_consent_check():
     class NoGrants:
-        def grant(self, ref):
+        mode = "fake"
+
+        def grant(self, holder_organization_ref, patient_ref, grant_ref):
             return None
 
     view = get_request(
-        "sync-001", FakeSyncStore([SYNC_001]), NoGrants(), APPROVED, lambda: DEMO_NOW
+        "sync-001",
+        FakeSyncStore([SYNC_001]),
+        NoGrants(),
+        APPROVED,
+        DEMO_POLICIES,
+        lambda: DEMO_NOW,
     )
 
     assert view.checks[1].state is CheckState.FAIL
+
+
+class UnreachableGrants:
+    mode = "fake"
+
+    def grant(self, holder_organization_ref, patient_ref, grant_ref):
+        raise GrantsUnavailable(
+            f"the Hospital Node of {holder_organization_ref} could not be reached."
+        )
+
+
+def approved_sync_001(audit) -> FakeSyncStore:
+    store = FakeSyncStore([SYNC_001])
+    decide_request(
+        "sync-001",
+        "usr-olfa",
+        APPROVE,
+        store,
+        FakeReviewers(),
+        FakeGrants(),
+        APPROVED,
+        DEMO_POLICIES,
+        audit,
+        lambda: DEMO_NOW,
+    )
+    return store
+
+
+def test_consent_is_asked_of_the_target_organizations_node():
+    grants = FakeGrants()
+
+    get_request(
+        "sync-001",
+        FakeSyncStore([SYNC_001]),
+        grants,
+        APPROVED,
+        DEMO_POLICIES,
+        lambda: DEMO_NOW,
+    )
+
+    assert grants.asked == [("org-hospital-b", "pat-a", "grant-a-drx")]
+    held_elsewhere = FakeGrants(holder="org-hospital-a")
+    view = get_request(
+        "sync-001",
+        FakeSyncStore([SYNC_001]),
+        held_elsewhere,
+        APPROVED,
+        DEMO_POLICIES,
+        lambda: DEMO_NOW,
+    )
+    assert view.checks[1].state is CheckState.FAIL
+
+
+def test_an_unreachable_holder_makes_approval_impossible():
+    view = get_request(
+        "sync-001",
+        FakeSyncStore([SYNC_001]),
+        UnreachableGrants(),
+        APPROVED,
+        DEMO_POLICIES,
+        lambda: DEMO_NOW,
+    )
+
+    assert view.checks[1].state is CheckState.FAIL
+    with pytest.raises(InvalidDecision):
+        decide_request(
+            "sync-001",
+            "usr-olfa",
+            APPROVE,
+            FakeSyncStore([SYNC_001]),
+            FakeReviewers(),
+            UnreachableGrants(),
+            APPROVED,
+            DEMO_POLICIES,
+            FakeAuditTrail(),
+            lambda: DEMO_NOW,
+        )
+
+
+def test_a_grant_revoked_at_the_holder_stops_an_approved_synchronization():
+    audit = FakeAuditTrail()
+    store = approved_sync_001(audit)
+    revoked = FakeGrants([replace(GRANT_A, revoked=True)])
+
+    result = check_sync_authorization(
+        "dec-sync-001", ASK, store, revoked, audit, lambda: DEMO_NOW
+    )
+
+    assert result.reason is DenialReason.REVOKED
+    event = audit.events()[-1]
+    assert (event.outcome, event.reason, event.organization_refs) == (
+        AuditOutcome.DENIED,
+        "revoked",
+        ("org-governance", "org-hospital-a"),
+    )
+
+
+def test_an_unreachable_holder_authorizes_nothing_and_is_audited():
+    audit = FakeAuditTrail()
+    store = approved_sync_001(audit)
+
+    with pytest.raises(GrantsUnavailable):
+        check_sync_authorization(
+            "dec-sync-001", ASK, store, UnreachableGrants(), audit, lambda: DEMO_NOW
+        )
+
+    event = audit.events()[-1]
+    assert (event.outcome, event.reason) == (AuditOutcome.DENIED, "consent_unavailable")
+
+
+def test_a_denial_before_consent_does_not_ask_the_holder():
+    grants = FakeGrants()
+
+    check_sync_authorization(
+        "dec-x", ASK, FakeSyncStore(), grants, FakeAuditTrail(), lambda: DEMO_NOW
+    )
+
+    assert grants.asked == []

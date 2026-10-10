@@ -25,6 +25,7 @@ from application.hospital_approval import (
     get_hospital_approval,
     list_applications,
 )
+from domain.policy import PolicyHistory
 from domain.hospital_application import ApplicationStatus, HospitalApplication
 from domain.hospital_approval import (
     DecisionDraft,
@@ -85,6 +86,7 @@ def _decision(decision: HospitalApprovalDecision) -> dict:
         "outcome": decision.outcome.value,
         "decided_by_ref": decision.decided_by_ref,
         "decided_at": decision.decided_at.isoformat(),
+        "policy_ref": decision.policy_ref,
         "rationale": decision.rationale,
         "conditions": list(decision.conditions),
     }
@@ -112,6 +114,7 @@ def _detail(
 def create_router(
     store: HospitalApplicationStore,
     reviewers: ReviewerDirectory,
+    policies: PolicyHistory,
     audit: AuditTrail,
     clock: Callable[[], datetime],
 ) -> APIRouter:
@@ -162,6 +165,7 @@ def create_router(
                 draft,
                 store,
                 reviewers,
+                policies,
                 audit,
                 clock,
             )

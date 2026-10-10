@@ -15,8 +15,10 @@ info:
       grant recorded here is checked by this node's `queryNode`
       (hospital-node-federation.v1.yaml) under the basis
       `patient_access_grant`. It does not reach other nodes: how one
-      patient's consent is propagated to, or governed across, every node
-      holding their records is OPEN (Governance consent governance, HC-136).
+      patient's consent is propagated to every node holding their records
+      is OPEN. The Governance Node reads it, through `listAccessGrants`,
+      when it evaluates a synchronization relying on it (HC-136); it keeps
+      no copy, and a revocation here stops that synchronization.
     - **Revocation is a recorded state, not a deletion.** A revoked grant
       stays listed with `revoked_at`, and the node denies any later query
       citing it.

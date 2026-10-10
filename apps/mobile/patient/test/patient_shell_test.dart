@@ -31,6 +31,25 @@ void main() {
     expect(find.text('MOCKED'), findsOneWidget);
   });
 
+    expect(find.text('Historique des médicaments'), findsOneWidget);
+    expect(find.text('Coagulix'), findsOneWidget);
+    expect(find.text('Tensiorel'), findsOneWidget);
+    expect(find.text('ACTIF'), findsOneWidget);
+    expect(find.text('TERMINÉ'), findsOneWidget);
+    expect(find.text('Résultats de laboratoire'), findsOneWidget);
+    expect(find.text('Bilan avant traitement'), findsOneWidget);
+
+    await tester.tap(find.text('Bilan avant traitement'));
+    await tester.pumpAndSettle();
+    expect(find.text('Hémoglobine'), findsOneWidget);
+    expect(find.text('12,6 g/dL'), findsOneWidget);
+    expect(find.text('DÉMO D1'), findsOneWidget);
+    expect(find.text('Hôpitaux et médecins'), findsOneWidget);
+    expect(find.text('Dr Inès Chaabane'), findsOneWidget);
+    expect(find.text('Dr Youssef Gharbi'), findsOneWidget);
+    expect(find.text('Cabinet médical Dr Hatem Bouzid'), findsOneWidget);
+  });
+
   testWidgets('renders the federated authorized timeline fixtures', (
     tester,
   ) async {
@@ -43,6 +62,12 @@ void main() {
     expect(find.text('Hôpital Carthage'), findsOneWidget);
     expect(find.text('Laboratoire El Amal'), findsOneWidget);
     expect(find.text('AUTORISÉ'), findsNWidgets(3));
+
+    await tester.tap(find.text('Consultation de suivi'));
+    await tester.pumpAndSettle();
+    expect(find.text('Organisation'), findsOneWidget);
+    expect(find.text('Hôpital Carthage'), findsNWidgets(2));
+    expect(find.text('DÉMO D1'), findsOneWidget);
   });
 
   testWidgets('navigates between shell destinations', (tester) async {

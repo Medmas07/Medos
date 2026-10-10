@@ -205,6 +205,79 @@ export interface ControlledResultSummary {
   provenance: string
 }
 
+/**
+ * A SciAgents investigation (HC-102), shaped like `Investigation` of the HC-170
+ * contract (`contracts/api/sciagents/scientific-investigation.v1.yaml`) but
+ * read from the HC-005 fixtures. SciAgents is external: at D1 nothing is sent
+ * to it, and its output is a research lead, never clinical data.
+ */
+export interface SciAgentsInvestigation {
+  id: string
+  projectId: string
+  /** `requested_by`: the researcher, by opaque reference. */
+  requestedById: string
+  question: string
+  /** BCP 47 tag of the question. */
+  language: string | null
+  /** Exactly two non-identifying biomedical concepts mapped to SciAgents keywords. */
+  concepts: { label: string }[]
+  /** Local fixture context displayed by HC-102; HC-170 v1.1 never sends it upstream. */
+  controlledResultContext: { controlledResultId: string; summary: string }[]
+  status: 'queued' | 'running' | 'completed' | 'failed'
+  createdAt: string
+  updatedAt: string
+  clinicalUse: 'not_for_clinical_decisions'
+  /** Present only when `status` is `completed`. */
+  result: SciAgentsResult | null
+  /** Present only when `status` is `failed`. */
+  error: { code: 'upstream_unavailable' | 'upstream_error' | 'timeout' | 'rejected_by_upstream'; message: string; retryable: boolean } | null
+  provenance: SciAgentsProvenance
+}
+
+export interface SciAgentsResult {
+  outcome: 'findings' | 'empty'
+  hypotheses: SciAgentsHypothesis[]
+  evidence: SciAgentsFinding[]
+  contradictions: SciAgentsFinding[]
+  citations: SciAgentsCitation[]
+}
+
+export interface SciAgentsHypothesis {
+  id: string
+  statement: string
+  /** As reported by SciAgents, mapped to three levels; null when not reported. */
+  confidence: 'low' | 'moderate' | 'high' | null
+  evidenceIds: string[]
+  contradictionIds: string[]
+}
+
+/** A piece of evidence or a contradiction, with the citations it rests on. */
+export interface SciAgentsFinding {
+  id: string
+  summary: string
+  citationIds: string[]
+}
+
+export interface SciAgentsCitation {
+  id: string
+  kind: 'publication' | 'controlled_result' | 'other'
+  title: string
+  source: string
+  /** The cited controlled result, for a `controlled_result` citation (the contract's `identifier`). */
+  controlledResultId: string | null
+  url: string | null
+}
+
+export interface SciAgentsProvenance {
+  provider: { name: 'SciAgents'; version: string | null }
+  adapter: { name: string; version: string }
+  /** True when the investigation comes from fixtures rather than SciAgents. */
+  mocked: boolean
+  upstreamRequestRef: string | null
+  /** French note on where the investigation comes from. */
+  note: string
+}
+
 export interface PortalNotification {
   id: string
   recipientId: string
@@ -266,6 +339,8 @@ export interface ResearchSnapshot {
   results: ControlledResultSummary[]
   /** Notebooks of the researcher's projects, with session edits and simulated runs (HC-099). */
   notebooks: Notebook[]
+  /** SciAgents investigations of the researcher's projects (HC-102), MOCKED. */
+  investigations: SciAgentsInvestigation[]
   pages: PortalPage[]
   notifications: PortalNotification[]
 }

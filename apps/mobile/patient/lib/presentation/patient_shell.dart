@@ -268,6 +268,138 @@ class _DashboardContent extends StatelessWidget {
             trailing: const _StatusPill(label: 'MOCKED'),
           ),
         ),
+        const SizedBox(height: 20),
+        Text(
+          'Historique des médicaments',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 10),
+        const _MedicationHistorySection(),
+        const SizedBox(height: 20),
+        Text(
+          'Résultats de laboratoire',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 10),
+        const _LaboratoryHistorySection(),
+        const SizedBox(height: 20),
+        Text(
+          'Hôpitaux et médecins',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 10),
+        const _CareHistorySection(),
+      ],
+    );
+  }
+}
+
+class _MedicationHistorySection extends StatelessWidget {
+  const _MedicationHistorySection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        for (final medication in demoMedications)
+          Card(
+            child: ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: PatientColors.brandSoft,
+                child: Icon(Icons.medication_outlined, color: PatientColors.brand),
+              ),
+              title: Text(medication.name),
+              subtitle: Text(
+                '${medication.period}\n${medication.organization}',
+              ),
+              isThreeLine: true,
+              trailing: _StatusPill(label: medication.status.toUpperCase()),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _LaboratoryHistorySection extends StatelessWidget {
+  const _LaboratoryHistorySection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        for (final report in demoLabReports)
+          Card(
+            child: ExpansionTile(
+              leading: const CircleAvatar(
+                backgroundColor: PatientColors.brandSoft,
+                child: Icon(Icons.biotech_outlined, color: PatientColors.brand),
+              ),
+              title: Text(report.title),
+              subtitle: Text('${report.date} · ${report.organization}'),
+              trailing: const _StatusPill(label: 'AUTORISÉ'),
+              childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              children: [
+                for (final result in report.results)
+                  _LabResultRow(result: result),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: _StatusPill(label: 'DÉMO D1'),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _LabResultRow extends StatelessWidget {
+  const _LabResultRow({required this.result});
+
+  final CanonicalLabResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Expanded(child: Text(result.test)),
+          Text(
+            '${result.value} ${result.unit}',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(width: 10),
+          Text(result.flag, style: const TextStyle(color: PatientColors.muted)),
+        ],
+      ),
+    );
+  }
+}
+
+class _CareHistorySection extends StatelessWidget {
+  const _CareHistorySection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        for (final encounter in demoCareHistory)
+          Card(
+            child: ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: PatientColors.brandSoft,
+                child: Icon(Icons.local_hospital_outlined, color: PatientColors.brand),
+              ),
+              title: Text(encounter.physician),
+              subtitle: Text(
+                '${encounter.date} · ${encounter.specialty}\n${encounter.organization}',
+              ),
+              isThreeLine: true,
+              trailing: const _StatusPill(label: 'AUTORISÉ'),
+            ),
+          ),
       ],
     );
   }
@@ -445,31 +577,87 @@ class _TimelineEventCard extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(event.date, style: const TextStyle(color: PatientColors.muted)),
-                    const SizedBox(height: 4),
-                    Text(event.title, style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 4),
-                    Text(event.organization, style: const TextStyle(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 8),
-                    Text(event.summary),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        _StatusPill(label: event.kind),
-                        const SizedBox(width: 8),
-                        const _StatusPill(label: 'AUTORISÉ'),
-                      ],
-                    ),
-                  ],
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () => _showEventDetail(context),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(event.date, style: const TextStyle(color: PatientColors.muted)),
+                      const SizedBox(height: 4),
+                      Text(event.title, style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 4),
+                      Text(event.organization, style: const TextStyle(fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 8),
+                      Text(event.summary),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          _StatusPill(label: event.kind),
+                          const SizedBox(width: 8),
+                          const _StatusPill(label: 'AUTORISÉ'),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  void _showEventDetail(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+          children: [
+            Text(event.title, style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: 8),
+            Text(event.date, style: const TextStyle(color: PatientColors.muted)),
+            const SizedBox(height: 20),
+            _DetailRow(label: 'Organisation', value: event.organization),
+            _DetailRow(label: 'Type', value: event.kind),
+            _DetailRow(label: 'Resume', value: event.summary),
+            const SizedBox(height: 12),
+            const Row(
+              children: [
+                _StatusPill(label: 'AUTORISÉ'),
+                SizedBox(width: 8),
+                _StatusPill(label: 'DÉMO D1'),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(color: PatientColors.muted)),
+          const SizedBox(height: 3),
+          Text(value, style: Theme.of(context).textTheme.titleMedium),
         ],
       ),
     );

@@ -13,7 +13,6 @@ def test_serves_openapi_document():
 
 
 def test_exposes_only_documented_governance_node_routes():
-    # Policy and consent evaluation (HC-135, HC-136) are PLANNED.
     assert set(client.get("/openapi.json").json()["paths"]) == {
         "/health",
         "/v1/hospital-applications",
@@ -30,6 +29,8 @@ def test_exposes_only_documented_governance_node_routes():
         "/v1/research-authorizations/check",
         "/v1/audit/events",
         "/v1/audit/events/{event_ref}",
+        "/v1/policies",
+        "/v1/policies/{policy_ref}",
     }
 
 

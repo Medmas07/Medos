@@ -64,3 +64,137 @@ const demoTimeline = <CanonicalTimelineEvent>[
     kind: 'Consultation',
   ),
 ];
+
+class CanonicalMedication {
+  const CanonicalMedication({
+    required this.name,
+    required this.code,
+    required this.organization,
+    required this.period,
+    required this.status,
+  });
+
+  final String name;
+  final String code;
+  final String organization;
+  final String period;
+  final String status;
+}
+
+const demoMedications = <CanonicalMedication>[
+  CanonicalMedication(
+    name: 'Coagulix',
+    code: 'MED-COAGULIX',
+    organization: 'Hôpital Carthage',
+    period: 'Actif depuis mai 2025',
+    status: 'Actif',
+  ),
+  CanonicalMedication(
+    name: 'Tensiorel',
+    code: 'MED-TENSIOREL',
+    organization: 'Clinique Les Jasmins',
+    period: 'Terminé en janvier 2025',
+    status: 'Terminé',
+  ),
+];
+
+class CanonicalLabResult {
+  const CanonicalLabResult({
+    required this.test,
+    required this.value,
+    required this.unit,
+    required this.referenceRange,
+    required this.flag,
+  });
+
+  final String test;
+  final String value;
+  final String unit;
+  final String referenceRange;
+  final String flag;
+}
+
+class CanonicalLabReport {
+  const CanonicalLabReport({
+    required this.date,
+    required this.title,
+    required this.organization,
+    required this.results,
+  });
+
+  final String date;
+  final String title;
+  final String organization;
+  final List<CanonicalLabResult> results;
+}
+
+const demoLabReports = <CanonicalLabReport>[
+  CanonicalLabReport(
+    date: '20 mai 2026',
+    title: 'Bilan avant traitement',
+    organization: 'Hôpital Carthage',
+    results: [
+      CanonicalLabResult(
+        test: 'Hémoglobine',
+        value: '12,6',
+        unit: 'g/dL',
+        referenceRange: '12,0–16,0',
+        flag: 'Normal',
+      ),
+      CanonicalLabResult(
+        test: 'Plaquettes',
+        value: '245',
+        unit: 'G/L',
+        referenceRange: '150–400',
+        flag: 'Normal',
+      ),
+      CanonicalLabResult(
+        test: 'Créatinine',
+        value: '11,4',
+        unit: 'mg/L',
+        referenceRange: '6,0–12,0',
+        flag: 'Normal',
+      ),
+    ],
+  ),
+];
+
+class CanonicalCareEncounter {
+  const CanonicalCareEncounter({
+    required this.date,
+    required this.organization,
+    required this.physician,
+    required this.specialty,
+    required this.summary,
+  });
+
+  final String date;
+  final String organization;
+  final String physician;
+  final String specialty;
+  final String summary;
+}
+
+const demoCareHistory = <CanonicalCareEncounter>[
+  CanonicalCareEncounter(
+    date: '20 mai 2026',
+    organization: 'Hôpital Régional Oued Zitoun',
+    physician: 'Dr Inès Chaabane',
+    specialty: 'Médecine interne',
+    summary: 'Consultation de médecine interne et bilan avant traitement.',
+  ),
+  CanonicalCareEncounter(
+    date: '14 mars 2026',
+    organization: 'Hôpital Universitaire Bab Ennour',
+    physician: 'Dr Youssef Gharbi',
+    specialty: 'Cardiologie',
+    summary: 'Suivi cardiologique et recommandations de prévention.',
+  ),
+  CanonicalCareEncounter(
+    date: '08 janvier 2026',
+    organization: 'Cabinet médical Dr Hatem Bouzid',
+    physician: 'Dr Hatem Bouzid',
+    specialty: 'Médecine générale',
+    summary: 'Consultation de suivi avec le médecin traitant.',
+  ),
+];

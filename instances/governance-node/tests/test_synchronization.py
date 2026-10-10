@@ -29,6 +29,7 @@ from domain.synchronization import (
     max_approved_days,
     status_at,
 )
+from tests.test_policy import DEMO_POLICY
 from tests.conftest import DEMO_NOW
 
 MEDS_LABS = frozenset({ScopeItem.MEDICATIONS, ScopeItem.LAB_REPORTS})
@@ -51,7 +52,7 @@ GRANT_A = PatientGrant(
     datetime.fromisoformat("2026-10-24T09:00:00+01:00"),
 )
 APPROVED_ORGS = frozenset({"org-hospital-a", "org-hospital-b", "org-private-practice"})
-CONTEXT = ReviewContext(APPROVED_ORGS, GRANT_A, DEMO_NOW)
+CONTEXT = ReviewContext(APPROVED_ORGS, GRANT_A, DEMO_NOW, DEMO_POLICY)
 OLFA = Reviewer("usr-olfa", "governance_reviewer", "org-governance")
 APPROVE_13 = SyncDecisionDraft(
     Outcome.APPROVED, "Finalité de soins, autorisation active.", (), 13, False
@@ -93,7 +94,7 @@ def test_without_a_grant_the_requested_duration_applies():
 @pytest.mark.parametrize(
     "grant, message",
     [
-        (None, "Grant grant-a-drx is unknown to the Governance Node."),
+        (None, "Grant grant-a-drx is unknown to the Hospital Node of org-hospital-b."),
         (replace(GRANT_A, revoked=True), "Grant grant-a-drx was revoked."),
         (
             replace(GRANT_A, expires_at=DEMO_NOW - timedelta(days=1)),
@@ -160,7 +161,7 @@ def test_approval_is_a_temporary_authorization():
 
 
 def test_rejection_is_always_possible_even_when_checks_fail():
-    context = ReviewContext(frozenset(), None, DEMO_NOW)
+    context = ReviewContext(frozenset(), None, DEMO_NOW, DEMO_POLICY)
 
     decision, _ = decide(SYNC_001, None, OLFA, REJECT, context)
 

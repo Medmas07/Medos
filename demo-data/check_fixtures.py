@@ -160,6 +160,21 @@ def check(print_proof_hashes: bool = False) -> list[str]:
         for variable in project["dataScope"]["variables"]:
             if not VARIABLE_NAME.fullmatch(variable):
                 errors.append(f"{project['id']}: variable {variable!r} is not a contract name")
+    # Governance policy versions (HC-135): numbered in order, each effective after the
+    # previous one; every decision cites the version in effect when it was decided.
+    policies = governance["policies"]
+    for number, (policy, nxt) in enumerate(zip(policies, policies[1:] + [None]), start=1):
+        if policy["version"] != number:
+            errors.append(f"{policy['id']}: policy versions must be numbered 1, 2, ...")
+        if nxt and datetime.fromisoformat(nxt["effectiveAt"]) <= datetime.fromisoformat(policy["effectiveAt"]):
+            errors.append(f"{nxt['id']}: must take effect after {policy['id']}")
+    by_policy = {p["id"]: p for p in policies}
+    for decision in governance["decisions"]:
+        decided = datetime.fromisoformat(decision["decidedAt"])
+        in_effect = [p for p in policies if datetime.fromisoformat(p["effectiveAt"]) <= decided]
+        if not in_effect or in_effect[-1]["id"] != decision["policyId"]:
+            errors.append(f"{decision['id']}: does not cite the policy in effect when decided")
+
     requests = {r["id"]: r for r in governance["researchAccessRequests"]}
     for decision in governance["decisions"]:
         authorization = decision.get("researchAuthorization")
@@ -177,8 +192,27 @@ def check(print_proof_hashes: bool = False) -> list[str]:
             errors.append(f"{decision['id']}: authorizes an organization outside its project")
         if not set(authorization["approvedVariables"]) <= set(project["dataScope"]["variables"]):
             errors.append(f"{decision['id']}: authorizes a variable outside its project")
-        if authorization["minimumCellSize"] < 10:
-            errors.append(f"{decision['id']}: minimum cell size below the demo policy of 10")
+        floor = by_policy[decision["policyId"]]["research"]["minimumCellSize"]
+        if authorization["minimumCellSize"] < floor:
+            errors.append(f"{decision['id']}: minimum cell size below its policy's {floor}")
+
+    # SciAgents investigations (contracts/api/sciagents/, HC-170): every reference
+    # resolves within the same investigation, and only controlled results that
+    # passed their disclosure check are sent as context or cited.
+    released = {r["id"] for r in files["research.json"]["controlledResults"] if r["disclosureCheck"] == "passed"}
+    for investigation in files["research.json"]["sciAgentsInvestigations"]:
+        targets = {
+            key: {item["id"] for item in investigation[part]}
+            for key, part in (("evidenceIds", "evidence"), ("contradictionIds", "contradictions"), ("citationIds", "citations"))
+        }
+        for item in investigation["hypotheses"] + investigation["evidence"] + investigation["contradictions"]:
+            for key, own in targets.items():
+                errors.extend(
+                    f"{item['id']}.{key}: {ref!r} is not in {investigation['id']}" for ref in item.get(key, []) if ref not in own
+                )
+        cited = [c["controlledResultId"] for c in investigation["citations"] if c.get("controlledResultId")]
+        context = [c["controlledResultId"] for c in investigation.get("controlledResultContext", [])]
+        errors.extend(f"{investigation['id']}: {ref!r} is not a released controlled result" for ref in cited + context if ref not in released)
 
     # Canonical scenario invariants (docs/planning/demo-scenario.md).
     roles = manifest["scenarioRoles"]

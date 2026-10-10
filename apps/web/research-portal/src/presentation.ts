@@ -9,8 +9,19 @@ import type {
 } from './services/dashboard'
 import type { ExecutionPhaseId } from './services/executions'
 import type { RequestState, TrackingStepId } from './services/requestTracking'
+import type { WithheldReason } from './services/results'
 import type { UnavailableReason } from './services/workspace'
-import type { CellCheck, CellRun, ComputeJob, ComputeJobStage, PageStatus, ResearchAccessRequest } from './types/research'
+import type {
+  CellCheck,
+  CellRun,
+  ComputeJob,
+  ComputeJobStage,
+  PageStatus,
+  ResearchAccessRequest,
+  SciAgentsCitation,
+  SciAgentsHypothesis,
+  SciAgentsInvestigation,
+} from './types/research'
 
 export const requestStatusDisplay: Record<
   ResearchAccessRequest['status'] | 'not_submitted' | 'expired',
@@ -193,6 +204,40 @@ export const unavailableReasonDisplay: Record<UnavailableReason, { label: string
   expired: { label: 'Autorisation expirée', tone: 'warning' },
 }
 
+/** An aggregate cell: numbers in French notation with the column's `decimals`, text as is. */
+export function formatCell(value: string | number, decimals = 0): string {
+  if (typeof value !== 'number') return value
+  return new Intl.NumberFormat('fr-TN', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(value)
+}
+
+/** The most decimals among a column's numbers, so that its values align. */
+export function columnDecimals(values: (string | number)[]): number {
+  return Math.max(0, ...values.map((v) => (typeof v === 'number' ? (String(v).split('.')[1]?.length ?? 0) : 0)))
+}
+
+export const withheldReasonDisplay: Record<WithheldReason, { label: string; tone: Tone; detail: string }> = {
+  in_progress: {
+    label: 'En cours',
+    tone: 'info',
+    detail: "Le résultat n'est publié qu'après l'agrégation et le contrôle de divulgation.",
+  },
+  failed: {
+    label: 'Échouée',
+    tone: 'danger',
+    detail: "Une étape a échoué : aucun résultat, même partiel, n'est publié.",
+  },
+  no_release: {
+    label: 'Sans ctd.release',
+    tone: 'neutral',
+    detail: "Le code n'appelle pas ctd.release : rien n'a quitté les Hospital Nodes.",
+  },
+  not_simulated: {
+    label: 'Non calculé',
+    tone: 'demo',
+    detail: "Le code modifié ou nouveau n'est pas interprété dans cette démonstration : aucun agrégat n'est calculé.",
+  },
+}
+
 export const executionPhaseDisplay: Record<ExecutionPhaseId, { title: string; description: string }> = {
   submitted: {
     title: 'Soumise',
@@ -214,4 +259,32 @@ export const executionPhaseDisplay: Record<ExecutionPhaseId, { title: string; de
     title: 'Terminée',
     description: "Contrôle de divulgation (effectif minimal) avant toute mise à disposition.",
   },
+}
+
+export const investigationStatusDisplay: Record<SciAgentsInvestigation['status'], { label: string; tone: Tone }> = {
+  queued: { label: 'En file', tone: 'neutral' },
+  running: { label: 'En cours', tone: 'info' },
+  completed: { label: 'Terminée', tone: 'success' },
+  failed: { label: 'Échouée', tone: 'danger' },
+}
+
+/** Confidence as SciAgents reports it: never a validation of the hypothesis. */
+export const confidenceDisplay: Record<NonNullable<SciAgentsHypothesis['confidence']> | 'unknown', { label: string; tone: Tone }> = {
+  low: { label: 'Confiance faible', tone: 'neutral' },
+  moderate: { label: 'Confiance modérée', tone: 'info' },
+  high: { label: 'Confiance élevée', tone: 'info' },
+  unknown: { label: 'Confiance non communiquée', tone: 'neutral' },
+}
+
+export const citationKindLabels: Record<SciAgentsCitation['kind'], string> = {
+  publication: 'Publication',
+  controlled_result: 'Résultat contrôlé',
+  other: 'Autre source',
+}
+
+export const investigationErrorLabels: Record<NonNullable<SciAgentsInvestigation['error']>['code'], string> = {
+  upstream_unavailable: 'SciAgents indisponible',
+  upstream_error: 'Erreur de SciAgents',
+  timeout: "Délai d'attente dépassé",
+  rejected_by_upstream: 'Refusée par SciAgents',
 }

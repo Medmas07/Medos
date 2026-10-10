@@ -9,6 +9,7 @@ from adapters.outbound.in_memory_hospital_applications import SeedError
 from adapters.outbound.in_memory_research import InMemoryResearchStore
 from domain.hospital_approval import Outcome
 from domain.research import NotUnderReview, Population, decide
+from tests.test_policy import DEMO_POLICY
 from tests.conftest import DEMO_DATA, DEMO_NOW
 from tests.test_research import APPROVE, APPROVED_ORGS, OLFA, REJECT
 
@@ -73,7 +74,9 @@ def test_concurrent_decisions_record_only_one():
     recorded = []
 
     def attempt(draft):
-        decision, decided = decide(rar_002, None, OLFA, draft, APPROVED_ORGS, DEMO_NOW)
+        decision, decided = decide(
+            rar_002, None, OLFA, draft, APPROVED_ORGS, DEMO_POLICY, DEMO_NOW
+        )
         try:
             s.record(decided, decision)
             recorded.append(decision)

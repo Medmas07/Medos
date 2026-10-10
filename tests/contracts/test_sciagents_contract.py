@@ -61,18 +61,63 @@ def test_results_are_research_use_only():
     "mutate",
     [
         lambda r: r.update(patient_ref="patient-a"),
-        lambda r: r["controlled_results"][0].update(records=[{"hba1c": 8.1}]),
+        lambda r: r.update(controlled_results=[{"summary": "patient data"}]),
+        lambda r: r["concepts"][0].update(patient_ref="patient-a"),
+        lambda r: r.update(concepts=[{"label": "only-one"}]),
+        lambda r: r.update(
+            concepts=[{"label": "one"}, {"label": "two"}, {"label": "three"}]
+        ),
         lambda r: r.update(requested_by="Aymen Researcher"),
     ],
-    ids=["patient_reference", "raw_records_in_context", "name_as_reference"],
+    ids=[
+        "patient_reference",
+        "controlled_result_content",
+        "patient_reference_in_concept",
+        "one_concept",
+        "three_concepts",
+        "name_as_reference",
+    ],
 )
 def test_requests_cannot_carry_clinical_or_identifying_data(mutate):
     assert not request_schema.is_valid(changed(REQUEST, mutate))
 
 
 def test_minimal_request_is_valid():
-    minimal = {k: REQUEST[k] for k in ("project_ref", "requested_by", "question")}
+    minimal = {
+        k: REQUEST[k] for k in ("project_ref", "requested_by", "question", "concepts")
+    }
     assert request_schema.is_valid(minimal)
+
+
+def test_contract_matches_the_upstream_keyword_pair_boundary():
+    assert len(REQUEST["concepts"]) == 2
+    assert [concept["label"] for concept in REQUEST["concepts"]] == [
+        "Metformin",
+        "Diabetes",
+    ]
+    assert "controlled_results" not in REQUEST
+
+
+def test_contract_version_records_the_hc170_revision():
+    assert CONTRACT["info"]["version"] == "1.1.0"
+    assert COMPLETED["contract_version"] == "1.1"
+
+
+def test_completed_result_has_explicit_findings_or_empty_outcome():
+    assert COMPLETED["result"]["outcome"] == "findings"
+    empty = changed(
+        COMPLETED,
+        lambda d: d.update(
+            result={
+                "outcome": "empty",
+                "hypotheses": [],
+                "evidence": [],
+                "contradictions": [],
+                "citations": [],
+            }
+        ),
+    )
+    assert investigation_schema.is_valid(empty)
 
 
 def _unresolved_references(result: dict) -> set[str]:
@@ -94,4 +139,4 @@ def test_example_result_references_resolve():
 
 def test_reference_check_detects_dangling_citation():
     broken = changed(COMPLETED["result"], lambda r: r["citations"].pop())
-    assert _unresolved_references(broken) == {"inv-001-c2"}
+    assert _unresolved_references(broken) == {"inv-001-c1"}

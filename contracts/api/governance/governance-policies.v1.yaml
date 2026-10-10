@@ -1,0 +1,248 @@
+openapi: 3.1.0
+info:
+  title: Governance Node Policies
+  version: 1.0.0
+  description: |
+    Contract HC-135, version 1. The Governance / Ethics Authority's
+    policy: the rules every governance decision applies, as versioned
+    data. The Governance Node evaluates each review and decision under the
+    version in effect at that moment, and every decision cites it
+    (`policy_ref` in hospital-approval.v1.yaml,
+    synchronization-requests.v1.yaml, and research-requests.v1.yaml).
+
+    Boundary rules carried by this contract:
+
+    - **The Authority's policy.** The policy belongs to the Governance
+      Node. Company-managed products may display it; they never set it.
+    - **Versioned, effective-dated, immutable.** A version takes effect at
+      `effective_from` and stays in effect until the next one. A version is
+      never changed once published.
+    - **No retroactive effect.** A new version applies to the reviews and
+      decisions that follow it. It never changes, extends, or revokes a
+      decision already made, which keeps citing its own version.
+    - **Deterministic.** Each rule is a value the Node applies the same way
+      every time. No AI and no clinical judgment is involved.
+    - **Stricter only.** A policy may narrow the limits the governance
+      contracts document, never widen them: a rationale of at least 20
+      characters, a synchronization of at most 365 days, a research
+      validity of at most 12 months, and a minimum cell size of at least 10.
+      The demo version 1 sits exactly on those limits.
+
+    Rules in this version:
+
+    - `review.minimum_rationale_length`: the shortest rationale, trimmed,
+      for every decision.
+    - `synchronization.maximum_duration_days`: the longest temporary
+      synchronization authorization. An approval never exceeds it.
+    - `synchronization.consent_bases`: the consent bases accepted, and how
+      each is checked: `verified` by the Node itself (only a patient grant)
+      or `manual`, confirmed by the reviewer outside the Node. A basis not
+      listed fails the consent check; `none` is never accepted.
+    - `research.maximum_validity_months`: the longest research access
+      authorization.
+    - `research.minimum_cell_size`: the smallest minimum output cell size
+      an approval may set.
+
+    Not decided by this version, and OPEN: who writes and approves a new
+    version, and through which interface (the demo runtime reads its
+    versions from fictional data at startup); how readers are
+    authenticated; and rules beyond those listed (for example purposes or
+    variables allowed).
+
+    Status: implemented by the Governance Node runtime (HC-135), which reads
+    one fictional demo policy version at startup. It is demo policy, not a
+    validated legal or ethical framework. Readers are not authenticated.
+paths:
+  /v1/policies:
+    get:
+      operationId: listGovernancePolicies
+      summary: List the policy versions, the latest first, with their status now.
+      responses:
+        "200":
+          description: Every version. Exactly one is `in_effect` once the first version took effect.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PolicyList"
+              examples:
+                demo:
+                  summary: Fictional demo — the one demo policy version, in effect.
+                  value:
+                    notice: Fictional demo governance policy, read by the Governance Node at startup. It is demo policy, not a validated legal or ethical framework.
+                    policies:
+                      - policy_ref: pol-governance-v1
+                        version: 1
+                        effective_from: "2025-01-01T00:00:00+01:00"
+                        status: in_effect
+                        title: Politique de gouvernance de démonstration, version 1
+                        rules:
+                          review:
+                            minimum_rationale_length: 20
+                          synchronization:
+                            maximum_duration_days: 365
+                            consent_bases:
+                              patient_grant: verified
+                              signed_consent_form: manual
+                              emergency_override: manual
+                          research:
+                            maximum_validity_months: 12
+                            minimum_cell_size: 10
+  /v1/policies/{policy_ref}:
+    parameters:
+      - name: policy_ref
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getGovernancePolicy
+      summary: One policy version, as a decision cites it.
+      responses:
+        "200":
+          description: The version and its status now.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Policy"
+              examples:
+                v1:
+                  summary: Fictional demo — the version every demo decision cites.
+                  value:
+                    policy_ref: pol-governance-v1
+                    version: 1
+                    effective_from: "2025-01-01T00:00:00+01:00"
+                    status: in_effect
+                    title: Politique de gouvernance de démonstration, version 1
+                    rules:
+                      review:
+                        minimum_rationale_length: 20
+                      synchronization:
+                        maximum_duration_days: 365
+                        consent_bases:
+                          patient_grant: verified
+                          signed_consent_form: manual
+                          emergency_override: manual
+                      research:
+                        maximum_validity_months: 12
+                        minimum_cell_size: 10
+        "404":
+          description: No version has this reference.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                unknown:
+                  value:
+                    type: about:blank
+                    title: Policy not found
+                    status: 404
+                    detail: No governance policy pol-unknown.
+                    code: policy_not_found
+components:
+  schemas:
+    PolicyList:
+      type: object
+      additionalProperties: false
+      required: [notice, policies]
+      properties:
+        notice:
+          type: string
+        policies:
+          type: array
+          items:
+            $ref: "#/components/schemas/Policy"
+
+    Policy:
+      type: object
+      additionalProperties: false
+      required: [policy_ref, version, effective_from, status, title, rules]
+      properties:
+        policy_ref:
+          type: string
+          pattern: "^pol-[A-Za-z0-9._:-]{1,124}$"
+        version:
+          type: integer
+          minimum: 1
+        effective_from:
+          type: string
+          format: date-time
+        status:
+          description: |
+            `scheduled` before `effective_from`; `in_effect` for the latest
+            version already effective; `superseded` for an earlier one.
+          type: string
+          enum: [scheduled, in_effect, superseded]
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        rules:
+          $ref: "#/components/schemas/Rules"
+
+    Rules:
+      type: object
+      additionalProperties: false
+      required: [review, synchronization, research]
+      properties:
+        review:
+          type: object
+          additionalProperties: false
+          required: [minimum_rationale_length]
+          properties:
+            minimum_rationale_length:
+              type: integer
+              minimum: 20
+              maximum: 2000
+        synchronization:
+          type: object
+          additionalProperties: false
+          required: [maximum_duration_days, consent_bases]
+          properties:
+            maximum_duration_days:
+              type: integer
+              minimum: 1
+              maximum: 365
+            consent_bases:
+              type: object
+              additionalProperties: false
+              minProperties: 1
+              properties:
+                patient_grant:
+                  type: string
+                  enum: [verified, manual]
+                signed_consent_form:
+                  type: string
+                  enum: [manual]
+                emergency_override:
+                  type: string
+                  enum: [manual]
+        research:
+          type: object
+          additionalProperties: false
+          required: [maximum_validity_months, minimum_cell_size]
+          properties:
+            maximum_validity_months:
+              type: integer
+              minimum: 1
+              maximum: 12
+            minimum_cell_size:
+              type: integer
+              minimum: 10
+
+    Problem:
+      description: RFC 9457 problem details.
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+          enum: [policy_not_found]

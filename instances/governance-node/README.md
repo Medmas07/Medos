@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-CONFIRMED Governance / Ethics Authority boundary. Its stack (Python + FastAPI, one process) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED at D2 (HC-130): a FastAPI app with Clean/Hexagonal layers, pinned dependencies, tests, and a liveness `GET /health`. The [hospital approval API](#hospital-approval-api-hc-131) is IMPLEMENTED at D2 (HC-131), over applications and decisions held **in memory**, seeded from fictional demo data: decisions are lost on restart, and the reviewer is declared, not authenticated. The [synchronization request API](#synchronization-request-api-hc-132) and the synchronization authorization check the Federation Service calls are IMPLEMENTED at D2 (HC-132), in memory the same way; patient grants are checked against fictional demo grants (**MOCKED**). The [research access request API](#research-access-request-api-hc-133) and the research authorization check the Research Service calls are IMPLEMENTED at D2 (HC-133), in memory the same way. The [governance audit API](#governance-audit-api-hc-134) is IMPLEMENTED at D2 (HC-134): the Node records the requests it receives, the decisions it records, and every authorization check it answers in its own minimized audit trail, in memory the same way. Policy (HC-135) and consent evaluation (HC-136) are PLANNED. There is no persistence, no authentication, and no ledger adapter. It is not deployed.
+CONFIRMED Governance / Ethics Authority boundary. Its stack (Python + FastAPI, one process) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED at D2 (HC-130): a FastAPI app with Clean/Hexagonal layers, pinned dependencies, tests, and a liveness `GET /health`. The [hospital approval API](#hospital-approval-api-hc-131) is IMPLEMENTED at D2 (HC-131), over applications and decisions held **in memory**, seeded from fictional demo data: decisions are lost on restart, and the reviewer is declared, not authenticated. The [synchronization request API](#synchronization-request-api-hc-132) and the synchronization authorization check the Federation Service calls are IMPLEMENTED at D2 (HC-132), in memory the same way; patient grants are checked against fictional demo grants (**MOCKED**). The [research access request API](#research-access-request-api-hc-133) and the research authorization check the Research Service calls are IMPLEMENTED at D2 (HC-133), in memory the same way. The [governance audit API](#governance-audit-api-hc-134) is IMPLEMENTED at D2 (HC-134): the Node records the requests it receives, the decisions it records, and every authorization check it answers in its own minimized audit trail, in memory the same way. The [governance policy engine](#governance-policy-engine-hc-135) is IMPLEMENTED at D3 (HC-135): the Authority's review rules are a versioned, effective-dated policy, read from fictional data at startup; every review and decision applies the version in effect and every decision cites it. The policy is a fictional demo policy, not a validated legal or ethical framework, and new versions are published by editing the data and restarting. [Consent policy evaluation](#consent-policy-evaluation-hc-136) is IMPLEMENTED at D3 (HC-136): a synchronization's patient grant is evaluated against the grants of the Hospital Node holding it, over real HTTP, when reviewing and again before each exchange; a grant revoked there stops the authorization. The demo Hospital Nodes' grant stores are themselves MOCKED. There is no persistence, no authentication, and no ledger adapter. It is not deployed.
 
 ## Running locally
 
@@ -20,6 +20,8 @@ From this directory (POSIX shell; on Windows activate with `.venv\Scripts\activa
 
 `python main.py` listens on `127.0.0.1:8200`, the ADR-0003 port that the Federation Service already calls (`FEDERATION_GOVERNANCE_URL`). `fastapi dev` and `fastapi run` need `--port 8200`. At startup the Node reads its fictional seed data from the repository's [`demo-data/`](../../demo-data/README.md); set `GOVERNANCE_NODE_DEMO_DATA` to another directory with the same files to change it. A seed file not marked `"fictional": true`, unreadable, or inconsistent stops startup.
 
+Patient grants (HC-136) are asked of the Hospital Nodes listed in [`hospital-nodes.demo.json`](hospital-nodes.demo.json) (Hospital A `8101`, Hospital B `8102`, private practice `8104`); set `GOVERNANCE_HOSPITAL_NODES` to another directory file. Without those nodes running, consent checks fail as unavailable. `GOVERNANCE_GRANTS=fixture` reads the fictional `access.json` instead (**MOCKED**, for demos without Hospital Nodes); any value other than `http` (default) or `fixture` stops startup.
+
 ## Runtime skeleton (HC-130)
 
 IMPLEMENTED at D2. One process, so there is no per-instance configuration file. The identity is the fictional Governance / Ethics Authority of the demo dataset, set in `main.py`: node `node-governance`, organization `org-governance` ([`demo-data/organizations.json`](../../demo-data/organizations.json)). It is not authenticated.
@@ -28,12 +30,13 @@ IMPLEMENTED at D2. One process, so there is no per-instance configuration file. 
 main.py                                   # composition root: identity, seed data, clock, routers
 domain/                                   # NodeIdentity, NodeStatus, HospitalApplication, approval rules,
                                           # synchronization and research requests, checks, authorization,
-                                          # audit events
+                                          # audit events, GovernancePolicy and PolicyHistory
 application/get_node_status.py            # use case; declares capabilities as their APIs land
 application/hospital_approval.py          # HC-131 use cases and their ports
 application/synchronization.py            # HC-132 use cases and their ports
 application/research.py                   # HC-133 use cases and their ports
 application/audit.py                      # HC-134 use cases and the AuditTrail port the others record to
+application/policy.py                     # HC-135 use cases: the policy versions and their status
 adapters/inbound/http/health.py           # GET /health
 adapters/inbound/http/hospital_approval.py
 adapters/inbound/http/synchronization_requests.py
@@ -41,13 +44,17 @@ adapters/inbound/http/sync_authorization.py   # the Federation Service's check
 adapters/inbound/http/research_requests.py
 adapters/inbound/http/research_authorization.py   # the Research Service's check
 adapters/inbound/http/audit_events.py     # GET /v1/audit/events[/{event_ref}]
+adapters/inbound/http/policies.py         # GET /v1/policies[/{policy_ref}]
 adapters/inbound/http/problems.py         # RFC 9457 problem details
 adapters/outbound/in_memory_hospital_applications.py  # store, seeded from demo-data/governance.json
 adapters/outbound/fixture_reviewer_directory.py       # who a reviewer_ref names (demo-data/people.json)
 adapters/outbound/in_memory_synchronization.py        # store, seeded from demo-data/governance.json
-adapters/outbound/fixture_patient_grants.py           # MOCKED: patient grants (demo-data/access.json)
+adapters/outbound/http_patient_grants.py              # HC-136: patient grants from the holder's Hospital Node
+adapters/outbound/fixture_patient_grants.py           # MOCKED, opt-in: patient grants (demo-data/access.json)
+hospital-nodes.demo.json                              # which Hospital Node holds each organization's grants
 adapters/outbound/in_memory_research.py               # store, seeded from governance.json and research.json
 adapters/outbound/in_memory_audit_trail.py            # trail, seeded from governance.json
+adapters/outbound/fixture_policies.py                 # policy versions, read from governance.json
 tests/                                    # domain, use case, adapter, HTTP, and layer-boundary tests
 ```
 
@@ -57,11 +64,12 @@ tests/                                    # domain, use case, adapter, HTTP, and
 {
   "status": "ok",
   "node": "governance-node",
-  "version": "0.5.0",
+  "version": "0.7.0",
   "node_ref": "node-governance",
   "organization_ref": "org-governance",
-  "capabilities": ["hospital_approval", "synchronization", "research", "audit"],
-  "notice": "Governance Node (HC-130 to HC-134). ... Liveness only; not a production health check."
+  "capabilities": ["hospital_approval", "synchronization", "research", "audit", "policy"],
+  "grants": "http",
+  "notice": "Governance Node (HC-130 to HC-135). ... Liveness only; not a production health check."
 }
 ```
 
@@ -86,7 +94,7 @@ IMPLEMENTED at D2. This Node serves [`hospital-approval.v1.yaml`](../../contract
 
 1. The application is in `human_review` and has no decision; otherwise `409 not_awaiting_review`. A decision cannot be changed or recorded twice, even by two concurrent requests.
 2. `reviewer_ref` names a person with the `governance_reviewer` role outside the applicant organization; otherwise `403 reviewer_not_allowed`. An applicant never decides on its own application.
-3. The review rules hold; otherwise `422 invalid_decision` listing every broken rule: a rationale of at least 20 characters once trimmed; findings acknowledged (`findings_acknowledged: true`) when there are any; at least one condition to approve an application with missing documents or unaccepted agreements; no condition on a rejection. Blank conditions are dropped.
+3. The review rules hold; otherwise `422 invalid_decision` listing every broken rule: a rationale of at least the [policy](#governance-policy-engine-hc-135)'s minimum length once trimmed (20 in v1); findings acknowledged (`findings_acknowledged: true`) when there are any; at least one condition to approve an application with missing documents or unaccepted agreements; no condition on a rejection. Blank conditions are dropped.
 
 A malformed body, an unknown or missing field, or a value outside the contract is `400 invalid_request`. The decision reference is `dec-` and the application's suffix (`app-hospital-c` gives `dec-hospital-c`), one decision per application; `decided_at` is the Node's clock, in UTC.
 
@@ -129,17 +137,17 @@ IMPLEMENTED at D2. Hospital Nodes must not synchronize patient data freely: a ho
 **Checks** (`domain/synchronization.py`, the same rules as the Governance Portal's synchronization form, HC-076), evaluated when answering:
 
 - **organizations:** requester and target are distinct and both approved by this Node's own [hospital approvals](#hospital-approval-api-hc-131). Approving Hospital C there makes it eligible here.
-- **consent:** a `patient_grant` must name a grant that exists, is not revoked, has not expired, concerns this patient, and covers the requested scope. `signed_consent_form` and `emergency_override` are `manual`: the Node cannot verify them, so the reviewer must confirm them. `none` fails.
-- **duration:** the approval lasts at most the requested duration and never beyond the patient grant (whole days left). It fails when no day is left.
+- **consent:** a `patient_grant` must name a grant that exists, is not revoked, has not expired, concerns this patient, and covers the requested scope. A basis the [policy](#governance-policy-engine-hc-135) in effect does not accept fails; one it marks `manual` (in v1, `signed_consent_form` and `emergency_override`) cannot be verified by the Node, so the reviewer must confirm it. `none` fails.
+- **duration:** the approval lasts at most the requested duration, never beyond the policy's longest synchronization (365 days in v1) or the patient grant (whole days left). It fails when no day is left.
 
-**Decision rules**, in this order: `409 not_pending` unless the request is pending; `403 reviewer_not_allowed` unless the reviewer is a `governance_reviewer` outside both organizations; `422 invalid_decision` listing every broken rule. Those rules are a rationale of at least 20 characters; for an approval, every check passing (otherwise only a rejection is possible), `manual` checks confirmed, and `approved_days` between 1 and the maximum; for a rejection, no condition and no duration. The decision is `dec-` and the request reference; an approval is valid from the decision for `approved_days`.
+**Decision rules**, in this order: `409 not_pending` unless the request is pending; `403 reviewer_not_allowed` unless the reviewer is a `governance_reviewer` outside both organizations; `422 invalid_decision` listing every broken rule. Those rules are a rationale of at least the policy's minimum length (20 in v1); for an approval, every check passing (otherwise only a rejection is possible), `manual` checks confirmed, and `approved_days` between 1 and the maximum; for a rejection, no condition and no duration. The decision is `dec-` and the request reference; an approval is valid from the decision for `approved_days`.
 
-**Authorization check:** deny by default, with the first failing reason, in this order: `not_found` (unknown, not a synchronization decision, or the request is still pending), `not_approved`, `not_yet_valid`, `expired`, `requester_mismatch`, `patient_mismatch`, `scope_exceeded` (the asked scope must be inside the approved one), and `purpose_mismatch`. An authorization lists the target organization as the only one the requester may query. A denial is a `200` result. Every answer is recorded with `actor_ref` in the [governance audit trail](#governance-audit-api-hc-134) before it is given, and `revoked` is never returned because decisions cannot be revoked yet.
+**Authorization check:** deny by default, with the first failing reason, in this order: `not_found` (unknown, not a synchronization decision, or the request is still pending), `not_approved`, `not_yet_valid`, `expired`, `requester_mismatch`, `patient_mismatch`, `scope_exceeded` (the asked scope must be inside the approved one), and `purpose_mismatch`. An authorization lists the target organization as the only one the requester may query. A denial is a `200` result. Every answer is recorded with `actor_ref` in the [governance audit trail](#governance-audit-api-hc-134) before it is given, and, last, `revoked`: the patient grant the approval relies on is no longer active at the Hospital Node holding it ([HC-136](#consent-policy-evaluation-hc-136)). If that node cannot answer, the check answers `503 consent_unavailable` and nothing is authorized. A decision itself cannot be revoked yet.
 
 **Storage and sources, at D2:**
 
 - `InMemorySynchronizationStore` holds requests and decisions. It is seeded from the fictional [`demo-data/governance.json`](../../demo-data/governance.json), checks each decided request against its decision, and records a decision atomically. Everything recorded through the API is **lost on restart**.
-- `FixturePatientGrantDirectory` is **MOCKED**. Patient grants are recorded and enforced by each Hospital Node ([`patient-access-grants.v1.yaml`](../../contracts/api/patient-access/patient-access-grants.v1.yaml), HC-115), not here, and how Governance learns of them is OPEN (consent governance, HC-136). Until then it reads the fictional [`demo-data/access.json`](../../demo-data/access.json), read-only: a grant recorded or revoked on a Hospital Node at runtime is not seen.
+- Patient grants are recorded and enforced by each Hospital Node ([`patient-access-grants.v1.yaml`](../../contracts/api/patient-access/patient-access-grants.v1.yaml), HC-115), not here. Since HC-136 the Node asks the Hospital Node holding a grant over HTTP ([consent policy evaluation](#consent-policy-evaluation-hc-136)). `FixturePatientGrantDirectory` (`GOVERNANCE_GRANTS=fixture`, the default of `create_app` in tests) is **MOCKED**: it reads the fictional [`demo-data/access.json`](../../demo-data/access.json), read-only, and never sees a grant recorded or revoked on a Hospital Node at runtime.
 - `submitted_by_ref` and `reviewer_ref` are declared by the caller, **not authenticated**.
 
 Demo, demo step 20, with the Node running:
@@ -197,8 +205,8 @@ IMPLEMENTED at D2. Research uses Compute-to-Data: a project asks the Authority f
 1. `409 not_under_review` unless the request is under review.
 2. `403 reviewer_not_allowed` unless the reviewer is a `governance_reviewer` who is neither the submitter nor the principal investigator, and belongs neither to the research organization nor to a participating one.
 3. `422 invalid_decision` listing every broken rule:
-   - a rationale of at least 20 characters;
-   - for an approval: every check passing, at least one eligible organization and only those, at least one requested variable and only those, a validity of 1 to 12 months (calendar months), and a minimum output cell size of at least 10 (D2 demo policy, as in `dec-rar-001`);
+   - a rationale of at least the [policy](#governance-policy-engine-hc-135)'s minimum length (20 in v1);
+   - for an approval: every check passing, at least one eligible organization and only those, at least one requested variable and only those, a validity of 1 month to the policy's longest (12 calendar months in v1), and a minimum output cell size of at least the policy's (10 in v1, as in `dec-rar-001`);
    - for a rejection: nothing authorized and no condition.
 
 An approval only narrows the request: the population stays the one requested. The decision is `dec-` and the request reference.
@@ -289,12 +297,91 @@ The last call lists the authorized check, the decision, and the denied check, no
 
 Not done at D2: the Governance Portal's audit timeline (HC-079) still reads fixtures and local state and does not call this API; persistence, retention, authenticated readers and actors, auditing refused decisions, and anchoring events in a ledger.
 
+## Governance policy engine (HC-135)
+
+IMPLEMENTED at D3. The Governance / Ethics Authority's rules for every decision are a **policy**: versioned data owned by this Node, served by [`governance-policies.v1.yaml`](../../contracts/api/governance/governance-policies.v1.yaml), and applied by a deterministic engine (`domain/policy.py`) in the existing reviews and decisions. No AI or clinical judgment is involved.
+
+| Route | Purpose |
+|---|---|
+| `GET /v1/policies` | Every version, the latest first, with its status now: `scheduled`, `in_effect`, or `superseded`. |
+| `GET /v1/policies/{policy_ref}` | One version, as a decision cites it. `404 policy_not_found`. |
+
+**Rules.** These were constants in the code; they are now the policy's values (v1 keeps the same values, so behavior is unchanged):
+
+| Rule | Applied by | v1 |
+|---|---|---|
+| `review.minimum_rationale_length` | every decision (HC-131 to HC-133) | 20 |
+| `synchronization.maximum_duration_days` | the synchronization `duration` check and `max_approved_days`: an approval never exceeds it | 365 |
+| `synchronization.consent_bases` | the synchronization `consent` check: a basis not listed fails; `verified` (patient grant only) is checked by the Node; `manual` is confirmed by the reviewer | `patient_grant` verified, `signed_consent_form` and `emergency_override` manual |
+| `research.maximum_validity_months` | a research approval's `validity_months` | 12 |
+| `research.minimum_cell_size` | a research approval's `minimum_cell_size` | 10 |
+
+**Engine.**
+
+- **Version in effect.** Each review and decision uses the latest version whose `effective_from` has passed on the Node's clock. Request details show checks under the version in effect when answering.
+- **Cited.** Every decision records `policy_ref`, the version it was decided under, in the three decision contracts (now `1.1.0`). The seed decisions cite `pol-governance-v1` (`policyId` in [`demo-data/governance.json`](../../demo-data/governance.json)), and `check_fixtures.py` verifies each cites the version in effect when it was decided.
+- **No retroactive effect.** A new version never changes, extends, or revokes a decision already made; the authorization checks of HC-132 and HC-133 keep answering from the decision.
+- **Stricter only.** A version may only tighten the limits the contracts document: rationale at least 20, synchronization at most 365 days, research validity at most 12 months, cell size at least 10, `none` never accepted, and only a patient grant `verified`. A version that breaks this, versions out of order, or a file not marked fictional stops startup.
+
+**Storage and authority, at D3:** `load_policies` reads the versions from the fictional `governance.json` once at startup; they never change while the Node runs. Publishing a version means adding it to the data and restarting. Who writes and approves a version, and through which interface, is OPEN; there is no policy-editing API. Readers are not authenticated. The demo policy is fictional, not a validated legal or ethical framework.
+
+Demo, with the Node running:
+
+```bash
+# The one demo version, in effect, and its rules.
+curl -s localhost:8200/v1/policies
+
+# A research approval looser than the policy is refused: 422 on validity_months and minimum_cell_size.
+curl -s -X POST localhost:8200/v1/research-requests/rar-002/decision \
+  -H 'content-type: application/json' -d '{"reviewer_ref": "usr-olfa", "outcome": "approved",
+  "rationale": "Protocole conforme, finalité de recherche et périmètre proportionné.",
+  "conditions": [], "approved_organization_refs": ["org-hospital-b"],
+  "approved_variables": ["consultation_month", "age_band"], "validity_months": 13,
+  "minimum_cell_size": 5}'
+```
+
+With `validity_months: 6` and `minimum_cell_size: 10` the same decision is recorded, citing `pol-governance-v1`. To show a version change, set `GOVERNANCE_NODE_DEMO_DATA` to a copy of `demo-data/` whose `governance.json` adds a stricter version 2 effective in the near future: before that time the Node reviews `sync-001` under v1 (13 days possible); after it, under v2 (for example 10 days at most), and decisions then cite v2 while earlier ones keep citing v1. `tests/test_policies_http.py` runs exactly this.
+
+Not done at D3: a policy-editing or approval workflow, rules beyond those listed (purposes, variables, organizations), recording the policy version in the audit trail or a ledger, the Governance Portal displaying the policy (its forms still apply their own D1 constants), and consent evaluation (HC-136).
+
+## Consent policy evaluation (HC-136)
+
+IMPLEMENTED at D3. A synchronization relying on a `patient_grant` is evaluated against the grants of the **Hospital Node of the target organization**: that node holds the records exchanged, records the patient's grants, and enforces them ([`patient-access-grants.v1.yaml`](../../contracts/api/patient-access/patient-access-grants.v1.yaml), HC-115). The Governance Node asks it, over real HTTP, `GET /v1/patients/{patient_ref}/access-grants`, and stores no grant: the node stays the source of truth.
+
+| When | What the Node does with the holder's answer |
+|---|---|
+| Reading or deciding a request (`synchronization-requests.v1.yaml`, now `1.2.0`) | The `consent` check passes only if the grant exists there for this patient, is not revoked, has not expired, and covers the scope; the approval never outlasts it. If the node cannot answer, the check **fails** with the reason, and only a rejection is possible. |
+| Each Federation authorization check (`sync-authorization-check.v1.yaml`, now `1.1.0`) | Once every other check passes, the grant is asked again. Revoked, expired, or unknown there: `denied` with `revoked`. Node unable to answer: `503 consent_unavailable`; the Federation Service asks no node. Both are audited as denials (`revoked`, `consent_unavailable`). |
+
+Which bases are accepted, and which are verified this way, is the [policy](#governance-policy-engine-hc-135)'s `synchronization.consent_bases`: in v1 only `patient_grant` is verified; `signed_consent_form` and `emergency_override` are confirmed by the reviewer and never asked of a node. A denial reached before consent, such as an expired decision, does not ask the node.
+
+**Boundaries.** This is a call to a Hospital Node's own consent API, not to a DMI, and only for the organization a request names. The Governance Node receives grant metadata only: references, scope, purpose, and times; nothing clinical. The answer is parsed strictly: another organization or patient, a grant of another patient, a time without offset, an error, a 2-second timeout, or an organization missing from the directory makes the consent unavailable (deny by default).
+
+**At D3:** the directory of nodes is a fictional file ([`hospital-nodes.demo.json`](hospital-nodes.demo.json), `GOVERNANCE_HOSPITAL_NODES`); production discovery, and authentication between the Governance Node and Hospital Nodes, are OPEN. The demo Hospital Nodes' grant stores are **MOCKED** (in memory, seeded from fictional data): the integration is real, the grants are fictional. A grant held only by another node than the target is not seen, and propagating one patient's consent to every node holding their records remains OPEN. `GOVERNANCE_GRANTS=fixture` keeps the HC-132 MOCKED behavior.
+
+Demo, with Hospital Node B (`HOSPITAL_NODE_CONFIG=config/hospital-b.demo.json python main.py` in `instances/hospital-node/`) and this Node running:
+
+```bash
+# The consent check of sync-001 is answered by Hospital B: pass, 13 days at most.
+curl -s localhost:8200/v1/synchronization-requests/sync-001
+# Approve it as in the synchronization demo, then the Federation's check is authorized.
+# Patient A revokes the grant on Hospital B:
+curl -s -X POST localhost:8102/v1/patients/pat-a/access-grants/grant-a-drx/revocation
+# The same check is now denied: revoked. Stop Hospital B and it answers 503 consent_unavailable.
+curl -s 'localhost:8200/v1/audit/events?subject_ref=dec-sync-001'
+```
+
+**End to end**, with Hospital Nodes A and B, the Federation Service (`http` mode, demo registry seed), and this Node as separate processes: after `dec-sync-001`, a federated query under it asks Hospital B only; after Patient A revokes `grant-a-drx` on Hospital B, the same query is refused `403` with *The Governance Node denied the synchronization authorization: revoked*, and no node is asked.
+
+Not done at D3: authenticated node-to-node calls, node discovery from the Federation registry, consent propagation across nodes, a consent record kept by Governance, verifying the grant's grantee or purpose against the request, and consent for research (research uses aggregates under Compute-to-Data and cites no patient grant).
+
 ## Responsibilities and owned concepts
 
 - Hospital approval and registry. Hospital approval is served by the [hospital approval API](#hospital-approval-api-hc-131) (HC-131). The Federation Service's node registry ([`node-registry.v1.yaml`](../../contracts/federation/node-registry.v1.yaml), HC-142) is only a routing directory: each registration cites a Governance approval decision, which it could now check with `getHospitalApproval`, but does not yet.
 - Synchronization and research authorization. Synchronization requests, decisions, and the [`sync-authorization-check.v1.yaml`](../../contracts/federation/sync-authorization-check.v1.yaml) check the Federation Service calls before every synchronization-decision query are served by the [synchronization request API](#synchronization-request-api-hc-132) (HC-132). Research access requests, decisions, and the [`research-authorization-check.v1.yaml`](../../contracts/api/research/research-authorization-check.v1.yaml) check the Research Service calls before each job are served by the [research access request API](#research-access-request-api-hc-133) (HC-133).
 - Governance audit, served by the [governance audit API](#governance-audit-api-hc-134) (HC-134).
-- Policy evaluation and consent governance.
+- Policy evaluation, served by the [governance policy engine](#governance-policy-engine-hc-135) (HC-135).
+- Consent policy evaluation, served by [consent policy evaluation](#consent-policy-evaluation-hc-136) (HC-136): the Node evaluates grants held by the Hospital Nodes; it records none.
 - OPTIONAL Blockchain Adapter behind an application-owned `AuditLedgerPort`.
 
 ## Communication boundaries
@@ -307,4 +394,4 @@ It does not own raw hospital clinical databases, clinician workflows, patient me
 
 ## Expected contracts
 
-This Node provides [`hospital-approval.v1.yaml`](../../contracts/api/governance/hospital-approval.v1.yaml) (HC-131), [`synchronization-requests.v1.yaml`](../../contracts/api/governance/synchronization-requests.v1.yaml), and the Federation's [`sync-authorization-check.v1.yaml`](../../contracts/federation/sync-authorization-check.v1.yaml) (HC-132), [`research-requests.v1.yaml`](../../contracts/api/governance/research-requests.v1.yaml), and the Research Service's [`research-authorization-check.v1.yaml`](../../contracts/api/research/research-authorization-check.v1.yaml) (HC-133), and [`governance-audit-events.v1.yaml`](../../contracts/api/governance/governance-audit-events.v1.yaml) (HC-134). Other policy and authorization, and immutable-proof contracts remain PLANNED.
+This Node provides [`hospital-approval.v1.yaml`](../../contracts/api/governance/hospital-approval.v1.yaml) (HC-131), [`synchronization-requests.v1.yaml`](../../contracts/api/governance/synchronization-requests.v1.yaml), and the Federation's [`sync-authorization-check.v1.yaml`](../../contracts/federation/sync-authorization-check.v1.yaml) (HC-132), [`research-requests.v1.yaml`](../../contracts/api/governance/research-requests.v1.yaml), and the Research Service's [`research-authorization-check.v1.yaml`](../../contracts/api/research/research-authorization-check.v1.yaml) (HC-133), [`governance-audit-events.v1.yaml`](../../contracts/api/governance/governance-audit-events.v1.yaml) (HC-134), and [`governance-policies.v1.yaml`](../../contracts/api/governance/governance-policies.v1.yaml) (HC-135). Consent and immutable-proof contracts remain PLANNED.

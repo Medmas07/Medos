@@ -16,6 +16,7 @@ import type {
   ResearchAccessRequest,
   ResearchProject,
   ResearchSnapshot,
+  SciAgentsInvestigation,
   StaffMember,
 } from '../types/research'
 
@@ -33,7 +34,28 @@ const results = researchFixtures.controlledResults as unknown as (ControlledResu
   columns: string[]
   rows: (string | number)[][]
 })[]
-const investigations = researchFixtures.sciAgentsInvestigations as unknown as { id: string; projectId: string }[]
+const investigations = (
+  researchFixtures.sciAgentsInvestigations as unknown as (Omit<
+    SciAgentsInvestigation,
+    'clinicalUse' | 'result' | 'error' | 'provenance'
+  > &
+    SciAgentsInvestigation['result'] & { mocked: boolean; provenance: string })[]
+).map(
+  ({ outcome, hypotheses, evidence, contradictions, citations, mocked, provenance, ...investigation }): SciAgentsInvestigation => ({
+    ...investigation,
+    clinicalUse: 'not_for_clinical_decisions',
+    result: investigation.status === 'completed' ? { outcome, hypotheses, evidence, contradictions, citations } : null,
+    error: null,
+    // The fixture stays visibly mocked; HC-171 exists but HC-172 does not connect this portal to it.
+    provenance: {
+      provider: { name: 'SciAgents', version: null },
+      adapter: { name: 'demo-sciagents-adapter', version: '1.0.0' },
+      mocked,
+      upstreamRequestRef: null,
+      note: provenance,
+    },
+  }),
+)
 const requests = governanceFixtures.researchAccessRequests as unknown as ResearchAccessRequest[]
 const decisions = governanceFixtures.decisions as unknown as GovernanceDecision[]
 const organizations = organizationFixtures.organizations as unknown as Organization[]
@@ -61,6 +83,16 @@ export function fixtureNotebookResult(
   if (!found) return null
   const { columns, rows, id, jobId, title, minimumCellSize, disclosureCheck, provenance } = found
   return { result: { id, jobId, title, minimumCellSize, disclosureCheck, provenance }, columns, rows }
+}
+
+/**
+ * The aggregate table of a fixture controlled result, for the result panel
+ * (HC-101). Null when the result is unknown or failed its disclosure check:
+ * nothing of it is released.
+ */
+export function controlledResultTable(resultId: string): { columns: string[]; rows: (string | number)[][] } | null {
+  const found = results.find((r) => r.id === resultId && r.disclosureCheck === 'passed')
+  return found ? { columns: found.columns, rows: found.rows } : null
 }
 
 /** Organizations whose Hospital Node could take part in a study: hospitals and private practices. */
@@ -181,11 +213,12 @@ function summarize(project: ResearchProject, now: Date): ProjectSummary {
 
 /**
  * Demo scenarios, selected with `?demo=vide`, `?demo=erreur`, `?demo=echec-depot`
- * (the first document upload of the page load is interrupted), or
+ * (the first document upload of the page load is interrupted),
  * `?demo=echec-execution` (the first workspace run of the page load fails in a
- * Hospital Node) in the URL.
+ * Hospital Node), or `?demo=echec-sciagents` (SciAgents did not answer the
+ * investigations in time) in the URL.
  */
-export type DemoScenario = 'nominal' | 'empty' | 'error' | 'upload-failure' | 'execution-failure'
+export type DemoScenario = 'nominal' | 'empty' | 'error' | 'upload-failure' | 'execution-failure' | 'sciagents-failure'
 
 export function scenarioFromSearch(search: string): DemoScenario {
   const value = new URLSearchParams(search).get('demo')
@@ -193,7 +226,18 @@ export function scenarioFromSearch(search: string): DemoScenario {
   if (value === 'erreur') return 'error'
   if (value === 'echec-depot') return 'upload-failure'
   if (value === 'echec-execution') return 'execution-failure'
+  if (value === 'echec-sciagents') return 'sciagents-failure'
   return 'nominal'
+}
+
+/** The investigation as the HC-170 contract's `failed` example: SciAgents did not answer in time. */
+function timedOut(investigation: SciAgentsInvestigation): SciAgentsInvestigation {
+  return {
+    ...investigation,
+    status: 'failed',
+    result: null,
+    error: { code: 'timeout', message: "SciAgents n'a pas répondu à temps.", retryable: true },
+  }
 }
 
 export interface LoadOptions {
@@ -248,6 +292,9 @@ export async function loadResearchSnapshot(
         provenance,
       })),
     notebooks: notebooks.filter((n) => projectIds.has(n.projectId)),
+    investigations: investigations
+      .filter((i) => projectIds.has(i.projectId))
+      .map((i) => (scenario === 'sciagents-failure' ? timedOut(i) : i)),
     pages: derivePages(summaries, now),
     notifications: notifications
       .filter((n) => n.recipientId === researcherId && (scenario !== 'empty' || n.relatedId === null))
