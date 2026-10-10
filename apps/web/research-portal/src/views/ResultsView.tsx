@@ -152,11 +152,11 @@ function ResultPanel({ entry, onNavigate }: { entry: ControlledResultEntry; onNa
 
       <Card title="Aller plus loin">
         <p className="text-sm text-slate-600">
-          SciAgents (outil externe, non intégré à ce stade) pourra explorer des hypothèses à partir de ce résultat ; ses
-          sorties resteront des pistes à examiner par le chercheur.
+          SciAgents (système externe, non connecté à ce stade) explore des hypothèses à partir du résumé de ce résultat ;
+          ses sorties restent des pistes à examiner par le chercheur.
         </p>
         <Button className="mt-3" size="sm" variant="secondary" onClick={() => onNavigate('sciagents')}>
-          Ouvrir SciAgents (HC-102)
+          Ouvrir SciAgents
         </Button>
       </Card>
     </div>
