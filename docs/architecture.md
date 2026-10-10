@@ -189,7 +189,7 @@ AI is advisory, replaceable through ports, and subject to appropriate human revi
 | Hospital Node | PLANNED | Boundary documented; runtime not implemented; stack decided by ADR-0003. |
 | Governance Node | PLANNED | Boundary documented; runtime not implemented; stack decided by ADR-0003. |
 | DMI Adapter | PLANNED | Hospital-local boundary documented; no adapter. |
-| Federation Service | PLANNED | No contracts or runtime implementation; stack decided by ADR-0003. |
+| Federation Service | PLANNED | Contracts defined in `contracts/federation/` (HC-140); no runtime implementation; stack decided by ADR-0003. |
 | Notification Service | PLANNED | No provider or runtime implementation; stack decided by ADR-0003. |
 | SciAgents Integration | PLANNED | SciAgents exists externally; repository-side contract defined (HC-170); connector is absent. |
 | Immutable Audit Ledger | OPTIONAL / PLANNED | Governance-only concept; no adapter or ledger. |

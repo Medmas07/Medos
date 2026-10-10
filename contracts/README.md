@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-This is the canonical location for significant, versionable cross-component communication definitions. The directory structure is IMPLEMENTED; concrete contracts are PLANNED and absent.
+This is the canonical location for significant, versionable cross-component communication definitions. The directory structure is IMPLEMENTED. API contracts exist under [`api/`](api/README.md) and Federation contracts under [`federation/`](federation/README.md); event and shared-schema contracts are PLANNED and absent.
 
 ## Responsibilities and owned concepts
 

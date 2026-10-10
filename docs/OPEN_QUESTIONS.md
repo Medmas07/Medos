@@ -10,6 +10,7 @@ These questions are OPEN. Do not answer them through implementation without the 
 - How will consent, legal authority, revocation, retention, restriction, and erasure differ by jurisdiction?
 - Which transport and protocol will carry Federation queries, synchronization, and node discovery?
 - How will node identity, signing, authorization tokens, key rotation, and trust establishment work?
+- How is one patient matched across organizations? The [Federation contracts](../contracts/federation/README.md) carry an ecosystem-level `patient_ref` that each Hospital Node maps to its local identifier; the matching and enrolment process is undecided.
 - Is an Immutable Audit Ledger required, and if so which permissioned ledger technology is justified?
 - Which AI providers, models, hosting mode, evaluation criteria, and clinical review controls are acceptable?
 - Which components may call the AI clinical extraction API with clinical source text, and is AI Services hosted inside the hospital boundary or as a company service? This decides whether clinical text leaves the Hospital Node. ([HC-152 contract](../contracts/api/ai/clinical-extraction.v1.yaml).)

@@ -23,4 +23,6 @@ The Hospital Node does not own ethics approval, global research approval, compan
 
 ## Expected contracts
 
-PLANNED local clinical API, DMI port, consent/authorization, audit-event, synchronization, Federation, research-execution, and health contracts.
+Each Hospital Node must provide [`hospital-node-federation.v1.yaml`](../../contracts/federation/hospital-node-federation.v1.yaml) (HC-140): a node descriptor and authorized, scoped patient queries that the node enforces itself. The contract is defined; no Node implements it yet.
+
+PLANNED local clinical API, DMI port, consent/authorization, audit-event, research-execution, and health contracts.
