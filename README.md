@@ -1,36 +1,26 @@
-# Project Name
+# HackCure Federated Healthcare Platform
 
-## Status
+This repository reserves the architectural boundaries for a federated healthcare ecosystem spanning autonomous hospital nodes, an independent ethics/governance authority, patient and clinician applications, research capabilities, and company-managed distribution services. It contains no product implementation yet.
 
-Repository bootstrap for a two-day healthcare hackathon. Functional requirements and the technology stack are not yet defined.
-
-## About
-
-The product scope will be documented after requirements are validated. This repository intentionally contains no speculative product implementation.
-
-## Architecture
-
-Future business applications and services must follow Clean Architecture or Hexagonal Architecture. Business rules remain independent from frameworks and infrastructure. See [the architecture guide](docs/architecture.md).
+Future business applications and services must follow Clean Architecture or Hexagonal Architecture. Cross-component communication must use explicit, versionable contracts rather than shared persistence. See [the architecture guide](docs/architecture.md).
 
 ## Repository structure
 
-- `apps/`: application entry points reserved for web, mobile, and API applications.
-- `services/`: optional specialized services, if justified later.
-- `iot/`: optional embedded or connected-device component, if the challenge requires one.
-- `packages/`: shared code and types, when real reuse exists.
-- `infrastructure/`: deployment and infrastructure assets.
-- `production/`: local production-like validation guidance and reserved configuration areas.
-- `docs/`: product, architecture, API, research, and decision documentation.
-- `tests/`: cross-application integration and end-to-end tests.
+- `apps/`: web and mobile user-facing products.
+- `instances/`: autonomous deployable hospital and governance runtime boundaries.
+- `services/`: justified backend capabilities for AI, research, federation, and notifications.
+- `integrations/`: adapters for DMI/HIS, SciAgents, and other external systems.
+- `contracts/`: canonical API, event, schema, and federation communication definitions.
+- `packages/`: narrowly reusable, domain-independent helpers and optional shared types.
+- `iot/`: optional embedded or connected-device support.
+- `infrastructure/`: technical deployment assets.
+- `production/`: production-like validation guidance and reserved configuration.
+- `docs/`: architecture, product, research, deployment, API, and decision records.
+- `scripts/`: repository automation after a concrete need is established.
+- `tests/`: future cross-component integration and end-to-end validation.
 
 ## Getting started
 
-Python is confirmed for potential AI/ML components, but no Python library or AI framework has been selected. All other setup instructions will be added with the corresponding architecture decisions.
+Python is confirmed for potential AI/ML components, but no Python library, framework, application framework, persistence technology, or notification provider has been selected. Add setup instructions only with validated requirements and accepted decisions.
 
-## Documentation
-
-Start with the [documentation index](docs/README.md). Record significant technical choices as [Architecture Decision Records](docs/decisions/README.md).
-
-## Contributing
-
-Read [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) before making changes.
+Start with the [documentation index](docs/README.md), [architecture guide](docs/architecture.md), [contribution guide](CONTRIBUTING.md), and [agent rules](AGENTS.md).

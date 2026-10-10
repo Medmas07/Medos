@@ -24,9 +24,23 @@ Use, in order: validated functional requirements, accepted ADRs, `docs/architect
 
 Allowed dependency direction: `infrastructure/framework -> adapters -> application -> domain`. Application may depend on Domain; adapters may depend on Application and Domain; infrastructure may depend on inner layers. The reverse is forbidden. Do not bypass a port for speed without explicitly documenting the debt.
 
+## Cross-component communication
+
+- Components must communicate through explicit contracts, ports, APIs, events, or federation interfaces.
+- Use `contracts/` as the canonical location for significant cross-component definitions; make those contracts versionable.
+- Do not make one service import another service's infrastructure or internal persistence model.
+- Do not share database tables across bounded contexts.
+- Do not give Hospital Nodes or central services direct SQL access to each other's databases.
+- Do not centralize raw clinical data without an explicit architectural decision.
+- Keep each Hospital Node autonomous and keep governance decisions inside the governance boundary.
+- Keep blockchain behind an outbound adapter in the governance boundary; never use it as the clinical database or store raw medical data on it.
+- Integrate SciAgents through an adapter boundary; do not copy or reimplement it.
+- Treat AI output as advisory until appropriately validated wherever clinical consequences exist.
+- Document new communication patterns and consequential contract changes.
+
 ## Repository structure
 
-Place applications in `apps/`, justified specialized services in `services/`, reusable units in `packages/`, technical deployment assets in `infrastructure/`, cross-system tests in `tests/`, and durable knowledge in `docs/`. Do not scaffold internal application layers until the relevant stack and requirements are known.
+Place user-facing applications in `apps/`, autonomous deployable nodes in `instances/`, justified specialized services in `services/`, external-system adapters in `integrations/`, cross-component definitions in `contracts/`, reusable domain-independent units in `packages/`, technical deployment assets in `infrastructure/`, cross-system tests in `tests/`, and durable knowledge in `docs/`. Do not scaffold internal application layers until the relevant stack and requirements are known.
 
 ## Development rules
 

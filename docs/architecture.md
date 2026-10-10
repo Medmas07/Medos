@@ -1,245 +1,164 @@
 # Architecture
 
-## 1. Context
+## Ecosystem overview
 
-This repository supports a two-day healthcare hackathon. Functional requirements and the technology stack are not yet known. The sole architectural constraint already accepted is that business backends and services follow Clean Architecture or Hexagonal Architecture principles.
+HackCure is structured as a federated healthcare ecosystem. Autonomous Hospital Nodes retain clinical source data. A separate Ethics / Governance Instance controls institutional validation, synchronization and research authorization, policy and consent governance, and immutable audit integration. Company-managed applications and services provide portals, node distribution, research tooling, billing/subscriptions, and releases without assuming the governance authority's decision rights.
 
-## 2. Architectural principles
+The structure reserves boundaries; it does not select frameworks, databases, protocols, or deployment products.
 
-### Clean Architecture
+## Actors
 
-Business policy belongs at the center. Frameworks, persistence, delivery mechanisms, third-party SDKs, Docker, and cloud services are replaceable details. Code is organized around clear boundaries without creating layers or abstractions that have no demonstrated need.
+- Patients consume authorized medical views and manage consent, access grants, delegation, and requests.
+- Clinicians include public and private physicians, nurses, and clinics operating within granted access.
+- Hospitals own and operate autonomous nodes and control their clinical source data.
+- The ethics/governance authority validates institutions and authorizes synchronization and research.
+- Researchers submit governed projects and compute-to-data jobs and receive controlled results.
+- The company manages product distribution and research-platform operations, but does not approve its own governance requests.
 
-### Hexagonal Architecture
-
-The application communicates with external actors through ports. Inbound adapters invoke application use cases; outbound adapters implement ports required by those use cases. Adapters translate between external representations and internal concepts.
-
-### Dependency Rule
-
-Dependencies point inward:
-
-```text
-domain
-   ↑
-application
-   ↑
-adapters
-   ↑
-infrastructure / framework
-```
-
-- Domain knows no outer layer.
-- Application may depend on Domain.
-- Adapters may depend on Application and Domain.
-- Infrastructure and frameworks may depend on inner layers.
-- Reverse dependencies are forbidden.
-
-Forbidden examples include `domain -> Prisma`, `domain -> TypeORM`, `domain -> SQLAlchemy`, `domain -> NestJS`, `domain -> FastAPI`, and `domain -> PostgreSQL`.
-
-An acceptable relationship is an Application-defined `RepositoryPort` implemented by an infrastructure-facing `PrismaRepository` or `SQLAlchemyRepository`. No ORM has been selected by this example.
-
-### Ports and Adapters
-
-External interactions must cross explicit ports when a real use case requires them. Conceptually:
+## Trust boundaries
 
 ```text
-UseCase -> RepositoryPort <- PersistenceAdapter
+Company infrastructure != Ethics authority
+Hospital A            != Hospital B
+Researcher            != Hospital data owner
+Patient application   != Hospital database
+AI system             != Clinical authority
 ```
 
-Potential ports include notification, AI service, file storage, authentication, event publishing, or external medical API contracts, but none should be created before validated requirements demonstrate a need.
+Authentication, authorization, minimization, and audit must be designed at every crossed boundary. AI output is advisory where clinical consequences exist and requires appropriate human or clinical validation.
 
-## 3. Functional requirements
+## Company-managed components
 
-To be defined from the validated product brief. Do not infer a healthcare workflow from the project context alone.
+Company-managed surfaces may include the hospital onboarding portal, node distribution and release tooling, the researcher platform, and billing/subscriptions. Company operation does not grant governance decision authority or ownership of hospital clinical data.
 
-## 4. Non-functional requirements
+## Ethics / Governance components
 
-To be defined.
+The governance portal and Governance Node form the ethics-authority boundary. Future responsibilities include the hospital registry, institutional validation, policies, synchronization and research authorization, consent governance, audit exploration, and ledger verification. Governance decisions are controlled by the governance instance, not by company services.
 
-## 5. Constraints
+## Hospital Nodes
 
-- Business backends and services must preserve Clean/Hexagonal boundaries independently of the selected framework.
-- The Domain must not depend on web frameworks, databases, ORMs, brokers, external APIs, Docker, cloud providers, or infrastructure libraries.
-- The design must remain pragmatic for a two-day hackathon.
+Each Hospital Node is an autonomous, eventually containerized deployable instance. Its future boundary may contain local APIs, identity/RBAC, clinical data, a FHIR or other canonical clinical model, consent, audit, synchronization, events/notifications, local storage, health checks, and DMI adapter integration.
 
-## 6. System overview
+Nodes must not share database tables with central services or other hospitals. No central component may use direct SQL access to a Hospital Node. Specific storage, FHIR server, framework, and container technology remain undecided.
 
-To be defined after product boundaries and runtime components are known.
+## Patient application
 
-The future backend may use the following conceptual organization, adapted to the selected language and framework:
+The patient mobile product will consume authorized API views for medical timelines, consultations, medications, lab results, consent, clinician access, family delegation, restriction/erasure requests, notifications, and medication safety information. It never connects directly to a hospital database and does not own raw clinical source data.
+
+## Clinician application
+
+The clinician mobile product will provide an authorized workspace for search, history, consultations, intake, speech-to-text, AI-assisted extraction, laboratory assistance, medication safety, alerts, priority queues, and notifications. Role-specific behavior and the mobile framework remain open decisions.
+
+## Research platform
+
+The research portal is the researcher-facing surface for onboarding, subscriptions, projects, requests, documents, dataset requirements, a future Colab-like workspace, monitoring, SciAgents access, and controlled results. Research services orchestrate approved work; they do not directly access hospital persistence.
+
+## AI services
+
+Python is confirmed for future AI components such as clinical extraction, summarization, document analysis, priority assistance, medication explanation, and LLM orchestration. No library or web framework is selected. AI remains outside clinical authority and must be accessed through explicit ports and contracts.
+
+## Integrations
+
+External systems are isolated behind adapter boundaries in `integrations/` and application-owned ports. Integration representations must not leak into domain models.
+
+### DMI / legacy systems
 
 ```text
-src/
-├── domain/
-│   ├── entities/
-│   ├── value-objects/
-│   ├── services/
-│   ├── events/
-│   └── errors/
-├── application/
-│   ├── use-cases/
-│   ├── dto/
-│   ├── ports/
-│   │   ├── inbound/
-│   │   └── outbound/
-│   └── services/
-├── adapters/
-│   ├── inbound/
-│   │   ├── http/
-│   │   ├── websocket/
-│   │   └── cli/
-│   └── outbound/
-│       ├── persistence/
-│       ├── external-api/
-│       ├── messaging/
-│       └── storage/
-├── infrastructure/
-│   ├── database/
-│   ├── configuration/
-│   ├── logging/
-│   ├── security/
-│   └── observability/
-└── main/
+Legacy DMI / HIS -> hospital-specific adapter -> mapping / normalization -> canonical clinical model
 ```
 
-This is a boundary model, not a mandate to create every directory.
+There is no assumed universal DMI implementation. Hospital-specific adapters may be introduced only when actual systems and mappings are known.
 
-## IoT / Edge components
+### SciAgents
 
-An IoT component may be added if the challenge requires one; it is not a mandatory part of the current system. Any embedded code will live in `iot/`, where PlatformIO is prepared as the intended development tooling. The target hardware, embedded framework, and device/backend communication protocol remain undetermined.
+SciAgents is an external system to integrate, not reimplement. Its eventual boundary may contain a client, request/response schemas, authentication, timeouts, error mapping, and experiment provenance.
 
-When it provides real value, firmware should preserve Clean/Hexagonal boundaries between application logic and hardware-specific code. A simple firmware may use a lightweight structure rather than creating speculative layers. Hardware APIs and SDKs should be isolated behind adapters or infrastructure when a small separation keeps application logic testable.
+## Communication contracts
 
-## 7. Domain layer
+Components communicate through explicit contracts, ports, APIs, events, or federation interfaces. A component must not directly depend on another component's internal persistence model. Significant cross-component contracts belong under `contracts/` and must be versionable.
 
-Domain contains business entities, value objects, domain services, events, errors, and rules only. It contains no HTTP or JSON-specific logic, ORM models, database queries, framework decorators, environment access, Docker logic, or external SDKs.
+Allowed:
 
-## 8. Application layer
+```text
+Patient App -> Patient API contract -> Federation service
+Hospital Node -> Sync contract -> Governance Node
+```
 
-Application orchestrates use cases and may contain application services, commands, queries, DTOs, and ports. Use cases should be small and named from validated system actions. They must remain testable without real infrastructure.
+Forbidden:
 
-## 9. Ports
+```text
+Research service -> direct SQL access -> Hospital database
+Patient app -> direct database connection
+```
 
-Ports are contracts owned by the inner layers for required inbound or outbound interactions. Introduce a port only when it protects the core from an external detail or clearly improves testability; avoid speculative interfaces and generic repositories.
+Within every business backend, dependencies point inward:
 
-## 10. Adapters
+```text
+infrastructure / framework -> adapters -> application -> domain
+```
 
-Adapters translate between the application and the outside world. They contain integration behavior, not core business policy.
+The Domain knows no framework, database, ORM, broker, external API, Docker, cloud provider, or infrastructure library. Application-defined ports isolate external details; adapters implement those ports. Do not scaffold layers or speculative interfaces until a use case needs them.
 
-### Inbound adapters
+## Federation
 
-Possible inbound adapters include REST, GraphQL, WebSocket, CLI, scheduled jobs, and event consumers. None is selected. Controllers and routes call use cases and must not host primary business logic.
+Federation supports node identity and discovery, explicit data scope, temporary authorization, synchronization requests, signatures, expiration, result envelopes, and error handling. `contracts/federation/` is the canonical location for these definitions when validated. Federation coordinates autonomous nodes and must not become a centralized clinical database.
 
-### Outbound adapters
+## Compute-to-data
 
-Possible outbound adapters include persistence, filesystem, external API, AI, messaging, notification, and object-storage integrations. None is selected. Repositories implement persistence ports and must not become the home of business logic.
+```text
+Research Portal -> Research Service -> Research Job Contract
+                -> Governance authorization -> Hospital Node execution boundary
+                -> Controlled result -> Research Service
+```
 
-## 11. Infrastructure
+The intended direction sends approved code or jobs to authorized execution environments rather than downloading raw clinical data. Execution, isolation, review, and result-disclosure mechanisms remain open decisions.
 
-Infrastructure contains technical configuration and implementations such as database access, logging, security, and observability. It may depend inward; inner layers must not depend on it.
+## Blockchain / immutable audit boundary
 
-If NestJS is selected, decorators, modules, controllers, HTTP DTOs, and ORM integration stay in outer layers. If FastAPI is selected for a specialized Python service, FastAPI routes remain inbound delivery adapters. In either case, endpoints delegate to use cases.
+```text
+Governance Application -> AuditLedgerPort <- BlockchainAdapter -> Permissioned Ledger
+```
 
-If both are justified, the preferred starting model is one primary business backend and a specialized Python service for a demonstrated ML/AI/CV/NLP need, rather than competing business backends. This choice requires an ADR.
+Blockchain is an outbound adapter detail and never the clinical database. A future ledger may hold only minimized proofs such as event or authorization IDs, resource hashes, timestamps, versions, signatures, and organization identifiers—never raw medical data.
 
-## 12. Components
+## Data ownership
 
-To be defined.
+- Clinical source data is owned or controlled by Hospital Nodes.
+- Governance decisions are owned or controlled by the governance instance.
+- Research projects are managed by the company research platform subject to governance authorization.
+- Audit proofs may be anchored in a governance ledger.
+- Mobile applications consume authorized views and do not gain raw-data ownership.
 
-## 13. Data flow
+## Consent and authorization
 
-To be defined from use cases. In general, an inbound adapter translates a request, invokes an Application use case, and the use case reaches external systems only through ports implemented by outbound adapters.
-
-## 14. API boundaries
-
-To be defined.
-
-## 15. Data model
-
-To be defined from validated domain concepts.
-
-## 16. Authentication and authorization
-
-To be decided and recorded by ADR when requirements are known.
-
-## 17. External integrations
-
-To be defined. Each integration must sit behind an appropriate port when used by the application core.
-
-## 18. Deployment architecture
-
-To be decided. Docker support is reserved but not adopted.
+Consent and authorization cross trust boundaries and require explicit, auditable contracts. Consent does not replace legal authority, purpose limitation, or access control. Detailed policy semantics, identity model, jurisdiction, retention, and revocation behavior remain open.
 
 ## Runtime environments
 
-### Development
+- Development supports implementation and debugging after a stack is selected.
+- Preview validates production builds and production-like boundaries with non-production secrets.
+- Production is the user-facing environment and requires explicit deployment decisions and validation.
 
-Development supports daily implementation with facilities such as hot reload, debugging, verbose logs, and local dependencies when the selected stack provides them. Development behavior is not evidence that production artifacts work correctly.
-
-### Preview
-
-Preview runs production builds in a local or temporary production-like environment before publication. It should exercise optimized artifacts, production-like environment-variable handling, real service boundaries, and Docker when applicable. Preview must use non-production secrets and remain distinct from the real production environment.
-
-### Production
-
-Production is the environment exposed to users or the jury. Its eventual public frontend, backend, APIs, and optional IoT entry points depend on validated requirements and accepted deployment decisions.
+IoT remains optional. Hardware, firmware framework, and device/backend protocol are undecided.
 
 ## Deployment strategy
 
-The target validation flow is:
-
 ```text
-Development
-     |
-     v
-Lint / Tests
-     |
-     v
-Build
-     |
-     v
-Local Production Preview
-     |
-     v
-Integration / E2E Validation
-     |
-     v
-Deployment
+Development -> Lint / Tests -> Build -> Local Production Preview
+            -> Integration / E2E Validation -> Deployment
 ```
 
-Concrete commands and hosting topology remain open until the frameworks and runtime components are selected. A deployment is not ready merely because development mode or a build succeeds. See [deployment documentation](deployment/README.md).
+Hospital and Governance Nodes are separate deployable trust boundaries. Concrete packaging, topology, hosting, databases, and Docker adoption require accepted decisions. See [deployment documentation](deployment/README.md).
 
-## 19. Observability
+## Testing strategy
 
-To be defined.
+Within components, prioritize Domain tests and Application/use-case tests before adapter integration. `tests/integration/` and `tests/e2e/` are reserved for future contract, cross-service integration, federation, deployment, and end-to-end journey tests. No technology-specific test framework is selected.
 
-## 20. Security and privacy
+## Open questions
 
-To be defined from the data classification, jurisdiction, threat model, and validated healthcare requirements. Never commit secrets, personal data, or patient data.
-
-## 21. Testing strategy
-
-Test priority is:
-
-```text
-Domain tests
-     |
-Application / use-case tests
-     |
-Integration tests
-     |
-E2E tests
-```
-
-Business rules and use cases must be testable without Docker, a real database, network access, or a running NestJS/FastAPI server. Ports enable fakes and test doubles. Do not write speculative business tests before requirements exist.
-
-## 22. Technical decisions
-
-Python is confirmed for potential AI/ML components, while its libraries and framework remain open. The backend framework, frontend framework, database, ORM, NestJS, FastAPI, Python AI framework, any combined topology, Docker adoption, authentication, REST/GraphQL, WebSocket, frontend/backend/AI hosting, tunnel usage, database hosting, deployment topology, AI integration, and monolith/services boundary require ADRs when decided. Clean/Hexagonal principles are a starting constraint rather than an open ADR.
-
-## 23. Open questions
-
-- What problem and users are in scope?
-- Which functional and non-functional requirements are validated?
-- What data classifications, privacy obligations, and security controls apply?
-- Which runtime components and technology stack best support the validated scope?
+- Which workflows and acceptance criteria are validated for the hackathon MVP?
+- Which canonical clinical model and interoperability profiles are required?
+- Which jurisdictions, privacy obligations, threat model, and consent semantics apply?
+- How are organizations, nodes, patients, clinicians, and researchers identified?
+- Which synchronization and compute-to-data protocols meet the authorization model?
+- Which runtime stacks, persistence technologies, ledger, and deployment topology are justified?
