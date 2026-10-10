@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-Hospital Node infrastructure-adapter boundary for its own legacy DMI/HIS. The **port is DEFINED** (HC-120, D1): the Node-owned `DmiSource` port and the values it returns exist, with tests. One adapter implements it: the **MOCKED local DMI adapter** (HC-121, D2), over a simulated DMI built from fictional demo data. The **mapping strategy is DEFINED and IMPLEMENTED at D2** (HC-122): a shared rejection vocabulary, and the code-mapping building blocks every hospital-specific adapter maps with, tested against fictional mapping tables. **No real DMI is connected, no hospital has mapping tables yet, and nothing calls the port at runtime:** the Node still serves its records from its MOCKED fixture repository (HC-113). A sample hospital-specific adapter is HC-123.
+Hospital Node infrastructure-adapter boundary for its own legacy DMI/HIS. The **port is DEFINED** (HC-120, D1): the Node-owned `DmiSource` port and the values it returns exist, with tests. Two adapters implement it: the **MOCKED local DMI adapter** (HC-121, D2), over a simulated DMI built from fictional demo data, and a **sample hospital-specific adapter, IMPLEMENTED at D3** (HC-123) for Hospital B, which reads its DMI's fictional nightly export in that DMI's own format and maps it with Hospital B's mapping tables. The **mapping strategy is DEFINED and IMPLEMENTED at D2** (HC-122): a shared rejection vocabulary, and the code-mapping building blocks every hospital-specific adapter maps with. **No real DMI is connected and nothing calls the port at runtime:** the Node still serves its records from its MOCKED fixture repository (HC-113).
 
 ```text
 Legacy DMI / HIS
@@ -42,9 +42,9 @@ Following [ADR-0003](../../../../docs/decisions/ADR-0003-backend-runtime-strateg
 - **Declared types only.** An extract contains only the record types the descriptor declares.
 - **Read-only, no authorization.** The Node never writes to the DMI through this port. Authorization is checked by the use cases that disclose records, as for `ClinicalRepository`.
 
-**Conformance.** [`tests/dmi_port_contract.py`](../../tests/dmi_port_contract.py) checks these rules; each adapter's tests call `check_dmi_source(adapter, known, unknown)`. It runs against a test double ([`tests/test_dmi_port.py`](../../tests/test_dmi_port.py)), which is not an adapter, and against the mock local DMI adapter for each demo node ([`tests/test_mock_local_dmi.py`](../../tests/test_mock_local_dmi.py)).
+**Conformance.** [`tests/dmi_port_contract.py`](../../tests/dmi_port_contract.py) checks these rules; each adapter's tests call `check_dmi_source(adapter, known, unknown)`. It runs against a test double ([`tests/test_dmi_port.py`](../../tests/test_dmi_port.py)), which is not an adapter, against the mock local DMI adapter for each demo node ([`tests/test_mock_local_dmi.py`](../../tests/test_mock_local_dmi.py)), and against Hospital B's adapter ([`tests/test_zitoun_sih_export.py`](../../tests/test_zitoun_sih_export.py)).
 
-**Not decided here, and OPEN or later tickets:** how the Node resolves a `patient_ref` to the DMI's local identifier (a Node-owned patient index), when extraction runs and where its results are stored (persistence is OPEN), adapter configuration and credentials, incremental or event-driven synchronization, and writing back to the DMI. The port is internal to each Node: it is not a cross-component contract and has no file under `contracts/`.
+**Not decided here, and OPEN or later tickets:** how the Node resolves a `patient_ref` to the DMI's local identifier (a Node-owned patient index), when extraction runs and where its results are stored (persistence is OPEN), credentials and connection settings for a real DMI, incremental or event-driven synchronization, and writing back to the DMI. The port is internal to each Node: it is not a cross-component contract and has no file under `contracts/`.
 
 ## Mock local DMI adapter (HC-121)
 
@@ -61,7 +61,7 @@ MOCKED at D2. [`mock_local_dmi.py`](mock_local_dmi.py) implements `DmiSource` ov
 | Freshness | Both files are read on every extraction, as a live DMI would be: an edit shows in the next extract. Constructing the adapter reads nothing, so a missing DMI would not stop a Node from starting. |
 | `extracted_at` | The injected clock (UTC now by default). |
 
-The simulated DMI keeps the demo-data **fixture shape**: entries are parsed by the same readers as the fixture repository (`adapters/outbound/fixture_clinical_repository.py`). That shape is not a legacy DMI format, so no code mapping happens here; a legacy format with local codes, and its hospital's mapping tables, are HC-123's.
+The simulated DMI keeps the demo-data **fixture shape**: entries are parsed by the same readers as the fixture repository (`adapters/outbound/fixture_clinical_repository.py`). That shape is not a legacy DMI format, so no code mapping happens here; a legacy format with local codes, and its hospital's mapping tables, are in [Hospital B's adapter](#sample-hospital-specific-adapter-hospital-b-hc-123).
 
 Not done at D2: `main.py` does not build the adapter, and no configuration field names it. No use case calls the port, `/health` does not report the DMI, and the Node's records still come from the fixture repository. The demo data's disconnected private-practice DMI is not simulated here; it is shown only by the Federation Service's simulated nodes. There are no credentials, network calls, or writes.
 
@@ -84,7 +84,7 @@ MockLocalDmi(Path("../../demo-data/records/hospital-a.json"),
 
 ## Mapping strategy (HC-122)
 
-DEFINED and IMPLEMENTED at D2 as building blocks; no hospital-specific adapter uses them yet (HC-123). How every DMI adapter turns its DMI's entries into the Node's canonical records:
+DEFINED and IMPLEMENTED at D2 as building blocks; [Hospital B's adapter](#sample-hospital-specific-adapter-hospital-b-hc-123) (HC-123) maps with them. How every DMI adapter turns its DMI's entries into the Node's canonical records:
 
 ```text
 DMI entry (local format, local codes)
@@ -138,9 +138,9 @@ A rejection carries the DMI-local reference (or the entry's position when its id
 }
 ```
 
-**Building blocks** ([`mapping.py`](mapping.py)): `CodeMap.from_document()`, `CodeMap.code(table, local)` (raises `UnmappedCode`), `CodeMap.timestamp()`, `CodeMap.record_ref()`, `map_entry(build, source_ref, record_type)`, and `source_ref(entry_id, collection, position)`. The [mock local adapter](#mock-local-dmi-adapter-hc-121) rejects through `map_entry`; HC-123 adds a hospital-specific adapter that reads a legacy format and maps it with a `CodeMap`.
+**Building blocks** ([`mapping.py`](mapping.py)): `CodeMap.from_document()`, `CodeMap.code(table, local)` (raises `UnmappedCode`), `CodeMap.timestamp()`, `CodeMap.record_ref()`, `map_entry(build, source_ref, record_type)`, and `source_ref(entry_id, collection, position)`. The [mock local adapter](#mock-local-dmi-adapter-hc-121) rejects through `map_entry`; [Hospital B's adapter](#sample-hospital-specific-adapter-hospital-b-hc-123) reads a legacy format and maps it with a `CodeMap`.
 
-Not decided here: where a hospital's tables are stored and loaded from (with its adapter configuration, HC-123), recording the table version with stored extracts (persistence is OPEN), standard terminologies and FHIR (OPEN), unit conversion, and a review interface for rejections.
+A hospital's tables live in its adapter's local configuration, next to its export location (HC-123, for example [`config/hospital-b.dmi.json`](../../config/hospital-b.dmi.json)). Not decided here: recording the table version with stored extracts (persistence is OPEN), standard terminologies and FHIR (OPEN), unit conversion, and a review interface for rejections.
 
 Demo, from `instances/hospital-node/` with the virtual environment active (checked 2026-10-10):
 
@@ -158,6 +158,51 @@ map_entry(lambda: medication(PRESCRIPTION | {"code_produit": "GLU1000"}), "77812
 codes.timestamp("2024-03-09T22:40:00")  # 2024-03-09 22:40:00+01:00
 ```
 
+## Sample hospital-specific adapter: Hospital B (HC-123)
+
+IMPLEMENTED at D3 against a **simulated** DMI. [`zitoun_sih_export.py`](zitoun_sih_export.py) implements `DmiSource` for one hospital, Hôpital Régional Oued Zitoun (Hospital B), whose fictional DMI, *Zitoun SIH*, has no real-time API and writes a nightly export. The export, [`demo-data/dmi/hospital-b-export.json`](../../../../demo-data/dmi/hospital-b-export.json), is invented: it represents the same fictional records as [`records/hospital-b.json`](../../../../demo-data/records/hospital-b.json), in the DMI's own format.
+
+| DMI format (stays in the adapter) | Canonical model |
+|---|---|
+| `sejours`, `prescriptions`, `resultats_bio`, with French field names | `Encounter`, `Medication`, `LabReport` |
+| Patients by IPP (`ipp`, for example `OZ-55031`) | Stamped with the `patient_ref` the Node asked for |
+| Local codes: venue type `URG`, product `COAG5`, status `EN COURS`, test `HB`, flag `N`, staff number `MAT-0187` | `emergency`, `MED-COAGULIX`, `active`, `Hémoglobine`, `normal`, `clin-ines`, through Hospital B's `CodeMap` |
+| `dd/mm/yyyy HH:MM` without an offset | Read in the declared `source_offset` (`+01:00`) |
+| Numbers as text with a decimal comma (`"12,6"`) | Numbers; anything else is `invalid_value` |
+| One row per lab result, report fields repeated on each | One `LabReport` per `num_demande`, mapped or rejected whole |
+| DMI ids (`S2026-1142`, `40217`) | `dmi-b-S2026-1142`, `dmi-b-40217`; encounter links resolve within the extract |
+
+**Local configuration** ([`config/hospital-b.dmi.json`](../../config/hospital-b.dmi.json)): the export file, the DMI's code for the establishment (`HROZ-SFAX`), and Hospital B's mapping-table document (version `2026-10-01`). It holds no address or credential and is read only by Hospital B's Node. Its name does not match `*.demo.json`: it is not a Node configuration. A table with any unusable part, or an unknown field, stops the adapter at construction (`DmiConfigError`).
+
+| Behavior | What the adapter does |
+|---|---|
+| `describe()` | `Zitoun SIH, export nocturne (logiciel fictif)`, all three record types, `mocked: true`: the DMI is simulated. |
+| Unknown patient | Empty extract. Another hospital's identifier for the same patient finds nothing. |
+| Unmappable entry | Rejected whole through `map_entry`, by its DMI id (or position, such as `sejours[1]`), with `missing_field`, `invalid_value`, or `unmapped_code`; the patient's other records are still returned. A bad result row rejects its whole lab report. Rows of one report that disagree on its date, title, or encounter are `invalid_value`, and a reference range needs both bounds. |
+| Clinical content | Carried as written: titles, reasons, summaries, dosages, values, units, ranges. Flags come from the DMI's `indicateur` and are never recomputed. No unit conversion, no AI step. |
+| Unavailable DMI | `DmiUnavailable` when the export cannot be read or parsed, is not marked `"fictional": true`, comes from another establishment, or has an unreadable export date or collection. |
+| Freshness | The export is read on every extraction; the configuration once, at construction. A missing export does not stop construction. |
+| `extracted_at` | When the DMI wrote the export (`date_export`), not when the Node read it: records are as of the last nightly export. |
+
+**Tests** ([`tests/test_zitoun_sih_export.py`](../../tests/test_zitoun_sih_export.py)): the port conformance check for both of Hospital B's patients; every clinical field of each extract equals Hospital B's canonical fixture records (references aside: the DMI's ids are not the fixture's); rejections by reason; unavailable and misconfigured cases. `demo-data/check_fixtures.py` checks the export's fictional marker.
+
+Not done at D3: `main.py` does not build the adapter and the Node configuration does not name it; no use case calls the port; records still come from the fixture repository; `/health` does not report the DMI. Hospital A and the private practice have no hospital-specific adapter. There is no real DMI or vendor format, network access, credential, export scheduling, or write-back.
+
+Demo, from `instances/hospital-node/` with the virtual environment active (checked 2026-10-11):
+
+```python
+from pathlib import Path
+from adapters.dmi.zitoun_sih_export import ZitounSihExportDmi
+from domain.dmi import PatientIdentity
+
+dmi = ZitounSihExportDmi.from_config(Path("config/hospital-b.dmi.json"))
+extract = dmi.extract_patient(PatientIdentity("pat-a", "OZ-55031"))
+# dmi-b-S2026-1142 (consultation, clin-ines), dmi-b-40217 (MED-COAGULIX, active),
+# dmi-b-B2026-0751 (Hémoglobine 12.6 g/dL normal, ...); rejected: ()
+extract.extracted_at  # 2026-10-10 02:00:00+01:00: the nightly export
+dmi.extract_patient(PatientIdentity("pat-a", "BEN-2024-08812"))  # empty: Hospital A's identifier
+```
+
 ## Communication boundaries
 
 The adapter implements the Hospital Node-owned `DmiSource` port. DMI representations must not leak into the Node Domain or repository-level cross-component contracts.
@@ -168,4 +213,4 @@ This is not a shared central integration service and does not define a universal
 
 ## Expected contents
 
-The mock local adapter (HC-121) and the mapping strategy's building blocks (HC-122) are here. HC-123 adds a sample hospital-specific adapter, with its mapping tables and local configuration. Each must pass the port conformance check and keep the Hospital Node's Clean/Hexagonal dependency direction.
+The mock local adapter (HC-121), the mapping strategy's building blocks (HC-122), and Hospital B's sample adapter (HC-123), whose mapping tables and local configuration are in `config/hospital-b.dmi.json`. Another hospital adds its own adapter, or its own configuration for an adapter that fits its DMI. Each must pass the port conformance check and keep the Hospital Node's Clean/Hexagonal dependency direction.

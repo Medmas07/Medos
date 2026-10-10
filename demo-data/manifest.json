@@ -13,6 +13,7 @@
     "records/hospital-a.json",
     "records/hospital-b.json",
     "records/private-practice.json",
+    "dmi/hospital-b-export.json",
     "access.json",
     "governance.json",
     "research.json",
