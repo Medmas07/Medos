@@ -2,9 +2,10 @@ from domain.node_identity import NodeIdentity
 from domain.node_status import NodeStatus
 
 NODE_NAME = "governance-node"
-NODE_VERSION = "0.1.0"
-# Governance APIs are added as their tickets land (HC-131 to HC-136); none exists yet.
-CAPABILITIES: tuple[str, ...] = ()
+NODE_VERSION = "0.2.0"
+# Governance APIs are added as their tickets land (HC-131 to HC-136).
+# hospital-approval.v1: list, read, and decide hospital applications (HC-131).
+CAPABILITIES: tuple[str, ...] = ("hospital_approval",)
 
 
 def get_node_status(identity: NodeIdentity) -> NodeStatus:

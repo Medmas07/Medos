@@ -27,7 +27,7 @@ Clinician App / Patient App
 
 The two files share most component schemas (`Entry`, `Authorization`, `Scope`, `Problem`, and others). They are duplicated so each file stands alone, and the [contract tests](../../tests/contracts/) fail if they drift apart.
 
-The node registry lists which node serves which organization, where to reach it, and the Governance decision it cites. It routes; it does not approve. Organization approval belongs to the Governance Node, and the registry reports each approval reference as `verified: false` until a Governance approval API exists (HC-131).
+The node registry lists which node serves which organization, where to reach it, and the Governance decision it cites. It routes; it does not approve. Organization approval belongs to the Governance Node, and the registry reports each approval reference as `verified: false`: the Governance Node serves `getHospitalApproval` ([`hospital-approval.v1.yaml`](../api/governance/hospital-approval.v1.yaml), HC-131), but the Federation Service does not call it yet.
 
 Capability discovery (registry 1.1) asks each registered node for its `GET /v1/federation/node` descriptor and keeps the latest self-reported result with an explicit outcome. A failed check never means "no data", and a node naming another identity is flagged `identity_mismatch`.
 
