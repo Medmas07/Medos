@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-CONFIRMED autonomous hospital-controlled boundary. Its stack (Python + FastAPI, one process per hospital from one codebase, flat layer layout that keeps `adapters/dmi/`) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED (HC-110): a FastAPI app with empty Clean/Hexagonal layers, pinned dependencies, and tests. **It exposes no product endpoint and holds no clinical data.** The health endpoint (HC-111), per-hospital configuration for demo hospitals A/B/C (HC-112), and clinical repository and APIs (HC-113 to HC-116) are PLANNED. It is expected to become a separately packaged/containerized instance; container choices remain OPEN.
+CONFIRMED autonomous hospital-controlled boundary. Its stack (Python + FastAPI, one process per hospital from one codebase, flat layer layout that keeps `adapters/dmi/`) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED (HC-110): a FastAPI app with Clean/Hexagonal layers, pinned dependencies, and tests. Its only endpoint is `GET /health` (HC-111, IMPLEMENTED at D2). **It holds no clinical data.** Per-hospital configuration for demo hospitals A/B/C (HC-112), and clinical repository and APIs (HC-113 to HC-116) are PLANNED. It is expected to become a separately packaged/containerized instance; container choices remain OPEN.
 
 ## Running locally
 
@@ -17,16 +17,24 @@ From this directory (POSIX shell; on Windows activate with `.venv\Scripts\activa
 | Lint / format check | `ruff check . && ruff format --check .` |
 | Production-mode server (preview) | `fastapi run main.py --port 8101` |
 
-The only route is FastAPI's generated `/openapi.json` (and `/docs`), whose `paths` are empty.
+## Health endpoint (HC-111)
+
+`GET /health` is a liveness check. It returns `200` with the node kind, version, an empty `capabilities` list, and a notice stating that the instance holds no clinical data, has no hospital identity yet (HC-112), and is not a production health check:
+
+```json
+{"status": "ok", "node": "hospital-node", "version": "0.1.0", "capabilities": [], "notice": "Hospital Node runtime skeleton (HC-111). ..."}
+```
+
+It does not check storage, DMI connectivity, or Federation reachability; none exists yet. Deployment health checks are PLANNED in HC-223. Besides `/health`, only FastAPI's generated `/openapi.json` and `/docs` are served.
 
 ## Layout
 
 ```text
 instances/hospital-node/
 ├── main.py                     # composition root: builds the FastAPI app
-├── domain/                     # empty — stdlib only
-├── application/                # empty — use cases and their ports; imports only domain
-├── adapters/inbound/http/      # empty — FastAPI routers and Pydantic models
+├── domain/                     # NodeStatus — stdlib only
+├── application/                # get_node_status use case; imports only domain
+├── adapters/inbound/http/      # /health router and Pydantic response model
 ├── adapters/dmi/               # PLANNED hospital-local DMI Adapter (HC-120+)
 ├── contracts/                  # reserved for Node-local contract documents
 └── tests/                      # app and layer-boundary tests
@@ -41,7 +49,7 @@ instances/hospital-node/
 - Local storage and clinical source-data control.
 - Consent/authorization enforcement at the local boundary.
 - Local audit generation and Federation interface.
-- Future local API, identity/RBAC, events, and health checks.
+- Liveness health check (IMPLEMENTED); future local API, identity/RBAC, and events.
 
 ## Communication boundaries
 
@@ -55,4 +63,4 @@ The Hospital Node does not own ethics approval, global research approval, compan
 
 Each Hospital Node must provide [`hospital-node-federation.v1.yaml`](../../contracts/federation/hospital-node-federation.v1.yaml) (HC-140): a node descriptor and authorized, scoped patient queries that the node enforces itself. The contract is defined; no Node implements it yet.
 
-PLANNED local clinical API, DMI port, consent/authorization, audit-event, research-execution, and health contracts.
+PLANNED local clinical API, DMI port, consent/authorization, audit-event, and research-execution contracts. `/health` is Node-local and has no versioned contract.
