@@ -69,8 +69,12 @@ function plural(count: number, word: string): string {
 }
 
 function documentsState(application: HospitalApplication): StepState {
+  const total = application.documents.length
   const missing = application.documents.filter((d) => d.status !== 'received').length
-  if (application.documents.length === 0) return { status: 'pending', detail: 'Aucun document déposé.' }
+  if (total === 0 || missing === total) return { status: 'pending', detail: 'Aucun document déposé.' }
+  if (missing > 0 && application.status === 'draft') {
+    return { status: 'in_progress', detail: `${total - missing} / ${total} documents déposés.` }
+  }
   if (missing > 0) return { status: 'attention', detail: `${plural(missing, 'document')} à fournir.` }
   return { status: 'completed', detail: `${plural(application.documents.length, 'document')} reçu(s).` }
 }
@@ -189,11 +193,18 @@ export function deriveSteps(
 
 /**
  * Demo scenarios, selected with `?demo=vide`, `?demo=erreur`,
- * `?demo=echec-inscription`, or `?demo=echec-profil` in the URL. The two
- * failure scenarios start like `empty`; the first registration submission or
- * the first profile save fails.
+ * `?demo=echec-inscription`, `?demo=echec-profil`, or `?demo=echec-document`
+ * in the URL. The registration and profile failure scenarios start like
+ * `empty`; the document failure scenario starts like `nominal`. Each makes the
+ * first matching submission fail.
  */
-export type DemoScenario = 'nominal' | 'empty' | 'error' | 'registration-failure' | 'profile-failure'
+export type DemoScenario =
+  | 'nominal'
+  | 'empty'
+  | 'error'
+  | 'registration-failure'
+  | 'profile-failure'
+  | 'document-failure'
 
 export function scenarioFromSearch(search: string): DemoScenario {
   const value = new URLSearchParams(search).get('demo')
@@ -201,6 +212,7 @@ export function scenarioFromSearch(search: string): DemoScenario {
   if (value === 'erreur') return 'error'
   if (value === 'echec-inscription') return 'registration-failure'
   if (value === 'echec-profil') return 'profile-failure'
+  if (value === 'echec-document') return 'document-failure'
   return 'nominal'
 }
 

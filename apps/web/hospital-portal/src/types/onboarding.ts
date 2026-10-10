@@ -35,10 +35,23 @@ export interface StaffMember {
   phone?: string
 }
 
+export type DocumentType = 'statutes' | 'operating_license' | 'insurance_certificate'
+
+/** Metadata of a file deposited in this portal (HC-053). The file content is never read or sent. */
+export interface DocumentUpload {
+  fileName: string
+  sizeBytes: number
+  mediaType: string
+  uploadedAt: string
+}
+
 export interface ApplicationDocument {
   id: string
+  type: DocumentType
   title: string
   status: 'received' | 'missing' | 'rejected'
+  /** Only set for a document deposited in this portal (local state). */
+  upload?: DocumentUpload
 }
 
 export interface ApplicationAgreement {
