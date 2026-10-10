@@ -9,12 +9,28 @@ from conftest import CONTRACTS, FEDERATION, validator
 CONTRACT_FILES = sorted([*CONTRACTS.rglob("*.v*.yaml"), *FEDERATION.rglob("*.v*.yaml")])
 
 
+HTTP_METHODS = {"get", "put", "post", "delete", "options", "head", "patch", "trace"}
+
+
+def _deref(contract: dict, node: dict) -> dict:
+    """Follow a local `$ref` such as `#/components/responses/InvalidRequest`."""
+    while "$ref" in node:
+        target = contract
+        for part in node["$ref"].removeprefix("#/").split("/"):
+            target = target[part]
+        node = target
+    return node
+
+
 def _examples(contract: dict):
-    for path, operations in contract["paths"].items():
-        for method, operation in operations.items():
-            bodies = [("request", operation.get("requestBody", {}).get("content", {}))]
+    for path, item in contract["paths"].items():
+        for method, operation in item.items():
+            if method not in HTTP_METHODS:
+                continue
+            request = _deref(contract, operation.get("requestBody", {}))
+            bodies = [("request", request.get("content", {}))]
             bodies += [
-                (status, response.get("content", {}))
+                (status, _deref(contract, response).get("content", {}))
                 for status, response in operation["responses"].items()
             ]
             for where, content in bodies:

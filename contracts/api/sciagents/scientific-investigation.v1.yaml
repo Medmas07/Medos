@@ -1,0 +1,638 @@
+openapi: 3.1.0
+info:
+  title: SciAgents Integration — Scientific Investigation
+  version: 1.0.0
+  description: |
+    Contract HC-170, version 1. The provider-neutral contract between the
+    Research Service / Research Portal and this repository's SciAgents
+    Integration adapter (`integrations/sciagents/`).
+
+    **SciAgents is an existing external system and is not reimplemented
+    here.** This contract does not describe SciAgents' own API. The adapter
+    (HC-171) maps it to that API. The real SciAgents endpoints,
+    authentication, and hosting are OPEN (see docs/OPEN_QUESTIONS.md).
+
+    Flow: the caller submits a research question (`POST`) and receives a
+    queued investigation, then polls it (`GET`) until it is `completed` or
+    `failed`. While it runs, `progress` reports what the adapter knows, for
+    progress display (HC-173).
+
+    Boundary rules carried by this contract:
+
+    - **Research use only.** Results are scientific leads for researchers.
+      `clinical_use` is always `not_for_clinical_decisions`, and nothing in
+      a result becomes clinical truth.
+    - **No raw clinical data leaves for SciAgents.** A request may carry
+      only the question, opaque references, and summaries of *controlled
+      results*: outputs that have already passed Compute-to-Data output
+      validation. The schema rejects any other field.
+    - **Every claim is traceable.** Hypotheses reference evidence and
+      contradictions, and evidence and contradictions reference citations,
+      by id. Every referenced id must exist in the same result.
+    - **Provenance is explicit,** including whether the result is mocked.
+
+    v1 result sections: hypotheses, evidence, contradictions, citations.
+    Entity resolution, evidence graphs, and novelty checks are not part of
+    this version.
+
+    Status: this contract has no implementation. The adapter is HC-171; the
+    Research Portal connection is HC-172.
+paths:
+  /v1/investigations:
+    post:
+      operationId: createInvestigation
+      summary: Submit a research question to SciAgents.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvestigationRequest"
+            examples:
+              demoInvestigation:
+                summary: Fictional demo — research project proj-001 (HC-005 fixtures).
+                value:
+                  project_ref: proj-001
+                  requested_by: usr-aymen
+                  question: >-
+                    Quels facteurs pourraient expliquer la part plus élevée de
+                    mauvais contrôle glycémique après 60 ans ?
+                  language: fr
+                  controlled_results:
+                    - result_ref: res-001
+                      summary: >-
+                        Résultat agrégé fictif : la part de mauvais contrôle
+                        glycémique augmente entre 50-59 et 60-69 ans, sans
+                        hausse supplémentaire entre 70-79 ans.
+      responses:
+        "202":
+          description: Investigation accepted and queued.
+          headers:
+            Location:
+              description: URL of the investigation resource.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Investigation"
+              examples:
+                queued:
+                  value:
+                    investigation_id: 0b6f5a1e-3c2d-4e7f-9a8b-1c2d3e4f5a6b
+                    contract_version: "1.0"
+                    project_ref: proj-001
+                    requested_by: usr-aymen
+                    question: >-
+                      Quels facteurs pourraient expliquer la part plus élevée de
+                      mauvais contrôle glycémique après 60 ans ?
+                    status: queued
+                    progress: null
+                    created_at: "2026-10-10T11:00:00Z"
+                    updated_at: "2026-10-10T11:00:00Z"
+                    clinical_use: not_for_clinical_decisions
+                    notice: >-
+                      Research leads from an external system. Not for clinical
+                      decisions.
+                    result: null
+                    error: null
+                    provenance:
+                      provider:
+                        name: SciAgents
+                        version: null
+                      adapter:
+                        name: demo-sciagents-adapter
+                        version: "1.0.0"
+                      mocked: true
+                      upstream_request_ref: null
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "503":
+          description: SciAgents cannot accept investigations right now. Nothing was queued.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                unavailable:
+                  value:
+                    type: about:blank
+                    title: SciAgents unavailable
+                    status: 503
+                    detail: SciAgents is not reachable. No investigation was created.
+                    code: sciagents_unavailable
+  /v1/investigations/{investigation_id}:
+    get:
+      operationId: getInvestigation
+      summary: Get an investigation's status, progress, and result.
+      parameters:
+        - name: investigation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Current state of the investigation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Investigation"
+              examples:
+                running:
+                  value:
+                    investigation_id: 0b6f5a1e-3c2d-4e7f-9a8b-1c2d3e4f5a6b
+                    contract_version: "1.0"
+                    project_ref: proj-001
+                    requested_by: usr-aymen
+                    question: >-
+                      Quels facteurs pourraient expliquer la part plus élevée de
+                      mauvais contrôle glycémique après 60 ans ?
+                    status: running
+                    progress:
+                      stage_label: Recherche bibliographique
+                      percent: 40
+                      updated_at: "2026-10-10T11:00:20Z"
+                    created_at: "2026-10-10T11:00:00Z"
+                    updated_at: "2026-10-10T11:00:20Z"
+                    clinical_use: not_for_clinical_decisions
+                    notice: >-
+                      Research leads from an external system. Not for clinical
+                      decisions.
+                    result: null
+                    error: null
+                    provenance:
+                      provider:
+                        name: SciAgents
+                        version: null
+                      adapter:
+                        name: demo-sciagents-adapter
+                        version: "1.0.0"
+                      mocked: true
+                      upstream_request_ref: null
+                completed:
+                  summary: Fictional demo result, matching HC-005 fixture inv-001.
+                  value:
+                    investigation_id: 0b6f5a1e-3c2d-4e7f-9a8b-1c2d3e4f5a6b
+                    contract_version: "1.0"
+                    project_ref: proj-001
+                    requested_by: usr-aymen
+                    question: >-
+                      Quels facteurs pourraient expliquer la part plus élevée de
+                      mauvais contrôle glycémique après 60 ans ?
+                    status: completed
+                    progress:
+                      stage_label: Terminé
+                      percent: 100
+                      updated_at: "2026-10-10T11:01:05Z"
+                    created_at: "2026-10-10T11:00:00Z"
+                    updated_at: "2026-10-10T11:01:05Z"
+                    clinical_use: not_for_clinical_decisions
+                    notice: >-
+                      Research leads from an external system. Not for clinical
+                      decisions.
+                    result:
+                      hypotheses:
+                        - hypothesis_id: inv-001-h1
+                          statement: Une moindre observance liée à la polymédication.
+                          confidence: moderate
+                          evidence_ids: [inv-001-e2]
+                          contradiction_ids: []
+                        - hypothesis_id: inv-001-h2
+                          statement: >-
+                            Un dépistage plus tardif chez les patients sans suivi
+                            régulier.
+                          confidence: low
+                          evidence_ids: [inv-001-e1]
+                          contradiction_ids: [inv-001-x1]
+                      evidence:
+                        - evidence_id: inv-001-e1
+                          summary: >-
+                            Les résultats agrégés montrent une hausse nette entre
+                            50-59 et 60-69 ans.
+                          citation_ids: [inv-001-c1]
+                        - evidence_id: inv-001-e2
+                          summary: >-
+                            Une publication fictive associe le nombre de
+                            traitements à un moins bon équilibre.
+                          citation_ids: [inv-001-c2]
+                      contradictions:
+                        - contradiction_id: inv-001-x1
+                          summary: >-
+                            La tranche 70-79 ans ne prolonge pas la hausse, ce qui
+                            affaiblit l'hypothèse liée à l'âge seul.
+                          citation_ids: [inv-001-c1]
+                      citations:
+                        - citation_id: inv-001-c1
+                          kind: controlled_result
+                          title: Résultat contrôlé res-001
+                          source: Résultat interne de démonstration
+                          identifier: res-001
+                          url: null
+                        - citation_id: inv-001-c2
+                          kind: publication
+                          title: >-
+                            Polymédication et équilibre glycémique : une revue
+                            (référence fictive)
+                          source: Référence inventée pour la démonstration
+                          identifier: null
+                          url: null
+                    error: null
+                    provenance:
+                      provider:
+                        name: SciAgents
+                        version: null
+                      adapter:
+                        name: demo-sciagents-adapter
+                        version: "1.0.0"
+                      mocked: true
+                      upstream_request_ref: null
+                failed:
+                  value:
+                    investigation_id: 7c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f
+                    contract_version: "1.0"
+                    project_ref: proj-001
+                    requested_by: usr-aymen
+                    question: Question de démonstration fictive.
+                    status: failed
+                    progress:
+                      stage_label: Recherche bibliographique
+                      percent: 40
+                      updated_at: "2026-10-10T11:02:30Z"
+                    created_at: "2026-10-10T11:02:00Z"
+                    updated_at: "2026-10-10T11:02:30Z"
+                    clinical_use: not_for_clinical_decisions
+                    notice: >-
+                      Research leads from an external system. Not for clinical
+                      decisions.
+                    result: null
+                    error:
+                      code: timeout
+                      message: SciAgents did not answer in time.
+                      retryable: true
+                    provenance:
+                      provider:
+                        name: SciAgents
+                        version: null
+                      adapter:
+                        name: demo-sciagents-adapter
+                        version: "1.0.0"
+                      mocked: true
+                      upstream_request_ref: null
+        "404":
+          description: No investigation with this id is visible to the caller.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                notFound:
+                  value:
+                    type: about:blank
+                    title: Investigation not found
+                    status: 404
+                    code: investigation_not_found
+components:
+  responses:
+    InvalidRequest:
+      description: The request does not match this contract.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          examples:
+            invalidRequest:
+              value:
+                type: about:blank
+                title: Invalid investigation request
+                status: 400
+                detail: "Invalid or missing fields: question"
+                code: invalid_request
+  schemas:
+    InvestigationRequest:
+      type: object
+      additionalProperties: false
+      required: [project_ref, requested_by, question]
+      properties:
+        project_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        requested_by:
+          description: Opaque reference to the researcher.
+          allOf:
+            - $ref: "#/components/schemas/OpaqueRef"
+        question:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        language:
+          description: BCP 47 language tag of the question, if known.
+          type: string
+          pattern: "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+        controlled_results:
+          description: |
+            Optional context. Each entry must be a controlled result that has
+            passed Compute-to-Data output validation; never raw records.
+          type: array
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/ControlledResultContext"
+
+    ControlledResultContext:
+      type: object
+      additionalProperties: false
+      required: [result_ref, summary]
+      properties:
+        result_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        summary:
+          description: Released, aggregated summary of the controlled result.
+          type: string
+          minLength: 1
+          maxLength: 2000
+
+    OpaqueRef:
+      description: Opaque identifier. Must not contain a name or other direct identifier.
+      type: string
+      pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+
+    Investigation:
+      type: object
+      additionalProperties: false
+      required:
+        - investigation_id
+        - contract_version
+        - project_ref
+        - requested_by
+        - question
+        - status
+        - progress
+        - created_at
+        - updated_at
+        - clinical_use
+        - notice
+        - result
+        - error
+        - provenance
+      properties:
+        investigation_id:
+          type: string
+          format: uuid
+        contract_version:
+          const: "1.0"
+        project_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        requested_by:
+          $ref: "#/components/schemas/OpaqueRef"
+        question:
+          type: string
+          minLength: 1
+        status:
+          type: string
+          enum: [queued, running, completed, failed]
+        progress:
+          description: Latest progress the adapter knows; null before any is reported.
+          oneOf:
+            - $ref: "#/components/schemas/Progress"
+            - type: "null"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        clinical_use:
+          const: not_for_clinical_decisions
+        notice:
+          type: string
+          minLength: 1
+        result:
+          description: Present only when `status` is `completed`.
+          oneOf:
+            - $ref: "#/components/schemas/InvestigationResult"
+            - type: "null"
+        error:
+          description: Present only when `status` is `failed`.
+          oneOf:
+            - $ref: "#/components/schemas/InvestigationError"
+            - type: "null"
+        provenance:
+          $ref: "#/components/schemas/Provenance"
+      allOf:
+        - if:
+            properties:
+              status:
+                const: completed
+          then:
+            properties:
+              result:
+                $ref: "#/components/schemas/InvestigationResult"
+              error:
+                type: "null"
+        - if:
+            properties:
+              status:
+                const: failed
+          then:
+            properties:
+              result:
+                type: "null"
+              error:
+                $ref: "#/components/schemas/InvestigationError"
+        - if:
+            properties:
+              status:
+                enum: [queued, running]
+          then:
+            properties:
+              result:
+                type: "null"
+              error:
+                type: "null"
+
+    Progress:
+      type: object
+      additionalProperties: false
+      required: [stage_label, percent, updated_at]
+      properties:
+        stage_label:
+          description: Human-readable stage as reported by the adapter. SciAgents' own stage names are not fixed by this contract.
+          type: string
+          minLength: 1
+        percent:
+          description: Estimated completion; null when SciAgents gives no estimate.
+          type: [integer, "null"]
+          minimum: 0
+          maximum: 100
+        updated_at:
+          type: string
+          format: date-time
+
+    InvestigationResult:
+      type: object
+      additionalProperties: false
+      required: [hypotheses, evidence, contradictions, citations]
+      properties:
+        hypotheses:
+          type: array
+          items:
+            $ref: "#/components/schemas/Hypothesis"
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/Evidence"
+        contradictions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Contradiction"
+        citations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Citation"
+
+    Hypothesis:
+      type: object
+      additionalProperties: false
+      required: [hypothesis_id, statement, confidence, evidence_ids, contradiction_ids]
+      properties:
+        hypothesis_id:
+          type: string
+          minLength: 1
+        statement:
+          type: string
+          minLength: 1
+        confidence:
+          description: Confidence as reported by SciAgents, mapped to three levels; null when not reported.
+          oneOf:
+            - type: string
+              enum: [low, moderate, high]
+            - type: "null"
+        evidence_ids:
+          type: array
+          items:
+            type: string
+        contradiction_ids:
+          type: array
+          items:
+            type: string
+
+    Evidence:
+      type: object
+      additionalProperties: false
+      required: [evidence_id, summary, citation_ids]
+      properties:
+        evidence_id:
+          type: string
+          minLength: 1
+        summary:
+          type: string
+          minLength: 1
+        citation_ids:
+          type: array
+          minItems: 1
+          items:
+            type: string
+
+    Contradiction:
+      type: object
+      additionalProperties: false
+      required: [contradiction_id, summary, citation_ids]
+      properties:
+        contradiction_id:
+          type: string
+          minLength: 1
+        summary:
+          type: string
+          minLength: 1
+        citation_ids:
+          type: array
+          minItems: 1
+          items:
+            type: string
+
+    Citation:
+      type: object
+      additionalProperties: false
+      required: [citation_id, kind, title, source, identifier, url]
+      properties:
+        citation_id:
+          type: string
+          minLength: 1
+        kind:
+          type: string
+          enum: [publication, controlled_result, other]
+        title:
+          type: string
+          minLength: 1
+        source:
+          type: string
+          minLength: 1
+        identifier:
+          description: DOI, PMID, or a controlled result reference, when available.
+          type: [string, "null"]
+        url:
+          type: [string, "null"]
+
+    InvestigationError:
+      type: object
+      additionalProperties: false
+      required: [code, message, retryable]
+      properties:
+        code:
+          type: string
+          enum: [upstream_unavailable, upstream_error, timeout, rejected_by_upstream]
+        message:
+          type: string
+          minLength: 1
+        retryable:
+          type: boolean
+
+    Provenance:
+      type: object
+      additionalProperties: false
+      required: [provider, adapter, mocked, upstream_request_ref]
+      properties:
+        provider:
+          type: object
+          additionalProperties: false
+          required: [name, version]
+          properties:
+            name:
+              const: SciAgents
+            version:
+              description: SciAgents version, when it reports one.
+              type: [string, "null"]
+        adapter:
+          type: object
+          additionalProperties: false
+          required: [name, version]
+          properties:
+            name:
+              type: string
+              minLength: 1
+            version:
+              type: string
+              minLength: 1
+        mocked:
+          description: True when the result comes from fixtures rather than SciAgents.
+          type: boolean
+        upstream_request_ref:
+          description: SciAgents' own id for the request, when available, for support and audit.
+          type: [string, "null"]
+
+    Problem:
+      description: RFC 9457 problem details.
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+          enum: [invalid_request, investigation_not_found, sciagents_unavailable]

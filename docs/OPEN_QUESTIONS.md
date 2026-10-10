@@ -19,6 +19,8 @@ These questions are OPEN. Do not answer them through implementation without the 
 - Which component provides the medication safety check ([HC-160 contract](../contracts/api/medication-safety/medication-safety-check.v1.yaml))? Candidates include the Hospital Node serving the clinician or a dedicated service; a dedicated service needs an ADR. The contract is stateless, so the caller assembles the authorized medication history either way.
 - Which medication terminology (for example RxNorm or ATC) identifies medications across organizations, so interactions can be matched reliably?
 - Which research execution sandbox, package policy, isolation controls, and output-disclosure process are required?
+- What is SciAgents' real API: endpoints, authentication, hosting, rate limits, and how it reports progress and confidence? The [HC-170 contract](../contracts/api/sciagents/scientific-investigation.v1.yaml) is repository-side; HC-171 must map it once these are known.
+- Does sending controlled-result summaries to the external SciAgents system need its own Governance authorization or data-processing agreement beyond the research project's approval?
 - Which notification providers and delivery protocols will be used?
 - Which container runtime, deployment providers, hosting topology, observability stack, and disaster-recovery approach are appropriate?
 - Which actual DMI/HIS systems, interfaces, schemas, mappings, and local installation constraints apply to each participating hospital?
