@@ -1,0 +1,76 @@
+{
+  "fictional": true,
+  "notice": "Dossiers fictifs détenus par le Hospital Node de l'Hôpital Universitaire Bab Ennour. Ils ne quittent ce nœud que par une vue autorisée.",
+  "heldBy": "org-hospital-a",
+  "encounters": [
+    {
+      "id": "enc-a-2024-leila-er",
+      "patientId": "pat-a",
+      "type": "emergency",
+      "startedAt": "2024-03-09T22:40:00+01:00",
+      "clinicianId": "clin-rania",
+      "title": "Consultation aux urgences",
+      "reason": "Palpitations et essoufflement depuis la veille.",
+      "summary": "Rythme cardiaque irrégulier à l'ECG. Surveillance de 6 heures puis retour à domicile avec orientation vers une consultation spécialisée."
+    },
+    {
+      "id": "enc-a-2025-karim",
+      "patientId": "pat-b",
+      "type": "consultation",
+      "startedAt": "2025-09-15T10:00:00+01:00",
+      "clinicianId": "clin-x",
+      "title": "Bilan cardiométabolique",
+      "reason": "Fatigue et soif importante.",
+      "summary": "Diabète de type 2 découvert. Instauration d'un traitement oral et conseils hygiéno-diététiques. Contrôle biologique prévu à 12 mois."
+    },
+    {
+      "id": "enc-a-2026-karim",
+      "patientId": "pat-b",
+      "type": "consultation",
+      "startedAt": "2026-09-30T09:30:00+01:00",
+      "clinicianId": "clin-mariem",
+      "title": "Prélèvement de contrôle",
+      "reason": "Bilan de suivi du diabète.",
+      "summary": "Prélèvements réalisés. Rendez-vous médical de restitution non encore programmé."
+    }
+  ],
+  "medications": [
+    {
+      "id": "med-a-karim-glucorel",
+      "patientId": "pat-b",
+      "medicationCode": "MED-GLUCOREL",
+      "dosage": "850 mg, 2 fois par jour",
+      "prescribedById": "clin-x",
+      "encounterId": "enc-a-2025-karim",
+      "startDate": "2025-09-15",
+      "endDate": null,
+      "status": "active"
+    }
+  ],
+  "labReports": [
+    {
+      "id": "lab-a-2024-leila",
+      "patientId": "pat-a",
+      "encounterId": "enc-a-2024-leila-er",
+      "collectedAt": "2024-03-09T23:05:00+01:00",
+      "title": "Bilan aux urgences",
+      "results": [
+        { "test": "Hémoglobine", "value": 13.1, "unit": "g/dL", "referenceRange": { "low": 12.0, "high": 16.0 }, "flag": "normal" },
+        { "test": "Potassium", "value": 4.2, "unit": "mmol/L", "referenceRange": { "low": 3.5, "high": 5.0 }, "flag": "normal" },
+        { "test": "Créatinine", "value": 8.9, "unit": "mg/L", "referenceRange": { "low": 6.0, "high": 12.0 }, "flag": "normal" }
+      ]
+    },
+    {
+      "id": "lab-a-2026-karim",
+      "patientId": "pat-b",
+      "encounterId": "enc-a-2026-karim",
+      "collectedAt": "2026-09-30T09:40:00+01:00",
+      "title": "Bilan de suivi du diabète",
+      "results": [
+        { "test": "HbA1c", "value": 8.9, "unit": "%", "referenceRange": { "low": 4.0, "high": 6.0 }, "flag": "high" },
+        { "test": "Glycémie à jeun", "value": 1.62, "unit": "g/L", "referenceRange": { "low": 0.7, "high": 1.1 }, "flag": "high" },
+        { "test": "Créatinine", "value": 9.8, "unit": "mg/L", "referenceRange": { "low": 6.0, "high": 12.0 }, "flag": "normal" }
+      ]
+    }
+  ]
+}

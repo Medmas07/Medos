@@ -37,7 +37,7 @@ Status is based on repository inspection, not product intent. Use the [shared vo
 
 ## Mocked behavior
 
-No product mock implementation currently exists. Planning documents permit future fictional fixtures and deterministic demo behavior, but those plans are not implementation.
+- **Canonical demo data — MOCKED (D1):** `demo-data/` holds fictional JSON for three hospitals, a private practice, the Governance / Ethics Authority, three patients, clinicians, encounters, medications, labs, access grants, synchronization and research requests, decisions, audit events, simulated ledger proofs, research jobs, a SciAgents fixture, alerts, and notifications ([ADR-0005](decisions/ADR-0005-canonical-demo-data.md)). `python demo-data/check_fixtures.py` passes. Medicines and the interaction rule are invented and not validated. No product reads the data yet.
 
 ## Validated behavior
 

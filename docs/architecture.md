@@ -18,6 +18,7 @@ The ecosystem connects hospitals, patients, clinicians, researchers, company-man
 - External boundaries: SciAgents Integration and future third-party adapters.
 - Communication definitions: repository-level `contracts/`.
 - Web presentation foundation: `design-system/`, consumed by the web portals as a local package ([ADR-0002](decisions/ADR-0002-web-design-system.md)). It contains no domain logic or data access.
+- Demo data: `demo-data/`, the canonical fictional dataset read by products and future mock APIs ([ADR-0005](decisions/ADR-0005-canonical-demo-data.md)). Records are split by holding organization; it is neither a contract nor a central clinical database.
 
 No generic backend, shared database, or shared dumping-ground component exists.
 
@@ -184,6 +185,7 @@ AI is advisory, replaceable through ports, and subject to appropriate human revi
 | Governance Portal | PLANNED | No UI code; stack decided by ADR-0001. |
 | Research Portal | PLANNED | No UI code or notebook execution; stack decided by ADR-0001. |
 | Web design system | IMPLEMENTED | Tokens, components, and showcase at D1 (ADR-0002); no portal consumes it yet. |
+| Canonical demo data | MOCKED | Fictional JSON fixtures with integrity checks (ADR-0005); no product consumes them yet. |
 | Hospital Node | PLANNED | Boundary documented; runtime not implemented; stack decided by ADR-0003. |
 | Governance Node | PLANNED | Boundary documented; runtime not implemented; stack decided by ADR-0003. |
 | DMI Adapter | PLANNED | Hospital-local boundary documented; no adapter. |

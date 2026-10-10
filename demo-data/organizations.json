@@ -1,0 +1,94 @@
+{
+  "fictional": true,
+  "notice": "Données entièrement fictives pour la démonstration. Toute ressemblance avec un établissement réel est fortuite.",
+  "organizations": [
+    {
+      "id": "org-hospital-a",
+      "type": "hospital",
+      "name": "Hôpital Universitaire Bab Ennour",
+      "shortName": "HU Bab Ennour",
+      "city": "Tunis",
+      "governanceStatus": "approved",
+      "approvalDecisionId": "dec-hospital-a",
+      "node": {
+        "id": "node-hospital-a",
+        "status": "online",
+        "version": "0.1.0",
+        "lastSyncAt": "2026-10-10T08:55:00+01:00",
+        "dmiState": "connected"
+      }
+    },
+    {
+      "id": "org-hospital-b",
+      "type": "hospital",
+      "name": "Hôpital Régional Oued Zitoun",
+      "shortName": "HR Oued Zitoun",
+      "city": "Sfax",
+      "governanceStatus": "approved",
+      "approvalDecisionId": "dec-hospital-b",
+      "node": {
+        "id": "node-hospital-b",
+        "status": "online",
+        "version": "0.1.0",
+        "lastSyncAt": "2026-10-10T08:41:00+01:00",
+        "dmiState": "connected"
+      }
+    },
+    {
+      "id": "org-hospital-c",
+      "type": "hospital",
+      "name": "Centre Hospitalier Cap Azur",
+      "shortName": "CH Cap Azur",
+      "city": "Bizerte",
+      "governanceStatus": "under_review",
+      "approvalDecisionId": null,
+      "node": null
+    },
+    {
+      "id": "org-private-practice",
+      "type": "private_practice",
+      "name": "Cabinet médical Dr Hatem Bouzid",
+      "shortName": "Cabinet Bouzid",
+      "city": "Sousse",
+      "governanceStatus": "approved",
+      "approvalDecisionId": "dec-private-practice",
+      "node": {
+        "id": "node-private-practice",
+        "status": "degraded",
+        "version": "0.1.0",
+        "lastSyncAt": "2026-10-09T18:12:00+01:00",
+        "dmiState": "disconnected"
+      }
+    },
+    {
+      "id": "org-governance",
+      "type": "governance_authority",
+      "name": "Autorité de Gouvernance et d'Éthique Fédérée",
+      "shortName": "Autorité de gouvernance",
+      "city": "Tunis",
+      "governanceStatus": null,
+      "approvalDecisionId": null,
+      "node": null
+    },
+    {
+      "id": "org-platform",
+      "type": "platform_operator",
+      "name": "HackCure",
+      "shortName": "HackCure",
+      "city": "Tunis",
+      "governanceStatus": null,
+      "approvalDecisionId": null,
+      "node": null
+    },
+    {
+      "id": "org-research-lab",
+      "type": "research_institution",
+      "name": "Laboratoire de Recherche Cardiométabolique de Carthage",
+      "shortName": "Labo Cardiométabolique",
+      "city": "Tunis",
+      "governanceStatus": null,
+      "approvalDecisionId": null,
+      "node": null
+    }
+  ]
+}

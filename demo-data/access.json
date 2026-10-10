@@ -1,0 +1,79 @@
+{
+  "fictional": true,
+  "notice": "Autorisations d'accès fictives. MOCKED : aucune autorisation réelle n'est émise ni appliquée.",
+  "accessGrants": [
+    {
+      "id": "grant-a-drx",
+      "patientId": "pat-a",
+      "granteeId": "clin-x",
+      "scope": ["encounters", "medications", "labReports"],
+      "purpose": "Consultation de cardiologie",
+      "status": "active",
+      "grantedAt": "2026-10-10T09:00:00+01:00",
+      "expiresAt": "2026-10-24T09:00:00+01:00",
+      "revokedAt": null
+    },
+    {
+      "id": "grant-b-drx",
+      "patientId": "pat-b",
+      "granteeId": "clin-x",
+      "scope": ["encounters", "medications", "labReports"],
+      "purpose": "Suivi du diabète",
+      "status": "active",
+      "grantedAt": "2025-09-15T09:45:00+01:00",
+      "expiresAt": "2026-12-31T23:59:00+01:00",
+      "revokedAt": null
+    },
+    {
+      "id": "grant-a-ines",
+      "patientId": "pat-a",
+      "granteeId": "clin-ines",
+      "scope": ["encounters", "medications"],
+      "purpose": "Consultation de médecine interne",
+      "status": "expired",
+      "grantedAt": "2026-05-18T12:00:00+01:00",
+      "expiresAt": "2026-08-20T12:00:00+01:00",
+      "revokedAt": null
+    },
+    {
+      "id": "grant-c-ines",
+      "patientId": "pat-c",
+      "granteeId": "clin-ines",
+      "scope": ["encounters"],
+      "purpose": "Suivi après passage aux urgences",
+      "status": "revoked",
+      "grantedAt": "2025-12-10T08:00:00+01:00",
+      "expiresAt": "2026-06-10T08:00:00+01:00",
+      "revokedAt": "2026-03-01T19:30:00+01:00"
+    }
+  ],
+  "delegations": [
+    {
+      "id": "deleg-a-sami",
+      "patientId": "pat-a",
+      "delegateId": "rel-sami",
+      "scope": ["encounters", "medications"],
+      "canManageGrants": false,
+      "status": "active",
+      "grantedAt": "2026-06-01T10:00:00+01:00",
+      "expiresAt": null,
+      "revokedAt": null
+    }
+  ],
+  "restrictionRequests": [
+    {
+      "id": "rrq-c-research",
+      "patientId": "pat-c",
+      "type": "restriction",
+      "description": "Je souhaite que mes données ne soient plus utilisées pour des projets de recherche.",
+      "organizationIds": ["org-private-practice", "org-hospital-b"],
+      "status": "under_review",
+      "submittedAt": "2026-09-28T20:10:00+01:00",
+      "history": [
+        { "status": "submitted", "at": "2026-09-28T20:10:00+01:00" },
+        { "status": "under_review", "at": "2026-09-29T09:00:00+01:00" }
+      ],
+      "patientNotice": "Votre demande est en cours d'analyse. Certaines données peuvent devoir être conservées pour des obligations légales ou de soins."
+    }
+  ]
+}

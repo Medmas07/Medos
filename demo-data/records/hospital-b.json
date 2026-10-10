@@ -1,0 +1,54 @@
+{
+  "fictional": true,
+  "notice": "Dossiers fictifs détenus par le Hospital Node de l'Hôpital Régional Oued Zitoun. Ils ne quittent ce nœud que par une vue autorisée.",
+  "heldBy": "org-hospital-b",
+  "encounters": [
+    {
+      "id": "enc-b-2025-nour",
+      "patientId": "pat-c",
+      "type": "emergency",
+      "startedAt": "2025-12-10T03:20:00+01:00",
+      "clinicianId": "clin-ines",
+      "title": "Consultation aux urgences",
+      "reason": "Difficulté respiratoire nocturne.",
+      "summary": "Amélioration rapide après nébulisation. Orientation vers le médecin traitant."
+    },
+    {
+      "id": "enc-b-2026-leila",
+      "patientId": "pat-a",
+      "type": "consultation",
+      "startedAt": "2026-05-20T14:00:00+01:00",
+      "clinicianId": "clin-ines",
+      "title": "Consultation de médecine interne",
+      "reason": "Palpitations récidivantes.",
+      "summary": "Trouble du rythme confirmé à l'enregistrement. Instauration d'un traitement anticoagulant et bilan biologique."
+    }
+  ],
+  "medications": [
+    {
+      "id": "med-b-leila-coagulix",
+      "patientId": "pat-a",
+      "medicationCode": "MED-COAGULIX",
+      "dosage": "5 mg, 2 fois par jour",
+      "prescribedById": "clin-ines",
+      "encounterId": "enc-b-2026-leila",
+      "startDate": "2026-05-20",
+      "endDate": null,
+      "status": "active"
+    }
+  ],
+  "labReports": [
+    {
+      "id": "lab-b-2026-leila",
+      "patientId": "pat-a",
+      "encounterId": "enc-b-2026-leila",
+      "collectedAt": "2026-05-20T14:40:00+01:00",
+      "title": "Bilan avant traitement",
+      "results": [
+        { "test": "Hémoglobine", "value": 12.6, "unit": "g/dL", "referenceRange": { "low": 12.0, "high": 16.0 }, "flag": "normal" },
+        { "test": "Plaquettes", "value": 245, "unit": "G/L", "referenceRange": { "low": 150, "high": 400 }, "flag": "normal" },
+        { "test": "Créatinine", "value": 11.4, "unit": "mg/L", "referenceRange": { "low": 6.0, "high": 12.0 }, "flag": "normal" }
+      ]
+    }
+  ]
+}

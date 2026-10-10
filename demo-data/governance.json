@@ -1,0 +1,266 @@
+{
+  "fictional": true,
+  "notice": "Données de gouvernance fictives. Les preuves de registre sont SIMULÉES : aucune blockchain réelle, et aucune donnée clinique n'y figure.",
+  "hospitalApplications": [
+    {
+      "id": "app-hospital-c",
+      "organizationId": "org-hospital-c",
+      "submittedById": "usr-mehdi",
+      "submittedAt": "2026-10-06T15:20:00+01:00",
+      "status": "human_review",
+      "documents": [
+        { "id": "doc-c-statuts", "title": "Statuts de l'établissement.pdf", "status": "received" },
+        { "id": "doc-c-autorisation", "title": "Autorisation d'exercice.pdf", "status": "received" },
+        { "id": "doc-c-assurance", "title": "Attestation d'assurance.pdf", "status": "missing" }
+      ],
+      "agreements": [
+        { "code": "data_processing_agreement", "title": "Accord de traitement des données", "accepted": true },
+        { "code": "governance_charter", "title": "Charte de gouvernance fédérée", "accepted": true }
+      ],
+      "technicalQuestionnaire": {
+        "operatingSystem": "Ubuntu Server 22.04",
+        "dmiSystem": "MediDossier v7 (logiciel fictif)",
+        "database": "PostgreSQL 13",
+        "network": "Lien fibre 100 Mb/s, zone démilitarisée disponible",
+        "technicalContactId": "usr-mehdi"
+      },
+      "reviewSteps": [
+        {
+          "step": "completeness_check",
+          "status": "completed_with_findings",
+          "completedAt": "2026-10-06T15:21:00+01:00",
+          "findings": ["Attestation d'assurance manquante."]
+        },
+        {
+          "step": "assisted_review",
+          "status": "completed_with_findings",
+          "completedAt": "2026-10-06T15:24:00+01:00",
+          "mocked": true,
+          "advisory": true,
+          "findings": [
+            "La version de la base de données déclarée ne correspond pas à celle indiquée dans le document d'architecture.",
+            "Aucun contact de sécurité distinct n'est indiqué."
+          ]
+        },
+        {
+          "step": "human_review",
+          "status": "pending",
+          "reviewerId": "usr-olfa",
+          "completedAt": null,
+          "findings": []
+        }
+      ],
+      "decisionId": null
+    },
+    {
+      "id": "app-hospital-a",
+      "organizationId": "org-hospital-a",
+      "submittedById": null,
+      "submittedAt": "2025-01-14T10:00:00+01:00",
+      "status": "approved",
+      "documents": [],
+      "agreements": [],
+      "technicalQuestionnaire": null,
+      "reviewSteps": [],
+      "decisionId": "dec-hospital-a"
+    },
+    {
+      "id": "app-hospital-b",
+      "organizationId": "org-hospital-b",
+      "submittedById": null,
+      "submittedAt": "2025-02-03T10:00:00+01:00",
+      "status": "approved",
+      "documents": [],
+      "agreements": [],
+      "technicalQuestionnaire": null,
+      "reviewSteps": [],
+      "decisionId": "dec-hospital-b"
+    },
+    {
+      "id": "app-private-practice",
+      "organizationId": "org-private-practice",
+      "submittedById": null,
+      "submittedAt": "2025-04-22T10:00:00+01:00",
+      "status": "approved",
+      "documents": [],
+      "agreements": [],
+      "technicalQuestionnaire": null,
+      "reviewSteps": [],
+      "decisionId": "dec-private-practice"
+    }
+  ],
+  "synchronizationRequests": [
+    {
+      "id": "sync-001",
+      "requesterOrganizationId": "org-hospital-a",
+      "targetOrganizationId": "org-hospital-b",
+      "patientId": "pat-a",
+      "purpose": "Continuité des soins : consultation de cardiologie",
+      "scope": ["medications", "labReports"],
+      "durationDays": 30,
+      "consent": { "basis": "patient_grant", "accessGrantId": "grant-a-drx" },
+      "status": "pending",
+      "submittedAt": "2026-10-10T09:05:00+01:00",
+      "decisionId": null
+    },
+    {
+      "id": "sync-002",
+      "requesterOrganizationId": "org-private-practice",
+      "targetOrganizationId": "org-hospital-b",
+      "patientId": "pat-c",
+      "purpose": "Suivi de l'asthme après passage aux urgences",
+      "scope": ["encounters"],
+      "durationDays": 90,
+      "consent": { "basis": "signed_consent_form", "accessGrantId": null },
+      "status": "approved",
+      "submittedAt": "2025-12-12T09:00:00+01:00",
+      "decisionId": "dec-sync-002"
+    },
+    {
+      "id": "sync-003",
+      "requesterOrganizationId": "org-hospital-b",
+      "targetOrganizationId": "org-hospital-a",
+      "patientId": "pat-b",
+      "purpose": "Étude interne sur le diabète",
+      "scope": ["labReports"],
+      "durationDays": 365,
+      "consent": { "basis": "none", "accessGrantId": null },
+      "status": "rejected",
+      "submittedAt": "2026-08-02T11:00:00+01:00",
+      "decisionId": "dec-sync-003"
+    }
+  ],
+  "researchAccessRequests": [
+    {
+      "id": "rar-001",
+      "projectId": "proj-001",
+      "submittedById": "usr-aymen",
+      "submittedAt": "2026-07-01T10:00:00+01:00",
+      "status": "approved",
+      "decisionId": "dec-rar-001"
+    },
+    {
+      "id": "rar-002",
+      "projectId": "proj-002",
+      "submittedById": "usr-aymen",
+      "submittedAt": "2026-10-02T16:30:00+01:00",
+      "status": "under_review",
+      "decisionId": null
+    }
+  ],
+  "decisions": [
+    {
+      "id": "dec-hospital-a",
+      "subjectType": "hospital_application",
+      "subjectId": "app-hospital-a",
+      "outcome": "approved",
+      "decidedById": "usr-olfa",
+      "decidedAt": "2025-01-28T11:00:00+01:00",
+      "rationale": "Dossier complet et conforme à la charte de gouvernance.",
+      "conditions": [],
+      "validUntil": null
+    },
+    {
+      "id": "dec-hospital-b",
+      "subjectType": "hospital_application",
+      "subjectId": "app-hospital-b",
+      "outcome": "approved",
+      "decidedById": "usr-olfa",
+      "decidedAt": "2025-02-17T11:00:00+01:00",
+      "rationale": "Dossier complet et conforme à la charte de gouvernance.",
+      "conditions": [],
+      "validUntil": null
+    },
+    {
+      "id": "dec-private-practice",
+      "subjectType": "hospital_application",
+      "subjectId": "app-private-practice",
+      "outcome": "approved",
+      "decidedById": "usr-olfa",
+      "decidedAt": "2025-05-06T11:00:00+01:00",
+      "rationale": "Cabinet admis avec un nœud allégé.",
+      "conditions": [],
+      "validUntil": null
+    },
+    {
+      "id": "dec-sync-002",
+      "subjectType": "synchronization_request",
+      "subjectId": "sync-002",
+      "outcome": "approved",
+      "decidedById": "usr-olfa",
+      "decidedAt": "2025-12-12T14:30:00+01:00",
+      "rationale": "Finalité de soins, périmètre limité, autorisation de la patiente.",
+      "conditions": ["Périmètre limité aux consultations."],
+      "validUntil": "2026-03-12T14:30:00+01:00"
+    },
+    {
+      "id": "dec-sync-003",
+      "subjectType": "synchronization_request",
+      "subjectId": "sync-003",
+      "outcome": "rejected",
+      "decidedById": "usr-olfa",
+      "decidedAt": "2026-08-05T10:00:00+01:00",
+      "rationale": "Finalité de recherche incompatible avec une synchronisation de soins et absence d'autorisation du patient. Utiliser une demande d'accès recherche.",
+      "conditions": [],
+      "validUntil": null
+    },
+    {
+      "id": "dec-rar-001",
+      "subjectType": "research_access_request",
+      "subjectId": "rar-001",
+      "outcome": "approved",
+      "decidedById": "usr-olfa",
+      "decidedAt": "2026-07-20T15:00:00+01:00",
+      "rationale": "Protocole conforme. Exécution compute-to-data uniquement, résultats agrégés avec effectif minimal de 10.",
+      "conditions": ["Aucune donnée individuelle en sortie.", "Effectif minimal de 10 par cellule."],
+      "validUntil": "2027-07-20T15:00:00+01:00"
+    }
+  ],
+  "auditEvents": [
+    { "id": "evt-001", "at": "2025-01-28T11:00:00+01:00", "actorId": "usr-olfa", "action": "decision_recorded", "subjectType": "decision", "subjectId": "dec-hospital-a", "organizationIds": ["org-governance", "org-hospital-a"] },
+    { "id": "evt-002", "at": "2025-02-17T11:00:00+01:00", "actorId": "usr-olfa", "action": "decision_recorded", "subjectType": "decision", "subjectId": "dec-hospital-b", "organizationIds": ["org-governance", "org-hospital-b"] },
+    { "id": "evt-003", "at": "2025-12-12T14:30:00+01:00", "actorId": "usr-olfa", "action": "decision_recorded", "subjectType": "decision", "subjectId": "dec-sync-002", "organizationIds": ["org-governance", "org-private-practice", "org-hospital-b"] },
+    { "id": "evt-004", "at": "2026-07-20T15:00:00+01:00", "actorId": "usr-olfa", "action": "decision_recorded", "subjectType": "decision", "subjectId": "dec-rar-001", "organizationIds": ["org-governance", "org-research-lab", "org-hospital-a", "org-hospital-b"] },
+    { "id": "evt-005", "at": "2026-08-05T10:00:00+01:00", "actorId": "usr-olfa", "action": "decision_recorded", "subjectType": "decision", "subjectId": "dec-sync-003", "organizationIds": ["org-governance", "org-hospital-b", "org-hospital-a"] },
+    { "id": "evt-006", "at": "2026-10-06T15:20:00+01:00", "actorId": "usr-mehdi", "action": "application_submitted", "subjectType": "hospital_application", "subjectId": "app-hospital-c", "organizationIds": ["org-hospital-c"] },
+    { "id": "evt-007", "at": "2026-10-10T09:05:00+01:00", "actorId": null, "action": "request_received", "subjectType": "synchronization_request", "subjectId": "sync-001", "organizationIds": ["org-hospital-a", "org-hospital-b"] }
+  ],
+  "ledgerProofs": [
+    {
+      "id": "proof-003",
+      "auditEventId": "evt-003",
+      "simulated": true,
+      "ledger": "local-simulation",
+      "anchoredPayload": {
+        "eventId": "evt-003",
+        "decisionId": "dec-sync-002",
+        "outcome": "approved",
+        "decidedAt": "2025-12-12T14:30:00+01:00",
+        "organizationIds": ["org-governance", "org-private-practice", "org-hospital-b"],
+        "version": 1
+      },
+      "hashAlgorithm": "SHA-256",
+      "hash": "e75bbc395362bd1d52b865b691cde3d46c405477e4f7e87934cfcb138d9b5700",
+      "anchoredAt": "2025-12-12T14:30:05+01:00",
+      "verificationStatus": "verified"
+    },
+    {
+      "id": "proof-004",
+      "auditEventId": "evt-004",
+      "simulated": true,
+      "ledger": "local-simulation",
+      "anchoredPayload": {
+        "eventId": "evt-004",
+        "decisionId": "dec-rar-001",
+        "outcome": "approved",
+        "decidedAt": "2026-07-20T15:00:00+01:00",
+        "organizationIds": ["org-governance", "org-research-lab", "org-hospital-a", "org-hospital-b"],
+        "version": 1
+      },
+      "hashAlgorithm": "SHA-256",
+      "hash": "8a978e8a05a24d2c56c464881aeb7b2b7649e7294cec62f22ce615c0fe380a2a",
+      "anchoredAt": "2026-07-20T15:00:04+01:00",
+      "verificationStatus": "verified"
+    }
+  ]
+}

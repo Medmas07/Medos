@@ -1,0 +1,133 @@
+{
+  "fictional": true,
+  "notice": "Personnes entièrement fictives. Aucune donnée ne provient d'un patient ou d'un professionnel réel.",
+  "patients": [
+    {
+      "id": "pat-a",
+      "federatedId": "FED-PAT-0001",
+      "firstName": "Leïla",
+      "lastName": "Mansouri",
+      "sex": "female",
+      "birthDate": "1968-04-17",
+      "city": "Tunis",
+      "localIdentifiers": [
+        { "organizationId": "org-hospital-a", "value": "BEN-2024-08812" },
+        { "organizationId": "org-private-practice", "value": "CAB-0193" },
+        { "organizationId": "org-hospital-b", "value": "OZ-55031" }
+      ]
+    },
+    {
+      "id": "pat-b",
+      "federatedId": "FED-PAT-0002",
+      "firstName": "Karim",
+      "lastName": "Haddad",
+      "sex": "male",
+      "birthDate": "1979-11-02",
+      "city": "Ariana",
+      "localIdentifiers": [{ "organizationId": "org-hospital-a", "value": "BEN-2025-11407" }]
+    },
+    {
+      "id": "pat-c",
+      "federatedId": "FED-PAT-0003",
+      "firstName": "Nour",
+      "lastName": "Jaziri",
+      "sex": "female",
+      "birthDate": "2001-06-23",
+      "city": "Sousse",
+      "localIdentifiers": [
+        { "organizationId": "org-private-practice", "value": "CAB-0457" },
+        { "organizationId": "org-hospital-b", "value": "OZ-61822" }
+      ]
+    }
+  ],
+  "relatives": [
+    {
+      "id": "rel-sami",
+      "firstName": "Sami",
+      "lastName": "Mansouri",
+      "relationship": "Fils",
+      "relatedPatientId": "pat-a"
+    }
+  ],
+  "clinicians": [
+    {
+      "id": "clin-x",
+      "title": "Dr",
+      "firstName": "Youssef",
+      "lastName": "Gharbi",
+      "role": "physician",
+      "specialty": "Cardiologie",
+      "organizationId": "org-hospital-a"
+    },
+    {
+      "id": "clin-rania",
+      "title": "Dr",
+      "firstName": "Rania",
+      "lastName": "Kefi",
+      "role": "physician",
+      "specialty": "Médecine d'urgence",
+      "organizationId": "org-hospital-a"
+    },
+    {
+      "id": "clin-mariem",
+      "title": null,
+      "firstName": "Mariem",
+      "lastName": "Ayari",
+      "role": "nurse",
+      "specialty": "Cardiologie",
+      "organizationId": "org-hospital-a"
+    },
+    {
+      "id": "clin-ines",
+      "title": "Dr",
+      "firstName": "Inès",
+      "lastName": "Chaabane",
+      "role": "physician",
+      "specialty": "Médecine interne",
+      "organizationId": "org-hospital-b"
+    },
+    {
+      "id": "clin-walid",
+      "title": null,
+      "firstName": "Walid",
+      "lastName": "Snoussi",
+      "role": "nurse",
+      "specialty": "Médecine interne",
+      "organizationId": "org-hospital-b"
+    },
+    {
+      "id": "clin-hatem",
+      "title": "Dr",
+      "firstName": "Hatem",
+      "lastName": "Bouzid",
+      "role": "physician",
+      "specialty": "Médecine générale",
+      "organizationId": "org-private-practice"
+    }
+  ],
+  "staff": [
+    {
+      "id": "usr-mehdi",
+      "firstName": "Mehdi",
+      "lastName": "Sassi",
+      "role": "hospital_manager",
+      "organizationId": "org-hospital-c"
+    },
+    {
+      "id": "usr-olfa",
+      "title": "Pr",
+      "firstName": "Olfa",
+      "lastName": "Hamdi",
+      "role": "governance_reviewer",
+      "organizationId": "org-governance"
+    },
+    {
+      "id": "usr-aymen",
+      "title": "Dr",
+      "firstName": "Aymen",
+      "lastName": "Rezgui",
+      "role": "researcher",
+      "organizationId": "org-research-lab"
+    }
+  ]
+}
