@@ -21,6 +21,7 @@ import {
 import type { PageId, ResearchSnapshot } from './types/research'
 import { DashboardView } from './views/DashboardView'
 import { HomeView } from './views/HomeView'
+import { HospitalsView } from './views/HospitalsView'
 import { NewProjectView } from './views/NewProjectView'
 import { PagePlaceholderView } from './views/PagePlaceholderView'
 import { PopulationView } from './views/PopulationView'
@@ -170,6 +171,15 @@ export default function App() {
     if (currentView === 'variables') {
       return (
         <VariablesView
+          snapshot={load.snapshot}
+          onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
+          onNavigate={navigateTo}
+        />
+      )
+    }
+    if (currentView === 'hospitals') {
+      return (
+        <HospitalsView
           snapshot={load.snapshot}
           onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
           onNavigate={navigateTo}

@@ -1,5 +1,5 @@
 import type { ProjectSummary, ResearchProject, ResearchSnapshot } from '../types/research'
-import { derivePages, FIXTURE_PROJECTS } from './researchService'
+import { derivePages, FIXTURE_PROJECTS, organizationsByIds } from './researchService'
 
 /**
  * Research project creation (HC-092), MOCKED. A new project is a draft held in
@@ -67,9 +67,16 @@ export function editableDraft(snapshot: ResearchSnapshot, projectId: string): Pr
   return summary
 }
 
-/** Returns the snapshot with this project replaced and page availability re-derived. Pure. */
+/**
+ * Returns the snapshot with this project replaced, its participating
+ * organizations and page availability re-derived. Pure.
+ */
 export function withProject(snapshot: ResearchSnapshot, project: ResearchProject): ResearchSnapshot {
-  const projects = snapshot.projects.map((s) => (s.project.id === project.id ? { ...s, project } : s))
+  const projects = snapshot.projects.map((s) =>
+    s.project.id === project.id
+      ? { ...s, project, participatingOrganizations: organizationsByIds(project.participatingOrganizationIds) }
+      : s,
+  )
   return { ...snapshot, projects, pages: derivePages(projects, new Date(snapshot.asOf)) }
 }
 
