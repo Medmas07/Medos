@@ -97,3 +97,64 @@ const demoMedications = <CanonicalMedication>[
     status: 'Terminé',
   ),
 ];
+
+class CanonicalLabResult {
+  const CanonicalLabResult({
+    required this.test,
+    required this.value,
+    required this.unit,
+    required this.referenceRange,
+    required this.flag,
+  });
+
+  final String test;
+  final String value;
+  final String unit;
+  final String referenceRange;
+  final String flag;
+}
+
+class CanonicalLabReport {
+  const CanonicalLabReport({
+    required this.date,
+    required this.title,
+    required this.organization,
+    required this.results,
+  });
+
+  final String date;
+  final String title;
+  final String organization;
+  final List<CanonicalLabResult> results;
+}
+
+const demoLabReports = <CanonicalLabReport>[
+  CanonicalLabReport(
+    date: '20 mai 2026',
+    title: 'Bilan avant traitement',
+    organization: 'Hôpital Carthage',
+    results: [
+      CanonicalLabResult(
+        test: 'Hémoglobine',
+        value: '12,6',
+        unit: 'g/dL',
+        referenceRange: '12,0–16,0',
+        flag: 'Normal',
+      ),
+      CanonicalLabResult(
+        test: 'Plaquettes',
+        value: '245',
+        unit: 'G/L',
+        referenceRange: '150–400',
+        flag: 'Normal',
+      ),
+      CanonicalLabResult(
+        test: 'Créatinine',
+        value: '11,4',
+        unit: 'mg/L',
+        referenceRange: '6,0–12,0',
+        flag: 'Normal',
+      ),
+    ],
+  ),
+];

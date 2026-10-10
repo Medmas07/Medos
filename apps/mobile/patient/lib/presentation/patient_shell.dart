@@ -275,6 +275,13 @@ class _DashboardContent extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         const _MedicationHistorySection(),
+        const SizedBox(height: 20),
+        Text(
+          'Résultats de laboratoire',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 10),
+        const _LaboratoryHistorySection(),
       ],
     );
   }
@@ -303,6 +310,63 @@ class _MedicationHistorySection extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _LaboratoryHistorySection extends StatelessWidget {
+  const _LaboratoryHistorySection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        for (final report in demoLabReports)
+          Card(
+            child: ExpansionTile(
+              leading: const CircleAvatar(
+                backgroundColor: PatientColors.brandSoft,
+                child: Icon(Icons.biotech_outlined, color: PatientColors.brand),
+              ),
+              title: Text(report.title),
+              subtitle: Text('${report.date} · ${report.organization}'),
+              trailing: const _StatusPill(label: 'AUTORISÉ'),
+              childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              children: [
+                for (final result in report.results)
+                  _LabResultRow(result: result),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: _StatusPill(label: 'DÉMO D1'),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _LabResultRow extends StatelessWidget {
+  const _LabResultRow({required this.result});
+
+  final CanonicalLabResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Expanded(child: Text(result.test)),
+          Text(
+            '${result.value} ${result.unit}',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(width: 10),
+          Text(result.flag, style: const TextStyle(color: PatientColors.muted)),
+        ],
+      ),
     );
   }
 }

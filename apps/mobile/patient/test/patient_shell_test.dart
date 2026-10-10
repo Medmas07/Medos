@@ -36,6 +36,14 @@ void main() {
     expect(find.text('Tensiorel'), findsOneWidget);
     expect(find.text('ACTIF'), findsOneWidget);
     expect(find.text('TERMINÉ'), findsOneWidget);
+    expect(find.text('Résultats de laboratoire'), findsOneWidget);
+    expect(find.text('Bilan avant traitement'), findsOneWidget);
+
+    await tester.tap(find.text('Bilan avant traitement'));
+    await tester.pumpAndSettle();
+    expect(find.text('Hémoglobine'), findsOneWidget);
+    expect(find.text('12,6 g/dL'), findsOneWidget);
+    expect(find.text('DÉMO D1'), findsOneWidget);
   });
 
   testWidgets('renders the federated authorized timeline fixtures', (

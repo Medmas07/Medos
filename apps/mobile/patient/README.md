@@ -2,6 +2,8 @@
 
 ## Purpose and status
 
+HC-015 Laboratory results history is IMPLEMENTED at D1 with a local authorized-view list of fictional laboratory results, source organization, reference ranges, and explicit demo status. It is presentation-only and does not interpret results or access hospital persistence.
+
 HC-014 Medication history is IMPLEMENTED at D1 with a local authorized-view list of fictional medications and source organizations. It is presentation-only and does not provide medication safety advice or connect to hospital persistence.
 
 HC-012 Federated patient medical timeline is IMPLEMENTED at D1 with a local, deterministic timeline assembled from three fictional organizations. It is an authorized-view presentation demo; it does not contact Hospital Nodes or load clinical persistence.
