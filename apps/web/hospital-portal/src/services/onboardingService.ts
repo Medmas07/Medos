@@ -200,10 +200,11 @@ export function deriveSteps(
 /**
  * Demo scenarios, selected with `?demo=vide`, `?demo=erreur`,
  * `?demo=echec-inscription`, `?demo=echec-profil`, `?demo=echec-document`,
- * `?demo=echec-accord`, `?demo=echec-technique`, `?demo=echec-dmi`, or
- * `?demo=echec-soumission` in the URL. The document failure scenario starts
- * like `nominal`; the other failure scenarios start like `empty`. Each makes the
- * first matching submission fail.
+ * `?demo=echec-accord`, `?demo=echec-technique`, `?demo=echec-dmi`,
+ * `?demo=echec-soumission`, or `?demo=echec-actualisation` in the URL. The
+ * document and refresh failure scenarios start like `nominal`; the other
+ * failure scenarios start like `empty`. Each makes the first matching request
+ * fail.
  */
 export type DemoScenario =
   | 'nominal'
@@ -216,6 +217,7 @@ export type DemoScenario =
   | 'technical-failure'
   | 'dmi-failure'
   | 'submission-failure'
+  | 'refresh-failure'
 
 export function scenarioFromSearch(search: string): DemoScenario {
   const value = new URLSearchParams(search).get('demo')
@@ -228,6 +230,7 @@ export function scenarioFromSearch(search: string): DemoScenario {
   if (value === 'echec-technique') return 'technical-failure'
   if (value === 'echec-dmi') return 'dmi-failure'
   if (value === 'echec-soumission') return 'submission-failure'
+  if (value === 'echec-actualisation') return 'refresh-failure'
   return 'nominal'
 }
 
