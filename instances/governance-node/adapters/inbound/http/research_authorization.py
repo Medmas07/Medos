@@ -20,6 +20,7 @@ from adapters.inbound.http.research_requests import (
     unique_items,
     to_population,
 )
+from application.audit import AuditTrail
 from application.research import (
     DecisionNotFound,
     ResearchStore,
@@ -44,7 +45,9 @@ class AuthorizationCheckBody(BaseModel):
     data_scope: DataScopeBody
 
 
-def create_router(store: ResearchStore, clock: Callable[[], datetime]) -> APIRouter:
+def create_router(
+    store: ResearchStore, audit: AuditTrail, clock: Callable[[], datetime]
+) -> APIRouter:
     router = APIRouter(tags=["research"])
 
     @router.post("/v1/research-authorizations/check")
@@ -67,7 +70,9 @@ def create_router(store: ResearchStore, clock: Callable[[], datetime]) -> APIRou
             variables=frozenset(body.data_scope.variables),
         )
         try:
-            answer = check_research_authorization(body.decision_ref, ask, store, clock)
+            answer = check_research_authorization(
+                body.decision_ref, ask, store, audit, clock
+            )
         except DecisionNotFound:
             return problem(
                 404,

@@ -41,13 +41,15 @@ info:
     authenticated), how the Governance Node learns of patient grants held
     by Hospital Nodes (consent governance, HC-136), how a Hospital Node
     verifies a decision with the Governance Node, revoking or extending an
-    approval, and recording decisions in the governance audit trail
-    (HC-134) or a ledger.
+    approval, and anchoring decisions in a ledger.
 
     Status: implemented by the Governance Node runtime (HC-132) over an
     in-memory store seeded from fictional demo data; requests and
     decisions are lost on restart. The patient grant check reads the
-    fictional demo grants (MOCKED). Requests are not authenticated.
+    fictional demo grants (MOCKED). Requests are not authenticated. Each
+    request received and decision recorded is added to the Node's
+    governance audit trail (governance-audit-events.v1.yaml, HC-134), in
+    memory as well.
 paths:
   /v1/synchronization-requests:
     get:

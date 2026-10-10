@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
+from domain.audit import AuditAction
 from application.hospital_approval import (
     ApplicationNotFound,
     decide_application,
@@ -19,6 +20,7 @@ from domain.hospital_approval import (
     Reviewer,
 )
 from tests.conftest import DEMO_NOW
+from tests.test_audit_use_cases import FakeAuditTrail
 
 T0 = datetime.fromisoformat("2026-01-01T09:00:00+01:00")
 
@@ -101,9 +103,16 @@ def test_filters_by_status_and_can_be_empty():
 
 def test_decides_and_stores_the_decision_at_the_clock_time():
     store = FakeStore(STORE_APPS)
+    audit = FakeAuditTrail()
 
     decision = decide_application(
-        "app-review-old", "usr-olfa", APPROVE, store, FakeReviewers(), lambda: DEMO_NOW
+        "app-review-old",
+        "usr-olfa",
+        APPROVE,
+        store,
+        FakeReviewers(),
+        audit,
+        lambda: DEMO_NOW,
     )
 
     assert decision.decided_at == DEMO_NOW
@@ -111,12 +120,27 @@ def test_decides_and_stores_the_decision_at_the_clock_time():
     assert application_now.status is ApplicationStatus.APPROVED
     assert stored == decision
     assert get_hospital_approval("dec-review-old", store) == decision
+    [event] = audit.events()
+    assert (event.action, event.subject_ref, event.outcome.value) == (
+        AuditAction.DECISION_RECORDED,
+        "dec-review-old",
+        "approved",
+    )
+    assert (event.actor_ref, event.recorded_at) == ("usr-olfa", DEMO_NOW)
+    assert event.organization_refs == ("org-governance", "org-review-old")
 
 
 def test_a_second_decision_is_refused():
     store = FakeStore(STORE_APPS)
+    audit = FakeAuditTrail()
     decide_application(
-        "app-review-old", "usr-olfa", APPROVE, store, FakeReviewers(), lambda: DEMO_NOW
+        "app-review-old",
+        "usr-olfa",
+        APPROVE,
+        store,
+        FakeReviewers(),
+        audit,
+        lambda: DEMO_NOW,
     )
 
     with pytest.raises(NotAwaitingReview):
@@ -126,8 +150,11 @@ def test_a_second_decision_is_refused():
             replace(APPROVE, outcome=Outcome.REJECTED),
             store,
             FakeReviewers(),
+            audit,
             lambda: DEMO_NOW,
         )
+    # A refused decision is not audited.
+    assert len(audit.events()) == 1
 
 
 def test_unknown_application():
@@ -140,6 +167,7 @@ def test_unknown_application():
             APPROVE,
             FakeStore([]),
             FakeReviewers(),
+            FakeAuditTrail(),
             lambda: DEMO_NOW,
         )
 

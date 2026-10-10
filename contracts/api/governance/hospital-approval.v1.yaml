@@ -38,12 +38,14 @@ info:
     and reviewer identity: `reviewer_ref` is declared by the caller, not
     authenticated), application submission and document upload, decision
     expiry or revocation, Hospital Node configuration and package
-    generation after approval, and recording the decision in the
-    governance audit trail (HC-134) or a ledger (AuditLedgerPort, PLANNED).
+    generation after approval, and anchoring the decision in a ledger
+    (AuditLedgerPort, PLANNED).
 
     Status: implemented by the Governance Node runtime (HC-131) over an
     in-memory store seeded from fictional demo data; decisions are lost on
-    restart. Requests are not authenticated.
+    restart. Requests are not authenticated. Each recorded decision is
+    added to the Node's governance audit trail
+    (governance-audit-events.v1.yaml, HC-134), in memory as well.
 paths:
   /v1/hospital-applications:
     get:

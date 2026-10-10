@@ -22,6 +22,7 @@ from pydantic import (
 )
 
 from adapters.inbound.http.problems import OPAQUE_REF, first_error, problem
+from application.audit import AuditTrail
 from application.hospital_approval import HospitalApplicationStore, ReviewerDirectory
 from application.synchronization import (
     PatientGrantDirectory,
@@ -181,6 +182,7 @@ def create_router(
     reviewers: ReviewerDirectory,
     grants: PatientGrantDirectory,
     applications: HospitalApplicationStore,
+    audit: AuditTrail,
     clock: Callable[[], datetime],
 ) -> APIRouter:
     router = APIRouter(prefix="/v1/synchronization-requests", tags=["synchronization"])
@@ -219,6 +221,7 @@ def create_router(
                     ConsentBasis(body.consent.basis), body.consent.access_grant_ref
                 ),
                 store=store,
+                audit=audit,
                 clock=clock,
             )
         except InvalidSynchronizationRequest as error:
@@ -258,6 +261,7 @@ def create_router(
                 reviewers,
                 grants,
                 applications,
+                audit,
                 clock,
             )
         except RequestNotFound:

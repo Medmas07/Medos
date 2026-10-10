@@ -12,6 +12,7 @@ from application.research import (
     list_requests,
     submit_request,
 )
+from domain.audit import AuditOutcome
 from domain.hospital_approval import Outcome, Reviewer
 from domain.research import (
     CheckState,
@@ -21,6 +22,7 @@ from domain.research import (
     ResearchDecision,
 )
 from tests.conftest import DEMO_NOW
+from tests.test_audit_use_cases import FakeAuditTrail
 from tests.test_research import APPROVE, JOB_001, RAR
 from tests.test_synchronization_use_cases import FakeApplications
 
@@ -123,9 +125,11 @@ def test_eligibility_comes_from_hospital_approvals():
 
 def test_submit_decide_then_check():
     store = FakeResearchStore()
+    audit = FakeAuditTrail()
     request = submit_request(
         lambda ref, now: replace(PENDING, request_ref=ref, submitted_at=now),
         store,
+        audit,
         lambda: DEMO_NOW,
     )
     assert (request.request_ref, request.submitted_at) == ("rar-001", DEMO_NOW)
@@ -137,20 +141,54 @@ def test_submit_decide_then_check():
         store,
         FakeReviewers(),
         APPROVED,
+        audit,
         lambda: DEMO_NOW,
     )
 
     assert check_research_authorization(
-        decision.decision_ref, JOB_001, store, lambda: DEMO_NOW
+        decision.decision_ref, JOB_001, store, audit, lambda: DEMO_NOW
     ).approved
     later = check_research_authorization(
-        decision.decision_ref, JOB_001, store, lambda: decision.valid_until
+        decision.decision_ref, JOB_001, store, audit, lambda: decision.valid_until
     )
     assert later.reason is DenialReason.EXPIRED
+
+    rows = [
+        (e.action.value, e.subject_ref, e.actor_ref, e.outcome, e.reason)
+        for e in audit.events()
+    ]
+    assert rows == [
+        ("request_received", "rar-001", PENDING.submitted_by_ref, None, None),
+        ("decision_recorded", "dec-rar-001", "usr-olfa", AuditOutcome.APPROVED, None),
+        (
+            "authorization_checked",
+            "dec-rar-001",
+            JOB_001.requested_by,
+            AuditOutcome.AUTHORIZED,
+            None,
+        ),
+        (
+            "authorization_checked",
+            "dec-rar-001",
+            JOB_001.requested_by,
+            AuditOutcome.DENIED,
+            "expired",
+        ),
+    ]
+    assert audit.events()[1].organization_refs == (
+        "org-governance",
+        PENDING.research_organization_ref,
+        *PENDING.participating_organization_refs,
+    )
+    assert audit.events()[2].organization_refs == (
+        "org-governance",
+        *sorted(JOB_001.target_organization_refs),
+    )
 
 
 def test_unknown_requests_and_decisions():
     store = FakeResearchStore()
+    audit = FakeAuditTrail()
 
     with pytest.raises(RequestNotFound):
         get_request("rar-404", store, APPROVED, lambda: DEMO_NOW)
@@ -162,7 +200,12 @@ def test_unknown_requests_and_decisions():
             store,
             FakeReviewers(),
             APPROVED,
+            audit,
             lambda: DEMO_NOW,
         )
     with pytest.raises(DecisionNotFound):
-        check_research_authorization("dec-rar-404", JOB_001, store, lambda: DEMO_NOW)
+        check_research_authorization(
+            "dec-rar-404", JOB_001, store, audit, lambda: DEMO_NOW
+        )
+    # An unknown decision is a 404, not an answer: nothing is audited.
+    assert audit.events() == []
