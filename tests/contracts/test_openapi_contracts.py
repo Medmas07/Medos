@@ -1,12 +1,12 @@
-"""Every API contract is valid OpenAPI and every example matches its schema."""
+"""Every API and Federation contract is valid OpenAPI and every example matches its schema."""
 
 import pytest
 import yaml
 from openapi_spec_validator import validate
 
-from conftest import CONTRACTS, validator
+from conftest import CONTRACTS, FEDERATION, validator
 
-CONTRACT_FILES = sorted(CONTRACTS.rglob("*.v*.yaml"))
+CONTRACT_FILES = sorted([*CONTRACTS.rglob("*.v*.yaml"), *FEDERATION.rglob("*.v*.yaml")])
 
 
 def _examples(contract: dict):

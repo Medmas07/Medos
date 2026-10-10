@@ -24,7 +24,7 @@ Status is based on repository inspection, not product intent. Use the [shared vo
 - **Hospital Node — PLANNED:** no runtime, local API, storage, identity, consent, audit, health endpoint, or Federation implementation.
 - **Governance Node — PLANNED:** no runtime, policy engine, authorization, audit persistence, or ledger adapter.
 - **DMI Adapter — PLANNED:** its Hospital Node-local boundary exists, but no port, mapping, configuration, fixture, or implementation.
-- **Federation Service — PLANNED:** no discovery, node identity, synchronization, query, authorization, or aggregation code.
+- **Federation Service — PLANNED:** no discovery, node identity, synchronization, query, authorization, or aggregation code. Its contracts are defined (HC-140) but not implemented.
 - **Notification Service — PLANNED:** no provider, transport, event processing, or delivery code.
 - **Research Service and Compute-to-Data — PLANNED:** no orchestrator, sandbox, Hospital Node agent, execution, or controlled-output validation.
 - **SciAgents Integration — PLANNED:** SciAgents exists externally, but this repository has no connector or contract implementation.
@@ -32,7 +32,7 @@ Status is based on repository inspection, not product intent. Use the [shared vo
 - **Blockchain / Immutable Audit Ledger — OPTIONAL / PLANNED:** no `AuditLedgerPort`, adapter, simulated ledger, or real ledger exists.
 - **Authentication, authorization, RBAC, and organization identity — PLANNED:** no production or demo implementation exists.
 - **Persistence and canonical/FHIR model — PLANNED:** no database, ORM, schema, FHIR server, or profile is selected.
-- **Communication contracts — mostly PLANNED:** two API contracts are defined: AI clinical extraction, [`clinical-extraction.v1.yaml`](../contracts/api/ai/clinical-extraction.v1.yaml) (HC-152), and medication safety check, [`medication-safety-check.v1.yaml`](../contracts/api/medication-safety/medication-safety-check.v1.yaml) (HC-160). The medication safety contract has no provider or implementation. No event, Federation, or message schema exists.
+- **Communication contracts — mostly PLANNED:** two API contracts are defined: AI clinical extraction, [`clinical-extraction.v1.yaml`](../contracts/api/ai/clinical-extraction.v1.yaml) (HC-152), and medication safety check, [`medication-safety-check.v1.yaml`](../contracts/api/medication-safety/medication-safety-check.v1.yaml) (HC-160). The medication safety contract has no provider or implementation. Two Federation contracts are defined (HC-140): [`hospital-node-federation.v1.yaml`](../contracts/federation/hospital-node-federation.v1.yaml) and [`federated-patient-query.v1.yaml`](../contracts/federation/federated-patient-query.v1.yaml). They have no provider or implementation. No event or message schema exists.
 - **Product tests — mostly PLANNED:** only `services/ai/tests/` and the repository [contract tests](../tests/contracts/) exist; `tests/integration/` and `tests/e2e/` are empty placeholders.
 - **Product deployment — NOT IMPLEMENTED:** no production build, container image, package, hosting configuration, tunnel, or deployment exists.
 

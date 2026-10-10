@@ -3,11 +3,13 @@ from pathlib import Path
 import yaml
 from jsonschema import Draft202012Validator, FormatChecker
 
-CONTRACTS = Path(__file__).resolve().parents[2] / "contracts" / "api"
+ROOT = Path(__file__).resolve().parents[2] / "contracts"
+CONTRACTS = ROOT / "api"
+FEDERATION = ROOT / "federation"
 
 
-def load(relative_path: str) -> dict:
-    return yaml.safe_load((CONTRACTS / relative_path).read_text())
+def load(relative_path: str, root: Path = CONTRACTS) -> dict:
+    return yaml.safe_load((root / relative_path).read_text())
 
 
 def validator(contract: dict, ref: str) -> Draft202012Validator:
