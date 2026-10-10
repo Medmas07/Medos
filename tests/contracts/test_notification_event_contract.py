@@ -42,7 +42,9 @@ def test_payload_minimization_rejects_raw_clinical_data():
 
     with_sql = mutate_copy(
         base,
-        lambda d: d["payload"].update(query="SELECT * FROM patients WHERE id = 'pat-a'"),
+        lambda d: d["payload"].update(
+            query="SELECT * FROM patients WHERE id = 'pat-a'"
+        ),
     )
     assert not envelope_schema.is_valid(with_sql)
 

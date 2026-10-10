@@ -84,8 +84,7 @@ def test_requests_cannot_carry_clinical_or_identifying_data(mutate):
 
 def test_minimal_request_is_valid():
     minimal = {
-        k: REQUEST[k]
-        for k in ("project_ref", "requested_by", "question", "concepts")
+        k: REQUEST[k] for k in ("project_ref", "requested_by", "question", "concepts")
     }
     assert request_schema.is_valid(minimal)
 
