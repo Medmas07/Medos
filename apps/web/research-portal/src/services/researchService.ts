@@ -16,6 +16,7 @@ import type {
   ResearchAccessRequest,
   ResearchProject,
   ResearchSnapshot,
+  SciAgentsInvestigation,
   StaffMember,
 } from '../types/research'
 
@@ -33,7 +34,28 @@ const results = researchFixtures.controlledResults as unknown as (ControlledResu
   columns: string[]
   rows: (string | number)[][]
 })[]
-const investigations = researchFixtures.sciAgentsInvestigations as unknown as { id: string; projectId: string }[]
+const investigations = (
+  researchFixtures.sciAgentsInvestigations as unknown as (Omit<
+    SciAgentsInvestigation,
+    'clinicalUse' | 'result' | 'error' | 'provenance'
+  > &
+    SciAgentsInvestigation['result'] & { mocked: boolean; provenance: string })[]
+).map(
+  ({ hypotheses, evidence, contradictions, citations, mocked, provenance, ...investigation }): SciAgentsInvestigation => ({
+    ...investigation,
+    clinicalUse: 'not_for_clinical_decisions',
+    result: investigation.status === 'completed' ? { hypotheses, evidence, contradictions, citations } : null,
+    error: null,
+    // The contract's demo adapter name; no adapter exists yet (HC-171).
+    provenance: {
+      provider: { name: 'SciAgents', version: null },
+      adapter: { name: 'demo-sciagents-adapter', version: '1.0.0' },
+      mocked,
+      upstreamRequestRef: null,
+      note: provenance,
+    },
+  }),
+)
 const requests = governanceFixtures.researchAccessRequests as unknown as ResearchAccessRequest[]
 const decisions = governanceFixtures.decisions as unknown as GovernanceDecision[]
 const organizations = organizationFixtures.organizations as unknown as Organization[]
@@ -191,11 +213,12 @@ function summarize(project: ResearchProject, now: Date): ProjectSummary {
 
 /**
  * Demo scenarios, selected with `?demo=vide`, `?demo=erreur`, `?demo=echec-depot`
- * (the first document upload of the page load is interrupted), or
+ * (the first document upload of the page load is interrupted),
  * `?demo=echec-execution` (the first workspace run of the page load fails in a
- * Hospital Node) in the URL.
+ * Hospital Node), or `?demo=echec-sciagents` (SciAgents did not answer the
+ * investigations in time) in the URL.
  */
-export type DemoScenario = 'nominal' | 'empty' | 'error' | 'upload-failure' | 'execution-failure'
+export type DemoScenario = 'nominal' | 'empty' | 'error' | 'upload-failure' | 'execution-failure' | 'sciagents-failure'
 
 export function scenarioFromSearch(search: string): DemoScenario {
   const value = new URLSearchParams(search).get('demo')
@@ -203,7 +226,18 @@ export function scenarioFromSearch(search: string): DemoScenario {
   if (value === 'erreur') return 'error'
   if (value === 'echec-depot') return 'upload-failure'
   if (value === 'echec-execution') return 'execution-failure'
+  if (value === 'echec-sciagents') return 'sciagents-failure'
   return 'nominal'
+}
+
+/** The investigation as the HC-170 contract's `failed` example: SciAgents did not answer in time. */
+function timedOut(investigation: SciAgentsInvestigation): SciAgentsInvestigation {
+  return {
+    ...investigation,
+    status: 'failed',
+    result: null,
+    error: { code: 'timeout', message: "SciAgents n'a pas répondu à temps.", retryable: true },
+  }
 }
 
 export interface LoadOptions {
@@ -258,6 +292,9 @@ export async function loadResearchSnapshot(
         provenance,
       })),
     notebooks: notebooks.filter((n) => projectIds.has(n.projectId)),
+    investigations: investigations
+      .filter((i) => projectIds.has(i.projectId))
+      .map((i) => (scenario === 'sciagents-failure' ? timedOut(i) : i)),
     pages: derivePages(summaries, now),
     notifications: notifications
       .filter((n) => n.recipientId === researcherId && (scenario !== 'empty' || n.relatedId === null))

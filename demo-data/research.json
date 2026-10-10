@@ -99,13 +99,20 @@
     {
       "id": "inv-001",
       "projectId": "proj-001",
+      "requestedById": "usr-aymen",
       "question": "Quels facteurs pourraient expliquer la part plus élevée de mauvais contrôle glycémique après 60 ans ?",
+      "language": "fr",
+      "controlledResultContext": [
+        { "controlledResultId": "res-001", "summary": "Résultat agrégé fictif : la part de mauvais contrôle glycémique augmente entre 50-59 et 60-69 ans, sans hausse supplémentaire entre 70-79 ans." }
+      ],
       "status": "completed",
+      "createdAt": "2026-09-14T09:30:00+01:00",
+      "updatedAt": "2026-09-14T09:31:05+01:00",
       "mocked": true,
-      "provenance": "Fixture statique en attendant l'intégration SciAgents (HC-150 à HC-152). Ce n'est pas une sortie réelle de SciAgents.",
+      "provenance": "Fixture statique en attendant l'intégration SciAgents (adaptateur HC-171, connexion du portail HC-172). Ce n'est pas une sortie réelle de SciAgents.",
       "hypotheses": [
-        { "id": "inv-001-h1", "statement": "Une moindre observance liée à la polymédication.", "confidence": "moderate" },
-        { "id": "inv-001-h2", "statement": "Un dépistage plus tardif chez les patients sans suivi régulier.", "confidence": "low" }
+        { "id": "inv-001-h1", "statement": "Une moindre observance liée à la polymédication.", "confidence": "moderate", "evidenceIds": ["inv-001-e2"], "contradictionIds": [] },
+        { "id": "inv-001-h2", "statement": "Un dépistage plus tardif chez les patients sans suivi régulier.", "confidence": "low", "evidenceIds": ["inv-001-e1"], "contradictionIds": ["inv-001-x1"] }
       ],
       "evidence": [
         { "id": "inv-001-e1", "summary": "Les résultats agrégés montrent une hausse nette entre 50-59 et 60-69 ans.", "citationIds": ["inv-001-c1"] },
@@ -115,8 +122,8 @@
         { "id": "inv-001-x1", "summary": "La tranche 70-79 ans ne prolonge pas la hausse, ce qui affaiblit l'hypothèse liée à l'âge seul.", "citationIds": ["inv-001-c1"] }
       ],
       "citations": [
-        { "id": "inv-001-c1", "title": "Résultat contrôlé res-001", "source": "Résultat interne de démonstration" },
-        { "id": "inv-001-c2", "title": "Polymédication et équilibre glycémique : une revue (référence fictive)", "source": "Référence inventée pour la démonstration" }
+        { "id": "inv-001-c1", "kind": "controlled_result", "title": "Résultat contrôlé res-001", "source": "Résultat interne de démonstration", "controlledResultId": "res-001", "url": null },
+        { "id": "inv-001-c2", "kind": "publication", "title": "Polymédication et équilibre glycémique : une revue (référence fictive)", "source": "Référence inventée pour la démonstration", "controlledResultId": null, "url": null }
       ]
     }
   ]

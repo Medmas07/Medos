@@ -196,6 +196,24 @@ def check(print_proof_hashes: bool = False) -> list[str]:
         if authorization["minimumCellSize"] < floor:
             errors.append(f"{decision['id']}: minimum cell size below its policy's {floor}")
 
+    # SciAgents investigations (contracts/api/sciagents/, HC-170): every reference
+    # resolves within the same investigation, and only controlled results that
+    # passed their disclosure check are sent as context or cited.
+    released = {r["id"] for r in files["research.json"]["controlledResults"] if r["disclosureCheck"] == "passed"}
+    for investigation in files["research.json"]["sciAgentsInvestigations"]:
+        targets = {
+            key: {item["id"] for item in investigation[part]}
+            for key, part in (("evidenceIds", "evidence"), ("contradictionIds", "contradictions"), ("citationIds", "citations"))
+        }
+        for item in investigation["hypotheses"] + investigation["evidence"] + investigation["contradictions"]:
+            for key, own in targets.items():
+                errors.extend(
+                    f"{item['id']}.{key}: {ref!r} is not in {investigation['id']}" for ref in item.get(key, []) if ref not in own
+                )
+        cited = [c["controlledResultId"] for c in investigation["citations"] if c.get("controlledResultId")]
+        context = [c["controlledResultId"] for c in investigation.get("controlledResultContext", [])]
+        errors.extend(f"{investigation['id']}: {ref!r} is not a released controlled result" for ref in cited + context if ref not in released)
+
     # Canonical scenario invariants (docs/planning/demo-scenario.md).
     roles = manifest["scenarioRoles"]
     patient_a, dr_x = roles["Patient A"], roles["Dr. X"]

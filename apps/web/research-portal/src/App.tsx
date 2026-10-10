@@ -29,6 +29,7 @@ import { PopulationView } from './views/PopulationView'
 import { ProtocolView } from './views/ProtocolView'
 import { RequestStatusView } from './views/RequestStatusView'
 import { ResultsView } from './views/ResultsView'
+import { SciAgentsView } from './views/SciAgentsView'
 import { SubmitRequestView } from './views/SubmitRequestView'
 import { VariablesView } from './views/VariablesView'
 import { WorkspaceView } from './views/WorkspaceView'
@@ -227,6 +228,9 @@ export default function App() {
     if (currentView === 'results') {
       return <ResultsView snapshot={load.snapshot} onNavigate={navigateTo} />
     }
+    if (currentView === 'sciagents') {
+      return <SciAgentsView snapshot={load.snapshot} onNavigate={navigateTo} />
+    }
     const page = load.snapshot.pages.find((p) => p.id === currentView)!
     const section = PAGE_DEFINITIONS.find((d) => d.id === currentView)!.section
     return <PagePlaceholderView page={page} section={SECTION_TITLES[section]} />
@@ -239,7 +243,7 @@ export default function App() {
       banner={
         <DemoBanner>
           Démonstration D1 : données fictives (HC-005), service de recherche et identité simulés. Aucune
-          exécution réelle (le notebook est simulé), aucun accès aux Hospital Nodes, aucune connexion à SciAgents.
+          exécution réelle (le notebook est simulé), aucun accès aux Hospital Nodes, aucune connexion à SciAgents (investigations fictives).
         </DemoBanner>
       }
       navigation={<SideNav label="Navigation principale" sections={navigationSections} />}

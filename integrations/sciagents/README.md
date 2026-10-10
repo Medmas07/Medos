@@ -24,6 +24,7 @@ This repository does not own or reimplement SciAgents, and SciAgents output does
 - Results hold hypotheses, evidence, contradictions, and citations, linked by id. Every referenced id must exist in the same result; the schema cannot express this, so the adapter must guarantee it, and the contract tests check the examples.
 - Results are research leads only (`clinical_use: not_for_clinical_decisions`) and carry provenance, including `mocked`.
 - Requests may carry only the question, opaque references, and summaries of controlled results that passed Compute-to-Data output validation. The schema rejects any other field, so raw clinical data cannot be sent to SciAgents through this contract.
-- The completed example matches the HC-005 fixture `inv-001` in [`demo-data/research.json`](../../demo-data/research.json).
+- The completed example matches the HC-005 fixture `inv-001` in [`demo-data/research.json`](../../demo-data/research.json), including its hypothesis links, citation kinds, and controlled-result context; `demo-data/check_fixtures.py` checks that its references resolve and that it cites or sends only released controlled results.
+- The Research Portal's SciAgents panel (HC-102) displays that fixture in the contract's shape. It is MOCKED: the portal does not call this contract or SciAgents yet (HC-172).
 
 SciAgents authentication, timeouts, and the real endpoint mapping belong to HC-171.
