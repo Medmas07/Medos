@@ -2,22 +2,52 @@
 
 ## Purpose and status
 
-MOCKED D2 company-managed orchestration capability for governed research projects and Compute-to-Data jobs. A small Python + FastAPI runtime coordinates deterministic fictional node responses; it does not execute code, access hospital storage, or claim production readiness. The D1 Hospital Node execution contract is IMPLEMENTED in [`contracts/api/research/`](../../contracts/api/research/research-node-execution.v1.yaml).
+IMPLEMENTED at initial D3 for HC-182. The service orchestrates a governed
+Compute-to-Data job across explicit Governance and Hospital Node HTTP
+boundaries. It does not execute researcher code, read hospital storage, or
+aggregate node results.
 
-## Responsibilities and owned concepts
+The orchestration code and its boundary behavior are test-validated. Live
+cross-process integration is **not VALIDATED** because the Governance research
+authorization endpoint and Hospital-side execution agent (HC-183) are not yet
+implemented. With no endpoints configured, `/health` reports `degraded` and a
+submitted job fails closed with `governance_unavailable`.
 
-Potential project/request lifecycle, research-job orchestration, experiment state, controlled results, provenance, and research audit.
+## D3 behavior
 
-## Communication boundaries
+`POST /v1/research-jobs`:
 
-Uses Governance authorization, Federation, Hospital Node execution, and SciAgents Integration contracts. Code moves to authorized data environments; controlled results return.
+1. asks the Governance boundary to verify the referenced decision and exact
+   organizations/scope;
+2. denies without contacting a Hospital Node when Governance refuses;
+3. submits one HC-180 execution request to every authorized Hospital Node;
+4. retains only orchestration state and controlled node outcomes in memory.
 
-## Non-responsibilities
+`GET /v1/research-jobs/{job_ref}` refreshes accepted executions and exposes
+queued/authorizing/dispatching/running/completed/denied/failed behavior. A
+partial node failure is explicit and never silently converted into a complete
+result. Per-node controlled results stay separate because aggregation belongs
+to HC-184.
 
-It does not approve its own access, directly query hospital databases, download unrestricted raw datasets, or execute inside Hospital Nodes without an authorized agent.
+The runtime has no fixture mode. Test doubles exist only under `tests/` and all
+runtime responses carry `mocked: false`.
 
-## Expected contracts
+## Configuration
 
-The Hospital Node execution slice of the research-job contract is IMPLEMENTED at D1. HC-181 adds a MOCKED D2 Research Service endpoint: `POST /v1/research-jobs` accepts a bounded job request and `GET /v1/research-jobs/{job_ref}` advances deterministic stages for Governance authorization, Hospital A/B execution, aggregation, and output validation. It exposes explicit queued, running, completed, denied, empty, failed, and not-found behavior. Real execution, Governance verification, sandboxing, persistence, and portal contracts remain PLANNED/OPEN.
+- `RESEARCH_GOVERNANCE_URL`: Governance Node base URL.
+- `RESEARCH_NODE_ENDPOINTS`: JSON object mapping organization references to
+  Hospital Node base URLs, for example
+  `{"org-hospital-a":"http://127.0.0.1:8101"}`.
+- `RESEARCH_HTTP_TIMEOUT_SECONDS`: positive request timeout, default `5`.
 
-Run from this directory with `uvicorn main:app --port 8400`. The demo uses only fictional `job-001`, `proj-001`, `org-hospital-a`, and `org-hospital-b` references.
+Run from this directory with `uvicorn main:app --port 8400`. The service keeps
+jobs in process-local memory; durable persistence, authentication, retries,
+aggregation, output validation, sandboxing, and hospital-side execution remain
+outside HC-182.
+
+## Boundaries
+
+Domain and Application use only the Python standard library. HTTP and
+environment details live in outbound adapters and infrastructure. The service
+does not approve its own access, connect to a hospital database or DMI, expose
+row-level records, or turn research findings into clinical truth.

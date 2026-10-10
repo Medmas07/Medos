@@ -1,9 +1,18 @@
-"""Application-owned orchestration port and D2 mock implementation."""
+"""Application-owned ports and use cases for D3 research orchestration."""
 
 from dataclasses import asdict
+from datetime import UTC, datetime
 from typing import Protocol
 
-from domain.research_job import JobStatus, ResearchJob, Stage
+from domain.research_job import (
+    AuthorizationDecision,
+    ExecutionStatus,
+    JobError,
+    JobStatus,
+    NodeExecution,
+    ResearchJob,
+    is_terminal,
+)
 
 
 class JobStore(Protocol):
@@ -12,7 +21,28 @@ class JobStore(Protocol):
     def put(self, job: ResearchJob) -> None: ...
 
 
-class MockJobStore:
+class JobConflictError(ValueError):
+    """A job reference was reused for a different immutable request."""
+
+
+class GovernanceAuthorizationPort(Protocol):
+    def check(self, job: ResearchJob) -> AuthorizationDecision: ...
+
+
+class HospitalExecutionPort(Protocol):
+    def submit(
+        self,
+        job: ResearchJob,
+        organization_ref: str,
+        authorization: AuthorizationDecision,
+    ) -> NodeExecution: ...
+
+    def read(self, execution: NodeExecution) -> NodeExecution: ...
+
+
+class InMemoryJobStore:
+    """Process-local D3 state; persistence remains outside HC-182."""
+
     def __init__(self) -> None:
         self.jobs: dict[str, ResearchJob] = {}
 
@@ -24,63 +54,123 @@ class MockJobStore:
 
 
 class ResearchOrchestrator:
-    """Coordinates mocked node executions without reading hospital storage."""
-
-    def __init__(self, store: JobStore | None = None) -> None:
-        self.store = store or MockJobStore()
-
-    def submit(
+    def __init__(
         self,
-        *,
-        job_ref: str,
-        project_ref: str,
-        authorization_decision_ref: str,
-        requested_by: str,
-        target_organizations: list[str],
-    ) -> ResearchJob:
-        existing = self.store.get(job_ref)
+        authorization: GovernanceAuthorizationPort,
+        executions: HospitalExecutionPort,
+        store: JobStore | None = None,
+    ) -> None:
+        self.authorization = authorization
+        self.executions = executions
+        self.store = store or InMemoryJobStore()
+
+    def submit(self, job: ResearchJob) -> ResearchJob:
+        existing = self.store.get(job.job_ref)
         if existing:
+            if not existing.matches_request(job):
+                raise JobConflictError(job.job_ref)
             return existing
-        job = ResearchJob(
-            job_ref=job_ref,
-            project_ref=project_ref,
-            authorization_decision_ref=authorization_decision_ref,
-            requested_by=requested_by,
-            stages=[
-                Stage(f"{job_ref}-auth", "authorization_check", "org-governance"),
-                *[
-                    Stage(
-                        f"{job_ref}-exec-{organization[-1]}", "execution", organization
+
+        job.status = JobStatus.AUTHORIZING
+        try:
+            decision = self.authorization.check(job)
+        except Exception:
+            job.status = JobStatus.FAILED
+            job.error = JobError(
+                "governance_unavailable",
+                "Governance authorization could not be verified.",
+                True,
+            )
+            self.store.put(job)
+            return job
+
+        requested = set(job.target_organizations)
+        approved = set(decision.approved_organization_refs)
+        requested_variables = set(job.data_scope.get("variables", []))
+        approved_variables = set(decision.approved_variables)
+        if (
+            not decision.approved
+            or decision.decision_ref != job.authorization_decision_ref
+            or not requested <= approved
+            or not requested_variables <= approved_variables
+        ):
+            job.mark_denied(decision.reason_code)
+            self.store.put(job)
+            return job
+        try:
+            valid_until = datetime.fromisoformat(decision.valid_until or "")
+            if valid_until.tzinfo is None or valid_until <= datetime.now(UTC):
+                raise ValueError
+        except ValueError:
+            job.mark_denied("authorization_expired")
+            self.store.put(job)
+            return job
+
+        job.status = JobStatus.DISPATCHING
+        for organization_ref in job.target_organizations:
+            try:
+                job.executions.append(
+                    self.executions.submit(job, organization_ref, decision)
+                )
+            except Exception:
+                job.executions.append(
+                    NodeExecution(
+                        execution_id=f"{job.job_ref}:{organization_ref}",
+                        organization_ref=organization_ref,
+                        status=ExecutionStatus.FAILED,
+                        error=JobError(
+                            "node_unavailable",
+                            "The Hospital Node could not accept the execution.",
+                            True,
+                        ),
                     )
-                    for organization in target_organizations
-                ],
-                Stage(f"{job_ref}-agg", "aggregation", "org-platform"),
-                Stage(f"{job_ref}-validation", "output_validation", "org-platform"),
-            ],
-        )
-        if authorization_decision_ref != "dec-rar-001":
-            job.status = JobStatus.DENIED
-            job.error = {
-                "code": "authorization_denied",
-                "message": "The mocked Governance decision was not accepted.",
-                "retryable": False,
-            }
-            for stage in job.stages:
-                stage.status = stage.status.DENIED
+                )
+        job.refresh_status()
         self.store.put(job)
         return job
 
-    def read(self, job_ref: str) -> ResearchJob | None:
+    def read(self, job_ref: str, *, refresh: bool = True) -> ResearchJob | None:
         job = self.store.get(job_ref)
-        if job:
-            job.advance()
+        if job is None or not refresh or is_terminal(job.status):
+            return job
+        job.executions = [self._refresh(execution) for execution in job.executions]
+        job.refresh_status()
+        self.store.put(job)
         return job
+
+    def _refresh(self, execution: NodeExecution) -> NodeExecution:
+        if execution.status in {
+            ExecutionStatus.COMPLETED,
+            ExecutionStatus.DENIED,
+            ExecutionStatus.FAILED,
+            ExecutionStatus.CANCELLED,
+            ExecutionStatus.EXPIRED,
+        }:
+            return execution
+        try:
+            return self.executions.read(execution)
+        except Exception:
+            return NodeExecution(
+                execution_id=execution.execution_id,
+                organization_ref=execution.organization_ref,
+                status=ExecutionStatus.FAILED,
+                error=JobError(
+                    "node_unavailable",
+                    "The Hospital Node execution status could not be read.",
+                    True,
+                ),
+            )
 
 
 def serialize(job: ResearchJob) -> dict:
     document = asdict(job)
     document["status"] = job.status.value
-    for stage in document["stages"]:
-        stage["status"] = stage["status"].value
-    document["mocked"] = True
+    for execution in document["executions"]:
+        execution["status"] = execution["status"].value
+        for optional in ("result", "error"):
+            if execution[optional] is None:
+                del execution[optional]
+    if document["error"] is None:
+        del document["error"]
+    document["mocked"] = False
     return document
