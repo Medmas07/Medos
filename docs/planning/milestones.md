@@ -1,77 +1,33 @@
 # Milestones
 
-Milestones express delivery intent, not a promise of production readiness. The order is demo-first; deterministic fixtures may unlock visible flows before their final adapters exist.
+GitHub milestones organize execution; stable HC identifiers remain the product-planning vocabulary. Exact issue mappings are in [the backlog](backlog.md).
 
-## Milestone 0 — Architecture Decisions
+## [Milestone 0 — Architecture Decisions](https://github.com/Medmas07/Hackcure_hackathon/milestone/1)
 
-Decide the minimum technology and contract foundations before scaffolding runtimes.
+Select the web, mobile, and backend/runtime strategies and record the required ADRs before framework initialization. Key issues: HC-001 through HC-003.
 
-- HC-001, HC-002, HC-003
-- HC-110, HC-111, HC-112
-- HC-150, HC-190, HC-250
+## [Milestone 1 — Visual Ecosystem](https://github.com/Medmas07/Hackcure_hackathon/milestone/2)
 
-Exit: accepted ADRs identify web, mobile, and backend strategies; initial contract conventions have owners and versioning direction.
+Deliver the design system, fictional canonical fixtures, and coherent D1 user surfaces for Patient App, Clinician App, Hospital Portal, Governance Portal, and Research Portal. Visual tickets do not wait for D3 infrastructure.
 
-## Milestone 1 — Visual Product
+## [Milestone 2 — Interactive Demo](https://github.com/Medmas07/Hackcure_hackathon/milestone/3)
 
-Build a coherent, attractive ecosystem from one fictional dataset.
+Connect the canonical journeys and explicit fallback mode through HC-240 to HC-247. Exit requires a deterministic, jury-ready ecosystem rehearsal with mocks clearly identified.
 
-- Foundation: HC-004, HC-005
-- Patient: HC-010–HC-019
-- Clinician: HC-030–HC-040
-- Hospital onboarding: HC-050–HC-059
-- Governance: HC-070–HC-076
-- Research: HC-090–HC-099
-- Shared notification experience: HC-210
+## [Milestone 3 — Backend Integration](https://github.com/Medmas07/Hackcure_hackathon/milestone/4)
 
-Exit: the complete [canonical demo](demo-scenario.md) is navigable with clearly identified mock behavior.
+Introduce basic Hospital Node capabilities, hospital-local DMI boundaries, and Notification capabilities behind explicit contracts.
 
-## Milestone 2 — Demo Functional Layer
+## [Milestone 4 — Federation & Governance](https://github.com/Medmas07/Hackcure_hackathon/milestone/5)
 
-Replace isolated UI fixtures with explicit mock APIs and coordinated demo state.
+Implement Governance Node APIs, Federation contracts/capabilities, authorization, security/audit depth, and Governance-owned ledger boundaries without shared clinical persistence.
 
-- HC-115, HC-116, HC-117
-- HC-170, HC-251
-- HC-290
+## [Milestone 5 — Research & AI](https://github.com/Medmas07/Hackcure_hackathon/milestone/6)
 
-Exit: access grants, consultations, governance decisions, federation views, and research jobs flow coherently across interfaces using demo-safe authentication and data.
+Integrate provider-neutral AI, medication-safety depth, external SciAgents, and Compute-to-Data orchestration while retaining human validation and controlled results.
 
-## Milestone 3 — Backend Integration
+## [Milestone 6 — Production Hardening](https://github.com/Medmas07/Hackcure_hackathon/milestone/7)
 
-Introduce selected runtimes and adapter boundaries without bypassing contracts.
+Add D4 security/research controls, selected ledger integration, packaging, preview, health, and deployment work only after the relevant ADRs and lower-depth capabilities exist.
 
-- HC-113, HC-114
-- HC-130, HC-131, HC-132
-- HC-151, HC-152
-- HC-191
-- HC-211, HC-212
-
-Exit: basic Nodes and services run behind explicit contracts; SciAgents remains a platform integration and each DMI remains a replaceable, hospital-local Node adapter.
-
-## Milestone 4 — Federation & Governance
-
-Deepen node autonomy, governance enforcement, audit, and organizational security.
-
-- HC-171–HC-175
-- HC-230–HC-235
-- HC-291, HC-292, HC-293
-
-Exit: node identity, scoped authorization, consent, policy, and audit boundaries are testable without shared databases or raw clinical ledger data.
-
-## Milestone 5 — Research & AI
-
-Move from presentation fixtures toward validated AI and governed compute-to-data capabilities.
-
-- HC-133–HC-136
-- HC-252–HC-255
-
-Exit: AI remains advisory and reviewable; authorized research execution produces controlled results without exporting raw hospital data by default.
-
-## Milestone 6 — Production Hardening
-
-Package selected runtimes and complete late integrations after architecture and operational constraints are known.
-
-- HC-192, HC-213, HC-236
-- HC-270–HC-274
-
-Exit: deployment artifacts, health checks, installation guidance, real adapters, and operational controls have appropriate validation. Docker is never installed silently.
+No milestone implies production readiness by itself. Validation must match the depth and acceptance criteria of its issues.

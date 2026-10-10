@@ -1,171 +1,260 @@
-# Implementation Backlog
+﻿# Implementation Backlog
 
-Temporary `HC-*` identifiers are planning IDs, not remote GitHub issues. Work is demo-first: visible product value and deterministic mocks precede backend depth. Mocks must be identifiable internally and must not be presented as production-ready. No ticket authorizes real health data.
+HC identifiers are stable product-planning IDs; GitHub issue numbers are repository execution IDs. Issue bodies contain scope, mock policy, acceptance criteria, dependencies, and upgrade paths.
 
-Each row uses: **ID — [Type] Title** · Priority · Effort · MVP, followed by its intended outcome.
+Implementation strategy: **visual first, functional second, deep infrastructure third**. Mocks must be explicit and use fictional data.
 
-## Epic A — Product foundation
+## Product Foundation
 
-- **HC-001 — [Architecture] Select frontend technology** · P0 · XS · MVP Yes. Evaluate and select one web technology for all three portals; record an ADR and development/build commands. Do not implement portals here.
-- **HC-002 — [Architecture] Select mobile technology** · P0 · XS · MVP Yes. Evaluate options for both mobile apps; record an ADR, establish the Android path, and define the shared platform strategy.
-- **HC-003 — [Architecture] Select backend/runtime strategy** · P0 · S · MVP Yes. Decide runtimes for both Nodes and core company services; Python remains confirmed for AI while NestJS, FastAPI, and alternatives remain open until this decision.
-- **HC-004 — [UI] Establish visual design system** · P0 · M · MVP Yes. Define reusable typography, spacing, buttons, fields, cards, badges, tables, alerts, navigation, timeline visuals, and status colors.
-- **HC-005 — [Data] Create coherent demo dataset** · P0 · M · MVP Yes. Create fictional, reusable data for three hospitals, clinicians, at least three patients, consultations, medications, labs, access grants, research/sync requests, and alerts. Never use real health data.
+| Planning ID and issue | Priority | Depth | Effort | MVP | Milestone |
+|---|---|---|---|---|---|
+| [HC-001 — Select web frontend technology](https://github.com/Medmas07/Hackcure_hackathon/issues/24) | P0 | D0 | XS | yes | Milestone 0 — Architecture Decisions |
+| [HC-002 — Select mobile technology](https://github.com/Medmas07/Hackcure_hackathon/issues/25) | P0 | D0 | XS | yes | Milestone 0 — Architecture Decisions |
+| [HC-003 — Select backend/runtime strategy](https://github.com/Medmas07/Hackcure_hackathon/issues/26) | P0 | D0 | S | yes | Milestone 0 — Architecture Decisions |
+| [HC-004 — Build shared visual design system](https://github.com/Medmas07/Hackcure_hackathon/issues/27) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-005 — Create canonical demo fixtures](https://github.com/Medmas07/Hackcure_hackathon/issues/28) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
 
-## Epic B — Patient experience
+## Patient Experience
 
-- **HC-010 — [UI] Patient app shell and navigation** · P0 · S · MVP Yes. Provide the visible Patient App structure.
-- **HC-011 — [UI] Patient home dashboard** · P0 · S · MVP Yes. Show health summary, recent events, notifications, active grants, and quick actions using mock data where needed.
-- **HC-012 — [UI] Federated patient timeline** · P0 · M · MVP Yes. Visually combine history from Hospital A, a private doctor, and Hospital B; mock federation is acceptable.
-- **HC-013 — [UI] Patient medical event details** · P0 · S · MVP Yes. Show organization, clinician, date, type, medication, and applicable lab information for a timeline event.
-- **HC-014 — [UI] Patient medications view** · P0 · S · MVP Yes. Show active and historical medications from multiple providers.
-- **HC-015 — [UI] Grant doctor access** · P0 · M · MVP Yes. Let a patient select a physician, scope, and duration; mock/local state is acceptable initially.
-- **HC-016 — [UI] Delegate access to trusted relative** · P1 · M · MVP Yes. Support scoped family or caregiver access.
-- **HC-017 — [UI] Revoke access** · P1 · S · MVP Yes. Make doctor/family access revocation visible.
-- **HC-018 — [UI] Digital erasure/restriction request** · P1 · S · MVP Yes. Provide a request form and status without promising automatic deletion.
-- **HC-019 — [UI] Patient notifications center** · P1 · S · MVP Yes. Present initially mocked notifications.
+| Planning ID and issue | Priority | Depth | Effort | MVP | Milestone |
+|---|---|---|---|---|---|
+| [HC-010 — Patient App shell and navigation](https://github.com/Medmas07/Hackcure_hackathon/issues/29) | P0 | D1 | S | yes | Milestone 1 — Visual Ecosystem |
+| [HC-011 — Patient dashboard](https://github.com/Medmas07/Hackcure_hackathon/issues/30) | P0 | D1 | S | yes | Milestone 1 — Visual Ecosystem |
+| [HC-012 — Federated patient medical timeline](https://github.com/Medmas07/Hackcure_hackathon/issues/31) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-013 — Patient medical event detail](https://github.com/Medmas07/Hackcure_hackathon/issues/32) | P0 | D1 | S | yes | Milestone 1 — Visual Ecosystem |
+| [HC-014 — Medication history](https://github.com/Medmas07/Hackcure_hackathon/issues/33) | P0 | D1 | S | yes | Milestone 1 — Visual Ecosystem |
+| [HC-015 — Laboratory results history](https://github.com/Medmas07/Hackcure_hackathon/issues/34) | P1 | D1 | S | yes | Milestone 1 — Visual Ecosystem |
+| [HC-016 — Hospital and physician history](https://github.com/Medmas07/Hackcure_hackathon/issues/35) | P1 | D1 | S | yes | Milestone 1 — Visual Ecosystem |
+| [HC-017 — Consent and access management](https://github.com/Medmas07/Hackcure_hackathon/issues/36) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-018 — Grant physician access](https://github.com/Medmas07/Hackcure_hackathon/issues/37) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-019 — Revoke physician access](https://github.com/Medmas07/Hackcure_hackathon/issues/38) | P1 | D1 | S | yes | Milestone 1 — Visual Ecosystem |
+| [HC-020 — Delegate access to trusted relative](https://github.com/Medmas07/Hackcure_hackathon/issues/39) | P1 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-021 — Digital restriction / erasure request](https://github.com/Medmas07/Hackcure_hackathon/issues/40) | P1 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-022 — Patient notification center](https://github.com/Medmas07/Hackcure_hackathon/issues/41) | P1 | D1 | S | yes | Milestone 1 — Visual Ecosystem |
 
-## Epic C — Clinician experience
+## Clinician Experience
 
-- **HC-030 — [UI] Clinician app shell and navigation** · P0 · S · MVP Yes. Provide the visible Clinician App structure.
-- **HC-031 — [UI] Clinician dashboard** · P0 · S · MVP Yes. Show queue, alerts, appointments/events, and urgent items.
-- **HC-032 — [UI] Intelligent patient queue** · P0 · M · MVP Yes. Show deterministic mocked priority and its explanation.
-- **HC-033 — [UI] Authorized patient list** · P0 · S · MVP Yes. Show patients the clinician is currently authorized to access.
-- **HC-034 — [UI] Clinician patient longitudinal history** · P0 · M · MVP Yes. Reuse the coherent federated patient demo data.
-- **HC-035 — [UI] Consultation workspace** · P0 · M · MVP Yes. Include notes, patient context, consent state, and actions.
-- **HC-036 — [UI] Speech-to-text consultation experience** · P0 · M · MVP Yes. Demonstrate record → transcript → extraction; mocked transcription is acceptable.
-- **HC-037 — [UI] Adaptive intake experience** · P0 · M · MVP Yes. Implement deterministic branching across complaint, location, severity, duration, and associated symptoms.
-- **HC-038 — [AI/UI] Clinical extraction review** · P0 · M · MVP Yes. Display fixture-derived symptoms, values, medications, observations, and missing information for clinician accept/edit/reject.
-- **HC-039 — [UI] Laboratory result extraction view** · P1 · S · MVP Yes. Show extracted and potentially abnormal values; mock extraction is acceptable.
-- **HC-040 — [UI] Medication interaction warning** · P0 · M · MVP Yes. Demonstrate a cross-provider conflict, involved medications, provenance, explanation, and clinician validation using deterministic fixtures.
+| Planning ID and issue | Priority | Depth | Effort | MVP | Milestone |
+|---|---|---|---|---|---|
+| [HC-030 — Clinician App shell and navigation](https://github.com/Medmas07/Hackcure_hackathon/issues/42) | P0 | D1 | S | yes | Milestone 1 — Visual Ecosystem |
+| [HC-031 — Clinician dashboard](https://github.com/Medmas07/Hackcure_hackathon/issues/43) | P0 | D1 | S | yes | Milestone 1 — Visual Ecosystem |
+| [HC-032 — Priority patient queue](https://github.com/Medmas07/Hackcure_hackathon/issues/44) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-033 — Authorized patient list](https://github.com/Medmas07/Hackcure_hackathon/issues/45) | P0 | D1 | S | yes | Milestone 1 — Visual Ecosystem |
+| [HC-034 — Clinician patient detail](https://github.com/Medmas07/Hackcure_hackathon/issues/46) | P0 | D1 | S | yes | Milestone 1 — Visual Ecosystem |
+| [HC-035 — Clinician federated patient history](https://github.com/Medmas07/Hackcure_hackathon/issues/47) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-036 — Consultation workspace](https://github.com/Medmas07/Hackcure_hackathon/issues/48) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-037 — Recording consent UX](https://github.com/Medmas07/Hackcure_hackathon/issues/49) | P0 | D1 | S | yes | Milestone 1 — Visual Ecosystem |
+| [HC-038 — Speech-to-text consultation UX](https://github.com/Medmas07/Hackcure_hackathon/issues/50) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-039 — Adaptive intake workflow](https://github.com/Medmas07/Hackcure_hackathon/issues/51) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-040 — AI clinical extraction review](https://github.com/Medmas07/Hackcure_hackathon/issues/52) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-041 — Lab result extraction review](https://github.com/Medmas07/Hackcure_hackathon/issues/53) | P1 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-042 — Medication interaction warning](https://github.com/Medmas07/Hackcure_hackathon/issues/54) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-043 — Clinician alert center](https://github.com/Medmas07/Hackcure_hackathon/issues/55) | P1 | D1 | S | yes | Milestone 1 — Visual Ecosystem |
+| [HC-044 — Queue priority explanation](https://github.com/Medmas07/Hackcure_hackathon/issues/56) | P1 | D1 | S | yes | Milestone 1 — Visual Ecosystem |
 
-## Epic D — Hospital onboarding
+## Hospital Onboarding
 
-- **HC-050 — [UI] Hospital portal shell** · P0 · S · MVP Yes. Provide the visible Hospital Portal structure.
-- **HC-051 — [UI] Hospital registration workflow** · P0 · M · MVP Yes. Present the onboarding workflow from account details through submission.
-- **HC-052 — [UI] Hospital document upload** · P0 · S · MVP Yes. Demonstrate document submission; mock processing is acceptable.
-- **HC-053 — [UI] Agreements and declarations** · P0 · S · MVP Yes. Present required agreements and declarations.
-- **HC-054 — [UI] Technical questionnaire** · P0 · M · MVP Yes. Capture operating environment, DMI/HIS, databases, network, and contacts conceptually.
-- **HC-055 — [UI] Automated review status** · P0 · S · MVP Yes. Simulate completeness, LLM-assisted, and human-review states.
-- **HC-056 — [UI] Hospital approval state** · P0 · XS · MVP Yes. Display the hospital's governance approval state.
-- **HC-057 — [UI] Hospital Node configuration summary** · P0 · S · MVP Yes. Show the configuration produced for an approved hospital.
-- **HC-058 — [UI] Hospital Node download/install page** · P0 · M · MVP Yes. Simulate download and show configuration, platform, version, and installation guidance.
-- **HC-059 — [UI] Hospital Node status dashboard** · P1 · M · MVP Yes. Mock online state, health, last synchronization, DMI state, and version.
+| Planning ID and issue | Priority | Depth | Effort | MVP | Milestone |
+|---|---|---|---|---|---|
+| [HC-050 — Hospital Portal shell](https://github.com/Medmas07/Hackcure_hackathon/issues/57) | P0 | D1 | S | yes | Milestone 1 — Visual Ecosystem |
+| [HC-051 — Hospital registration flow](https://github.com/Medmas07/Hackcure_hackathon/issues/58) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-052 — Hospital organization profile](https://github.com/Medmas07/Hackcure_hackathon/issues/59) | P0 | D1 | S | yes | Milestone 1 — Visual Ecosystem |
+| [HC-053 — Hospital document upload](https://github.com/Medmas07/Hackcure_hackathon/issues/60) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-054 — Hospital agreements workflow](https://github.com/Medmas07/Hackcure_hackathon/issues/61) | P0 | D1 | S | yes | Milestone 1 — Visual Ecosystem |
+| [HC-055 — Technical onboarding questionnaire](https://github.com/Medmas07/Hackcure_hackathon/issues/62) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-056 — DMI/HIS information questionnaire](https://github.com/Medmas07/Hackcure_hackathon/issues/63) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-057 — Automated onboarding review](https://github.com/Medmas07/Hackcure_hackathon/issues/64) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-058 — Human hospital validation state](https://github.com/Medmas07/Hackcure_hackathon/issues/65) | P0 | D1 | S | yes | Milestone 1 — Visual Ecosystem |
+| [HC-059 — Hospital approval page](https://github.com/Medmas07/Hackcure_hackathon/issues/66) | P0 | D1 | XS | yes | Milestone 1 — Visual Ecosystem |
+| [HC-060 — Hospital Node configuration summary](https://github.com/Medmas07/Hackcure_hackathon/issues/67) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-061 — Hospital Node download page](https://github.com/Medmas07/Hackcure_hackathon/issues/68) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-062 — Hospital Node installation guide](https://github.com/Medmas07/Hackcure_hackathon/issues/69) | P1 | D1 | S | yes | Milestone 1 — Visual Ecosystem |
+| [HC-063 — Hospital Node status dashboard](https://github.com/Medmas07/Hackcure_hackathon/issues/70) | P1 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
 
-## Epic E — Governance and ethics
+## Governance & Ethics
 
-- **HC-070 — [UI] Governance portal shell** · P0 · S · MVP Yes. Provide the ethics-authority portal structure.
-- **HC-071 — [UI] Governance dashboard** · P0 · M · MVP Yes. Show pending hospital approvals, synchronization/research requests, alerts, and audit events.
-- **HC-072 — [UI] Hospital approval review** · P0 · M · MVP Yes. Inspect submitted hospital information and visually approve/reject; mock backend is acceptable.
-- **HC-073 — [UI] Synchronization request review** · P0 · M · MVP Yes. Show requester, target, purpose, scope, duration, consent, and visual approval/rejection.
-- **HC-074 — [UI] Research access request review** · P0 · M · MVP Yes. Display the research dossier and requested data scope for decision.
-- **HC-075 — [UI] Governance audit timeline** · P1 · M · MVP Yes. Visualize governance decisions and audit events chronologically.
-- **HC-076 — [UI] Blockchain proof explorer** · P1 · M · MVP Yes. Show simulated event proofs, hashes, timestamps, organizations, and verification state without claiming real persistence.
+| Planning ID and issue | Priority | Depth | Effort | MVP | Milestone |
+|---|---|---|---|---|---|
+| [HC-070 — Governance Portal shell](https://github.com/Medmas07/Hackcure_hackathon/issues/71) | P0 | D1 | S | yes | Milestone 1 — Visual Ecosystem |
+| [HC-071 — Governance dashboard](https://github.com/Medmas07/Hackcure_hackathon/issues/72) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-072 — Pending hospital approval list](https://github.com/Medmas07/Hackcure_hackathon/issues/73) | P0 | D1 | S | yes | Milestone 1 — Visual Ecosystem |
+| [HC-073 — Hospital approval review](https://github.com/Medmas07/Hackcure_hackathon/issues/74) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-074 — Synchronization request list](https://github.com/Medmas07/Hackcure_hackathon/issues/75) | P0 | D1 | S | yes | Milestone 1 — Visual Ecosystem |
+| [HC-075 — Synchronization request detail](https://github.com/Medmas07/Hackcure_hackathon/issues/76) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-076 — Approve/reject synchronization request](https://github.com/Medmas07/Hackcure_hackathon/issues/77) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-077 — Research access request list](https://github.com/Medmas07/Hackcure_hackathon/issues/78) | P0 | D1 | S | yes | Milestone 1 — Visual Ecosystem |
+| [HC-078 — Research access request review](https://github.com/Medmas07/Hackcure_hackathon/issues/79) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-079 — Governance audit timeline](https://github.com/Medmas07/Hackcure_hackathon/issues/80) | P1 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-080 — Blockchain proof explorer](https://github.com/Medmas07/Hackcure_hackathon/issues/81) | P1 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
 
-## Epic F — Research experience
+## Research Platform
 
-- **HC-090 — [UI] Research portal shell** · P0 · S · MVP Yes. Provide the visible Research Portal structure.
-- **HC-091 — [UI] Researcher dashboard** · P0 · S · MVP Yes. Summarize projects, requests, jobs, and status.
-- **HC-092 — [UI] Create research project** · P0 · M · MVP Yes. Provide the project creation flow.
-- **HC-093 — [UI] Research protocol/document upload** · P1 · S · MVP Yes. Demonstrate research document submission.
-- **HC-094 — [UI] Define requested cohort/data** · P0 · M · MVP Yes. Capture population, variables, participating hospitals, and purpose.
-- **HC-095 — [UI] Submit ethics/data access request** · P0 · S · MVP Yes. Submit the research request to governance.
-- **HC-096 — [UI] Research request status** · P0 · S · MVP Yes. Display governance decision progress.
-- **HC-097 — [UI] Colab-like research workspace** · P0 · L · MVP Yes. Build the interface for notebook cells, run control, status, results, and authorization context; remote execution may be mocked.
-- **HC-098 — [UI] Compute-to-data execution visualization** · P0 · M · MVP Yes. Mock job submission, authorization, Hospital A/B execution, aggregation, and result return.
-- **HC-099 — [Integration/UI] SciAgents panel** · P0 · M · MVP Yes. Show investigation requests, evidence, hypotheses, contradictions, and citations using static fixtures until integration exists.
+| Planning ID and issue | Priority | Depth | Effort | MVP | Milestone |
+|---|---|---|---|---|---|
+| [HC-090 — Research Portal shell](https://github.com/Medmas07/Hackcure_hackathon/issues/82) | P0 | D1 | S | yes | Milestone 1 — Visual Ecosystem |
+| [HC-091 — Researcher dashboard](https://github.com/Medmas07/Hackcure_hackathon/issues/83) | P0 | D1 | S | yes | Milestone 1 — Visual Ecosystem |
+| [HC-092 — Create research project](https://github.com/Medmas07/Hackcure_hackathon/issues/84) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-093 — Upload research protocol/documents](https://github.com/Medmas07/Hackcure_hackathon/issues/85) | P1 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-094 — Define research population](https://github.com/Medmas07/Hackcure_hackathon/issues/86) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-095 — Define requested variables/data](https://github.com/Medmas07/Hackcure_hackathon/issues/87) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-096 — Select participating hospitals](https://github.com/Medmas07/Hackcure_hackathon/issues/88) | P0 | D1 | S | yes | Milestone 1 — Visual Ecosystem |
+| [HC-097 — Submit research data-access request](https://github.com/Medmas07/Hackcure_hackathon/issues/89) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-098 — Research request status](https://github.com/Medmas07/Hackcure_hackathon/issues/90) | P0 | D1 | S | yes | Milestone 1 — Visual Ecosystem |
+| [HC-099 — Colab-like research workspace](https://github.com/Medmas07/Hackcure_hackathon/issues/91) | P0 | D1 | L | yes | Milestone 1 — Visual Ecosystem |
+| [HC-100 — Compute-to-Data execution visualization](https://github.com/Medmas07/Hackcure_hackathon/issues/92) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-101 — Research experiment result panel](https://github.com/Medmas07/Hackcure_hackathon/issues/93) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
+| [HC-102 — SciAgents research panel](https://github.com/Medmas07/Hackcure_hackathon/issues/94) | P0 | D1 | M | yes | Milestone 1 — Visual Ecosystem |
 
-## Epic G — Basic backend boundaries
+## Hospital Node
 
-- **HC-110 — [Architecture] Define API conventions** · P1 · S · MVP Yes. Define versioned API, error, and authentication conventions under `contracts/api/`.
-- **HC-111 — [Architecture] Define event conventions** · P1 · S · MVP No. Define event naming, envelopes, compatibility, and ownership under `contracts/events/`.
-- **HC-112 — [Architecture] Define federation contract conventions** · P1 · M · MVP No. Define versioning and communication conventions under `contracts/federation/`.
-- **HC-113 — [Backend] Hospital Node skeleton** · P1 · M · MVP Yes. After HC-003, create only the basic runtime, health endpoint, and Clean/Hexagonal structure.
-- **HC-114 — [Backend] Governance Node skeleton** · P1 · M · MVP Yes. After HC-003, create the governance runtime boundary and health structure.
-- **HC-115 — [Backend] Mock patient API** · P1 · M · MVP Yes. Serve the shared fictional patient dataset through an explicit contract.
-- **HC-116 — [Backend] Mock governance request API** · P1 · M · MVP Yes. Serve demo hospital, synchronization, and research request workflows.
-- **HC-117 — [Backend] Mock research job API** · P1 · M · MVP Yes. Serve demo research job state and controlled results.
+| Planning ID and issue | Priority | Depth | Effort | MVP | Milestone |
+|---|---|---|---|---|---|
+| [HC-110 — Hospital Node runtime skeleton](https://github.com/Medmas07/Hackcure_hackathon/issues/103) | P1 | D2 | M | yes | Milestone 3 — Backend Integration |
+| [HC-111 — Hospital Node health endpoint](https://github.com/Medmas07/Hackcure_hackathon/issues/104) | P1 | D2 | S | yes | Milestone 3 — Backend Integration |
+| [HC-112 — Hospital Node configuration loading](https://github.com/Medmas07/Hackcure_hackathon/issues/105) | P1 | D2 | M | yes | Milestone 3 — Backend Integration |
+| [HC-113 — Mock clinical repository](https://github.com/Medmas07/Hackcure_hackathon/issues/106) | P1 | D2 | M | yes | Milestone 3 — Backend Integration |
+| [HC-114 — Patient history API](https://github.com/Medmas07/Hackcure_hackathon/issues/107) | P1 | D2 | M | yes | Milestone 3 — Backend Integration |
+| [HC-115 — Consent/access API](https://github.com/Medmas07/Hackcure_hackathon/issues/108) | P1 | D2 | M | yes | Milestone 3 — Backend Integration |
+| [HC-116 — Hospital audit-event API](https://github.com/Medmas07/Hackcure_hackathon/issues/109) | P2 | D2 | M | no | Milestone 3 — Backend Integration |
 
-## Epic H — AI
+## Hospital Node Legacy/DMI Integration
 
-- **HC-130 — [AI] AI service skeleton** · P1 · M · MVP Yes. Create the Python AI service boundary after HC-003 without coupling domain logic to delivery infrastructure.
-- **HC-131 — [AI] LLM provider abstraction** · P1 · M · MVP Yes. Keep business behavior independent of any single provider.
-- **HC-132 — [AI] Clinical extraction interface** · P1 · M · MVP Yes. Define the clinical extraction port and reviewable result contract.
-- **HC-133 — [AI] Real clinical extraction** · P2 · M · MVP No. Implement extraction only after the interface and validation approach exist.
-- **HC-134 — [AI] Hospital document review assistant** · P2 · M · MVP No. Add advisory assistance for onboarding documents with human review.
-- **HC-135 — [AI] Clinician priority explanation** · P2 · M · MVP No. Explain deterministic priority results without giving AI clinical authority.
-- **HC-136 — [AI] Medication warning explanation** · P2 · M · MVP No. Explain warnings grounded in deterministic rules or validated sources; never make the LLM the sole safety source.
+| Planning ID and issue | Priority | Depth | Effort | MVP | Milestone |
+|---|---|---|---|---|---|
+| [HC-120 — Define Hospital Node DMI adapter port](https://github.com/Medmas07/Hackcure_hackathon/issues/149) | P1 | D1 | S | no | Milestone 3 — Backend Integration |
+| [HC-121 — Create mock local DMI adapter](https://github.com/Medmas07/Hackcure_hackathon/issues/150) | P2 | D2 | M | no | Milestone 3 — Backend Integration |
+| [HC-122 — Define DMI-to-canonical mapping strategy](https://github.com/Medmas07/Hackcure_hackathon/issues/151) | P2 | D2 | M | no | Milestone 3 — Backend Integration |
+| [HC-123 — Implement sample hospital-specific DMI adapter](https://github.com/Medmas07/Hackcure_hackathon/issues/152) | P3 | D3 | L | no | Milestone 3 — Backend Integration |
 
-## Epic I — SciAgents
+## Governance Node
 
-- **HC-150 — [Integration] Define SciAgents communication contract** · P1 · S · MVP Yes. Define requests, responses, authentication, errors, timeouts, and provenance.
-- **HC-151 — [Integration] SciAgents client adapter** · P1 · M · MVP Yes. Implement the external adapter without reimplementing SciAgents.
-- **HC-152 — [Integration] Connect Research UI to SciAgents** · P1 · M · MVP Yes. Replace or complement fixtures through the adapter contract.
+| Planning ID and issue | Priority | Depth | Effort | MVP | Milestone |
+|---|---|---|---|---|---|
+| [HC-130 — Governance Node runtime skeleton](https://github.com/Medmas07/Hackcure_hackathon/issues/110) | P1 | D2 | M | yes | Milestone 4 — Federation & Governance |
+| [HC-131 — Hospital approval API](https://github.com/Medmas07/Hackcure_hackathon/issues/111) | P1 | D2 | M | yes | Milestone 4 — Federation & Governance |
+| [HC-132 — Synchronization request API](https://github.com/Medmas07/Hackcure_hackathon/issues/112) | P1 | D2 | M | yes | Milestone 4 — Federation & Governance |
+| [HC-133 — Research request API](https://github.com/Medmas07/Hackcure_hackathon/issues/113) | P1 | D2 | M | yes | Milestone 4 — Federation & Governance |
+| [HC-134 — Governance audit API](https://github.com/Medmas07/Hackcure_hackathon/issues/114) | P2 | D2 | M | no | Milestone 4 — Federation & Governance |
+| [HC-135 — Governance policy engine](https://github.com/Medmas07/Hackcure_hackathon/issues/115) | P2 | D3 | L | no | Milestone 4 — Federation & Governance |
+| [HC-136 — Consent policy evaluation](https://github.com/Medmas07/Hackcure_hackathon/issues/116) | P2 | D3 | L | no | Milestone 4 — Federation & Governance |
 
-## Epic J — Federation
+## Federation
 
-- **HC-170 — [Federation] Mock cross-hospital federation** · P1 · M · MVP Yes. Return multi-node demo history through one explicit API.
-- **HC-171 — [Federation] Node registry** · P2 · M · MVP No. Register discoverable autonomous nodes without centralizing clinical data.
-- **HC-172 — [Federation] Node identity** · P2 · M · MVP No. Establish verifiable node identity.
-- **HC-173 — [Federation] Synchronization authorization** · P2 · L · MVP No. Enforce governance decisions, scope, purpose, and expiry.
-- **HC-174 — [Federation] Node-to-node communication** · P2 · L · MVP No. Communicate through versioned federation contracts rather than shared persistence.
-- **HC-175 — [Federation] Cross-node patient query** · P2 · L · MVP No. Query authorized views across nodes without building a central clinical database.
+| Planning ID and issue | Priority | Depth | Effort | MVP | Milestone |
+|---|---|---|---|---|---|
+| [HC-140 — Define federation contract](https://github.com/Medmas07/Hackcure_hackathon/issues/117) | P1 | D1 | M | yes | Milestone 4 — Federation & Governance |
+| [HC-141 — Mock federated patient aggregation](https://github.com/Medmas07/Hackcure_hackathon/issues/118) | P1 | D2 | M | yes | Milestone 4 — Federation & Governance |
+| [HC-142 — Node registry](https://github.com/Medmas07/Hackcure_hackathon/issues/119) | P2 | D2 | M | no | Milestone 4 — Federation & Governance |
+| [HC-143 — Node capability discovery](https://github.com/Medmas07/Hackcure_hackathon/issues/120) | P2 | D2 | M | no | Milestone 4 — Federation & Governance |
+| [HC-144 — Temporary sync authorization](https://github.com/Medmas07/Hackcure_hackathon/issues/121) | P2 | D3 | L | no | Milestone 4 — Federation & Governance |
+| [HC-145 — Real Node-to-Node communication](https://github.com/Medmas07/Hackcure_hackathon/issues/122) | P2 | D3 | L | no | Milestone 4 — Federation & Governance |
+| [HC-146 — Cross-node patient query](https://github.com/Medmas07/Hackcure_hackathon/issues/123) | P2 | D3 | L | no | Milestone 4 — Federation & Governance |
+| [HC-147 — Federation failure handling](https://github.com/Medmas07/Hackcure_hackathon/issues/124) | P3 | D3 | M | no | Milestone 4 — Federation & Governance |
 
-## Epic K — DMI
+## AI Services
 
-- **HC-190 — [Integration] Define DMI adapter port** · P1 · S · MVP No. Define the Hospital Node-owned port under its local DMI adapter boundary without assuming one legacy system.
-- **HC-191 — [Integration] Mock DMI adapter** · P2 · M · MVP No. Provide deterministic, hospital-local mapping fixtures behind the Node-owned port.
-- **HC-192 — [Integration] Sample legacy hospital adapter** · P3 · L · MVP No. Build one justified Hospital Node adapter from actual hospital requirements; do not introduce a central DMI service.
+| Planning ID and issue | Priority | Depth | Effort | MVP | Milestone |
+|---|---|---|---|---|---|
+| [HC-150 — AI service runtime skeleton](https://github.com/Medmas07/Hackcure_hackathon/issues/125) | P1 | D2 | M | yes | Milestone 5 — Research & AI |
+| [HC-151 — Define AI provider port](https://github.com/Medmas07/Hackcure_hackathon/issues/126) | P1 | D1 | M | yes | Milestone 5 — Research & AI |
+| [HC-152 — Clinical extraction contract](https://github.com/Medmas07/Hackcure_hackathon/issues/127) | P1 | D1 | M | yes | Milestone 5 — Research & AI |
+| [HC-153 — Real clinical extraction integration](https://github.com/Medmas07/Hackcure_hackathon/issues/128) | P2 | D3 | M | no | Milestone 5 — Research & AI |
+| [HC-154 — LLM-assisted hospital document review](https://github.com/Medmas07/Hackcure_hackathon/issues/129) | P2 | D3 | M | no | Milestone 5 — Research & AI |
+| [HC-155 — Lab extraction service](https://github.com/Medmas07/Hackcure_hackathon/issues/130) | P2 | D3 | M | no | Milestone 5 — Research & AI |
+| [HC-156 — Medication warning explanation](https://github.com/Medmas07/Hackcure_hackathon/issues/131) | P2 | D3 | M | no | Milestone 5 — Research & AI |
+| [HC-157 — Priority queue explanation](https://github.com/Medmas07/Hackcure_hackathon/issues/132) | P2 | D3 | M | no | Milestone 5 — Research & AI |
 
-## Epic L — Notifications
+## Medication Safety
 
-- **HC-210 — [UI] Notification center** · P1 · S · MVP Yes. Provide a coherent notification experience across relevant demo surfaces.
-- **HC-211 — [Backend] Notification event service** · P2 · M · MVP No. Process versioned notification events after provider/runtime decisions.
-- **HC-212 — [Integration] Real-time clinician notifications** · P2 · M · MVP No. Deliver time-sensitive clinician updates through an explicit adapter.
-- **HC-213 — [Integration] Mobile push notifications** · P3 · L · MVP No. Integrate a selected push provider after the mobile decision.
+| Planning ID and issue | Priority | Depth | Effort | MVP | Milestone |
+|---|---|---|---|---|---|
+| [HC-160 — Define medication safety contract](https://github.com/Medmas07/Hackcure_hackathon/issues/133) | P1 | D1 | S | yes | Milestone 5 — Research & AI |
+| [HC-161 — Demo medication interaction fixtures](https://github.com/Medmas07/Hackcure_hackathon/issues/134) | P0 | D1 | S | yes | Milestone 5 — Research & AI |
+| [HC-162 — Implement deterministic medication interaction engine](https://github.com/Medmas07/Hackcure_hackathon/issues/135) | P2 | D2 | M | no | Milestone 5 — Research & AI |
+| [HC-163 — Integrate validated medication interaction source](https://github.com/Medmas07/Hackcure_hackathon/issues/136) | P3 | D3 | L | no | Milestone 5 — Research & AI |
+| [HC-164 — Add AI explanation layer](https://github.com/Medmas07/Hackcure_hackathon/issues/137) | P2 | D3 | M | no | Milestone 5 — Research & AI |
 
-## Epic M — Governance depth
+## SciAgents Integration
 
-- **HC-230 — [Backend] Governance policy engine** · P2 · L · MVP No. Evaluate authorization policy inside the governance boundary.
-- **HC-231 — [Backend] Consent persistence** · P2 · M · MVP No. Persist consent with history and auditable status.
-- **HC-232 — [Security] Temporary authorization tokens** · P2 · L · MVP No. Issue scoped, expiring authorization artifacts.
-- **HC-233 — [Audit] Persistent governance audit** · P2 · M · MVP No. Persist governance audit events independently of ledger anchoring.
-- **HC-234 — [Blockchain] AuditLedgerPort** · P2 · S · MVP No. Define the governance application outbound port for minimized audit proofs.
-- **HC-235 — [Blockchain] Local simulated immutable ledger** · P2 · M · MVP No. Implement a local adapter for testing without claiming real blockchain persistence.
-- **HC-236 — [Blockchain] Real permissioned blockchain adapter** · P3 · XL · MVP No. Integrate a selected ledger behind `AuditLedgerPort`; never store raw medical data.
+| Planning ID and issue | Priority | Depth | Effort | MVP | Milestone |
+|---|---|---|---|---|---|
+| [HC-170 — Define SciAgents communication contract](https://github.com/Medmas07/Hackcure_hackathon/issues/138) | P1 | D1 | S | yes | Milestone 5 — Research & AI |
+| [HC-171 — Implement SciAgents client adapter](https://github.com/Medmas07/Hackcure_hackathon/issues/139) | P1 | D2 | M | yes | Milestone 5 — Research & AI |
+| [HC-172 — Connect Research Portal to SciAgents](https://github.com/Medmas07/Hackcure_hackathon/issues/140) | P1 | D2 | M | yes | Milestone 5 — Research & AI |
+| [HC-173 — Display SciAgents execution progress](https://github.com/Medmas07/Hackcure_hackathon/issues/141) | P2 | D2 | M | no | Milestone 5 — Research & AI |
 
-## Epic N — Research compute-to-data
+## Compute-to-Data
 
-- **HC-250 — [Research] Define research job contract** · P1 · M · MVP Yes. Define authorized inputs, execution status, provenance, and controlled result envelopes.
-- **HC-251 — [Research] Mock distributed research execution** · P1 · M · MVP Yes. Demonstrate multi-hospital execution and aggregation deterministically.
-- **HC-252 — [Research] Research job orchestrator** · P2 · L · MVP No. Coordinate authorized jobs without taking ownership of hospital data.
-- **HC-253 — [Research] Hospital-side execution agent** · P2 · L · MVP No. Execute approved jobs inside the Hospital Node boundary.
-- **HC-254 — [Security] Isolated research execution** · P3 · XL · MVP No. Isolate untrusted research workloads with explicit resource and network controls.
-- **HC-255 — [Research] Controlled output validation** · P3 · L · MVP No. Review outputs for disclosure risk before release.
+| Planning ID and issue | Priority | Depth | Effort | MVP | Milestone |
+|---|---|---|---|---|---|
+| [HC-180 — Define research job contract](https://github.com/Medmas07/Hackcure_hackathon/issues/142) | P1 | D1 | M | yes | Milestone 5 — Research & AI |
+| [HC-181 — Mock distributed research execution](https://github.com/Medmas07/Hackcure_hackathon/issues/143) | P1 | D2 | M | yes | Milestone 5 — Research & AI |
+| [HC-182 — Research job orchestrator](https://github.com/Medmas07/Hackcure_hackathon/issues/144) | P2 | D3 | L | no | Milestone 5 — Research & AI |
+| [HC-183 — Hospital-side research execution agent](https://github.com/Medmas07/Hackcure_hackathon/issues/145) | P2 | D3 | L | no | Milestone 5 — Research & AI |
+| [HC-184 — Controlled result aggregation](https://github.com/Medmas07/Hackcure_hackathon/issues/146) | P2 | D3 | L | no | Milestone 5 — Research & AI |
+| [HC-185 — Research output validation](https://github.com/Medmas07/Hackcure_hackathon/issues/147) | P3 | D4 | L | no | Milestone 6 — Production Hardening |
+| [HC-186 — Isolated research sandbox](https://github.com/Medmas07/Hackcure_hackathon/issues/148) | P3 | D4 | XL | no | Milestone 6 — Production Hardening |
 
-## Epic O — Deployment
+## Blockchain / Immutable Audit
 
-- **HC-270 — [DevOps] Build Hospital Node container** · P2 · L · MVP No. Package the selected Hospital Node runtime after its skeleton exists.
-- **HC-271 — [DevOps] Hospital Node installation package** · P2 · L · MVP No. Package configuration and installation guidance for approved hospitals.
-- **HC-272 — [DevOps] Runtime detection / installation assistant** · P3 · L · MVP No. Detect prerequisites and guide operators; never silently install Docker.
-- **HC-273 — [DevOps] Hospital Node health checks** · P2 · M · MVP No. Expose operational readiness and dependency health.
-- **HC-274 — [DevOps] Governance Node deployment package** · P2 · L · MVP No. Package the separate governance runtime after deployment decisions.
+| Planning ID and issue | Priority | Depth | Effort | MVP | Milestone |
+|---|---|---|---|---|---|
+| [HC-190 — Define AuditLedgerPort](https://github.com/Medmas07/Hackcure_hackathon/issues/153) | P2 | D1 | S | no | Milestone 4 — Federation & Governance |
+| [HC-191 — Implement simulated immutable ledger](https://github.com/Medmas07/Hackcure_hackathon/issues/154) | P2 | D2 | M | no | Milestone 4 — Federation & Governance |
+| [HC-192 — Governance ledger event hashing](https://github.com/Medmas07/Hackcure_hackathon/issues/155) | P2 | D2 | M | no | Milestone 4 — Federation & Governance |
+| [HC-193 — Evaluate permissioned ledger technologies](https://github.com/Medmas07/Hackcure_hackathon/issues/156) | P3 | D0 | M | no | Milestone 4 — Federation & Governance |
+| [HC-194 — Implement real blockchain/ledger adapter](https://github.com/Medmas07/Hackcure_hackathon/issues/157) | P3 | D4 | XL | no | Milestone 6 — Production Hardening |
 
-## Epic P — Security
+## Notifications
 
-- **HC-290 — [Security] Authentication foundation** · P1 · M · MVP Yes. Establish explicitly simplified demo authentication with a migration path.
-- **HC-291 — [Security] Role-based access** · P2 · M · MVP No. Enforce role and boundary-specific permissions.
-- **HC-292 — [Security] Hospital organization identity** · P2 · L · MVP No. Establish organization identity and lifecycle.
-- **HC-293 — [Security] Signed federation authorization** · P3 · L · MVP No. Sign and verify scoped federation authorization after identity and token conventions exist.
+| Planning ID and issue | Priority | Depth | Effort | MVP | Milestone |
+|---|---|---|---|---|---|
+| [HC-200 — Notification UI fixtures](https://github.com/Medmas07/Hackcure_hackathon/issues/158) | P1 | D1 | S | yes | Milestone 3 — Backend Integration |
+| [HC-201 — Define notification event contract](https://github.com/Medmas07/Hackcure_hackathon/issues/159) | P2 | D1 | S | no | Milestone 3 — Backend Integration |
+| [HC-202 — Notification service](https://github.com/Medmas07/Hackcure_hackathon/issues/160) | P2 | D2 | M | no | Milestone 3 — Backend Integration |
+| [HC-203 — Real-time clinician alerts](https://github.com/Medmas07/Hackcure_hackathon/issues/161) | P2 | D3 | M | no | Milestone 3 — Backend Integration |
+| [HC-204 — Mobile push notifications](https://github.com/Medmas07/Hackcure_hackathon/issues/162) | P3 | D3 | L | no | Milestone 3 — Backend Integration |
+
+## Security & Audit
+
+| Planning ID and issue | Priority | Depth | Effort | MVP | Milestone |
+|---|---|---|---|---|---|
+| [HC-210 — Demo authentication flow](https://github.com/Medmas07/Hackcure_hackathon/issues/163) | P1 | D1 | M | yes | Milestone 4 — Federation & Governance |
+| [HC-211 — Real authentication foundation](https://github.com/Medmas07/Hackcure_hackathon/issues/164) | P2 | D2 | M | no | Milestone 4 — Federation & Governance |
+| [HC-212 — Role-based access control](https://github.com/Medmas07/Hackcure_hackathon/issues/165) | P2 | D2 | M | no | Milestone 4 — Federation & Governance |
+| [HC-213 — Hospital organization identity](https://github.com/Medmas07/Hackcure_hackathon/issues/166) | P2 | D3 | L | no | Milestone 4 — Federation & Governance |
+| [HC-214 — Signed federation authorization](https://github.com/Medmas07/Hackcure_hackathon/issues/167) | P3 | D4 | L | no | Milestone 6 — Production Hardening |
+| [HC-215 — Security audit and threat model](https://github.com/Medmas07/Hackcure_hackathon/issues/168) | P3 | D4 | L | no | Milestone 6 — Production Hardening |
+
+## Deployment
+
+| Planning ID and issue | Priority | Depth | Effort | MVP | Milestone |
+|---|---|---|---|---|---|
+| [HC-220 — Containerize Hospital Node](https://github.com/Medmas07/Hackcure_hackathon/issues/169) | P2 | D3 | L | no | Milestone 6 — Production Hardening |
+| [HC-221 — Hospital Node installation package](https://github.com/Medmas07/Hackcure_hackathon/issues/170) | P2 | D3 | L | no | Milestone 6 — Production Hardening |
+| [HC-222 — Container runtime detection](https://github.com/Medmas07/Hackcure_hackathon/issues/171) | P3 | D3 | M | no | Milestone 6 — Production Hardening |
+| [HC-223 — Hospital Node deployment health checks](https://github.com/Medmas07/Hackcure_hackathon/issues/172) | P2 | D3 | M | no | Milestone 6 — Production Hardening |
+| [HC-224 — Containerize Governance Node](https://github.com/Medmas07/Hackcure_hackathon/issues/173) | P2 | D3 | L | no | Milestone 6 — Production Hardening |
+| [HC-225 — Preview environment](https://github.com/Medmas07/Hackcure_hackathon/issues/174) | P2 | D2 | M | no | Milestone 6 — Production Hardening |
+| [HC-226 — Frontend deployment](https://github.com/Medmas07/Hackcure_hackathon/issues/175) | P2 | D3 | M | no | Milestone 6 — Production Hardening |
+| [HC-227 — Backend deployment](https://github.com/Medmas07/Hackcure_hackathon/issues/176) | P2 | D3 | M | no | Milestone 6 — Production Hardening |
+
+## End-to-End Demo
+
+| Planning ID and issue | Priority | Depth | Effort | MVP | Milestone |
+|---|---|---|---|---|---|
+| [HC-240 — Assemble canonical demo identities and story](https://github.com/Medmas07/Hackcure_hackathon/issues/95) | P0 | D1 | S | yes | Milestone 2 — Interactive Demo |
+| [HC-241 — Connect Patient App demo journey](https://github.com/Medmas07/Hackcure_hackathon/issues/96) | P0 | D1 | M | yes | Milestone 2 — Interactive Demo |
+| [HC-242 — Connect Clinician demo journey](https://github.com/Medmas07/Hackcure_hackathon/issues/97) | P0 | D1 | M | yes | Milestone 2 — Interactive Demo |
+| [HC-243 — Connect Hospital onboarding demo journey](https://github.com/Medmas07/Hackcure_hackathon/issues/98) | P0 | D1 | M | yes | Milestone 2 — Interactive Demo |
+| [HC-244 — Connect Governance demo journey](https://github.com/Medmas07/Hackcure_hackathon/issues/99) | P0 | D1 | M | yes | Milestone 2 — Interactive Demo |
+| [HC-245 — Connect Research demo journey](https://github.com/Medmas07/Hackcure_hackathon/issues/100) | P0 | D1 | M | yes | Milestone 2 — Interactive Demo |
+| [HC-246 — Full ecosystem rehearsal](https://github.com/Medmas07/Hackcure_hackathon/issues/101) | P0 | D1 | M | yes | Milestone 2 — Interactive Demo |
+| [HC-247 — Demo fallback mode](https://github.com/Medmas07/Hackcure_hackathon/issues/102) | P0 | D1 | M | yes | Milestone 2 — Interactive Demo |
 
 ## Summary
 
-| Priority | Tickets |
-|---|---:|
-| P0 | 44 |
-| P1 | 29 |
-| P2 | 26 |
-| P3 | 7 |
-| **Total** | **106** |
-
-70 tickets are marked MVP; 36 are not.
+- Implementation issues: 153
+- P0: 66; P1: 38; P2: 38; P3: 11
+- D0: 4; D1: 88; D2: 29; D3: 27; D4: 5
+- MVP Yes: 103; MVP No: 50

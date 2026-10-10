@@ -1,90 +1,75 @@
 # Dependency Map
 
-The backlog is intentionally front-loaded toward visible value. Arrows mean “unlocks or materially informs,” not a runtime import dependency.
+Real `Blocked by` and `Blocks` references live in the GitHub issues linked from [the backlog](backlog.md). These diagrams retain stable HC IDs. Arrows mean “unlocks or materially informs,” not a runtime import dependency.
 
 ## Demo-first delivery
 
 ```mermaid
 flowchart LR
-    Decisions[HC-001 to HC-003<br/>Technology ADRs] --> Design[HC-004<br/>Visual system]
-    Decisions --> Shells[Product shells]
-    Data[HC-005<br/>Fictional dataset] --> Patient[Patient experience]
-    Data --> Clinician[Clinician experience]
-    Data --> Hospital[Hospital onboarding]
-    Data --> Governance[Governance experience]
-    Data --> Research[Research experience]
+    Decisions[HC-001 to HC-003<br/>Technology ADRs] --> Design[HC-004<br/>Design system]
+    Fixtures[HC-005<br/>Canonical fixtures] --> Patient[HC-010 to HC-022<br/>Patient App]
+    Fixtures --> Clinician[HC-030 to HC-044<br/>Clinician App]
+    Fixtures --> Hospital[HC-050 to HC-063<br/>Hospital Portal]
+    Fixtures --> Governance[HC-070 to HC-080<br/>Governance Portal]
+    Fixtures --> Research[HC-090 to HC-102<br/>Research Portal]
     Design --> Patient
     Design --> Clinician
     Design --> Hospital
     Design --> Governance
     Design --> Research
-    Shells --> Patient
-    Shells --> Clinician
-    Shells --> Hospital
-    Shells --> Governance
-    Shells --> Research
-    Patient --> Demo[Canonical demo]
+    Patient --> Demo[HC-240 to HC-247<br/>End-to-End Demo]
     Clinician --> Demo
     Hospital --> Demo
     Governance --> Demo
     Research --> Demo
 ```
 
-## Cross-product demo state
+## Patient and clinician upgrade paths
 
 ```mermaid
 flowchart LR
-    Grant[HC-015<br/>Grant access] --> AuthPatients[HC-033<br/>Authorized patients]
-    Timeline[HC-012<br/>Patient timeline] --> ClinTimeline[HC-034<br/>Clinician history]
-    Consult[HC-035 to HC-038<br/>Consultation and review] --> Warning[HC-040<br/>Medication warning]
-    Consult --> UpdatedTimeline[Updated patient timeline]
-    HospitalReview[HC-051 to HC-058] --> GovernanceApproval[HC-072]
-    SyncReview[HC-073] --> Audit[HC-075 and HC-076]
-    ResearchRequest[HC-092 to HC-096] --> ResearchApproval[HC-074]
-    ResearchApproval --> Workspace[HC-097]
-    Workspace --> Compute[HC-098]
-    Workspace --> SciAgentsUI[HC-099]
+    Timeline[HC-012<br/>D1 timeline] --> MockAggregation[HC-141<br/>D2 mock aggregation]
+    MockAggregation --> NodeComms[HC-145<br/>D3 Node communication]
+    NodeComms --> CrossQuery[HC-146<br/>D3 cross-node query]
+    Warning[HC-042<br/>D1 warning] --> Fixtures[HC-161<br/>demo interactions]
+    Fixtures --> Engine[HC-162<br/>deterministic engine]
+    Engine --> Source[HC-163<br/>validated source]
+    Engine --> Explanation[HC-164<br/>AI explanation]
 ```
 
-## Contract and runtime dependencies
+## Runtime and integration boundaries
 
 ```mermaid
 flowchart TD
-    BackendADR[HC-003<br/>Backend strategy] --> HospitalSkeleton[HC-113]
-    BackendADR --> GovernanceSkeleton[HC-114]
-    BackendADR --> AISkeleton[HC-130]
-    API[HC-110<br/>API conventions] --> PatientAPI[HC-115]
-    API --> GovernanceAPI[HC-116]
-    API --> ResearchAPI[HC-117]
-    FederationContract[HC-112] --> MockFederation[HC-170]
-    FederationContract --> Registry[HC-171]
-    Registry --> NodeIdentity[HC-172]
-    NodeIdentity --> SyncAuth[HC-173]
-    SyncAuth --> NodeCommunication[HC-174]
-    NodeCommunication --> CrossNodeQuery[HC-175]
-    SciContract[HC-150] --> SciAdapter[HC-151]
-    SciAdapter --> SciUI[HC-152]
-    DMIPort[HC-190] --> MockDMI[HC-191]
-    MockDMI --> LegacyAdapter[HC-192]
+    BackendADR[HC-003] --> HospitalNode[HC-110]
+    BackendADR --> GovernanceNode[HC-130]
+    BackendADR --> AI[HC-150]
+    DMIPort[HC-120<br/>Hospital-local port] --> MockDMI[HC-121]
+    DMIPort --> Mapping[HC-122]
+    MockDMI --> HospitalAdapter[HC-123]
+    FederationContract[HC-140] --> MockFederation[HC-141]
+    FederationContract --> Registry[HC-142]
+    Registry --> Identity[HC-143]
+    Identity --> Authorization[HC-144]
+    Authorization --> NodeCommunication[HC-145]
+    SciContract[HC-170] --> SciAdapter[HC-171]
+    SciAdapter --> SciPortal[HC-172]
 ```
 
-## Governance, ledger, and compute-to-data
+## Compute-to-Data and immutable audit
 
 ```mermaid
 flowchart TD
-    Auth[HC-290<br/>Authentication] --> RBAC[HC-291]
-    OrgIdentity[HC-292] --> SignedAuth[HC-293]
-    Policy[HC-230] --> TempTokens[HC-232]
-    Consent[HC-231] --> TempTokens
-    PersistentAudit[HC-233] --> LedgerPort[HC-234]
-    LedgerPort --> SimLedger[HC-235]
-    LedgerPort --> RealLedger[HC-236]
-    JobContract[HC-250] --> MockExecution[HC-251]
-    JobContract --> Orchestrator[HC-252]
-    TempTokens --> Orchestrator
-    Orchestrator --> HospitalAgent[HC-253]
-    HospitalAgent --> Isolation[HC-254]
-    Isolation --> OutputValidation[HC-255]
+    JobContract[HC-180] --> MockExecution[HC-181]
+    JobContract --> Orchestrator[HC-182]
+    Orchestrator --> HospitalAgent[HC-183]
+    HospitalAgent --> Aggregation[HC-184]
+    Aggregation --> OutputValidation[HC-185]
+    HospitalAgent --> Sandbox[HC-186]
+    LedgerPort[HC-190<br/>Governance boundary] --> SimLedger[HC-191]
+    LedgerPort --> Hashing[HC-192]
+    LedgerResearch[HC-193] --> RealLedger[HC-194]
+    LedgerPort --> RealLedger
 ```
 
-The real ledger adapter never precedes `AuditLedgerPort`; research execution never bypasses governance authorization; and no dependency permits direct access to another component's persistence.
+The DMI Adapter remains inside each Hospital Node; the ledger remains inside Governance and excludes raw clinical data; SciAgents remains external; and visual D1 tickets do not depend on D3/D4 infrastructure.

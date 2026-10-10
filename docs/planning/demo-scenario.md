@@ -1,4 +1,7 @@
-# Canonical Demo Scenario
+﻿# Canonical Demo Scenario
+
+GitHub execution is coordinated by [EPIC - End-to-End Demo](https://github.com/Medmas07/Hackcure_hackathon/issues/23) and implementation issues [HC-240](https://github.com/Medmas07/Hackcure_hackathon/issues/95) through [HC-247](https://github.com/Medmas07/Hackcure_hackathon/issues/102). Stable HC IDs and the complete mapping remain in [the backlog](backlog.md).
+
 
 This is the principal product demonstration and the basis for P0 ordering. Every person, organization, record, request, and result is fictional and comes from the coherent demo dataset in HC-005. Simulated behavior is visibly represented as demo behavior and is not described as production persistence.
 
