@@ -138,7 +138,62 @@ export interface ComputeJob {
   controlledResultId: string | null
 }
 
-/** A controlled result's release metadata; its aggregate rows belong to the result panel (HC-101). */
+/**
+ * A research notebook (HC-099). Fixture notebooks come from HC-005; edits and
+ * simulated runs live in the portal's session state only.
+ */
+export interface Notebook {
+  id: string
+  projectId: string
+  title: string
+  cells: NotebookCell[]
+}
+
+export interface NotebookCell {
+  id: string
+  type: 'markdown' | 'code'
+  source: string
+  /** The latest simulated run of a code cell. */
+  lastRun?: CellRun
+}
+
+/** A workspace check applied before a cell is sent, in the browser; not a sandbox or a Hospital Node check. */
+export interface CellCheck {
+  id: 'authorization' | 'not_empty' | 'approved_packages' | 'no_system_access' | 'authorized_variables' | 'minimum_cell_size' | 'controlled_release'
+  state: 'passed' | 'warning' | 'failed'
+  /** French explanation. */
+  detail: string
+}
+
+/** What a simulated run returned to the researcher. */
+export type CellOutput =
+  /** A fixture controlled result, only for an unchanged fixture cell; aggregate cells only. */
+  | { kind: 'aggregate'; result: ControlledResultSummary; columns: string[]; rows: (string | number)[][] }
+  /** The code calls no `ctd.release`: nothing comes back from the Hospital Nodes. */
+  | { kind: 'no_release' }
+  /** Edited or new code is not interpreted at D1, so no aggregate is computed. */
+  | { kind: 'not_simulated' }
+  | { kind: 'none' }
+
+/** A simulated Compute-to-Data run of one code cell (HC-099), MOCKED. */
+export interface CellRun {
+  /** 1 for the cell's first run in the session. */
+  number: number
+  /** The source that was run; the output is stale once the cell is edited. */
+  source: string
+  /** SHA-256 of the source, as `algorithm.sha256` of the HC-182 job contract; null if the browser cannot compute it. */
+  algorithmSha256: string | null
+  startedAt: string
+  finishedAt: string
+  status: 'completed' | 'refused' | 'failed'
+  checks: CellCheck[]
+  stages: ComputeJobStage[]
+  output: CellOutput
+  /** French reason of a refusal or failure. */
+  error?: string
+}
+
+/** A controlled result's release metadata; its aggregate rows belong to the result panel (HC-101) and the workspace's fixture output (HC-099). */
 export interface ControlledResultSummary {
   id: string
   jobId: string
@@ -207,6 +262,8 @@ export interface ResearchSnapshot {
   projects: ProjectSummary[]
   jobs: ComputeJob[]
   results: ControlledResultSummary[]
+  /** Notebooks of the researcher's projects, with session edits and simulated runs (HC-099). */
+  notebooks: Notebook[]
   pages: PortalPage[]
   notifications: PortalNotification[]
 }

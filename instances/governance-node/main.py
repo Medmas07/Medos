@@ -9,10 +9,18 @@ from adapters.inbound.http.health import create_router as create_health_router
 from adapters.inbound.http.hospital_approval import (
     create_router as create_hospital_approval_router,
 )
+from adapters.inbound.http.sync_authorization import (
+    create_router as create_sync_authorization_router,
+)
+from adapters.inbound.http.synchronization_requests import (
+    create_router as create_synchronization_router,
+)
+from adapters.outbound.fixture_patient_grants import FixturePatientGrantDirectory
 from adapters.outbound.fixture_reviewer_directory import FixtureReviewerDirectory
 from adapters.outbound.in_memory_hospital_applications import (
     InMemoryHospitalApplicationStore,
 )
+from adapters.outbound.in_memory_synchronization import InMemorySynchronizationStore
 from application.get_node_status import NODE_VERSION
 from domain.node_identity import NodeIdentity
 
@@ -40,9 +48,20 @@ def create_app(
     # HC-131: in memory, seeded from fictional applications; decisions lost on restart.
     applications = InMemoryHospitalApplicationStore.load(demo_data / "governance.json")
     reviewers = FixtureReviewerDirectory.load(demo_data / "people.json")
+    # HC-132: in memory, seeded from fictional requests; lost on restart.
+    synchronizations = InMemorySynchronizationStore.load(demo_data / "governance.json")
+    # MOCKED (HC-132): patient grants belong to the Hospital Nodes (HC-115); until
+    # consent governance (HC-136), the Node reads the fictional seed grants.
+    grants = FixturePatientGrantDirectory.load(demo_data / "access.json")
     app = FastAPI(title="Governance Node", version=NODE_VERSION)
     app.include_router(create_health_router(identity))
     app.include_router(create_hospital_approval_router(applications, reviewers, clock))
+    app.include_router(
+        create_synchronization_router(
+            synchronizations, reviewers, grants, applications, clock
+        )
+    )
+    app.include_router(create_sync_authorization_router(synchronizations, clock))
     return app
 
 
