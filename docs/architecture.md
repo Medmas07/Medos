@@ -189,7 +189,7 @@ AI is advisory, replaceable through ports, and subject to appropriate human revi
 | Notification Service | PLANNED | No provider or runtime implementation; stack decided by ADR-0003. |
 | SciAgents Integration | PLANNED | SciAgents exists externally; connector is absent. |
 | Immutable Audit Ledger | OPTIONAL / PLANNED | Governance-only concept; no adapter or ledger. |
-| AI Services | IMPLEMENTED (skeleton) | FastAPI runtime with `/health` and tests (HC-150); no AI capability, library, or provider. |
+| AI Services | IMPLEMENTED (skeleton) / MOCKED extraction | FastAPI runtime (HC-150); clinical extraction contract v1 with a deterministic fixture mock (HC-152); no real AI capability, library, or provider. |
 | Authentication and persistence | PLANNED | No implementation or selected technology. |
 | IoT | OPTIONAL | PlatformIO placeholder is prepared; hardware/framework/protocol are OPEN. |
 | GitHub templates/workflows | IMPLEMENTED | Templates and manual placeholder workflows exist; product CI is not configured. |
