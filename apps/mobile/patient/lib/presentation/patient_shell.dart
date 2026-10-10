@@ -157,7 +157,7 @@ class _ContentView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final content = switch (index) {
-      0 => const _HomeContent(),
+      0 => const _DashboardContent(),
       1 => const _PlannedContent(
         icon: Icons.timeline_rounded,
         title: 'Parcours médical fédéré',
@@ -217,6 +217,132 @@ class _HomeContent extends StatelessWidget {
           description: 'Aperçu — fonctionnalité prévue par HC-017.',
         ),
       ],
+    );
+  }
+}
+
+class _DashboardContent extends StatelessWidget {
+  const _DashboardContent();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Bonjour ${demoPatient.firstName}',
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+        const SizedBox(height: 6),
+        const SizedBox(height: 20),
+        const _AuthorizedViewCard(),
+        const SizedBox(height: 16),
+        Text(
+          'Votre tableau de bord',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 10),
+        const Row(
+          children: [
+            Expanded(
+              child: _DashboardMetric(
+                icon: Icons.timeline_rounded,
+                value: '3',
+                label: 'evenements autorises',
+              ),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: _DashboardMetric(
+                icon: Icons.verified_user_outlined,
+                value: '2',
+                label: 'sources autorisees',
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Card(
+          child: ListTile(
+            leading: const Icon(
+              Icons.update_rounded,
+              color: PatientColors.brand,
+            ),
+            title: const Text('Derniere mise a jour'),
+            subtitle: const Text('Vue autorisee synchronisee aujourd hui'),
+            trailing: const _StatusPill(label: 'MOCKED'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AuthorizedViewCard extends StatelessWidget {
+  const _AuthorizedViewCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: PatientColors.brand,
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Row(
+          children: [
+            const CircleAvatar(
+              backgroundColor: Colors.white24,
+              child: Icon(Icons.lock_open_rounded, color: Colors.white),
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Vue autorisee active',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.check_circle_rounded, color: Colors.white),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DashboardMetric extends StatelessWidget {
+  const _DashboardMetric({
+    required this.icon,
+    required this.value,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: PatientColors.brand),
+            const SizedBox(height: 12),
+            Text(value, style: Theme.of(context).textTheme.headlineMedium),
+            const SizedBox(height: 2),
+            Text(label, style: const TextStyle(color: PatientColors.muted)),
+          ],
+        ),
+      ),
     );
   }
 }

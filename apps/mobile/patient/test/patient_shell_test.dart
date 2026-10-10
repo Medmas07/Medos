@@ -18,6 +18,19 @@ void main() {
     expect(find.text('Identité fictive HC-005'), findsOneWidget);
   });
 
+  testWidgets('shows the patient dashboard authorized-view summary', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const PatientApp());
+
+    expect(find.text('Vue autorisee active'), findsOneWidget);
+    expect(find.text('3'), findsOneWidget);
+    expect(find.text('evenements autorises'), findsOneWidget);
+    expect(find.text('2'), findsOneWidget);
+    expect(find.text('sources autorisees'), findsOneWidget);
+    expect(find.text('MOCKED'), findsOneWidget);
+  });
+
   testWidgets('navigates between shell destinations', (tester) async {
     await tester.pumpWidget(const PatientApp());
 
