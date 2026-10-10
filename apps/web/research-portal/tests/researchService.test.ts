@@ -52,6 +52,10 @@ describe('Research Portal service (MOCKED, canonical fixtures)', () => {
       expect(byId(pendingOnly, id)?.status).toBe('locked')
     }
     expect(byId(derivePages([cardio], NOW), 'workspace')?.status).toBe('available')
+
+    const later = await loadResearchSnapshot(DEMO_RESEARCHER_ID, { delayMs: 0, now: new Date('2027-08-01T00:00:00+01:00') })
+    expect(later.projects.find((s) => s.project.id === 'proj-001')?.authorized).toBe(false)
+    expect(byId(later.pages, 'results')?.status).toBe('locked')
   })
 
   it('supports explicit empty and error demo scenarios', async () => {

@@ -83,6 +83,8 @@ export interface ProjectSummary {
   request: ResearchAccessRequest | null
   decision: GovernanceDecision | null
   participatingOrganizations: Organization[]
+  /** Whether a still-valid Governance approval allows Compute-to-Data, at load time. */
+  authorized: boolean
 }
 
 /** Pages of the portal. Each page is delivered by its own ticket. */

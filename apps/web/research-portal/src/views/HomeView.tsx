@@ -44,8 +44,9 @@ export function HomeView({ snapshot, onNavigate }: HomeViewProps) {
     {
       key: 'request',
       header: "Demande d'accès",
-      render: ({ request }) => {
-        const display = requestStatusDisplay[request?.status ?? 'not_submitted']
+      render: ({ request, authorized }) => {
+        const status = request?.status === 'approved' && !authorized ? 'expired' : (request?.status ?? 'not_submitted')
+        const display = requestStatusDisplay[status]
         return <Badge tone={display.tone}>{display.label}</Badge>
       },
     },

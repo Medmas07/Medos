@@ -73,7 +73,7 @@ function plural(count: number, word: string): string {
  * Whether a project may use Compute-to-Data: its access request is approved by a
  * Governance decision that is still valid at `now`.
  */
-export function isAuthorized(summary: ProjectSummary, now: Date): boolean {
+export function isAuthorized(summary: Pick<ProjectSummary, 'request' | 'decision'>, now: Date): boolean {
   const { request, decision } = summary
   return (
     request?.status === 'approved' &&
@@ -119,7 +119,7 @@ export function derivePages(summaries: ProjectSummary[], now: Date): PortalPage[
   })
 }
 
-function summarize(project: ResearchProject): ProjectSummary {
+function summarize(project: ResearchProject, now: Date): ProjectSummary {
   const request = requests.find((r) => r.id === project.researchAccessRequestId) ?? null
   const decision =
     (request &&
@@ -127,7 +127,7 @@ function summarize(project: ResearchProject): ProjectSummary {
         (d) => d.id === request.decisionId && d.subjectType === 'research_access_request' && d.subjectId === request.id,
       )) ??
     null
-  return {
+  const summary = {
     project,
     request,
     decision,
@@ -135,6 +135,7 @@ function summarize(project: ResearchProject): ProjectSummary {
       .map((id) => organizations.find((o) => o.id === id))
       .filter((o): o is Organization => o !== undefined),
   }
+  return { ...summary, authorized: isAuthorized(summary, now) }
 }
 
 /** Demo scenarios, selected with `?demo=vide` or `?demo=erreur` in the URL. */
@@ -176,7 +177,7 @@ export async function loadResearchSnapshot(
       : projects
           .filter((p) => p.principalInvestigatorId === researcherId)
           .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-          .map(summarize)
+          .map((p) => summarize(p, now))
   const projectIds = new Set(summaries.map((s) => s.project.id))
 
   return {

@@ -1,8 +1,12 @@
 import type { Tone } from '@hackcure/design-system'
 import type { PageStatus, ResearchAccessRequest } from './types/research'
 
-export const requestStatusDisplay: Record<ResearchAccessRequest['status'] | 'not_submitted', { label: string; tone: Tone }> = {
+export const requestStatusDisplay: Record<
+  ResearchAccessRequest['status'] | 'not_submitted' | 'expired',
+  { label: string; tone: Tone }
+> = {
   not_submitted: { label: 'Non soumise', tone: 'neutral' },
+  expired: { label: 'Expirée', tone: 'warning' },
   under_review: { label: 'En revue', tone: 'info' },
   approved: { label: 'Autorisée', tone: 'success' },
   rejected: { label: 'Refusée', tone: 'danger' },
