@@ -40,7 +40,8 @@ describe('Hospital approval page: Governance decision', () => {
     expect(snapshot.organization).toMatchObject({ governanceStatus: 'approved', approvalDecisionId: snapshot.decision!.id })
     expect(humanReviewState(snapshot.application)).toMatchObject({ kind: 'completed', decided: true })
     expect(status(snapshot, 'decision').status).toBe('completed')
-    expect(status(snapshot, 'node-configuration')).toMatchObject({ status: 'pending', detail: 'Configuration non générée.' })
+    expect(status(snapshot, 'node-configuration')).toMatchObject({ status: 'completed', detail: 'Configuration prête : node-hospital-c.' })
+    expect(status(snapshot, 'node-download').status).toBe('pending')
   })
 
   it('lets an approved application provide the document its decision conditions require', async () => {

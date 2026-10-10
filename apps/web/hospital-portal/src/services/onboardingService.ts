@@ -12,6 +12,7 @@ import type {
   StaffMember,
   StepId,
 } from '../types/onboarding'
+import { nodeRefFor } from './nodeConfigService'
 
 /**
  * MOCKED onboarding service. It reads the canonical fictional fixtures in the
@@ -152,9 +153,14 @@ export function deriveSteps(
     const delivered: StepState = node
       ? { status: 'completed', detail: `Nœud ${node.id} (v${node.version}).` }
       : { status: 'pending', detail: 'Configuration non générée.' }
-    states.set('node-configuration', delivered)
-    states.set('node-download', delivered)
-    states.set('node-installation', delivered)
+    // Without an installed node, approval makes the configuration ready (HC-060);
+    // download and installation remain to do.
+    states.set(
+      'node-configuration',
+      node ? delivered : { status: 'completed', detail: `Configuration prête : ${nodeRefFor(organization.id)}.` },
+    )
+    states.set('node-download', node ? delivered : { status: 'pending', detail: 'Package non téléchargé.' })
+    states.set('node-installation', node ? delivered : { status: 'pending', detail: 'Installation non commencée.' })
     states.set(
       'node-status',
       !node
