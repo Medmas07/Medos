@@ -19,8 +19,9 @@ class AuthorizationStub:
 
 
 class ExecutionStub:
-    def __init__(self, suppressed_organization=None):
+    def __init__(self, suppressed_organization=None, invalid_organization=None):
         self.suppressed_organization = suppressed_organization
+        self.invalid_organization = invalid_organization
 
     def submit(self, job, organization_ref, authorization):
         return NodeExecution(
@@ -37,11 +38,20 @@ class ExecutionStub:
                 "outcome": "suppressed",
                 "columns": [],
                 "rows": [],
-                "disclosure": {"status": "suppressed", "minimum_cell_size": 10},
+                "disclosure": {
+                    "status": "suppressed",
+                    "minimum_cell_size": 10,
+                    "checked_at": "2026-10-10T12:00:01+00:00",
+                    "reason_code": "minimum_cell_size",
+                },
                 "provenance": {
                     "algorithm_sha256": "7da3c4f53384d2c0bf4e50f736e6e0242e57a77cf18720f62e16c13c49d79801",
                     "authorization_decision_ref": "dec-rar-001",
                     "source_organization_ref": execution.organization_ref,
+                    "source_node_ref": execution.organization_ref.replace(
+                        "org-", "node-", 1
+                    ),
+                    "executed_at": "2026-10-10T12:00:00+00:00",
                 },
             }
             return execution
@@ -49,13 +59,24 @@ class ExecutionStub:
             "outcome": "released",
             "columns": ["participant_count", "hba1c_above_7_pct"],
             "rows": [[42, 25.0]],
-            "disclosure": {"status": "passed", "minimum_cell_size": 10},
+            "disclosure": {
+                "status": "passed",
+                "minimum_cell_size": 10,
+                "checked_at": "2026-10-10T12:00:01+00:00",
+            },
             "provenance": {
                 "algorithm_sha256": "7da3c4f53384d2c0bf4e50f736e6e0242e57a77cf18720f62e16c13c49d79801",
                 "authorization_decision_ref": "dec-rar-001",
                 "source_organization_ref": execution.organization_ref,
+                "source_node_ref": execution.organization_ref.replace(
+                    "org-", "node-", 1
+                ),
+                "executed_at": "2026-10-10T12:00:00+00:00",
             },
         }
+        if execution.organization_ref == self.invalid_organization:
+            execution.mocked = True
+            execution.result["patient_refs"] = ["pat-a"]
         return execution
 
 
@@ -104,6 +125,10 @@ def test_job_api_exposes_controlled_aggregation():
     assert len(completed.json()["executions"]) == 2
     assert completed.json()["aggregation"]["status"] == "released"
     assert completed.json()["aggregation"]["rows"] == [[84, 25.0]]
+    assert all(
+        item["output_validation"]["status"] == "passed"
+        for item in completed.json()["executions"]
+    )
 
 
 def test_job_api_has_validation_and_not_found_states():
@@ -138,6 +163,41 @@ def test_job_api_shows_partial_coverage_without_reconstructing_suppressed_cells(
     assert aggregation["rows"] == [[42, 25.0]]
     assert aggregation["excluded_organization_refs"] == ["org-hospital-b"]
     assert aggregation["mocked"] is True
+
+
+def test_job_api_rejects_and_removes_patient_level_output_before_release():
+    guarded_app = FastAPI()
+    guarded_app.include_router(
+        create_router(
+            ResearchOrchestrator(
+                AuthorizationStub(),
+                ExecutionStub(invalid_organization="org-hospital-b"),
+            )
+        )
+    )
+    guarded_client = TestClient(guarded_app)
+    assert (
+        guarded_client.post(
+            "/v1/research-jobs", json=request("job-http-rejected")
+        ).status_code
+        == 202
+    )
+
+    response = guarded_client.get("/v1/research-jobs/job-http-rejected")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "failed"
+    assert payload["error"]["code"] == "output_rejected"
+    assert payload["aggregation"]["status"] == "not_available"
+    rejected = next(
+        item
+        for item in payload["executions"]
+        if item["organization_ref"] == "org-hospital-b"
+    )
+    assert rejected["output_validation"]["status"] == "rejected"
+    assert rejected["output_validation"]["error"]["code"] == "output_schema_invalid"
+    assert "result" not in rejected
+    assert "pat-a" not in response.text
 
 
 def test_job_reference_cannot_be_reused_for_another_request():

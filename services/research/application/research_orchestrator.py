@@ -1,9 +1,10 @@
-"""Application-owned ports and use cases for D3 research orchestration."""
+"""Application-owned ports and use cases for D3/D4 research processing."""
 
 from dataclasses import asdict
 from datetime import UTC, datetime
 from typing import Protocol
 
+from application.output_validation import ResearchOutputValidator
 from application.result_aggregation import ControlledResultAggregator
 from domain.research_job import (
     AggregationStatus,
@@ -12,6 +13,8 @@ from domain.research_job import (
     JobError,
     JobStatus,
     NodeExecution,
+    OutputValidation,
+    OutputValidationStatus,
     ResearchJob,
     is_terminal,
 )
@@ -62,11 +65,13 @@ class ResearchOrchestrator:
         executions: HospitalExecutionPort,
         store: JobStore | None = None,
         aggregator: ControlledResultAggregator | None = None,
+        output_validator: ResearchOutputValidator | None = None,
     ) -> None:
         self.authorization = authorization
         self.executions = executions
         self.store = store or InMemoryJobStore()
         self.aggregator = aggregator or ControlledResultAggregator()
+        self.output_validator = output_validator or ResearchOutputValidator()
 
     def submit(self, job: ResearchJob) -> ResearchJob:
         existing = self.store.get(job.job_ref)
@@ -130,6 +135,9 @@ class ResearchOrchestrator:
                             "The Hospital Node could not accept the execution.",
                             True,
                         ),
+                        output_validation=OutputValidation(
+                            OutputValidationStatus.NOT_APPLICABLE
+                        ),
                     )
                 )
         job.refresh_status()
@@ -169,15 +177,60 @@ class ResearchOrchestrator:
                     True,
                 ),
                 mocked=execution.mocked,
+                output_validation=OutputValidation(
+                    OutputValidationStatus.NOT_APPLICABLE
+                ),
             )
 
     def _aggregate(self, job: ResearchJob) -> None:
         if job.status is not JobStatus.COMPLETED:
+            for execution in job.executions:
+                if (
+                    execution.status
+                    in {
+                        ExecutionStatus.DENIED,
+                        ExecutionStatus.FAILED,
+                        ExecutionStatus.CANCELLED,
+                        ExecutionStatus.EXPIRED,
+                    }
+                    and execution.output_validation.status
+                    is OutputValidationStatus.PENDING
+                ):
+                    execution.output_validation = OutputValidation(
+                        OutputValidationStatus.NOT_APPLICABLE
+                    )
             if job.status in {JobStatus.DENIED, JobStatus.FAILED}:
                 job.aggregation = job.aggregation.__class__(
                     AggregationStatus.NOT_AVAILABLE,
                     error=job.error,
                 )
+            return
+        for execution in job.executions:
+            execution.output_validation = self.output_validator.validate(execution, job)
+        rejected = [
+            execution
+            for execution in job.executions
+            if execution.output_validation.status is OutputValidationStatus.REJECTED
+        ]
+        if rejected:
+            job.status = JobStatus.FAILED
+            job.error = JobError(
+                "output_rejected",
+                "At least one Hospital Node output failed release validation.",
+                False,
+            )
+            for execution in rejected:
+                execution.status = ExecutionStatus.FAILED
+                execution.result = None
+                execution.error = JobError(
+                    "output_rejected",
+                    "The Hospital Node output failed release validation.",
+                    False,
+                )
+            job.aggregation = job.aggregation.__class__(
+                AggregationStatus.NOT_AVAILABLE,
+                error=job.error,
+            )
             return
         job.aggregation = self.aggregator.aggregate(job)
         if job.aggregation.status is AggregationStatus.FAILED:
@@ -199,6 +252,10 @@ def serialize(job: ResearchJob) -> dict:
     document["status"] = job.status.value
     for execution in document["executions"]:
         execution["status"] = execution["status"].value
+        validation = execution["output_validation"]
+        validation["status"] = validation["status"].value
+        if validation["error"] is None:
+            del validation["error"]
         for optional in ("result", "error"):
             if execution[optional] is None:
                 del execution[optional]
