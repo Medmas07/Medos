@@ -29,6 +29,7 @@ See the [technical architecture](docs/architecture.md).
 - `services/`: AI, Federation, Notification, and Research capabilities.
 - `integrations/`: SciAgents and future company/platform integrations.
 - `contracts/`: API, event, federation, and technology-neutral message definitions.
+- `design-system/`: web design tokens and React components shared by the web portals.
 - `infrastructure/`, `production/`, `iot/`: environment-specific or optional technical assets.
 - `docs/`: product truth, architecture, status, planning, ADRs, and guidance.
 - `tests/`: future cross-system integration and E2E validation.

@@ -5,11 +5,13 @@ on:
   pull_request:
     paths:
       - "services/ai/**"
+      - "contracts/api/ai/**"
       - ".github/workflows/tests.yml"
   push:
     branches: [main]
     paths:
       - "services/ai/**"
+      - "contracts/api/ai/**"
       - ".github/workflows/tests.yml"
 
 permissions:

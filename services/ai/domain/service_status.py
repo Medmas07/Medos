@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 
 ADVISORY_NOTICE = (
-    "AI Services runtime skeleton. No AI capability is implemented. "
-    "Any future AI output is advisory and requires review by an accountable human."
+    "No real AI capability is implemented; capabilities marked :mocked return "
+    "deterministic fictional fixtures. Any AI output is advisory and requires "
+    "review by an accountable human."
 )
 
 

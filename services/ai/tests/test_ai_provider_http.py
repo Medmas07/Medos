@@ -20,4 +20,7 @@ def test_ai_provider_reports_the_mock_explicitly():
 
 
 def test_provider_port_adds_no_ai_capability():
-    assert client.get("/health").json()["capabilities"] == []
+    capabilities = client.get("/health").json()["capabilities"]
+
+    assert not any("provider" in capability for capability in capabilities)
+    assert all(capability.endswith(":mocked") for capability in capabilities)

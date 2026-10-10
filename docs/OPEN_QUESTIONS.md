@@ -2,8 +2,7 @@
 
 These questions are OPEN. Do not answer them through implementation without the required evidence and ADR.
 
-- Where will the HC-004 web design system live so all three portals can reuse it without a generic `shared/` folder or a non-product entry under `apps/`? (The web framework itself is decided by [ADR-0001](decisions/ADR-0001-web-frontend-technology.md).)
-- Which mobile framework will serve both mobile products, and what is the Android development path?
+- How will the Flutter mobile apps reuse or translate the web design-system tokens without depending on the React package ([ADR-0002](decisions/ADR-0002-web-design-system.md), [ADR-0004](decisions/ADR-0004-mobile-technology.md))?
 - How will one Hospital Node codebase load per-hospital configuration (identity, port, storage) for several demo hospitals? (The runtime itself is decided by [ADR-0003](decisions/ADR-0003-backend-runtime-strategy.md).)
 - What canonical clinical model, FHIR version, profiles, terminology, and validation strategy are required?
 - Which persistence technologies and data models fit each bounded context?
@@ -13,6 +12,8 @@ These questions are OPEN. Do not answer them through implementation without the 
 - How will node identity, signing, authorization tokens, key rotation, and trust establishment work?
 - Is an Immutable Audit Ledger required, and if so which permissioned ledger technology is justified?
 - Which AI providers, models, hosting mode, evaluation criteria, and clinical review controls are acceptable?
+- Which components may call the AI clinical extraction API with clinical source text, and is AI Services hosted inside the hospital boundary or as a company service? This decides whether clinical text leaves the Hospital Node. ([HC-152 contract](../contracts/api/ai/clinical-extraction.v1.yaml).)
+- Should extracted measurement units be coded in UCUM and items mapped to a terminology (for example SNOMED CT) before clinician review, or only after?
 - Which validated medication-interaction and clinical terminology sources will be used?
 - Which research execution sandbox, package policy, isolation controls, and output-disclosure process are required?
 - Which notification providers and delivery protocols will be used?
