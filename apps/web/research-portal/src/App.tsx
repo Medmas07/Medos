@@ -28,6 +28,7 @@ import { PagePlaceholderView } from './views/PagePlaceholderView'
 import { PopulationView } from './views/PopulationView'
 import { ProtocolView } from './views/ProtocolView'
 import { RequestStatusView } from './views/RequestStatusView'
+import { ResultsView } from './views/ResultsView'
 import { SubmitRequestView } from './views/SubmitRequestView'
 import { VariablesView } from './views/VariablesView'
 import { WorkspaceView } from './views/WorkspaceView'
@@ -222,6 +223,9 @@ export default function App() {
     }
     if (currentView === 'execution') {
       return <ExecutionsView snapshot={load.snapshot} onNavigate={navigateTo} />
+    }
+    if (currentView === 'results') {
+      return <ResultsView snapshot={load.snapshot} onNavigate={navigateTo} />
     }
     const page = load.snapshot.pages.find((p) => p.id === currentView)!
     const section = PAGE_DEFINITIONS.find((d) => d.id === currentView)!.section

@@ -63,6 +63,16 @@ export function fixtureNotebookResult(
   return { result: { id, jobId, title, minimumCellSize, disclosureCheck, provenance }, columns, rows }
 }
 
+/**
+ * The aggregate table of a fixture controlled result, for the result panel
+ * (HC-101). Null when the result is unknown or failed its disclosure check:
+ * nothing of it is released.
+ */
+export function controlledResultTable(resultId: string): { columns: string[]; rows: (string | number)[][] } | null {
+  const found = results.find((r) => r.id === resultId && r.disclosureCheck === 'passed')
+  return found ? { columns: found.columns, rows: found.rows } : null
+}
+
 /** Organizations whose Hospital Node could take part in a study: hospitals and private practices. */
 export const HEALTHCARE_ORGANIZATIONS: readonly Organization[] = organizations.filter(
   (o) => o.type === 'hospital' || o.type === 'private_practice',
