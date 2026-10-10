@@ -39,6 +39,9 @@ const notifications = notificationFixtures.notifications as unknown as PortalNot
 /** Every fixture project; a new project's identifier must not reuse one of theirs. */
 export const FIXTURE_PROJECTS: readonly ResearchProject[] = projects
 
+/** Every fixture access request; a new request's identifier must not reuse one of theirs. */
+export const FIXTURE_ACCESS_REQUESTS: readonly ResearchAccessRequest[] = requests
+
 /** Organizations whose Hospital Node could take part in a study: hospitals and private practices. */
 export const HEALTHCARE_ORGANIZATIONS: readonly Organization[] = organizations.filter(
   (o) => o.type === 'hospital' || o.type === 'private_practice',
