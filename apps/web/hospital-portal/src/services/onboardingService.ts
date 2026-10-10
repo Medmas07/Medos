@@ -5,6 +5,7 @@ import peopleFixtures from '../../../../../demo-data/people.json'
 import type {
   GovernanceDecision,
   HospitalApplication,
+  NodeSummary,
   OnboardingSnapshot,
   OnboardingStep,
   Organization,
@@ -246,7 +247,10 @@ export function deriveSteps(
  * fail. `?demo=decision-approuvee` and `?demo=decision-refusee` start like
  * `nominal` and simulate a Governance decision published for the application.
  * `?demo=echec-telechargement` starts like `decision-approuvee`, and the first
- * Node package preparation fails.
+ * Node package preparation fails. `?demo=noeud-en-ligne`, `?demo=noeud-degrade`,
+ * and `?demo=noeud-hors-ligne` start like `decision-approuvee` and simulate an
+ * installed Hospital Node reporting that state; `?demo=echec-etat-noeud` starts
+ * like `noeud-en-ligne`, and the first status refresh fails.
  */
 export type DemoScenario =
   | 'nominal'
@@ -263,6 +267,10 @@ export type DemoScenario =
   | 'decision-approved'
   | 'decision-rejected'
   | 'download-failure'
+  | 'node-online'
+  | 'node-degraded'
+  | 'node-offline'
+  | 'node-status-failure'
 
 export function scenarioFromSearch(search: string): DemoScenario {
   const value = new URLSearchParams(search).get('demo')
@@ -279,6 +287,10 @@ export function scenarioFromSearch(search: string): DemoScenario {
   if (value === 'decision-approuvee') return 'decision-approved'
   if (value === 'decision-refusee') return 'decision-rejected'
   if (value === 'echec-telechargement') return 'download-failure'
+  if (value === 'noeud-en-ligne') return 'node-online'
+  if (value === 'noeud-degrade') return 'node-degraded'
+  if (value === 'noeud-hors-ligne') return 'node-offline'
+  if (value === 'echec-etat-noeud') return 'node-status-failure'
   return 'nominal'
 }
 
@@ -327,6 +339,27 @@ export function withSimulatedDecision(
   }
 }
 
+/**
+ * Simulates the Node summary an installed Hospital Node would report, for the
+ * Node status demo scenarios (HC-063). The canonical fixtures have no Node for
+ * Cap Azur. Values are fictional and fixed; nothing contacts a Node. Pure.
+ */
+export function withSimulatedNode(organization: Organization, status: NodeSummary['status']): Organization {
+  const reported: Record<NodeSummary['status'], Omit<NodeSummary, 'id' | 'status' | 'simulated'>> = {
+    online: { version: '0.3.0', lastSyncAt: '2026-10-10T17:40:00+01:00', dmiState: 'connected' },
+    degraded: { version: '0.2.0', lastSyncAt: '2026-10-10T09:15:00+01:00', dmiState: 'disconnected' },
+    offline: { version: '0.3.0', lastSyncAt: '2026-10-09T22:05:00+01:00', dmiState: 'connected' },
+  }
+  return { ...organization, node: { id: nodeRefFor(organization.id), status, ...reported[status], simulated: true } }
+}
+
+const SIMULATED_NODE_STATES: Partial<Record<DemoScenario, NodeSummary['status']>> = {
+  'node-online': 'online',
+  'node-degraded': 'degraded',
+  'node-offline': 'offline',
+  'node-status-failure': 'online',
+}
+
 export interface LoadOptions {
   scenario?: DemoScenario
   /** Simulated network latency in milliseconds. */
@@ -365,8 +398,18 @@ export async function loadOnboardingSnapshot(
     application: loaded,
     decision: decisions.find((d) => d.id === loaded?.decisionId) ?? null,
   }
-  if (loaded && (scenario === 'decision-approved' || scenario === 'download-failure' || scenario === 'decision-rejected')) {
+  const simulatedNode = SIMULATED_NODE_STATES[scenario]
+  if (
+    loaded &&
+    (scenario === 'decision-approved' ||
+      scenario === 'download-failure' ||
+      scenario === 'decision-rejected' ||
+      simulatedNode)
+  ) {
     decided = withSimulatedDecision(organization, loaded, scenario === 'decision-rejected' ? 'rejected' : 'approved')
+  }
+  if (simulatedNode) {
+    decided = { ...decided, organization: withSimulatedNode(decided.organization, simulatedNode) }
   }
   const { application } = decided
 
