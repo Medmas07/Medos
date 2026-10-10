@@ -435,7 +435,7 @@ class _AccessContentState extends State<_AccessContent> {
           _AccessGrantCard(
             grant: grant,
             revoked: _revoked.contains(grant.grantee),
-            onRevoke: () => setState(() => _revoked.add(grant.grantee)),
+            onRevoke: () => _confirmRevoke(grant.grantee),
           ),
       ],
     );
@@ -447,6 +447,29 @@ class _AccessContentState extends State<_AccessContent> {
       builder: (context) => const _GrantAccessDialog(),
     );
     if (grant != null) setState(() => _grants.insert(0, grant));
+  }
+
+  Future<void> _confirmRevoke(String grantee) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Révoquer cet accès ?'),
+        content: Text(
+          'La vue autorisée de $grantee sera retirée dans cette démonstration.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Révoquer'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) setState(() => _revoked.add(grantee));
   }
 }
 
