@@ -66,7 +66,7 @@ Deterministic checks, computed in `src/services/syncReview.ts` and unit-tested:
 - Only a governance reviewer outside both the requesting and the holding organizations may decide, and a decided request cannot be decided again.
 - After a confirmation step and a short simulated delay, the decision (temporary, with its `validUntil`) and a `decision_recorded` audit event (references only) are kept in the same local store as HC-073. The list then shows the request as authorized until its end date, the sidebar badge and dashboard counts drop, and the audit views list the event as not anchored. **Réinitialiser la démo** or a reload returns to the fixtures.
 
-Not done at D1: nothing is sent to the Governance Node (its synchronization API, HC-132, is PLANNED) or to any Hospital Node. Federation queries and the Hospital Nodes' MOCKED authorization still read only the canonical fixtures, so a simulated approval authorizes no real exchange. No ledger proof is created, and the reviewer is the fictional demo reviewer, not an authenticated user.
+Not done at D1: nothing is sent to the Governance Node (its synchronization request API, HC-132, exists, but the portal does not call it yet) or to any Hospital Node. Federation queries and the Hospital Nodes' MOCKED authorization still read only the canonical fixtures, so a simulated approval authorizes no real exchange. No ledger proof is created, and the reviewer is the fictional demo reviewer, not an authenticated user.
 
 ## Research access request list (HC-077)
 

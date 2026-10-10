@@ -1,13 +1,14 @@
 from dataclasses import dataclass
 
 SKELETON_NOTICE = (
-    "Governance Node (HC-130, HC-131). Its identity is the fictional demo Governance / "
-    "Ethics Authority. It serves the hospital approval API over fictional demo "
-    "applications held in memory: decisions are lost on restart, and the reviewer is "
-    "declared, not authenticated. Synchronization and research requests, audit, and "
-    "policy evaluation (HC-132 to HC-136) are PLANNED, so it authorizes no data "
-    "exchange. No persistence, no authentication, no ledger. Liveness only; not a "
-    "production health check."
+    "Governance Node (HC-130 to HC-132). Its identity is the fictional demo Governance "
+    "/ Ethics Authority. It serves the hospital approval and synchronization request "
+    "APIs and the synchronization authorization check over fictional demo data held "
+    "in memory: requests and decisions are lost on restart, and submitters and "
+    "reviewers are declared, not authenticated. Patient grants are checked against "
+    "fictional demo grants (MOCKED), not the Hospital Nodes' own. Research requests, "
+    "audit, and policy evaluation (HC-133 to HC-136) are PLANNED. No persistence, no "
+    "authentication, no ledger. Liveness only; not a production health check."
 )
 
 
