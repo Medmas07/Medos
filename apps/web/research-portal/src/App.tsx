@@ -23,6 +23,7 @@ import { DashboardView } from './views/DashboardView'
 import { HomeView } from './views/HomeView'
 import { NewProjectView } from './views/NewProjectView'
 import { PagePlaceholderView } from './views/PagePlaceholderView'
+import { PopulationView } from './views/PopulationView'
 import { ProtocolView } from './views/ProtocolView'
 
 type ViewId = 'home' | PageId
@@ -151,6 +152,15 @@ export default function App() {
         <ProtocolView
           snapshot={load.snapshot}
           consumeSimulatedFailure={consumeUploadFailure}
+          onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
+          onNavigate={navigateTo}
+        />
+      )
+    }
+    if (currentView === 'population') {
+      return (
+        <PopulationView
+          snapshot={load.snapshot}
           onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
           onNavigate={navigateTo}
         />
