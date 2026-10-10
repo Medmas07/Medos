@@ -67,7 +67,7 @@ PLANNED mobile product consuming authorized patient context for consultation and
 
 ### AI Services
 
-Python is CONFIRMED. Extraction, summarization, document review, medication explanations, prioritization explanations, and research assistance are PLANNED. Frameworks, providers, and models are OPEN.
+Python is CONFIRMED. Clinical extraction is IMPLEMENTED with Claude (Claude Agent SDK) as primary provider and a local Ollama model as fallback behind the provider-neutral `AiProvider` port ([ADR-0006](decisions/ADR-0006-ai-provider-strategy.md)); it is not clinically validated. Summarization, document review, medication explanations, prioritization explanations, and research assistance are PLANNED.
 
 ### Federation
 
@@ -194,7 +194,7 @@ AI is advisory, replaceable through ports, and subject to appropriate human revi
 | Notification Service | PLANNED | No provider or runtime implementation; stack decided by ADR-0003. |
 | SciAgents Integration | PLANNED | SciAgents exists externally; repository-side contract defined (HC-170); connector is absent. |
 | Immutable Audit Ledger | OPTIONAL / PLANNED | Governance-only concept; no adapter or ledger. |
-| AI Services | IMPLEMENTED (skeleton) / MOCKED extraction | FastAPI runtime (HC-150); provider-neutral `AiProvider` port with a deterministic mock adapter (HC-151); clinical extraction contract v1 with a deterministic fixture mock (HC-152); no real AI capability, library, or provider. |
+| AI Services | IMPLEMENTED (extraction) | FastAPI runtime (HC-150); `AiProvider` port (HC-151) with Claude, Ollama, and mock adapters plus a fallback chain (ADR-0006); clinical extraction contract v1 (HC-152) served by real providers (HC-153) or a fixture mode (MOCKED); not clinically validated. |
 | Authentication and persistence | PLANNED | No implementation or selected technology. |
 | IoT | OPTIONAL | PlatformIO placeholder is prepared; hardware/framework/protocol are OPEN. |
 | GitHub templates/workflows | IMPLEMENTED | Templates and manual placeholder workflows exist; product CI is not configured. |
