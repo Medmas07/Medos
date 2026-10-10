@@ -75,8 +75,10 @@ export const governanceService = {
     return typedAccessGrants.find((g) => g.id === id)
   },
 
+  // Fixtures merged with the SIMULATED decisions recorded in this session (HC-078).
   getResearchAccessRequests(): ResearchAccessRequest[] {
-    return typedGovernance.researchAccessRequests
+    const simulated = reviewStore.getSnapshot().researchAccessRequests
+    return typedGovernance.researchAccessRequests.map((req) => simulated[req.id] ?? req)
   },
 
   getResearchAccessRequest(id: string): ResearchAccessRequest | undefined {

@@ -109,6 +109,17 @@ export interface GovernanceDecision {
   validUntil: string | null
   /** True for a decision recorded only in local portal state (HC-073), never persisted. */
   simulated?: boolean
+  /**
+   * What an approved research access request authorizes (HC-078). Mirrors the
+   * Authorization and output policy of contracts/api/research/research-node-execution.v1.yaml.
+   */
+  researchAuthorization?: ResearchAuthorization
+}
+
+export interface ResearchAuthorization {
+  approvedOrganizationIds: string[]
+  approvedVariables: string[]
+  minimumCellSize: number
 }
 
 export interface GovernanceAuditEvent {

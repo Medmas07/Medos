@@ -2,8 +2,8 @@
 
 ## Purpose and status
 
-- **IMPLEMENTED (D1):** Governance Portal shell (HC-070, [#71](https://github.com/Medmas07/Hackcure_hackathon/issues/71)), Governance dashboard (HC-071, [#72](https://github.com/Medmas07/Hackcure_hackathon/issues/72)), pending hospital approval list (HC-072, [#73](https://github.com/Medmas07/Hackcure_hackathon/issues/73)), hospital approval review (HC-073, [#74](https://github.com/Medmas07/Hackcure_hackathon/issues/74)), synchronization request list (HC-074, [#75](https://github.com/Medmas07/Hackcure_hackathon/issues/75)), approve/reject synchronization request (HC-076, [#77](https://github.com/Medmas07/Hackcure_hackathon/issues/77)), and research access request list (HC-077, [#78](https://github.com/Medmas07/Hackcure_hackathon/issues/78)) at initial depth D1. Built with React 19 + TypeScript + Vite SPA as decided in [ADR-0001](../../../docs/decisions/ADR-0001-web-frontend-technology.md) and styled with Tailwind CSS v4 and the shared [design system](../../../design-system/README.md) ([ADR-0002](../../../docs/decisions/ADR-0002-web-design-system.md)).
-- **Checked on 2026-10-10:** `npm test` (Vitest suite covering canonical demo-data loading, the pending hospital approval list, dashboard metrics calculation, federated nodes status, hash verification, state behavior, the hospital review rules, the synchronization list rules, the synchronization review rules, and the research access request list rules) all pass. Fixed dev port is `5174`.
+- **IMPLEMENTED (D1):** Governance Portal shell (HC-070, [#71](https://github.com/Medmas07/Hackcure_hackathon/issues/71)), Governance dashboard (HC-071, [#72](https://github.com/Medmas07/Hackcure_hackathon/issues/72)), pending hospital approval list (HC-072, [#73](https://github.com/Medmas07/Hackcure_hackathon/issues/73)), hospital approval review (HC-073, [#74](https://github.com/Medmas07/Hackcure_hackathon/issues/74)), synchronization request list (HC-074, [#75](https://github.com/Medmas07/Hackcure_hackathon/issues/75)), approve/reject synchronization request (HC-076, [#77](https://github.com/Medmas07/Hackcure_hackathon/issues/77)), research access request list (HC-077, [#78](https://github.com/Medmas07/Hackcure_hackathon/issues/78)), and research access request review (HC-078, [#79](https://github.com/Medmas07/Hackcure_hackathon/issues/79)) at initial depth D1. Built with React 19 + TypeScript + Vite SPA as decided in [ADR-0001](../../../docs/decisions/ADR-0001-web-frontend-technology.md) and styled with Tailwind CSS v4 and the shared [design system](../../../design-system/README.md) ([ADR-0002](../../../docs/decisions/ADR-0002-web-design-system.md)).
+- **Checked on 2026-10-10:** `npm run build`, `npm run lint`, and `npm test` (Vitest suite covering canonical demo-data loading, the pending hospital approval list, dashboard metrics calculation, federated nodes status, hash verification, state behavior, the hospital review rules, the synchronization list rules, the synchronization review rules, the research access request list rules, and the research review rules) all pass. The three review flows and the synchronization list were also driven in headless Chrome. Fixed dev port is `5174`.
 - **Mocking strategy:** Consumes canonical fictional fixtures from `demo-data/` ([ADR-0005](../../../docs/decisions/ADR-0005-canonical-demo-data.md)). Simulated local ledger proofs (SHA-256) and advisory AI annotations are explicitly marked with `DemoBanner` and `DemoBadge`. No direct access to hospital clinical databases.
 
 ## Pending hospital approval list (HC-072)
@@ -61,14 +61,31 @@ Not done at D1: nothing is sent to the Governance Node (its synchronization API,
 IMPLEMENTED at D1, read-only, from the canonical fixtures. **Recherche Biomédicale** lists multicentric research access requests evaluated under the strict **Compute-to-Data** paradigm:
 
 - request id (`rar-001`, `rar-002`) and linked project id & title (`proj-001`, `proj-002`);
-- principal investigator (`Dr Aymen Ben Salah`) and affiliated research organization (`Laboratoire de Recherche Biomédicale`);
+- principal investigator (`Dr Aymen Rezgui`) and affiliated research organization (`Labo Cardiométabolique`);
 - participating target hospital nodes (`HU Bab Ennour`, `HR Oued Zitoun`, `Cabinet Bouzid`);
 - execution mode explicitly labelled `Compute-to-Data`, emphasizing the core architecture invariant: research algorithms run inside hospital node sandboxes and raw patient data never leaves node boundaries;
 - status as of today: `En examen` (under_review), `Autorisée` (active, with expiration date), `Expirée` (expired authorization), or `Rejetée` (rejected);
 - prioritized ordering: requests awaiting review first (`under_review`), followed by active, expired, and rejected, newest first within each;
 - interactive status filters with counts and empty state fallback, alongside a detail preview panel with study population, requested variables, protocol document, and decision state.
 
-The request detail review (HC-078) and decision workflow (HC-079) are separate tickets.
+Reviewing a request and recording the Authority's decision are described in the next section (HC-078).
+
+## Research access request review (HC-078)
+
+IMPLEMENTED at D1; the recorded decision is **SIMULATED**. Under **Accès Recherche**, a request's detail now shows the project the Authority is judging (objective, population, requested variables, participating organizations, protocol). A request under review (`rar-002` in the demo data) shows the ethics committee's decision form.
+
+Deterministic checks (`src/services/researchReview.ts`, unit-tested): the request matches its project; a protocol is attached; a population and at least one variable are defined; at least one participating organization is approved by the Authority with a Hospital Node (others are excluded and cannot be authorized). Approval is disabled while a check fails; a motivated rejection is always possible.
+
+An approval states exactly what it authorizes, in the shape the [research execution contract](../../../contracts/api/research/research-node-execution.v1.yaml) expects of an authorization:
+
+- **Organizations and variables** default to the whole eligible request and can only be narrowed. A participating node whose DMI is disconnected is flagged.
+- **Validity:** 1 to 12 months (default 12), and **minimum cell size:** at least 10 (default 10). Both limits are D1 demo policy taken from the canonical approved request `dec-rar-001`, not a decided policy.
+- Compute-to-Data execution and no individual-level output are always imposed. The decision stores the authorized organizations, variables, and cell size as `researchAuthorization` and states them as conditions; optional extra conditions follow.
+- Only a governance reviewer outside the research organization and the participating organizations, and not the investigator, may decide; a decided request cannot be decided again.
+
+After a confirmation step and a short simulated delay, the decision and its `decision_recorded` audit event (references only) join the local store used by HC-073 and HC-076: the list status, sidebar badge, dashboard counts, and audit views follow, and **Réinitialiser la démo** or a reload returns to the fixtures. A rejection is shown in red; previously every decision was shown as approved.
+
+Not done at D1: nothing is sent to the Governance Node (its research API, HC-133, is PLANNED), the Research Service, or any Hospital Node, so a simulated approval authorizes no execution. No ledger proof is created, and the reviewer is the fictional demo reviewer, not an authenticated user. The request list itself is HC-077.
 
 ## Responsibilities and owned concepts
 

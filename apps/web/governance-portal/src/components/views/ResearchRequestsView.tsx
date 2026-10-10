@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import {
   Alert,
   Badge,
@@ -9,6 +9,7 @@ import {
   Table,
 } from '@hackcure/design-system'
 import { governanceService } from '../../services/governanceService'
+import { reviewStore } from '../../services/reviewStore'
 import {
   filterResearchRows,
   countResearchRows,
@@ -18,32 +19,40 @@ import {
   type ResearchListFilter,
   type ResearchListRow,
 } from '../../services/researchRequestList'
+import { ResearchReviewForm } from '../review/ResearchReviewForm'
+
+/** The reviewer signed in to this demo portal (fictional, HC-005). */
+const REVIEWER_ID = 'usr-olfa'
 
 export function ResearchRequestsView() {
+  // Re-render when a simulated decision is recorded or the demo is reset (HC-078).
+  const simulatedCount = Object.keys(
+    useSyncExternalStore(reviewStore.subscribe, reviewStore.getSnapshot).researchAccessRequests,
+  ).length
   const [filter, setFilter] = useState<ResearchListFilter>('all')
   const [selectedReqId, setSelectedReqId] = useState<string>('rar-002')
 
-  // Use the browser clock at render time
-  const now = useMemo(() => new Date(), [])
+  // Statuses are evaluated once per visit: an authorization that has lapsed shows as expired.
+  const [now] = useState(() => new Date())
 
-  const allRows = useMemo(() => {
-    const rawRequests = governanceService.getResearchAccessRequests()
-    return researchListRows(
-      rawRequests,
-      (projectId) => governanceService.getResearchProject(projectId),
-      (decisionId) => governanceService.getDecision(decisionId),
-      now,
-    )
-  }, [now])
+  // Recomputed on every render, so a decision recorded in this session (store above)
+  // shows at once. Two demo requests: no memoization needed.
+  const allRows = researchListRows(
+    governanceService.getResearchAccessRequests(),
+    (projectId) => governanceService.getResearchProject(projectId),
+    (decisionId) => governanceService.getDecision(decisionId),
+    now,
+  )
 
-  const counts = useMemo(() => countResearchRows(allRows), [allRows])
-  const filteredRows = useMemo(() => filterResearchRows(allRows, filter), [allRows, filter])
+  const counts = countResearchRows(allRows)
+  const filteredRows = filterResearchRows(allRows, filter)
 
   const selectedRow = allRows.find((r) => r.request.id === selectedReqId) ?? allRows[0]
   const selectedReq = selectedRow?.request
   const selectedProject = selectedRow?.project
   const decision = selectedReq ? governanceService.getDecision(selectedReq.decisionId) : undefined
   const submitter = selectedReq ? governanceService.getPerson(selectedReq.submittedById) : undefined
+  const researchOrg = selectedProject ? governanceService.getOrganization(selectedProject.organizationId) : undefined
 
   return (
     <div className="space-y-6">
@@ -52,7 +61,13 @@ export function ResearchRequestsView() {
         title="Demandes d'Accès Projets de Recherche"
         description="Autorisation des projets de recherche multicentriques sous le paradigme Compute-to-Data. Aucun export de données brutes vers l'extérieur."
         actions={
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {simulatedCount > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => reviewStore.reset()}>
+                Réinitialiser la démo
+              </Button>
+            )}
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrer par statut">
             {RESEARCH_FILTERS.map((f) => (
               <Button
                 key={f}
@@ -63,6 +78,7 @@ export function ResearchRequestsView() {
                 {RESEARCH_FILTER_LABELS[f]} ({counts[f]})
               </Button>
             ))}
+            </div>
           </div>
         }
       />
@@ -198,7 +214,7 @@ export function ResearchRequestsView() {
                   <span className="font-semibold text-slate-900">
                     Dossier Éthique : {selectedReq.id}
                   </span>
-                  <DemoBadge label="D1 — Fictif" />
+                  <DemoBadge>D1 — Fictif</DemoBadge>
                 </div>
               }
               className="space-y-4"
@@ -219,6 +235,7 @@ export function ResearchRequestsView() {
                   <span className="text-slate-500">Investigateur Principal :</span>
                   <span className="font-medium text-slate-800">
                     {submitter ? `${submitter.title ? `${submitter.title} ` : ''}${submitter.firstName} ${submitter.lastName}` : selectedReq.submittedById}
+                    {researchOrg && <span className="font-normal text-slate-500"> • {researchOrg.shortName}</span>}
                   </span>
                 </div>
 
@@ -244,6 +261,15 @@ export function ResearchRequestsView() {
                         <Badge key={v} tone="neutral">{v}</Badge>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {selectedProject && (
+                  <div>
+                    <span className="text-slate-500 font-medium">Établissements participants :</span>
+                    <p className="text-slate-700 mt-0.5">
+                      {selectedProject.participatingOrganizationIds.map((id) => governanceService.getOrganization(id)?.shortName ?? id).join(', ')}
+                    </p>
                   </div>
                 )}
 
@@ -273,8 +299,11 @@ export function ResearchRequestsView() {
                     : 'border-rose-200 bg-rose-50 text-rose-800'
                     }`}
                 >
-                  <div className="font-semibold">
-                    Décision de l'Autorité : {decision.outcome === 'approved' ? 'Approuvée' : 'Rejetée'}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold">
+                      Décision de l'Autorité : {decision.outcome === 'approved' ? 'Approuvée' : 'Rejetée'}
+                    </span>
+                    {decision.simulated && <DemoBadge>Simulée — non persistée</DemoBadge>}
                   </div>
                   <p className="mt-1">« {decision.rationale} »</p>
                   {decision.conditions.length > 0 && (
@@ -292,13 +321,26 @@ export function ResearchRequestsView() {
                       Valide jusqu'au : {new Date(decision.validUntil).toLocaleDateString('fr-TN')}
                     </div>
                   )}
+                  {decision.simulated && (
+                    <p className="mt-2 text-slate-600">
+                      Décidée par {governanceService.getPersonName(decision.decidedById)} le {new Date(decision.decidedAt).toLocaleDateString('fr-TN')}. Enregistrée dans l'état local du portail uniquement : l'API de recherche du Nœud de Gouvernance (HC-133) est planifiée, et ni le service de recherche ni les nœuds hospitaliers n'en sont informés.
+                    </p>
+                  )}
                 </div>
+              ) : selectedReq.status === 'under_review' ? (
+                <ResearchReviewForm
+                  key={selectedReq.id}
+                  context={{
+                    request: selectedReq,
+                    project: selectedProject,
+                    organization: (id) => governanceService.getOrganization(id),
+                  }}
+                  reviewer={governanceService.getPerson(REVIEWER_ID)}
+                  reviewerName={governanceService.getPersonName(REVIEWER_ID)}
+                />
               ) : (
-                <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-                  <div className="font-semibold">En cours d'examen par le comité éthique</div>
-                  <p className="mt-1 text-amber-800">
-                    L'Autorité vérifie la conformité éthique du protocole et garantit le respect du k-anonymat avant toute autorisation de calcul fédéré.
-                  </p>
+                <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                  Aucune décision n'est associée à cette demande.
                 </div>
               )}
             </Card>
