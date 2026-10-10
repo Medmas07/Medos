@@ -41,8 +41,11 @@ info:
     Status: the Federation Service calls this contract (HC-144), and the
     Governance Node serves it (HC-132) for the synchronization decisions it
     holds in memory (contracts/api/governance/synchronization-requests.v1.yaml).
-    `actor_ref` is accepted but not yet recorded: the governance audit
-    trail is PLANNED (HC-134). The `revoked` reason is never returned
+    Every answer, authorized or denied, is recorded with `actor_ref` in the
+    Node's governance audit trail before it is given
+    (contracts/api/governance/governance-audit-events.v1.yaml, HC-134);
+    the patient, scope, and purpose are not recorded there. The `revoked`
+    reason is never returned
     while decisions cannot be revoked.
 paths:
   /v1/synchronization-authorizations/{decision_ref}/checks:

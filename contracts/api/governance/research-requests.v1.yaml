@@ -37,12 +37,14 @@ info:
     `submitted_by_ref` and `reviewer_ref` are declared by the caller, not
     authenticated), document upload and review, revoking or extending an
     approval, carrying the minimum cell size in the authorization check,
-    and recording decisions in the governance audit trail (HC-134) or a
-    ledger.
+    and anchoring decisions in a ledger.
 
     Status: implemented by the Governance Node runtime (HC-133) over an
     in-memory store seeded from fictional demo data; requests and
-    decisions are lost on restart. Requests are not authenticated.
+    decisions are lost on restart. Requests are not authenticated. Each
+    request received and decision recorded is added to the Node's
+    governance audit trail (governance-audit-events.v1.yaml, HC-134), in
+    memory as well.
 paths:
   /v1/research-requests:
     get:

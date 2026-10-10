@@ -5,7 +5,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
+from application.audit import AUTHORITY_ORGANIZATION_REF, AuditTrail, record
 from application.hospital_approval import HospitalApplicationStore, ReviewerDirectory
+from domain.audit import AuditAction, AuditDomain, AuditOutcome, SubjectType
 from domain.hospital_application import ApplicationStatus
 from domain.synchronization import (
     AuthorizationCheck,
@@ -138,11 +140,12 @@ def submit_request(
     duration_days: int,
     consent: Consent,
     store: SynchronizationStore,
+    audit: AuditTrail,
     clock: Callable[[], datetime],
 ) -> SynchronizationRequest:
     """Record a pending request. Raises InvalidSynchronizationRequest."""
     now = clock()
-    return store.submit(
+    request = store.submit(
         lambda request_ref: SynchronizationRequest(
             request_ref=request_ref,
             requester_organization_ref=requester_organization_ref,
@@ -156,6 +159,17 @@ def submit_request(
             submitted_by_ref=submitted_by_ref,
         )
     )
+    record(
+        audit,
+        now,
+        AuditAction.REQUEST_RECEIVED,
+        AuditDomain.SYNCHRONIZATION,
+        request.submitted_by_ref,
+        SubjectType.SYNCHRONIZATION_REQUEST,
+        request.request_ref,
+        (request.requester_organization_ref, request.target_organization_ref),
+    )
+    return request
 
 
 def decide_request(
@@ -166,6 +180,7 @@ def decide_request(
     reviewers: ReviewerDirectory,
     grants: PatientGrantDirectory,
     applications: HospitalApplicationStore,
+    audit: AuditTrail,
     clock: Callable[[], datetime],
 ) -> SynchronizationDecision:
     request = store.request(request_ref)
@@ -179,6 +194,21 @@ def decide_request(
         _context(request, grants, applications, clock()),
     )
     store.record(decided, decision)
+    record(
+        audit,
+        decision.decided_at,
+        AuditAction.DECISION_RECORDED,
+        AuditDomain.SYNCHRONIZATION,
+        decision.decided_by_ref,
+        SubjectType.DECISION,
+        decision.decision_ref,
+        (
+            AUTHORITY_ORGANIZATION_REF,
+            request.requester_organization_ref,
+            request.target_organization_ref,
+        ),
+        AuditOutcome(decision.outcome.value),
+    )
     return decision
 
 
@@ -186,9 +216,28 @@ def check_sync_authorization(
     decision_ref: str,
     ask: ExchangeAsk,
     store: SynchronizationStore,
+    audit: AuditTrail,
     clock: Callable[[], datetime],
 ) -> AuthorizationCheck:
+    """Recorded in the audit trail before it is answered: no audit, no answer."""
     decision = store.decision(decision_ref)
     request = store.request(decision.request_ref) if decision else None
     found = (decision, request) if decision and request else None
-    return check_authorization(decision_ref, found, ask, clock())
+    result = check_authorization(decision_ref, found, ask, clock())
+    record(
+        audit,
+        result.checked_at,
+        AuditAction.AUTHORIZATION_CHECKED,
+        AuditDomain.SYNCHRONIZATION,
+        ask.actor_ref,
+        SubjectType.DECISION,
+        decision_ref,
+        (
+            AUTHORITY_ORGANIZATION_REF,
+            ask.requester_organization_ref,
+            *result.target_organization_refs,
+        ),
+        AuditOutcome.AUTHORIZED if result.authorized else AuditOutcome.DENIED,
+        result.reason.value if result.reason else None,
+    )
+    return result

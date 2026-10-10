@@ -12,6 +12,7 @@ from application.synchronization import (
     submit_request,
 )
 from domain.hospital_application import ApplicationStatus, Findings, HospitalApplication
+from domain.audit import AuditOutcome
 from domain.hospital_approval import Outcome, Reviewer
 from domain.synchronization import (
     CheckState,
@@ -26,6 +27,7 @@ from domain.synchronization import (
     SynchronizationDecision,
 )
 from tests.conftest import DEMO_NOW
+from tests.test_audit_use_cases import FakeAuditTrail
 from tests.test_synchronization import GRANT_A, PURPOSE, SYNC_001
 
 
@@ -157,6 +159,7 @@ def test_organization_approval_comes_from_hospital_approvals():
 
 def test_submit_then_decide_then_check():
     store = FakeSyncStore()
+    audit = FakeAuditTrail()
     request = submit_request(
         "org-hospital-a",
         "clin-x",
@@ -167,6 +170,7 @@ def test_submit_then_decide_then_check():
         30,
         Consent(ConsentBasis.PATIENT_GRANT, "grant-a-drx"),
         store,
+        audit,
         lambda: DEMO_NOW,
     )
     assert (request.request_ref, request.purpose, request.submitted_at) == (
@@ -186,22 +190,65 @@ def test_submit_then_decide_then_check():
         FakeReviewers(),
         FakeGrants(),
         APPROVED,
+        audit,
         lambda: DEMO_NOW,
     )
     assert decision.valid_until == DEMO_NOW + timedelta(days=13)
 
     later = DEMO_NOW + timedelta(minutes=30)
     assert check_sync_authorization(
-        "dec-sync-001", ASK, store, lambda: later
+        "dec-sync-001", ASK, store, audit, lambda: later
     ).authorized
     expired = check_sync_authorization(
-        "dec-sync-001", ASK, store, lambda: decision.valid_until
+        "dec-sync-001", ASK, store, audit, lambda: decision.valid_until
     )
     assert expired.reason is DenialReason.EXPIRED
+
+    rows = [
+        (e.action.value, e.subject_ref, e.actor_ref, e.outcome, e.reason, e.recorded_at)
+        for e in audit.events()
+    ]
+    assert rows == [
+        ("request_received", "sync-001", "clin-x", None, None, DEMO_NOW),
+        (
+            "decision_recorded",
+            "dec-sync-001",
+            "usr-olfa",
+            AuditOutcome.APPROVED,
+            None,
+            DEMO_NOW,
+        ),
+        (
+            "authorization_checked",
+            "dec-sync-001",
+            ASK.actor_ref,
+            AuditOutcome.AUTHORIZED,
+            None,
+            later,
+        ),
+        (
+            "authorization_checked",
+            "dec-sync-001",
+            ASK.actor_ref,
+            AuditOutcome.DENIED,
+            "expired",
+            decision.valid_until,
+        ),
+    ]
+    # An authorized check names the target; a denied one only the requester.
+    assert [e.organization_refs for e in audit.events()] == [
+        ("org-hospital-a", "org-hospital-b"),
+        ("org-governance", "org-hospital-a", "org-hospital-b"),
+        ("org-governance", "org-hospital-a", "org-hospital-b"),
+        ("org-governance", "org-hospital-a"),
+    ]
+    # No patient reference, purpose, or scope is recorded.
+    assert "pat-a" not in repr(audit.events())
 
 
 def test_unknown_requests_and_decisions():
     store = FakeSyncStore()
+    audit = FakeAuditTrail()
 
     with pytest.raises(RequestNotFound):
         get_request("sync-404", store, FakeGrants(), APPROVED, lambda: DEMO_NOW)
@@ -214,12 +261,16 @@ def test_unknown_requests_and_decisions():
             FakeReviewers(),
             FakeGrants(),
             APPROVED,
+            audit,
             lambda: DEMO_NOW,
         )
     assert (
-        check_sync_authorization("dec-x", ASK, store, lambda: DEMO_NOW).reason
+        check_sync_authorization("dec-x", ASK, store, audit, lambda: DEMO_NOW).reason
         is DenialReason.NOT_FOUND
     )
+    # The contract answers a denial, so it is audited.
+    [denied] = audit.events()
+    assert (denied.subject_ref, denied.reason) == ("dec-x", "not_found")
 
 
 def test_grant_directory_port_is_used_for_the_consent_check():

@@ -5,7 +5,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
+from application.audit import AUTHORITY_ORGANIZATION_REF, AuditTrail, record
 from application.hospital_approval import HospitalApplicationStore, ReviewerDirectory
+from domain.audit import AuditAction, AuditDomain, AuditOutcome, SubjectType
 from domain.hospital_application import ApplicationStatus
 from domain.research import (
     AuthorizationAnswer,
@@ -70,6 +72,10 @@ def _approved_organizations(applications: HospitalApplicationStore) -> frozenset
     )
 
 
+def _organizations(request: ResearchRequest) -> tuple[str, ...]:
+    return (request.research_organization_ref, *request.participating_organization_refs)
+
+
 def _decision_of(
     request: ResearchRequest, store: ResearchStore
 ) -> ResearchDecision | None:
@@ -114,12 +120,24 @@ def get_request(
 def submit_request(
     build: Callable[[str, datetime], ResearchRequest],
     store: ResearchStore,
+    audit: AuditTrail,
     clock: Callable[[], datetime],
 ) -> ResearchRequest:
     """Record a request under review. `build` gets the new reference and the time,
     and raises InvalidResearchRequest."""
     now = clock()
-    return store.submit(lambda request_ref: build(request_ref, now))
+    request = store.submit(lambda request_ref: build(request_ref, now))
+    record(
+        audit,
+        now,
+        AuditAction.REQUEST_RECEIVED,
+        AuditDomain.RESEARCH,
+        request.submitted_by_ref,
+        SubjectType.RESEARCH_ACCESS_REQUEST,
+        request.request_ref,
+        _organizations(request),
+    )
+    return request
 
 
 def decide_request(
@@ -129,6 +147,7 @@ def decide_request(
     store: ResearchStore,
     reviewers: ReviewerDirectory,
     applications: HospitalApplicationStore,
+    audit: AuditTrail,
     clock: Callable[[], datetime],
 ) -> ResearchDecision:
     request = store.request(request_ref)
@@ -143,15 +162,46 @@ def decide_request(
         clock(),
     )
     store.record(decided, decision)
+    record(
+        audit,
+        decision.decided_at,
+        AuditAction.DECISION_RECORDED,
+        AuditDomain.RESEARCH,
+        decision.decided_by_ref,
+        SubjectType.DECISION,
+        decision.decision_ref,
+        (AUTHORITY_ORGANIZATION_REF, *_organizations(request)),
+        AuditOutcome(decision.outcome.value),
+    )
     return decision
 
 
 def check_research_authorization(
-    decision_ref: str, ask: JobAsk, store: ResearchStore, clock: Callable[[], datetime]
+    decision_ref: str,
+    ask: JobAsk,
+    store: ResearchStore,
+    audit: AuditTrail,
+    clock: Callable[[], datetime],
 ) -> AuthorizationAnswer:
-    """Raises DecisionNotFound for an unknown reference or another subject's decision."""
+    """Raises DecisionNotFound for an unknown reference or another subject's decision,
+    which is not audited. An answer is recorded before it is given: no audit, no
+    answer."""
     decision = store.decision(decision_ref)
     request = store.request(decision.request_ref) if decision else None
     if decision is None or request is None:
         raise DecisionNotFound(decision_ref)
-    return check_authorization(decision, request, ask, clock())
+    now = clock()
+    answer = check_authorization(decision, request, ask, now)
+    record(
+        audit,
+        now,
+        AuditAction.AUTHORIZATION_CHECKED,
+        AuditDomain.RESEARCH,
+        ask.requested_by,
+        SubjectType.DECISION,
+        decision_ref,
+        (AUTHORITY_ORGANIZATION_REF, *sorted(ask.target_organization_refs)),
+        AuditOutcome.AUTHORIZED if answer.approved else AuditOutcome.DENIED,
+        answer.reason.value if answer.reason else None,
+    )
+    return answer

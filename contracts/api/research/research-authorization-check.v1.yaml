@@ -20,6 +20,11 @@ info:
     `organization_not_approved`, `variable_not_approved`,
     `population_exceeded`. `purpose` is not compared, and the minimum output
     cell size of the decision is not carried here (OPEN).
+
+    The Governance Node records every `approved` or `denied` answer, with
+    `requested_by`, in its governance audit trail before giving it
+    (contracts/api/governance/governance-audit-events.v1.yaml, HC-134); a
+    `404` is not recorded.
 paths:
   /v1/research-authorizations/check:
     post:

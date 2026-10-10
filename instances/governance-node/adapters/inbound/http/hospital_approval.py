@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, StrictBool, ValidationError
 
 from adapters.inbound.http.problems import OPAQUE_REF, first_error, problem
 
+from application.audit import AuditTrail
 from application.hospital_approval import (
     ApplicationNotFound,
     HospitalApplicationStore,
@@ -111,6 +112,7 @@ def _detail(
 def create_router(
     store: HospitalApplicationStore,
     reviewers: ReviewerDirectory,
+    audit: AuditTrail,
     clock: Callable[[], datetime],
 ) -> APIRouter:
     router = APIRouter(tags=["hospital approval"])
@@ -155,7 +157,13 @@ def create_router(
         )
         try:
             decision = decide_application(
-                application_ref, body.reviewer_ref, draft, store, reviewers, clock
+                application_ref,
+                body.reviewer_ref,
+                draft,
+                store,
+                reviewers,
+                audit,
+                clock,
             )
         except ApplicationNotFound:
             return _application_not_found(application_ref)

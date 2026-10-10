@@ -1,0 +1,404 @@
+openapi: 3.1.0
+info:
+  title: Governance Node Audit Events
+  version: 1.0.0
+  description: |
+    Contract HC-134, version 1. The audit trail the Governance / Ethics
+    Authority keeps of its own governance actions: requests it receives,
+    decisions it records (hospital approval, synchronization, research),
+    and every authorization check it answers for the Federation Service
+    (sync-authorization-check.v1.yaml) and the Research Service
+    (research-authorization-check.v1.yaml). It is the Governance Node's
+    trail only; each Hospital Node keeps its own
+    (hospital-audit-events.v1.yaml) and there is no central audit store.
+
+    Boundary rules carried by this contract:
+
+    - **Minimized events.** An event names who acted, the action, its
+      subject by reference, its outcome, and the organizations concerned.
+      It never carries a patient reference, a purpose, a rationale, a data
+      scope, document contents, or any clinical content. The subject's
+      reference leads to those through the API that owns them.
+    - **Denials are audited too.** A denied authorization check is
+      recorded with outcome `denied` and its reason code. A request
+      rejected as invalid (`400`), a refused decision (`403`, `409`,
+      `422`), and a research check on an unknown decision (`404`) are not
+      recorded: nothing was decided or answered.
+    - **No audit, no answer.** An authorization check is recorded before
+      it is answered; if it cannot be, the check fails and authorizes
+      nothing.
+    - **Append-only.** Events are never changed or removed through this
+      API.
+    - **Not a ledger.** No event is anchored in a ledger by this version.
+      An Immutable Audit Ledger is OPTIONAL and would sit behind the
+      Governance Node's `AuditLedgerPort`, with minimized proofs only.
+
+    `durable` says whether events survive a restart of the node. It is
+    `false` while persistence is OPEN.
+
+    Status: served by the Governance Node runtime (HC-134), which keeps
+    events in memory, seeded from fictional demo events. Actors are
+    declared by the callers of the other governance APIs, not
+    authenticated. Who may read the trail, how readers are authenticated,
+    and retention are OPEN; the demo runtime does not authenticate them.
+paths:
+  /v1/audit/events:
+    get:
+      operationId: listGovernanceAuditEvents
+      summary: List the Governance Node's audit events, newest first.
+      description: |
+        Newest first by `recorded_at`; among events recorded at the same
+        time, the later recorded first. Filters combine.
+      parameters:
+        - name: domain
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/Domain"
+        - name: action
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/Action"
+        - name: organization_ref
+          in: query
+          required: false
+          description: Only events concerning this organization.
+          schema:
+            $ref: "#/components/schemas/OpaqueRef"
+        - name: subject_ref
+          in: query
+          required: false
+          description: Only events about this subject, such as a decision.
+          schema:
+            $ref: "#/components/schemas/OpaqueRef"
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 50
+      responses:
+        "200":
+          description: Matching events, newest first. May be empty.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditEventList"
+              examples:
+                hospitalB:
+                  summary: |
+                    Fictional demo — the seed events concerning Hospital B
+                    (`?organization_ref=org-hospital-b`).
+                  value:
+                    node_ref: node-governance
+                    organization_ref: org-governance
+                    durable: false
+                    notice: "Fictional demo governance audit trail, held in memory by the Governance Node: events recorded at runtime are lost on restart, actors are declared, not authenticated, and no event is anchored in a ledger."
+                    events:
+                      - event_ref: evt-007
+                        recorded_at: "2026-10-10T09:05:00+01:00"
+                        action: request_received
+                        domain: synchronization
+                        actor_ref: null
+                        subject_type: synchronization_request
+                        subject_ref: sync-001
+                        outcome: null
+                        reason: null
+                        organization_refs: [org-hospital-a, org-hospital-b]
+                      - event_ref: evt-005
+                        recorded_at: "2026-08-05T10:00:00+01:00"
+                        action: decision_recorded
+                        domain: synchronization
+                        actor_ref: usr-olfa
+                        subject_type: decision
+                        subject_ref: dec-sync-003
+                        outcome: rejected
+                        reason: null
+                        organization_refs:
+                          [org-governance, org-hospital-b, org-hospital-a]
+                      - event_ref: evt-004
+                        recorded_at: "2026-07-20T15:00:00+01:00"
+                        action: decision_recorded
+                        domain: research
+                        actor_ref: usr-olfa
+                        subject_type: decision
+                        subject_ref: dec-rar-001
+                        outcome: approved
+                        reason: null
+                        organization_refs:
+                          [
+                            org-governance,
+                            org-research-lab,
+                            org-hospital-a,
+                            org-hospital-b,
+                          ]
+                      - event_ref: evt-003
+                        recorded_at: "2025-12-12T14:30:00+01:00"
+                        action: decision_recorded
+                        domain: synchronization
+                        actor_ref: usr-olfa
+                        subject_type: decision
+                        subject_ref: dec-sync-002
+                        outcome: approved
+                        reason: null
+                        organization_refs:
+                          [org-governance, org-private-practice, org-hospital-b]
+                      - event_ref: evt-002
+                        recorded_at: "2025-02-17T11:00:00+01:00"
+                        action: decision_recorded
+                        domain: hospital_approval
+                        actor_ref: usr-olfa
+                        subject_type: decision
+                        subject_ref: dec-hospital-b
+                        outcome: approved
+                        reason: null
+                        organization_refs: [org-governance, org-hospital-b]
+                deniedCheck:
+                  summary: |
+                    Fictional demo — the Federation Service's check under
+                    the expired dec-sync-002, denied and audited
+                    (`?subject_ref=dec-sync-002&action=authorization_checked`).
+                  value:
+                    node_ref: node-governance
+                    organization_ref: org-governance
+                    durable: false
+                    notice: "Fictional demo governance audit trail, held in memory by the Governance Node: events recorded at runtime are lost on restart, actors are declared, not authenticated, and no event is anchored in a ledger."
+                    events:
+                      - event_ref: evt-008
+                        recorded_at: "2026-10-10T10:00:00+01:00"
+                        action: authorization_checked
+                        domain: synchronization
+                        actor_ref: clin-x
+                        subject_type: decision
+                        subject_ref: dec-sync-002
+                        outcome: denied
+                        reason: expired
+                        organization_refs: [org-governance, org-private-practice]
+                empty:
+                  summary: No event matches.
+                  value:
+                    node_ref: node-governance
+                    organization_ref: org-governance
+                    durable: false
+                    notice: "Fictional demo governance audit trail, held in memory by the Governance Node: events recorded at runtime are lost on restart, actors are declared, not authenticated, and no event is anchored in a ledger."
+                    events: []
+        "400":
+          description: A filter does not match this contract, or is repeated or unknown.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                invalidLimit:
+                  value:
+                    type: about:blank
+                    title: Invalid audit query
+                    status: 400
+                    detail: "Invalid or unknown parameters: limit"
+                    code: invalid_request
+  /v1/audit/events/{event_ref}:
+    get:
+      operationId: getGovernanceAuditEvent
+      summary: One audit event by reference.
+      parameters:
+        - name: event_ref
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The event.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditEventResponse"
+              examples:
+                evt004:
+                  summary: Fictional demo — the research decision dec-rar-001.
+                  value:
+                    node_ref: node-governance
+                    organization_ref: org-governance
+                    durable: false
+                    notice: "Fictional demo governance audit trail, held in memory by the Governance Node: events recorded at runtime are lost on restart, actors are declared, not authenticated, and no event is anchored in a ledger."
+                    event:
+                      event_ref: evt-004
+                      recorded_at: "2026-07-20T15:00:00+01:00"
+                      action: decision_recorded
+                      domain: research
+                      actor_ref: usr-olfa
+                      subject_type: decision
+                      subject_ref: dec-rar-001
+                      outcome: approved
+                      reason: null
+                      organization_refs:
+                        [
+                          org-governance,
+                          org-research-lab,
+                          org-hospital-a,
+                          org-hospital-b,
+                        ]
+        "404":
+          description: No event has this reference.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                unknown:
+                  value:
+                    type: about:blank
+                    title: Event not found
+                    status: 404
+                    detail: No governance audit event evt-999.
+                    code: event_not_found
+components:
+  schemas:
+    AuditEventList:
+      type: object
+      additionalProperties: false
+      required: [node_ref, organization_ref, durable, notice, events]
+      properties:
+        node_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        durable:
+          description: Whether these events survive a restart of the node.
+          type: boolean
+        notice:
+          type: string
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditEvent"
+
+    AuditEventResponse:
+      type: object
+      additionalProperties: false
+      required: [node_ref, organization_ref, durable, notice, event]
+      properties:
+        node_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        durable:
+          type: boolean
+        notice:
+          type: string
+        event:
+          $ref: "#/components/schemas/AuditEvent"
+
+    AuditEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - event_ref
+        - recorded_at
+        - action
+        - domain
+        - actor_ref
+        - subject_type
+        - subject_ref
+        - outcome
+        - reason
+        - organization_refs
+      properties:
+        event_ref:
+          type: string
+          pattern: "^evt-[A-Za-z0-9._:-]{1,124}$"
+        recorded_at:
+          type: string
+          format: date-time
+        action:
+          $ref: "#/components/schemas/Action"
+        domain:
+          $ref: "#/components/schemas/Domain"
+        actor_ref:
+          description: |
+            The person or caller who acted, as declared to the Node (not
+            authenticated): the submitter, the reviewer, or the actor of an
+            authorization check. `null` when not known.
+          oneOf:
+            - $ref: "#/components/schemas/Ref"
+            - type: "null"
+        subject_type:
+          type: string
+          enum:
+            - hospital_application
+            - synchronization_request
+            - research_access_request
+            - decision
+        subject_ref:
+          $ref: "#/components/schemas/Ref"
+        outcome:
+          description: |
+            `approved` or `rejected` for `decision_recorded`; `authorized` or
+            `denied` for `authorization_checked`; `null` otherwise.
+          oneOf:
+            - type: string
+              enum: [approved, rejected, authorized, denied]
+            - type: "null"
+        reason:
+          description: |
+            The first failing reason code of a denied authorization check,
+            as its own contract names it; `null` otherwise.
+          oneOf:
+            - type: string
+              pattern: "^[a-z][a-z_]{0,63}$"
+            - type: "null"
+        organization_refs:
+          description: |
+            The organizations concerned, the Authority first when it acted.
+            For a check: the requester (Federation) or the target
+            organizations asked (Research), and the authorized target.
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/Ref"
+
+    Action:
+      type: string
+      enum:
+        - application_submitted
+        - request_received
+        - decision_recorded
+        - authorization_checked
+
+    Domain:
+      type: string
+      enum: [hospital_approval, synchronization, research]
+
+    Ref:
+      description: |
+        A reference as given by the caller of the governance API concerned:
+        opaque, never a name or other direct identifier.
+      type: string
+      minLength: 1
+      maxLength: 128
+
+    OpaqueRef:
+      description: Opaque identifier. Must not contain a name or other direct identifier.
+      type: string
+      pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+
+    Problem:
+      description: RFC 9457 problem details.
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+          enum: [invalid_request, event_not_found]
