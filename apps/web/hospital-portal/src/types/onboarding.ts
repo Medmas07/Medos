@@ -30,12 +30,28 @@ export interface StaffMember {
   lastName: string
   role: string
   organizationId: string
+  /** Only set for a manager registered in this portal (local state). */
+  email?: string
+  phone?: string
+}
+
+export type DocumentType = 'statutes' | 'operating_license' | 'insurance_certificate'
+
+/** Metadata of a file deposited in this portal (HC-053). The file content is never read or sent. */
+export interface DocumentUpload {
+  fileName: string
+  sizeBytes: number
+  mediaType: string
+  uploadedAt: string
 }
 
 export interface ApplicationDocument {
   id: string
+  type: DocumentType
   title: string
   status: 'received' | 'missing' | 'rejected'
+  /** Only set for a document deposited in this portal (local state). */
+  upload?: DocumentUpload
 }
 
 export interface ApplicationAgreement {
@@ -62,14 +78,41 @@ export interface ReviewStep {
   findings: string[]
 }
 
+export interface ProfileContact {
+  fullName: string
+  email: string
+}
+
+/** Administrative information of the establishment (HC-052). */
+export interface AdministrativeProfile {
+  legalName: string
+  legalStatus: 'public' | 'private'
+  registrationNumber: string
+  bedCapacity: number
+  address: { street: string; postalCode: string; city: string; governorate: string }
+  phone: string
+  email: string
+  legalRepresentative: { fullName: string; role: string }
+  dataProtectionOfficer: ProfileContact
+  /** Recommended, not required: the assisted review flags its absence. */
+  securityContact: ProfileContact | null
+  updatedAt: string
+}
+
 export interface HospitalApplication {
   id: string
   organizationId: string
   submittedById: string | null
   submittedAt: string
-  status: 'pending' | 'human_review' | 'approved' | 'rejected'
+  /**
+   * `draft` exists only in this portal's local state: the organization is
+   * registered (HC-051) but the application is not yet complete.
+   */
+  status: 'draft' | 'pending' | 'human_review' | 'approved' | 'rejected'
   documents: ApplicationDocument[]
   agreements: ApplicationAgreement[]
+  /** Absent on applications that predate the profile (approved fixtures). */
+  administrativeProfile?: AdministrativeProfile | null
   technicalQuestionnaire: TechnicalQuestionnaire | null
   reviewSteps: ReviewStep[]
   decisionId: string | null

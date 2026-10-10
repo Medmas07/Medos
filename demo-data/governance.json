@@ -9,14 +9,32 @@
       "submittedAt": "2026-10-06T15:20:00+01:00",
       "status": "human_review",
       "documents": [
-        { "id": "doc-c-statuts", "title": "Statuts de l'établissement.pdf", "status": "received" },
-        { "id": "doc-c-autorisation", "title": "Autorisation d'exercice.pdf", "status": "received" },
-        { "id": "doc-c-assurance", "title": "Attestation d'assurance.pdf", "status": "missing" }
+        { "id": "doc-c-statuts", "type": "statutes", "title": "Statuts de l'établissement.pdf", "status": "received" },
+        { "id": "doc-c-autorisation", "type": "operating_license", "title": "Autorisation d'exercice.pdf", "status": "received" },
+        { "id": "doc-c-assurance", "type": "insurance_certificate", "title": "Attestation d'assurance.pdf", "status": "missing" }
       ],
       "agreements": [
         { "code": "data_processing_agreement", "title": "Accord de traitement des données", "accepted": true },
         { "code": "governance_charter", "title": "Charte de gouvernance fédérée", "accepted": true }
       ],
+      "administrativeProfile": {
+        "legalName": "Centre Hospitalier Cap Azur",
+        "legalStatus": "public",
+        "registrationNumber": "FICT-ETAB-0003",
+        "bedCapacity": 180,
+        "address": {
+          "street": "12, avenue de la Corniche (adresse fictive)",
+          "postalCode": "7000",
+          "city": "Bizerte",
+          "governorate": "Bizerte"
+        },
+        "phone": "+216 70 000 003",
+        "email": "contact@cap-azur.example",
+        "legalRepresentative": { "fullName": "Nadia Ferchichi", "role": "Directrice générale" },
+        "dataProtectionOfficer": { "fullName": "Sami Trabelsi", "email": "dpo@cap-azur.example" },
+        "securityContact": null,
+        "updatedAt": "2026-10-06T15:05:00+01:00"
+      },
       "technicalQuestionnaire": {
         "operatingSystem": "Ubuntu Server 22.04",
         "dmiSystem": "MediDossier v7 (logiciel fictif)",

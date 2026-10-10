@@ -10,6 +10,7 @@ export const stepStatusDisplay: Record<StepStatus, { label: string; tone: Tone }
 }
 
 export const applicationStatusDisplay: Record<HospitalApplication['status'], { label: string; tone: Tone }> = {
+  draft: { label: 'Inscription enregistrée', tone: 'neutral' },
   pending: { label: 'Soumise', tone: 'neutral' },
   human_review: { label: 'En revue humaine', tone: 'info' },
   approved: { label: 'Approuvée', tone: 'success' },

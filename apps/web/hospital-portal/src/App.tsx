@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   AppShell,
   Badge,
@@ -17,10 +17,14 @@ import {
   loadOnboardingSnapshot,
   scenarioFromSearch,
   STEP_DEFINITIONS,
+  type DemoScenario,
   type StepSection,
 } from './services/onboardingService'
 import type { OnboardingSnapshot, StepId } from './types/onboarding'
+import { DocumentsView } from './views/DocumentsView'
 import { OverviewView } from './views/OverviewView'
+import { ProfileView } from './views/ProfileView'
+import { RegistrationView } from './views/RegistrationView'
 import { StepPlaceholderView } from './views/StepPlaceholderView'
 
 type ViewId = 'overview' | StepId
@@ -68,6 +72,14 @@ export default function App() {
   const retry = () => {
     setLoad({ kind: 'loading' })
     setAttempt((n) => n + 1)
+  }
+
+  // Failure scenarios fail the first matching submission once per page load.
+  const usedFailures = useRef(new Set<DemoScenario>())
+  const failureOnce = (scenario: DemoScenario) => () => {
+    if (scenarioFromSearch(window.location.search) !== scenario || usedFailures.current.has(scenario)) return false
+    usedFailures.current.add(scenario)
+    return true
   }
 
   const navigateTo = (view: ViewId) => {
@@ -119,6 +131,37 @@ export default function App() {
     }
     if (currentView === 'overview') {
       return <OverviewView snapshot={load.snapshot} onNavigate={navigateTo} />
+    }
+    if (currentView === 'registration') {
+      return (
+        <RegistrationView
+          snapshot={load.snapshot}
+          consumeSimulatedFailure={failureOnce('registration-failure')}
+          // Local state only: a reload returns to the fixture snapshot.
+          onRegistered={(snapshot) => setLoad({ kind: 'ready', snapshot })}
+          onNavigate={navigateTo}
+        />
+      )
+    }
+    if (currentView === 'profile') {
+      return (
+        <ProfileView
+          snapshot={load.snapshot}
+          consumeSimulatedFailure={failureOnce('profile-failure')}
+          onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
+          onNavigate={navigateTo}
+        />
+      )
+    }
+    if (currentView === 'documents') {
+      return (
+        <DocumentsView
+          snapshot={load.snapshot}
+          consumeSimulatedFailure={failureOnce('document-failure')}
+          onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
+          onNavigate={navigateTo}
+        />
+      )
     }
     const index = load.snapshot.steps.findIndex((s) => s.id === currentView)
     return <StepPlaceholderView step={load.snapshot.steps[index]} position={index + 1} />

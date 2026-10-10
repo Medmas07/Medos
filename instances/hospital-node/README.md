@@ -226,6 +226,8 @@ Each Hospital Node must provide [`hospital-node-federation.v1.yaml`](../../contr
 
 It also provides [`hospital-audit-events.v1.yaml`](../../contracts/api/hospital-audit/hospital-audit-events.v1.yaml) (HC-116): its own audit trail of those queries; and [`patient-access-grants.v1.yaml`](../../contracts/api/patient-access/patient-access-grants.v1.yaml) (HC-115): the patient access grants it records and enforces.
 
-PLANNED local clinical API, DMI port, and research-execution contracts. `/health` is Node-local and has no versioned contract.
+The D1 research execution contract at contracts/api/research/research-node-execution.v1.yaml is IMPLEMENTED for Research Service-to-Node Compute-to-Data communication. No Node agent implements it; authorization verification, sandboxing, package policy, disclosure review, and audit remain PLANNED or OPEN.
+
+PLANNED local clinical API, DMI port, consent/authorization, and health contracts. `/health` is Node-local and has no versioned contract.
 
 The Federation Service calls this runtime over real HTTP at the `base_url` it has in the node registry: `GET /v1/federation/node` for capability discovery (HC-143) and `POST /v1/federation/queries` for federated queries (HC-145). This runtime serves both, so a running node is `discovered` and answers queries. The demo ports in `config/` (8101, 8102, 8104) match the Federation Service's [`registry-seed.demo.json`](../../services/federation/registry-seed.demo.json).

@@ -23,6 +23,11 @@ const organizations = organizationFixtures.organizations as unknown as Organizat
 const staff = peopleFixtures.staff as unknown as StaffMember[]
 const notifications = notificationFixtures.notifications as unknown as PortalNotification[]
 
+/** Read-only fixture views reused by the registration mock. */
+export function listOrganizations(): readonly Organization[] {
+  return organizations
+}
+
 /** Demo persona: the fictional manager of Centre Hospitalier Cap Azur (in onboarding). */
 export const DEMO_ORGANIZATION_ID = 'org-hospital-c'
 export const DEMO_MANAGER_ID = 'usr-mehdi'
@@ -64,8 +69,12 @@ function plural(count: number, word: string): string {
 }
 
 function documentsState(application: HospitalApplication): StepState {
+  const total = application.documents.length
   const missing = application.documents.filter((d) => d.status !== 'received').length
-  if (application.documents.length === 0) return { status: 'pending', detail: 'Aucun document déposé.' }
+  if (total === 0 || missing === total) return { status: 'pending', detail: 'Aucun document déposé.' }
+  if (missing > 0 && application.status === 'draft') {
+    return { status: 'in_progress', detail: `${total - missing} / ${total} documents déposés.` }
+  }
   if (missing > 0) return { status: 'attention', detail: `${plural(missing, 'document')} à fournir.` }
   return { status: 'completed', detail: `${plural(application.documents.length, 'document')} reçu(s).` }
 }
@@ -100,6 +109,18 @@ function humanReviewState(application: HospitalApplication): StepState {
   return { status: 'completed', detail: "Revue humaine terminée par l'Autorité de gouvernance." }
 }
 
+function profileState(application: HospitalApplication): StepState {
+  const profile = application.administrativeProfile
+  if (!profile) {
+    return application.status === 'draft'
+      ? { status: 'pending', detail: 'Informations administratives à compléter.' }
+      : { status: 'completed', detail: 'Profil renseigné.' }
+  }
+  return profile.securityContact
+    ? { status: 'completed', detail: 'Profil renseigné.' }
+    : { status: 'completed', detail: 'Profil renseigné, sans contact sécurité distinct.' }
+}
+
 /** Derives the display state of every portal step from fixture data. Pure. */
 export function deriveSteps(
   organization: Organization,
@@ -131,8 +152,12 @@ export function deriveSteps(
     )
   } else {
     const questionnaire = application.technicalQuestionnaire
-    states.set('registration', { status: 'completed', detail: 'Candidature soumise.' })
-    states.set('profile', { status: 'completed', detail: 'Profil renseigné.' })
+    const draft = application.status === 'draft'
+    states.set('registration', {
+      status: 'completed',
+      detail: draft ? `Inscription enregistrée (${application.id}).` : 'Candidature soumise.',
+    })
+    states.set('profile', profileState(application))
     states.set('documents', documentsState(application))
     states.set('agreements', agreementsState(application))
     states.set(
@@ -166,13 +191,28 @@ export function deriveSteps(
   })
 }
 
-/** Demo scenarios, selected with `?demo=vide` or `?demo=erreur` in the URL. */
-export type DemoScenario = 'nominal' | 'empty' | 'error'
+/**
+ * Demo scenarios, selected with `?demo=vide`, `?demo=erreur`,
+ * `?demo=echec-inscription`, `?demo=echec-profil`, or `?demo=echec-document`
+ * in the URL. The registration and profile failure scenarios start like
+ * `empty`; the document failure scenario starts like `nominal`. Each makes the
+ * first matching submission fail.
+ */
+export type DemoScenario =
+  | 'nominal'
+  | 'empty'
+  | 'error'
+  | 'registration-failure'
+  | 'profile-failure'
+  | 'document-failure'
 
 export function scenarioFromSearch(search: string): DemoScenario {
   const value = new URLSearchParams(search).get('demo')
   if (value === 'vide') return 'empty'
   if (value === 'erreur') return 'error'
+  if (value === 'echec-inscription') return 'registration-failure'
+  if (value === 'echec-profil') return 'profile-failure'
+  if (value === 'echec-document') return 'document-failure'
   return 'nominal'
 }
 
@@ -199,7 +239,9 @@ export async function loadOnboardingSnapshot(
   }
 
   const application =
-    scenario === 'empty' ? null : (applications.find((a) => a.organizationId === organizationId) ?? null)
+    scenario === 'empty' || scenario === 'registration-failure' || scenario === 'profile-failure'
+      ? null
+      : (applications.find((a) => a.organizationId === organizationId) ?? null)
 
   return {
     organization,
