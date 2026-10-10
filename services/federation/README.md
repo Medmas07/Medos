@@ -13,7 +13,7 @@ Coordination capability for authorized communication among autonomous Nodes. Pyt
   - capability-aware routing (HC-146): in `http` mode, a node whose latest capability check shows it cannot answer the query is not asked and is reported `not_asked` with the reason. A node never checked, unreachable, or answering discovery badly is still asked.
   - capability discovery (HC-143): on request, the service calls each registered node's `GET /v1/federation/node` over real HTTP and keeps the latest result per node. A running Hospital Node is `discovered`; one not running is `unreachable`.
 - **MOCKED, opt-in only:** `FEDERATION_NODES=simulated` replaces the HTTP calls with HC-141's simulated Hospital Nodes, built from [`demo-data/`](../../demo-data/README.md), so the Patient A demo works before real nodes exist. `/health` and every result say `mocked: true` in that mode. **That mode is not node-to-node exchange and not production security.**
-- **PLANNED:** Governance verification of patient access grants and registry approvals (HC-131), node-side verification of authorizations with the Governance Node (Hospital Nodes check fictional grants for now), persistent registry storage, service authentication, authentication of registry writes, and audit events.
+- **PLANNED:** Governance verification of patient access grants, verification of registry approvals with the Governance Node (it serves `getHospitalApproval` since HC-131; this service does not call it yet), node-side verification of authorizations with the Governance Node (Hospital Nodes check fictional grants for now), persistent registry storage, service authentication, authentication of registry writes, and audit events.
 
 ## Running locally
 
@@ -133,7 +133,7 @@ services/federation/
 
 ## Node registry boundaries
 
-- **It routes; it does not approve.** Approving an organization belongs to the Governance Node. Each registration cites the Governance decision it relies on, but nothing can check that reference until a Governance approval API exists (HC-131). The API says `approval.verified: false`, and the list carries a notice saying so.
+- **It routes; it does not approve.** Approving an organization belongs to the Governance Node. Each registration cites the Governance decision it relies on, but this service does not check that reference yet, although the Governance Node now serves `getHospitalApproval` (HC-131). The API says `approval.verified: false`, and the list carries a notice saying so.
 - **It holds routing data only:** node and organization references, base URL, and contract versions. It holds nothing about patients.
 - **One node per organization,** because federated queries target organizations.
 - **Compatible nodes only:** a node must answer hospital-node-federation `1.0`.
