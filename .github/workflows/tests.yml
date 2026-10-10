@@ -5,6 +5,8 @@ on:
   pull_request:
     paths:
       - "services/ai/**"
+      - "services/federation/**"
+      - "demo-data/**"
       - "contracts/**"
       - "tests/contracts/**"
       - ".github/workflows/tests.yml"
@@ -12,6 +14,8 @@ on:
     branches: [main]
     paths:
       - "services/ai/**"
+      - "services/federation/**"
+      - "demo-data/**"
       - "contracts/**"
       - "tests/contracts/**"
       - ".github/workflows/tests.yml"
@@ -52,6 +56,24 @@ jobs:
           cache-dependency-path: tests/contracts/requirements.txt
       - name: Install dependencies
         run: pip install -r requirements.txt
+      - name: Run tests
+        run: |
+          pytest
+
+  federation-service-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/federation
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/federation/requirements*.txt
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
       - name: Run tests
         run: |
           pytest
