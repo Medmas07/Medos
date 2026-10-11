@@ -393,7 +393,7 @@ IMPLEMENTED at D1, as a boundary. [`application/ledger.py`](application/ledger.p
 
 **Use cases:** `anchor_decision` anchors a recorded decision once: anchoring it again returns its proof, and the same event with another payload is a `ProofConflict`. `anchor_recorded` is what the decision use cases call after recording a decision (HC-191): the decision stands whatever happens, and a ledger that is unavailable leaves it unanchored. `get_proof` raises `ProofNotFound` for an event without proof; `list_proofs` lists them, the latest anchored first. They are tested against a test double that stays in `tests/` (`test_ledger.py`, `test_ledger_use_cases.py`); the layer test keeps any ledger library out of `domain/` and `application/`.
 
-Not done: a real permissioned ledger (HC-194, after the technology evaluation HC-193; the technology is OPEN), and signatures.
+Not done: a real permissioned ledger (HC-194; the technology is OPEN, see the [HC-193 evaluation](../../docs/research/2026-10-11-permissioned-ledger-evaluation.md)), and signatures.
 
 ## Simulated immutable ledger (HC-191)
 
