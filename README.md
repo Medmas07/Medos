@@ -1,63 +1,92 @@
-# Project
+# MedOS — federated healthcare data and intelligence ecosystem
 
 ## What this repository is
 
-This repository currently contains the documented boundaries and delivery plan for a federated healthcare data and intelligence ecosystem. It is a structure-first hackathon repository, not an implemented healthcare product.
+MedOS connects hospitals, patients, clinicians, researchers, and an independent Governance / Ethics Authority without building one central clinical database. Each hospital keeps its clinical data in its own Hospital Node; access is granted explicitly (who, what, why, for how long); research follows Compute-to-Data; AI assists accountable humans. It integrates existing hospital systems (DMI/HIS) rather than replacing them.
+
+This is a two-day hackathon repository. Every component below exists in code, mostly at demo depth over **fictional data only**. Nothing is production-ready, and no clinical, security, or deployment capability is VALIDATED. Read the [current status](docs/CURRENT_STATUS.md) before relying on any capability, and never infer implementation from a README or plan.
 
 Before coding, follow the [agent startup checklist](docs/AGENT_STARTUP_CHECKLIST.md).
 
-## Product vision
+## Components
 
-The CONFIRMED vision connects autonomous Hospital Nodes, an independent Governance / Ethics Authority, patient and clinician mobile products, company-managed web portals, and governed research through Federation and Compute-to-Data. Hospital clinical source data remains locally controlled. Read the [canonical product vision](docs/product/FEDERATED_HEALTHCARE_ECOSYSTEM.md).
+Depth: D1 interactive mock, D2 basic functional integration, D3 real distributed integration, D4 production or security depth (see the [glossary](docs/GLOSSARY.md)). MOCKED means demo behavior or fictional fixtures.
 
-## Architecture principles
+| Component | Path | Stack | Status | Local port |
+|---|---|---|---|---|
+| Hospital Node | [`instances/hospital-node/`](instances/hospital-node/README.md) | Python, FastAPI, Docker image | IMPLEMENTED D2–D4; clinical records MOCKED | 8101, 8102, 8104 (demo hospitals) |
+| Governance Node | [`instances/governance-node/`](instances/governance-node/README.md) | Python, FastAPI | IMPLEMENTED D2–D4; in memory, fictional seed data | 8200 |
+| Federation Service | [`services/federation/`](services/federation/README.md) | Python, FastAPI | IMPLEMENTED D2/D3 | 8300 |
+| Research Service | [`services/research/`](services/research/README.md) | Python, FastAPI | IMPLEMENTED D3/D4; integration not VALIDATED | 8400 |
+| AI Services | [`services/ai/`](services/ai/README.md) | Python, FastAPI; Claude, Ollama fallback | IMPLEMENTED D3; advisory, not clinically validated | 8600 |
+| Notification Service | [`services/notifications/`](services/notifications/README.md) | Python, FastAPI; UnifiedPush | IMPLEMENTED D2/D3; push delivery not VALIDATED | 8700 |
+| SciAgents integration | [`integrations/sciagents/`](integrations/sciagents/README.md) | Python, FastAPI | IMPLEMENTED D2; SciAgents itself is external | 8800 |
+| MedOS landing and hospital onboarding | [`apps/web/landing/`](apps/web/landing/README.md) | React, TypeScript, Vite | IMPLEMENTED D1, MOCKED | 5173 |
+| Governance Portal | [`apps/web/governance-portal/`](apps/web/governance-portal/README.md) | React, TypeScript, Vite | IMPLEMENTED D1, decisions SIMULATED | 5174 |
+| Research Portal | [`apps/web/research-portal/`](apps/web/research-portal/README.md) | React, TypeScript, Vite | IMPLEMENTED D1; SciAgents connection D2 | 5175 |
+| Hospital Portal (staff and patient administration) | [`apps/web/hospital-portal/`](apps/web/hospital-portal/README.md) | React, TypeScript, Vite | IMPLEMENTED D1, MOCKED | 5176 |
+| Patient App | [`apps/mobile/patient/`](apps/mobile/patient/README.md) | Flutter, Android | IMPLEMENTED D1, MOCKED | — |
+| Clinician App | [`apps/mobile/clinician/`](apps/mobile/clinician/README.md) | Flutter, Android | IMPLEMENTED D1, MOCKED | — |
+| Web design system | [`design-system/`](design-system/README.md) | React, Tailwind CSS v4 | IMPLEMENTED D1 | — |
+| Communication contracts | [`contracts/`](contracts/README.md) | OpenAPI 3.1 | IMPLEMENTED, checked by [contract tests](tests/README.md) | — |
+| Canonical demo data | [`demo-data/`](demo-data/README.md) | JSON, integrity checker | MOCKED, fictional only | — |
+| Hospital Node packaging | [`infrastructure/`](infrastructure/README.md) | Docker, Compose | IMPLEMENTED D3; nothing deployed | — |
 
-- Clean / Hexagonal Architecture with inward dependencies.
-- Explicit, versionable cross-component contracts.
-- No central clinical database or direct cross-component SQL access.
-- Hospital-local DMI Adapters.
-- Governance-owned authorization and optional immutable audit integration.
-- External SciAgents Integration rather than reimplementation.
-- Advisory AI with accountable human validation.
+The web and mobile apps read fictional fixtures and call no backend, except the Research Portal's SciAgents page. The backends talk to each other over real HTTP in local multi-process runs. Persistence, production identity, service authentication, hosting, and deployment do not exist.
 
-See the [technical architecture](docs/architecture.md).
+## Product and architecture
+
+The [canonical product vision](docs/product/FEDERATED_HEALTHCARE_ECOSYSTEM.md) defines scope; the [technical architecture](docs/architecture.md) defines boundaries. CONFIRMED invariants:
+
+- Federated: clinical source data stays under each Hospital Node's control; no central clinical database or cross-component SQL.
+- Each hospital's DMI Adapter lives inside its own Hospital Node; no central service connects to every DMI.
+- The Governance Node owns authorization and policy; the company operating the software is not the Governance / Ethics Authority.
+- The Patient and Clinician Apps consume authorized views and never access hospital databases.
+- Research uses Compute-to-Data: only controlled, aggregated results leave a node.
+- AI is advisory and clinician-reviewed; medication warnings come from deterministic rules or validated sources, never from an LLM alone.
+- SciAgents is external and integrated, not rebuilt.
+- The optional ledger stores minimized proofs, never medical records.
+- Clean / Hexagonal Architecture in every backend; components communicate through the versioned contracts in [`contracts/`](contracts/README.md).
+
+Technical choices are recorded as [ADRs](docs/decisions/README.md).
+
+## Running things
+
+Each component's README gives its exact commands. In short:
+
+- Python runtimes: from the component directory, `python3 -m venv .venv`, activate it, `pip install -r requirements-dev.txt`, then `python main.py` and `pytest`. The Hospital Node needs `HOSPITAL_NODE_CONFIG`, for example `config/hospital-a.demo.json`.
+- Web apps: `npm install` in [`design-system/`](design-system/README.md) once, then `npm install`, `npm run dev`, and `npm test` in the app.
+- Mobile apps: `flutter pub get`, `flutter test`, and `flutter run` on an Android emulator.
+- Hospital Node in Docker: see its [container section](instances/hospital-node/README.md#container-hc-220).
+- Demo story and identities: [demo scenario](docs/planning/demo-scenario.md).
+
+CI runs tests and lint for AI Services, the Federation Service, the contract tests, and the Hospital Node package builder; other suites run locally. Cross-system integration and end-to-end tests are PLANNED.
 
 ## Repository map
 
-- `apps/`: Hospital, Governance, and Research web portals; Patient and Clinician mobile products.
-- `instances/`: Hospital Node and Governance Node deployable boundaries.
+- `apps/`: web (landing and onboarding, Hospital Portal, Governance Portal, Research Portal) and mobile (Patient App, Clinician App) products.
+- `instances/`: Hospital Node and Governance Node, the autonomous trust boundaries.
 - `services/`: AI, Federation, Notification, and Research capabilities.
 - `integrations/`: SciAgents and future company/platform integrations.
-- `contracts/`: API, event, federation, and technology-neutral message definitions.
-- `design-system/`: web design tokens and React components shared by the web portals.
+- `contracts/`: versioned API, event, and Federation definitions.
+- `design-system/`: web design tokens and React components shared by the web apps.
 - `demo-data/`: canonical fictional demo dataset reused by every product.
 - `infrastructure/`, `production/`, `iot/`: environment-specific or optional technical assets.
-- `docs/`: product truth, architecture, status, planning, ADRs, and guidance.
-- `tests/`: future cross-system integration and E2E validation.
-
-## Source of truth
-
-The [documentation index](docs/README.md) defines the complete precedence order. Product vision comes first, followed by technical architecture, agent instructions, contribution workflow, plans, ADRs, and local component documentation.
-
-## Current status
-
-The repository structure, governance templates, placeholder workflows, planning documents, and documentation are IMPLEMENTED. Product applications, runtimes, integrations, persistence, real AI, and distributed execution are not implemented. See [current status](docs/CURRENT_STATUS.md); never infer feature implementation from a README or plan.
-
-## Development workflow
-
-Work proceeds from a Ready issue through implementation, tests, review, validation, and Done. Technology selection requires the applicable ADR before framework initialization. See [CONTRIBUTING.md](CONTRIBUTING.md).
+- `docs/`: product truth, architecture, status, planning, ADRs, security, and research notes.
+- `tests/`: cross-system tests: contract tests today, integration and E2E PLANNED.
 
 ## Documentation map
 
-- [Documentation index and status vocabulary](docs/README.md)
+- [Documentation index, source hierarchy, and status vocabulary](docs/README.md)
 - [Canonical product vision](docs/product/FEDERATED_HEALTHCARE_ECOSYSTEM.md)
 - [Technical architecture](docs/architecture.md)
 - [Current implementation status](docs/CURRENT_STATUS.md)
 - [Open questions](docs/OPEN_QUESTIONS.md)
-- [Planning backlog](docs/planning/backlog.md)
-- [Glossary](docs/GLOSSARY.md)
 - [Architecture decisions](docs/decisions/README.md)
+- [Security audit and threat model](docs/security/threat-model.md)
+- [Planning backlog](docs/planning/backlog.md) and [demo scenario](docs/planning/demo-scenario.md)
+- [Glossary](docs/GLOSSARY.md)
 
 ## Contributing
 
-Read [AGENTS.md](AGENTS.md) and [CONTRIBUTING.md](CONTRIBUTING.md) before changing the repository. Do not commit, push, deploy, or modify remote resources without authorization.
+Work goes from a Ready issue through a branch, implementation, tests, review, and validation; see [CONTRIBUTING.md](CONTRIBUTING.md). Read [AGENTS.md](AGENTS.md) before changing the repository. Do not commit, push, deploy, or modify remote resources without authorization. Never commit secrets, credentials, or real patient data.

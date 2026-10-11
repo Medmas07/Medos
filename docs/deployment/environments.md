@@ -33,7 +33,7 @@ Integration / E2E Validation
 Deployment
 ```
 
-Concrete commands will be documented after the stack is selected. Preview and production are separate environments, and a passing build alone does not validate a deployment.
+The stack is selected ([ADR-0001](../decisions/ADR-0001-web-frontend-technology.md), [ADR-0003](../decisions/ADR-0003-backend-runtime-strategy.md), [ADR-0004](../decisions/ADR-0004-mobile-technology.md)); each component's README documents its development and preview commands, and the [production guide](../../production/README.md) the local preview steps. No preview or production environment is hosted. Preview and production are separate environments, and a passing build alone does not validate a deployment.
 
 ## Hosting candidates
 

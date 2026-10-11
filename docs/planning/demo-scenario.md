@@ -40,13 +40,13 @@ What each step uses today. **Fixtures** means local fictional data in the produc
 | 1–2 | Patient App, Accueil and Parcours | `pat-a` | Patient A's records in the three `records/` files | IMPLEMENTED (D1), fixtures |
 | 3 | Patient App, Accès, "Accorder un accès" | `pat-a` | `grant-a-drx` | IMPLEMENTED (D1), local state only |
 | 4 | Clinician App, Accueil | `clin-x` | `people.json` | IMPLEMENTED (D1), simulated session |
-| 5 | Clinician App, Patients | `clin-x` | `grant-a-drx` | IMPLEMENTED (D1), MOCKED authorization from fixtures (HC-033) |
+| 5 | Clinician App, Patients, then "Ouvrir la fiche" | `clin-x` | `grant-a-drx` | IMPLEMENTED (D1), MOCKED authorization from fixtures: patient list (HC-033) and patient detail (HC-034) |
 | 6 | Clinician App, Patients | `clin-x` | Patient A's records | Screen PLANNED (HC-035). The Federation Service answers Patient A's federated timeline from the Hospital Nodes over HTTP (HC-141, HC-145; the nodes' data is MOCKED). |
-| 7–9 | Clinician App, Consultation | `clin-x`, `pat-a` | `script-a-2026-10-10` | MOCKED (D1): recording consent (HC-037), transcript (HC-038) |
+| 7–9 | Clinician App, Consultation | `clin-x`, `pat-a` | `script-a-2026-10-10` | MOCKED (D1): consultation workspace (HC-036), recording consent (HC-037), transcript (HC-038), or adaptive intake when recording is refused (HC-039) |
 | 10–11 | Clinician App, Consultation | `clin-x` | extraction draft in `script-a-2026-10-10` | Screen PLANNED. The AI extractor's own transcript still differs (see `demo-data` README, known divergence). |
-| 12–14 | Clinician App, Consultation | `clin-x` | `MED-DOLORANE` vs `med-b-leila-coagulix`, `check-a-dolorane` | Screen PLANNED. The Hospital Node's deterministic check returns `check-a-dolorane` (HC-162, MOCKED rules). |
+| 12–14 | Clinician App, Consultation | `clin-x` | `MED-DOLORANE` vs `med-b-leila-coagulix`, `check-a-dolorane` | MOCKED (D1): the Clinician App simulates the check and shows the canonical warning for clinician review (HC-042); it does not call the Hospital Node, whose deterministic check returns `check-a-dolorane` (HC-162, MOCKED rules). |
 | 15–16 | Patient App, Parcours | `pat-a` | the new consultation | PLANNED |
-| 17–18 | Hospital Portal (`apps/web/landing/`), registration to `#node-download` | `usr-mehdi` | `app-hospital-c` | IMPLEMENTED (D1), MOCKED review and package |
+| 17–18 | MedOS landing and hospital onboarding (`apps/web/landing/`), registration to `#node-download` | `usr-mehdi` | `app-hospital-c` | IMPLEMENTED (D1), MOCKED review and package |
 | 19–23 | Governance Portal, Synchronisations then audit and proof explorer | `usr-olfa` | `sync-001`; examples `dec-sync-002`, `evt-003`, `proof-003` | IMPLEMENTED (D1), decision MOCKED in the browser; simulated proof |
 | 24–27 | Research Portal, new project to submission | `usr-aymen` | `proj-001`; `proj-002` under review | IMPLEMENTED (D1), fixtures |
 | 28–29 | Governance Portal, research requests | `usr-olfa` | `rar-001` | IMPLEMENTED (D1), decision MOCKED in the browser |
