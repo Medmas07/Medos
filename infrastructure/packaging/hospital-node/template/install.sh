@@ -77,13 +77,9 @@ if [ "$VERIFY_ONLY" -eq 1 ]; then
     exit 0
 fi
 
-# 3. Docker must already be there; this helper never installs it.
-if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
-    fail "Docker Engine with the Compose plugin is required and was not found.
-This helper does not install it. Ask the host's administrator to install it:
-https://docs.docker.com/engine/install/ — then run install.sh again." 3
-fi
-docker info >/dev/null 2>&1 || fail "Docker is installed but its daemon does not answer. Start it, then run install.sh again." 3
+# 3. The container runtime must already be there and fit the image (HC-222); this
+# helper never installs it.
+sh ./check-runtime.sh || fail "the container runtime is not ready (see above), so nothing was started." 3
 
 # 4. The image comes from this package, and must be the one the manifest names.
 echo "Loading $IMAGE_REF..."

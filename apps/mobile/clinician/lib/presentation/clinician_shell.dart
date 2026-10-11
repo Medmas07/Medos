@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../demo/canonical_clinician.dart';
+import 'clinician_alert_center.dart';
 import 'clinician_dashboard.dart';
 import 'clinician_destination.dart';
 import 'clinician_theme.dart';
@@ -213,12 +214,7 @@ class _ContentView extends StatelessWidget {
             'La liste des patients autorisés, leur fiche et leur historique fédéré seront livrés par HC-033 à HC-035. Ce shell ne charge aucun dossier clinique.',
       ),
       ClinicianDestination.consultation => const RecordingConsentView(),
-      ClinicianDestination.alerts => const _PlannedContent(
-        icon: Icons.notifications_rounded,
-        title: 'Centre d’alertes',
-        message:
-            'Le centre d’alertes sera livré par HC-043. Aucune alerte réelle n’est reçue ici.',
-      ),
+      ClinicianDestination.alerts => const ClinicianAlertCenter(),
     };
 
     return ListView(

@@ -8,6 +8,7 @@ helper against Docker is checked by hand (see the README).
 import hashlib
 import io
 import json
+import os
 import shutil
 import subprocess
 import tarfile
@@ -46,9 +47,15 @@ def governance(status=200, body=APPROVAL_A, seen=None):
     return fetch
 
 
-def image_archive(tmp_path, tags=(bp.DEFAULT_IMAGE_REF,), with_index=True):
+def image_archive(
+    tmp_path,
+    tags=(bp.DEFAULT_IMAGE_REF,),
+    with_index=True,
+    platform={"os": "linux", "architecture": "amd64"},
+):
     path = tmp_path / "hospital-node.tar"
     members = {
+        f"blobs/sha256/{CONFIG_DIGEST}": {**platform, "config": {}},
         "manifest.json": [
             {
                 "Config": f"blobs/sha256/{CONFIG_DIGEST}",
@@ -104,6 +111,7 @@ def test_a_package_holds_the_node_and_no_clinical_record(tmp_path):
     assert names == [
         "node-hospital-a/README.md",
         "node-hospital-a/SHA256SUMS",
+        "node-hospital-a/check-runtime.sh",
         "node-hospital-a/compose.yaml",
         "node-hospital-a/config/node.json",
         "node-hospital-a/images/hospital-node.tar",
@@ -138,6 +146,7 @@ def test_the_manifest_cites_the_verified_approval_and_the_image(tmp_path):
         f"sha256:{CONFIG_DIGEST}",
         INDEX_DIGEST,
     ]
+    assert manifest["image"]["platform"] == "linux/amd64"
     assert manifest["image"]["registry"] is None
     assert {i["item"] for i in manifest["not_included"]} >= {
         "clinical_records",
@@ -182,14 +191,15 @@ def test_a_package_is_reproducible(tmp_path):
     assert first == second
 
 
-def test_install_sh_has_unix_line_endings_and_is_executable(tmp_path):
+@pytest.mark.parametrize("script", ["install.sh", "check-runtime.sh"])
+def test_the_scripts_have_unix_line_endings_and_are_executable(tmp_path, script):
     with tarfile.open(build(tmp_path)) as tar:
-        member = tar.getmember("node-hospital-a/install.sh")
-        script = tar.extractfile(member).read()
+        member = tar.getmember(f"node-hospital-a/{script}")
+        content = tar.extractfile(member).read()
 
     assert member.mode == 0o755
-    assert b"\r\n" not in script
-    assert script.startswith(b"#!/bin/sh\n")
+    assert b"\r\n" not in content
+    assert content.startswith(b"#!/bin/sh\n")
 
 
 @pytest.mark.parametrize(
@@ -277,6 +287,12 @@ def test_an_archive_without_an_oci_index_still_pins_the_image(tmp_path):
     )
 
     assert image.accepted_ids == (f"sha256:{CONFIG_DIGEST}",)
+    assert (image.os, image.architecture) == ("linux", "amd64")
+
+
+def test_an_image_without_a_platform_is_refused(tmp_path):
+    with pytest.raises(bp.PackageError, match="names no platform"):
+        build(tmp_path, archive=image_archive(tmp_path, platform={"os": "linux"}))
 
 
 def test_the_governance_public_key_is_bootstrap_trust_material(tmp_path):
@@ -368,3 +384,149 @@ def test_the_helper_needs_every_data_file(tmp_path):
     assert "missing from" in missing.stderr and "access.json" in missing.stderr
     assert no_dir.returncode == 2
     assert "--data-dir is required" in no_dir.stderr
+
+
+# HC-222: the runtime check, against a stand-in `docker` on a PATH that holds nothing
+# else, so the host's own Docker never answers.
+DOCKER_STUB = """#!/bin/sh
+case "$1" in
+    --version) echo "$FAKE_CLIENT" ;;
+    compose) [ -n "$FAKE_COMPOSE" ] || exit 1; echo "$FAKE_COMPOSE" ;;
+    info)
+        # Like Docker, empty fields on stdout and the reason on stderr.
+        if [ -n "$FAKE_INFO_ERROR" ]; then echo "|||"; echo "$FAKE_INFO_ERROR" >&2; exit 1; fi
+        echo "$FAKE_INFO"
+        ;;
+    *) exit 1 ;;
+esac
+"""
+READY = {
+    "FAKE_CLIENT": "Docker version 29.1.0, build 0000000",
+    "FAKE_COMPOSE": "v2.40.3",
+    "FAKE_INFO": "linux|x86_64|29.1.0|name=seccomp,profile=builtin name=cgroupns ",
+    "FAKE_INFO_ERROR": "",
+}
+
+
+def fake_path(tmp_path, tools=("docker",)):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    for tool in tools:
+        stub = bin_dir / tool
+        stub.write_bytes(DOCKER_STUB.encode() if tool == "docker" else b"#!/bin/sh\n")
+        stub.chmod(0o755)
+    return str(bin_dir)
+
+
+def check_runtime(tmp_path, tools=("docker",), **env):
+    root = unpack(build(tmp_path), tmp_path)
+    return subprocess.run(
+        [SH, str(root / "check-runtime.sh")],
+        capture_output=True,
+        text=True,
+        check=False,
+        env={"PATH": fake_path(tmp_path, tools), **READY, **env},
+    )
+
+
+@pytest.mark.skipif(SH is None, reason="no POSIX shell")
+def test_a_host_with_docker_compose_and_the_image_platform_is_ready(tmp_path):
+    result = check_runtime(tmp_path)
+
+    assert result.returncode == 0, result.stdout
+    assert "[ok]      compose: 2.40.3" in result.stdout
+    assert "Docker Engine 29.1.0, linux/amd64, rootful" in result.stdout
+    assert "can run Hospital Node node-hospital-a (linux/amd64)" in result.stdout
+    assert "[missing]" not in result.stdout
+
+
+@pytest.mark.skipif(SH is None, reason="no POSIX shell")
+def test_a_rootless_daemon_is_reported_and_accepted(tmp_path):
+    result = check_runtime(
+        tmp_path, FAKE_INFO="linux|x86_64|29.1.0|name=seccomp name=rootless "
+    )
+
+    assert result.returncode == 0, result.stdout
+    assert "linux/amd64, rootless" in result.stdout
+
+
+@pytest.mark.skipif(SH is None, reason="no POSIX shell")
+def test_podman_behind_the_docker_command_is_a_warning(tmp_path):
+    result = check_runtime(tmp_path, FAKE_CLIENT="podman version 5.2.0")
+
+    assert result.returncode == 0, result.stdout
+    assert "[warning] the docker command is Podman" in result.stdout
+
+
+@pytest.mark.skipif(SH is None, reason="no POSIX shell")
+@pytest.mark.parametrize(
+    ("tools", "env", "message"),
+    [
+        ((), {}, "Docker was not found."),
+        (("podman",), {}, "Found instead: podman"),
+        (("docker",), {"FAKE_COMPOSE": ""}, "(docker compose) was not found."),
+        (
+            ("docker", "docker-compose"),
+            {"FAKE_COMPOSE": ""},
+            "only the standalone docker-compose is installed",
+        ),
+        (("docker",), {"FAKE_COMPOSE": "1.29.2"}, "Compose 1.29.2 is too old"),
+        (
+            ("docker",),
+            {"FAKE_INFO_ERROR": "Cannot connect to the Docker daemon. Is it running?"},
+            "its daemon does not answer: Cannot connect",
+        ),
+        (
+            ("docker",),
+            {"FAKE_INFO_ERROR": "permission denied while trying to connect"},
+            "may not use its daemon (permission denied)",
+        ),
+        (("docker",), {"FAKE_INFO": "windows|x86_64|29.1.0|"}, "Linux containers"),
+        (
+            ("docker",),
+            {"FAKE_INFO": "linux|aarch64|29.1.0|"},
+            "runs arm64 containers; this package's image was built for amd64",
+        ),
+    ],
+    ids=[
+        "no-docker",
+        "podman-only",
+        "no-compose",
+        "standalone-compose",
+        "compose-v1",
+        "daemon-down",
+        "permission",
+        "windows-containers",
+        "architecture",
+    ],
+)
+def test_a_host_that_cannot_run_the_node_gets_guidance(tmp_path, tools, env, message):
+    result = check_runtime(tmp_path, tools, **env)
+
+    assert result.returncode == 3, result.stdout
+    assert message in result.stdout
+    assert "Nothing was installed or changed" in result.stdout
+
+
+@pytest.mark.skipif(SH is None, reason="no POSIX shell")
+def test_the_helper_starts_nothing_when_the_runtime_is_not_ready(tmp_path):
+    root = unpack(build(tmp_path), tmp_path)
+    env = {
+        **os.environ,
+        **READY,
+        "FAKE_INFO_ERROR": "Cannot connect to the Docker daemon.",
+        "PATH": fake_path(tmp_path) + os.pathsep + os.environ["PATH"],
+    }
+
+    result = subprocess.run(
+        [SH, str(root / "install.sh"), "--data-dir", str(data_dir(tmp_path))],
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+    )
+
+    assert result.returncode == 3, result.stderr
+    assert "its daemon does not answer" in result.stdout
+    assert "container runtime is not ready" in result.stderr
+    assert not (root / ".env").exists()
