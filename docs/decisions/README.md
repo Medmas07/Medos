@@ -19,3 +19,4 @@ Clean/Hexagonal principles are an initial project constraint and do not require 
 | [ADR-0005](ADR-0005-canonical-demo-data.md) | Location and format of the canonical demo data | Accepted |
 | [ADR-0006](ADR-0006-ai-provider-strategy.md) | AI provider strategy — Claude first, local Ollama fallback | Accepted |
 | [ADR-0007](ADR-0007-permissioned-audit-ledger.md) | Permissioned audit ledger — Hyperledger Besu (QBFT) behind `AuditLedgerPort` | Accepted |
+| [ADR-0008](ADR-0008-authentication-foundation.md) | Authentication foundation — each runtime authenticates its own users, password sign-in with opaque bearer sessions | Accepted |

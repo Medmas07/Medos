@@ -14,10 +14,14 @@ class HealthResponse(BaseModel):
     capabilities: list[str]
     # Where patient grants are evaluated (HC-136): "http" or "fixture" (MOCKED).
     grants: str
+    # Who may decide (HC-211): "off" (reviewer declared) or "required" (signed in).
+    authentication: str
     notice: str
 
 
-def create_router(identity: NodeIdentity, grants_mode: str) -> APIRouter:
+def create_router(
+    identity: NodeIdentity, grants_mode: str, authentication_mode: str
+) -> APIRouter:
     router = APIRouter()
 
     @router.get("/health")
@@ -31,6 +35,7 @@ def create_router(identity: NodeIdentity, grants_mode: str) -> APIRouter:
             organization_ref=node_status.organization_ref,
             capabilities=list(node_status.capabilities),
             grants=grants_mode,
+            authentication=authentication_mode,
             notice=node_status.notice,
         )
 

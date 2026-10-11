@@ -41,3 +41,5 @@ tmp/
 
 # Local Besu dev chain of the Governance Node ledger (HC-194): keys and chain data.
 /instances/governance-node/ledger/.chain/
+# Governance Node password hashes (HC-211): created locally by auth/set_password.py.
+/instances/governance-node/auth/.credentials.json
