@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../demo/canonical_patient.dart';
@@ -939,6 +941,18 @@ class _ProfileContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [_IdentityCard(), SizedBox(height: 20), _DataRequestsSection()],
+    );
+  }
+}
+
+class _IdentityCard extends StatelessWidget {
+  const _IdentityCard();
+
+  @override
+  Widget build(BuildContext context) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -977,6 +991,263 @@ class _ProfileContent extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+enum _RequestStage { submitted, underReview }
+
+class _DataRequest {
+  const _DataRequest({
+    required this.type,
+    required this.source,
+    required this.stage,
+  });
+
+  final String type;
+  final String source;
+  final _RequestStage stage;
+
+  _DataRequest underReview() =>
+      _DataRequest(type: type, source: source, stage: _RequestStage.underReview);
+}
+
+class _DataRequestsSection extends StatefulWidget {
+  const _DataRequestsSection();
+
+  @override
+  State<_DataRequestsSection> createState() => _DataRequestsSectionState();
+}
+
+class _DataRequestsSectionState extends State<_DataRequestsSection> {
+  /// Simulated time before the demo request reaches legal/retention analysis.
+  static const reviewDelay = Duration(seconds: 2);
+
+  final List<_DataRequest> _requests = [];
+  final List<Timer> _timers = [];
+
+  @override
+  void dispose() {
+    for (final timer in _timers) {
+      timer.cancel();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Mes demandes sur mes données',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Restriction, effacement ou anonymisation : chaque demande est '
+          'analysée, jamais appliquée automatiquement.',
+          style: TextStyle(color: PatientColors.muted),
+        ),
+        const SizedBox(height: 12),
+        FilledButton.icon(
+          onPressed: _createRequest,
+          icon: const Icon(Icons.policy_outlined),
+          label: const Text('Faire une demande'),
+        ),
+        const SizedBox(height: 12),
+        if (_requests.isEmpty)
+          const Card(
+            child: ListTile(
+              leading: Icon(Icons.inbox_outlined),
+              title: Text('Aucune demande en cours'),
+              subtitle: Text('Vos demandes et leur statut apparaîtront ici.'),
+            ),
+          ),
+        for (final request in _requests) _DataRequestCard(request: request),
+      ],
+    );
+  }
+
+  Future<void> _createRequest() async {
+    final request = await showDialog<_DataRequest>(
+      context: context,
+      builder: (context) => const _DataRequestDialog(),
+    );
+    if (request == null || !mounted) return;
+    setState(() => _requests.insert(0, request));
+    _timers.add(
+      Timer(reviewDelay, () {
+        setState(() {
+          final index = _requests.indexOf(request);
+          if (index >= 0) _requests[index] = request.underReview();
+        });
+      }),
+    );
+  }
+}
+
+class _DataRequestDialog extends StatefulWidget {
+  const _DataRequestDialog();
+
+  @override
+  State<_DataRequestDialog> createState() => _DataRequestDialogState();
+}
+
+class _DataRequestDialogState extends State<_DataRequestDialog> {
+  static const _allSources = 'Toutes mes sources';
+
+  String _type = 'Restreindre l’utilisation future';
+  String _source = _allSources;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Nouvelle demande'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<String>(
+              value: _type,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Type de demande'),
+              items: const [
+                DropdownMenuItem(
+                  value: 'Restreindre l’utilisation future',
+                  child: Text('Restreindre l’utilisation future'),
+                ),
+                DropdownMenuItem(
+                  value: 'Effacement si légalement permis',
+                  child: Text('Effacement si légalement permis'),
+                ),
+                DropdownMenuItem(
+                  value: 'Anonymisation si appropriée',
+                  child: Text('Anonymisation si appropriée'),
+                ),
+                DropdownMenuItem(
+                  value: 'Retirer une autorisation facultative',
+                  child: Text('Retirer une autorisation facultative'),
+                ),
+              ],
+              onChanged: (value) => setState(() => _type = value!),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: _source,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Source concernée'),
+              items: [
+                for (final source in [_allSources, ...demoPatientSources])
+                  DropdownMenuItem(value: source, child: Text(source)),
+              ],
+              onChanged: (value) => setState(() => _source = value!),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Les données nécessaires aux soins ou à une obligation légale '
+              'peuvent être conservées. L’effacement n’est jamais garanti.',
+              style: TextStyle(color: PatientColors.muted),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+        FilledButton(
+          onPressed: () => Navigator.pop(
+            context,
+            _DataRequest(
+              type: _type,
+              source: _source,
+              stage: _RequestStage.submitted,
+            ),
+          ),
+          child: const Text('Envoyer la demande'),
+        ),
+      ],
+    );
+  }
+}
+
+class _DataRequestCard extends StatelessWidget {
+  const _DataRequestCard({required this.request});
+
+  final _DataRequest request;
+
+  @override
+  Widget build(BuildContext context) {
+    final reviewing = request.stage == _RequestStage.underReview;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.policy_outlined, color: PatientColors.brand),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    request.type,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                _StatusPill(label: reviewing ? 'EN ANALYSE' : 'SOUMISE'),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(request.source, style: const TextStyle(color: PatientColors.muted)),
+            const SizedBox(height: 12),
+            const _RequestStep(label: 'Demande envoyée', done: true),
+            _RequestStep(label: 'Analyse juridique et de conservation', done: reviewing),
+            const _RequestStep(label: 'Revue hôpital / gouvernance', done: false),
+            const _RequestStep(
+              label: 'Décision : effacer, anonymiser, restreindre ou conserver',
+              done: false,
+            ),
+            if (reviewing) ...[
+              const SizedBox(height: 8),
+              const Text(demoRestrictionNotice),
+            ],
+            const Align(
+              alignment: Alignment.centerRight,
+              child: _StatusPill(label: 'DÉMO D1'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RequestStep extends StatelessWidget {
+  const _RequestStep({required this.label, required this.done});
+
+  final String label;
+  final bool done;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Icon(
+            done ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
+            size: 18,
+            color: done ? PatientColors.brand : PatientColors.muted,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(color: done ? null : PatientColors.muted),
+            ),
+          ),
+        ],
       ),
     );
   }
