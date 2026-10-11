@@ -7,7 +7,11 @@ import 'clinician_theme.dart';
 ///
 /// MOCKED D1: answers stay in this widget and disappear with it.
 class AdaptiveIntakeView extends StatefulWidget {
-  const AdaptiveIntakeView({super.key});
+  const AdaptiveIntakeView({super.key, this.onSummaryChanged});
+
+  /// Called with the summary once the intake is complete, and with null when
+  /// a change makes it incomplete again.
+  final ValueChanged<List<IntakeSummaryLine>?>? onSummaryChanged;
 
   @override
   State<AdaptiveIntakeView> createState() => _AdaptiveIntakeViewState();
@@ -48,6 +52,11 @@ class _AdaptiveIntakeViewState extends State<AdaptiveIntakeView> {
       _intake = _intake.answer(step.id, _selection.toList());
       _show(null);
     });
+    _reportSummary();
+  }
+
+  void _reportSummary() {
+    widget.onSummaryChanged?.call(_intake.isComplete ? _intake.summary : null);
   }
 
   void _back(IntakeStep step) {
@@ -61,6 +70,7 @@ class _AdaptiveIntakeViewState extends State<AdaptiveIntakeView> {
       _intake = const AdaptiveIntake.empty();
       _show(null);
     });
+    _reportSummary();
   }
 
   @override
@@ -255,7 +265,7 @@ class _Summary extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         const Text(
-          'À relire et valider par le clinicien. Rien n’est enregistré ni transmis ; le brouillon de consultation reste PLANNED (HC-036).',
+          'À relire et valider par le clinicien. Rien n’est enregistré ni transmis ; il alimente le brouillon de consultation.',
           style: TextStyle(color: ClinicianColors.muted),
         ),
         const SizedBox(height: 8),
