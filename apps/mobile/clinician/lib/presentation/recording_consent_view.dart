@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../demo/canonical_consultation.dart';
 import 'clinician_theme.dart';
+import 'medication_interaction_warning.dart';
 
 enum RecordingConsentState { awaitingDecision, granted, declined }
 
@@ -344,6 +345,8 @@ class _DecisionCard extends StatelessWidget {
             onStop: onStopRecording,
             onRestart: onRestartTranscript,
           ),
+          const SizedBox(height: 12),
+          const MedicationInteractionWarningView(),
         ],
       ],
     );

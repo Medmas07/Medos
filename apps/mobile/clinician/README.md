@@ -14,12 +14,14 @@ HC-038 Speech-to-text consultation UX is MOCKED at D1 after recording consent. T
 
 HC-043 Clinician alert center is MOCKED at D1 with the three canonical fictional alerts from `demo-data/clinician.json`. The center shows patient, date, source reference, and visibly demo-only priority, and lets the clinician mark an alert as examined or restore it. The pending/all filters and reviewed state are widget-local and session-only. Ordering is not clinical triage, no alert is received in real time, and no acknowledgement is persisted or sent to the Notification Service.
 
+HC-042 Medication interaction warning is MOCKED at D1 in the Consultation destination. After recording consent, the clinician can simulate a deterministic check of the fictional planned Dolorane prescription against the authorized fictional medication context. It reveals the canonical major interaction with active Coagulix held by Hospital B, including medication and organization provenance, fictional rule-set name/version, effect, rule recommendation, and pending/reviewed states. The warning explicitly neither blocks nor authorizes prescribing. No LLM creates the warning; no Hospital Node or medication-safety API is called; the medicines and rules are invented and not pharmacologically validated.
+
 | Destination | Planned content |
 |---|---|
 | `Accueil` | Clinician dashboard, IMPLEMENTED at D1 (HC-031, see above). |
 | `File` | Priority patient queue (HC-032) and its explanation (HC-044). |
 | `Patients` | Authorized patient list, patient detail, and federated history (HC-033 to HC-035). |
-| `Consultation` | Recording consent and speech-to-text UX are MOCKED (HC-037, HC-038); consultation workspace, real audio capture/transcription, adaptive intake, AI extraction and lab review, and medication warning remain PLANNED (HC-036, HC-039 to HC-042). |
+| `Consultation` | Recording consent, speech-to-text, and medication interaction warning UX are MOCKED (HC-037, HC-038, HC-042); consultation workspace, real audio capture/transcription, adaptive intake, and AI extraction/lab review remain PLANNED (HC-036, HC-039 to HC-041). |
 | `Alertes` | Clinician alert center is MOCKED with canonical fixtures and session-local review state (HC-043). |
 
 The profile sheet (app bar avatar) shows the fictional identity and states that the session is simulated: there is no authentication or authorization. The flask menu switches the current destination between content, loading, empty, and error states; navigating returns to content.
@@ -35,7 +37,7 @@ Flutter + Dart and the Android-first development path are CONFIRMED by [ADR-0004
 
 The Clinician App consumes authorized context through explicit APIs and never accesses hospital databases directly. Clinical AI output is advisory and subject to clinician review.
 
-At D1 there is no HTTP client, persistence, authentication, or backend integration. Files under `lib/demo/` are presentation-only copies of the canonical fictional clinician identity, consultation, and alerts from [`demo-data/`](../../../demo-data/); tests fail if those copies drift. They are not identity, authorization, notification, or clinical domain models. Planned destinations state that they load no clinical data.
+At D1 there is no HTTP client, persistence, authentication, or backend integration. Files under `lib/demo/` are presentation-only copies of the canonical fictional clinician identity, consultation, alerts, and medication warning from [`demo-data/`](../../../demo-data/); tests fail if those copies drift. They are not identity, authorization, notification, medication-safety, or clinical domain models. Planned destinations state that they load no clinical data.
 
 ## Non-responsibilities
 
