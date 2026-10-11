@@ -151,7 +151,10 @@ void main() {
     expect(grants.map((g) => g['id']), demoAccessGrants.map((g) => g.id));
     for (final (i, g) in demoAccessGrants.indexed) {
       expect(grants[i]['patientId'], g.patientId);
+      expect(grants[i]['scope'], g.scope);
+      expect(grants[i]['purpose'], g.purpose);
       expect(grants[i]['status'], g.status);
+      expect(grants[i]['grantedAt'], g.grantedAt);
       expect(grants[i]['expiresAt'], g.expiresAt);
     }
 
@@ -160,6 +163,7 @@ void main() {
       final canonical = patients.firstWhere((p) => p['id'] == patient.id);
       expect(canonical['firstName'], patient.firstName);
       expect(canonical['lastName'], patient.lastName);
+      expect(canonical['birthDate'], patient.birthDate);
     }
   });
 }

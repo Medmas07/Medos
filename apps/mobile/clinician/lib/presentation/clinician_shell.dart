@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../demo/canonical_clinician.dart';
+import 'authorized_patients_view.dart';
 import 'clinician_alert_center.dart';
 import 'clinician_dashboard.dart';
 import 'clinician_destination.dart';
@@ -207,12 +208,7 @@ class _ContentView extends StatelessWidget {
     final content = switch (destination) {
       ClinicianDestination.home => ClinicianDashboard(onNavigate: onNavigate),
       ClinicianDestination.queue => const PriorityQueueView(),
-      ClinicianDestination.patients => const _PlannedContent(
-        icon: Icons.people_rounded,
-        title: 'Patients autorisés',
-        message:
-            'La liste des patients autorisés, leur fiche et leur historique fédéré seront livrés par HC-033 à HC-035. Ce shell ne charge aucun dossier clinique.',
-      ),
+      ClinicianDestination.patients => const AuthorizedPatientsView(),
       ClinicianDestination.consultation => const RecordingConsentView(),
       ClinicianDestination.alerts => const ClinicianAlertCenter(),
     };
@@ -284,42 +280,6 @@ class _ProfileSheet extends StatelessWidget {
             const Text(
               'Session simulée : aucune authentification ni autorisation réelle.',
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PlannedContent extends StatelessWidget {
-  const _PlannedContent({
-    required this.icon,
-    required this.title,
-    required this.message,
-  });
-
-  final IconData icon;
-  final String title;
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            Icon(icon, size: 48, color: ClinicianColors.brand),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            const _StatusPill(label: 'PLANNED'),
           ],
         ),
       ),
@@ -406,31 +366,6 @@ class _LoadingIndicator extends StatelessWidget {
       width: 42,
       height: 42,
       child: CircularProgressIndicator(strokeWidth: 3),
-    );
-  }
-}
-
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: ClinicianColors.demoSoft,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: ClinicianColors.demo,
-          fontSize: 12,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
     );
   }
 }

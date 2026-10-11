@@ -53,7 +53,7 @@ void main() {
 
     await _tapTab(tester, 'Patients');
     expect(find.text('Patients autorisés'), findsOneWidget);
-    expect(find.text('PLANNED'), findsOneWidget);
+    expect(find.text('Autorisations fictives (MOCKED)'), findsOneWidget);
 
     await _tapTab(tester, 'Consultation');
     expect(find.text('Consentement à l’enregistrement'), findsOneWidget);
