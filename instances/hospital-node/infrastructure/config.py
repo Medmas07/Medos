@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, ValidationError
 
 from domain.node_identity import InvalidNodeIdentity, NodeIdentity
 
@@ -37,6 +37,9 @@ class HospitalNodeConfig:
     # Which rules the medication safety check uses (HC-163): the fictional demo rules
     # above, or the validated ONC high-priority snapshot bundled with the node.
     medication_rule_source: str = "demo_fixture"
+    # AI Services base URL for advisory warning explanations (HC-164); None turns them
+    # off. Only a warning's content is sent, never a patient reference.
+    ai_services_url: str | None = None
 
 
 class _ConfigFile(BaseModel):
@@ -54,6 +57,7 @@ class _ConfigFile(BaseModel):
     medication_rule_source: Literal["demo_fixture", "onc_high_priority_2012"] = (
         "demo_fixture"
     )
+    ai_services_url: HttpUrl | None = None
 
 
 def config_path_from_env() -> Path:
@@ -88,4 +92,5 @@ def load_config(path: Path) -> HospitalNodeConfig:
         ).resolve(),
         mock_medication_rules=(path.parent / raw.mock_medication_rules).resolve(),
         medication_rule_source=raw.medication_rule_source,
+        ai_services_url=str(raw.ai_services_url) if raw.ai_services_url else None,
     )

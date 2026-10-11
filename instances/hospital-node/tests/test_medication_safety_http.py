@@ -25,6 +25,7 @@ from application.check_medication_safety import (
 from infrastructure.config import load_config
 from main import create_app
 from tests.conftest import CONFIG_DIR, DEMO_NOW
+from tests.test_check_medication_safety import ExplainerDouble
 
 ROOT = Path(__file__).resolve().parents[3]
 CONTRACT = yaml.safe_load(
@@ -214,3 +215,44 @@ def test_a_request_outside_the_contract_is_a_400(body):
 def test_the_rules_are_the_demo_fixture():
     source = FixtureInteractionRuleSource.load(ROOT / "demo-data/medication-rules.json")
     assert source.rule_set().version == FIXTURE["ruleSet"]["version"]
+
+
+def explained_client(explainer):
+    app = FastAPI()
+    app.include_router(
+        create_router(
+            CheckMedicationSafety(
+                FixtureInteractionRuleSource.load(
+                    ROOT / "demo-data/medication-rules.json"
+                ),
+                lambda: DEMO_NOW,
+                explainer=explainer,
+            )
+        )
+    )
+    return TestClient(app)
+
+
+def test_an_advisory_explanation_is_attached_to_its_warning():
+    [demo] = [c for c in CASES if c["id"] == "check-a-fongivex"]
+    result = valid(
+        explained_client(ExplainerDouble()).post(PATH, json=request_for(demo)).json()
+    )
+
+    assert [w["explanation"]["text"] for w in result["warnings"]] == [
+        "Explication de rule-coagulix-fongivex.",
+        "Explication de rule-tensiorel-fongivex.",
+    ]
+    assert all(w["explanation"]["advisory"] is True for w in result["warnings"])
+    assert "Explanations are advisory" in result["notice"]
+
+
+def test_without_an_explanation_the_warning_is_complete_and_null():
+    [demo] = [c for c in CASES if c["id"] == "check-a-dolorane"]
+    failing = ExplainerDouble(fail_on={"rule-coagulix-dolorane"})
+    result = valid(explained_client(failing).post(PATH, json=request_for(demo)).json())
+
+    [warning] = result["warnings"]
+    assert warning["explanation"] is None
+    assert warning["severity"] == "major"
+    assert "Explanations are advisory" not in result["notice"]

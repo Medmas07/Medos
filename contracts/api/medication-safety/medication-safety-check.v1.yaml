@@ -17,8 +17,9 @@ info:
       `explanation` produced by AI Services. It is advisory, it is never the
       reason a warning exists, and the warning stays complete without it.
       AI Services produces it through
-      contracts/api/ai/medication-warning-explanation.v1.yaml (HC-156);
-      attaching it to this check's warnings is HC-164.
+      contracts/api/ai/medication-warning-explanation.v1.yaml (HC-156). A
+      Hospital Node attaches it after the check only when configured to
+      (HC-164); when AI Services is off or fails, `explanation` is null.
     - **The clinician decides.** The check never blocks or approves a
       prescription. `review_status` is always `pending_clinician_review`.
     - **"No warnings" is not "safe".** `outcome: no_warnings_found` only
