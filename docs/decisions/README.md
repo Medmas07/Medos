@@ -18,3 +18,4 @@ Clean/Hexagonal principles are an initial project constraint and do not require 
 | [ADR-0004](ADR-0004-mobile-technology.md) | Mobile technology for Patient App and Clinician App | Accepted |
 | [ADR-0005](ADR-0005-canonical-demo-data.md) | Location and format of the canonical demo data | Accepted |
 | [ADR-0006](ADR-0006-ai-provider-strategy.md) | AI provider strategy — Claude first, local Ollama fallback | Accepted |
+| [ADR-0007](ADR-0007-medos-landing-and-hospital-journey.md) | MedOS landing page as the hospital entry point, with a guided onboarding journey | Accepted |

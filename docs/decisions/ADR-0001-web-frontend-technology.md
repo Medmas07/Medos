@@ -6,7 +6,7 @@ Accepted — 2026-10-10, through review of HC-001 ([#24](https://github.com/Medm
 
 ## Context
 
-The repository plans three web products: the [Hospital Portal](../../apps/web/hospital-portal/README.md), the [Governance Portal](../../apps/web/governance-portal/README.md), and the [Research Portal](../../apps/web/research-portal/README.md). Before this decision, all three were PLANNED with no frontend framework or UI code, and the web framework/build tool was listed in [OPEN_QUESTIONS.md](../OPEN_QUESTIONS.md). HC-004 (visual design system) and the portal shells HC-050, HC-070, and HC-090 are blocked on this choice.
+The repository plans three web products: the [Hospital Portal](../../apps/web/landing/README.md), the [Governance Portal](../../apps/web/governance-portal/README.md), and the [Research Portal](../../apps/web/research-portal/README.md). Before this decision, all three were PLANNED with no frontend framework or UI code, and the web framework/build tool was listed in [OPEN_QUESTIONS.md](../OPEN_QUESTIONS.md). HC-004 (visual design system) and the portal shells HC-050, HC-070, and HC-090 are blocked on this choice.
 
 Constraints that drive the choice:
 
@@ -32,14 +32,14 @@ All three web portals use:
 | Runtime for tooling | Node.js LTS, minimum `^20.19.0 \|\| >=22.12.0` (Vite engine requirement) |
 | Lint | `oxlint`, as provided by the current template |
 
-Each portal is an independent Vite project in its existing directory (`apps/web/hospital-portal/`, `apps/web/governance-portal/`, `apps/web/research-portal/`). Portals do not import from each other.
+Each portal is an independent Vite project in its existing directory (`apps/web/landing/`, `apps/web/governance-portal/`, `apps/web/research-portal/`). Portals do not import from each other.
 
 ### Commands
 
 Scaffold (run once per portal by its shell ticket: HC-050, HC-070, HC-090; not by HC-001). `create-vite` refuses a non-empty directory, and each portal directory already contains a README.md that must be kept. Scaffold into a temporary folder and copy everything except the template README:
 
 ```bash
-# from the repository root, in a POSIX shell (Git Bash on Windows); <portal> is e.g. hospital-portal
+# from the repository root, in a POSIX shell (Git Bash on Windows); <portal> is e.g. landing
 npm create vite@9.2.1 .scaffold/<portal> -- --template react-ts --no-interactive
 rm .scaffold/<portal>/README.md
 cp -r .scaffold/<portal>/. apps/web/<portal>/

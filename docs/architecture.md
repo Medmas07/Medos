@@ -47,7 +47,7 @@ CONFIRMED Governance / Ethics Authority boundary for hospital approval, synchron
 
 ### Hospital Portal
 
-PLANNED company-managed web portal for onboarding submissions, questionnaire, review status, and Node package access. It does not make governance decisions.
+PLANNED company-managed web portal for onboarding submissions, questionnaire, review status, and Node package access. It does not make governance decisions. Since [ADR-0007](decisions/ADR-0007-medos-landing-and-hospital-journey.md) it lives in `apps/web/landing/`, behind the MedOS landing page, with a guided journey from the onboarding forms to the configuration guide and the Node download.
 
 ### Governance Portal
 
