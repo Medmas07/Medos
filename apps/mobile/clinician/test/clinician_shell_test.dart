@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hackcure_clinician/app/clinician_app.dart';
+import 'package:hackcure_clinician/demo/canonical_alerts.dart';
 import 'package:hackcure_clinician/demo/canonical_consultation.dart';
 import 'package:hackcure_clinician/demo/canonical_clinician.dart';
 import 'package:hackcure_clinician/presentation/recording_consent_view.dart';
@@ -104,6 +105,40 @@ void main() {
 
     expect(find.text('Contexte temporairement indisponible'), findsNothing);
     expect(find.text('Centre d’alertes'), findsOneWidget);
+  });
+
+  testWidgets('shows canonical alerts and marks one reviewed locally', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const ClinicianApp());
+    await _tapTab(tester, 'Alertes');
+
+    expect(find.text('À examiner (3)'), findsOneWidget);
+    expect(
+      find.text('HbA1c au-dessus de la plage de référence'),
+      findsOneWidget,
+    );
+    expect(find.text('Priorité haute · démo'), findsOneWidget);
+    expect(find.textContaining('ne constitue pas un triage'), findsOneWidget);
+
+    final review = find.byKey(const ValueKey('review-alert-b-hba1c'));
+    await tester.drag(find.byType(ListView), const Offset(0, -300));
+    await tester.pumpAndSettle();
+    await tester.tap(review);
+    await tester.pumpAndSettle();
+
+    expect(find.text('À examiner (2)'), findsOneWidget);
+    expect(find.text('HbA1c au-dessus de la plage de référence'), findsNothing);
+
+    await tester.drag(find.byType(ListView), const Offset(0, 500));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Toutes'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('HbA1c au-dessus de la plage de référence'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('restore-alert-b-hba1c')), findsOneWidget);
   });
 
   testWidgets('requires an explanation before recording consent', (
@@ -250,6 +285,31 @@ void main() {
       expect(
         canonicalSegments[index]['speaker'],
         demoTranscriptSegments[index].speaker,
+      );
+    }
+
+    final alerts = clinicianDemo['alerts'] as List;
+    expect(alerts, hasLength(demoClinicianAlerts.length));
+    for (final preview in demoClinicianAlerts) {
+      final canonical = alerts.firstWhere((alert) => alert['id'] == preview.id);
+      expect(canonical['patientId'], preview.patientId);
+      expect(canonical['type'], preview.type);
+      expect(canonical['severity'], preview.severity);
+      expect(canonical['title'], preview.title);
+      expect(
+        (canonical['detail'] as String).replaceAll("'", '’'),
+        preview.detail,
+      );
+      expect(canonical['sourceRecordId'], preview.sourceRecordId);
+      expect(canonical['createdAt'], preview.createdAt);
+      expect(canonical['status'], 'unresolved');
+
+      final alertPatient = (people['patients'] as List).firstWhere(
+        (patient) => patient['id'] == preview.patientId,
+      );
+      expect(
+        '${alertPatient['firstName']} ${alertPatient['lastName']}',
+        preview.patientName,
       );
     }
   });
