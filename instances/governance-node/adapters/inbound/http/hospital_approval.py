@@ -2,7 +2,8 @@
 
 Lists and reads hospital applications, records a reviewer's decision, and reads an
 approval decision. Requests are parsed strictly; anything outside the contract is a
-400 invalid_request. Callers are not authenticated: reviewer_ref is declared.
+400 invalid_request. With authentication required (HC-211), a decision needs a bearer
+session and reviewer_ref must be the signed-in person; off, reviewer_ref is declared.
 """
 
 from collections.abc import Callable
@@ -13,6 +14,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, ValidationError
 
+from adapters.inbound.http.authentication import ReviewerAuthentication
 from adapters.inbound.http.problems import OPAQUE_REF, first_error, problem
 
 from application.audit import AuditTrail
@@ -119,6 +121,7 @@ def create_router(
     audit: AuditTrail,
     clock: Callable[[], datetime],
     ledger: AuditLedgerPort,
+    auth: ReviewerAuthentication,
 ) -> APIRouter:
     router = APIRouter(tags=["hospital approval"])
 
@@ -148,12 +151,17 @@ def create_router(
     async def decide_hospital_application(
         application_ref: str, request: Request
     ) -> JSONResponse:
+        caller = auth.caller(request)
+        if isinstance(caller, JSONResponse):
+            return caller
         if store.application(application_ref) is None:
             return _application_not_found(application_ref)
         try:
             body = DecisionRequest.model_validate_json(await request.body())
         except ValidationError as error:
             return _invalid(first_error(error))
+        if (refused := auth.refuse(caller, body.reviewer_ref)) is not None:
+            return refused
         draft = DecisionDraft(
             outcome=Outcome(body.outcome),
             rationale=body.rationale,

@@ -1,0 +1,279 @@
+openapi: 3.1.0
+info:
+  title: Authentication
+  version: 1.0.0
+  description: |
+    Contract HC-211, version 1. How a person signs in to a runtime that
+    authenticates its own users, holds a bearer session, and signs out
+    (ADR-0010, initial depth D2).
+
+    Boundary rules carried by this contract:
+
+    - **Each runtime authenticates the people who act on it.** There is no
+      central identity provider and no shared user database. In version 1
+      only the Governance Node serves this contract, for the people who
+      decide there; its credentials are its own.
+    - **Passwords are never stored or returned.** The runtime keeps a salted
+      scrypt hash per person. A failed sign-in answers the same `401` for an
+      unknown person, a wrong password, and an account locked after repeated
+      failures, so the answer reveals neither.
+    - **Bearer sessions are opaque and expire.** `session_token` is random,
+      returned once, and sent back as `Authorization: Bearer <token>`. The
+      runtime keeps only its SHA-256 digest. A session ends at `expires_at`
+      (8 hours after sign-in), on sign-out, or when the runtime restarts.
+      Responses carrying session data are `Cache-Control: no-store`.
+    - **Authentication is not authorization.** A session says who is
+      calling. What that person may do stays with each API's own rules (for
+      example the Governance Node's review rules); role-based access control
+      is HC-212.
+    - **No clinical data.** Sessions hold an opaque person reference, the
+      person's role and organization, and times.
+
+    Status: IMPLEMENTED by the Governance Node (HC-211) when started with
+    `GOVERNANCE_AUTH=required`; sessions and sign-in throttling are held in
+    memory. Credentials belong to fictional demo people. This is not
+    production identity: no multi-factor authentication, password reset,
+    federation with organizations' identity providers, or service-to-service
+    authentication.
+paths:
+  /v1/auth/sessions:
+    post:
+      operationId: signIn
+      summary: Sign in with a password and receive a bearer session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignInRequest"
+            examples:
+              olfa:
+                summary: Fictional demo — Pr Olfa Hamdi signs in to the Governance Node.
+                value:
+                  person_ref: usr-olfa
+                  password: example-password-not-real
+      responses:
+        "201":
+          description: Signed in. The token is shown once.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SignedIn"
+              examples:
+                olfa:
+                  value:
+                    session_token: 3q2-7wEXAMPLE-not-a-real-token-0000000000000
+                    token_type: Bearer
+                    person_ref: usr-olfa
+                    role: governance_reviewer
+                    organization_ref: org-governance
+                    issued_at: "2026-10-10T10:00:00+01:00"
+                    expires_at: "2026-10-10T18:00:00+01:00"
+                    notice: >-
+                      Sessions are held in memory by the Governance Node and
+                      end when it restarts. Password sign-in for fictional demo
+                      people (HC-211, D2): not production identity.
+        "400":
+          description: The request is malformed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                missingPassword:
+                  value:
+                    type: about:blank
+                    title: Invalid request
+                    status: 400
+                    detail: "password: Field required"
+                    code: invalid_request
+        "401":
+          description: |
+            Sign-in refused: unknown person, wrong password, or an account
+            locked after 5 failures in a row (for 15 minutes). One answer for
+            all three.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                refused:
+                  value:
+                    type: about:blank
+                    title: Authentication failed
+                    status: 401
+                    detail: >-
+                      Sign-in refused: unknown person, wrong password, or too
+                      many failed attempts.
+                    code: authentication_failed
+  /v1/auth/session:
+    get:
+      operationId: getSession
+      summary: Who the bearer session belongs to, and until when.
+      security:
+        - bearerSession: []
+      responses:
+        "200":
+          description: The session's person and times; never the token.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentSession"
+              examples:
+                olfa:
+                  value:
+                    person_ref: usr-olfa
+                    role: governance_reviewer
+                    organization_ref: org-governance
+                    issued_at: "2026-10-10T10:00:00+01:00"
+                    expires_at: "2026-10-10T18:00:00+01:00"
+                    notice: >-
+                      Sessions are held in memory by the Governance Node and
+                      end when it restarts. Password sign-in for fictional demo
+                      people (HC-211, D2): not production identity.
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+    delete:
+      operationId: signOut
+      summary: End the bearer session.
+      security:
+        - bearerSession: []
+      responses:
+        "204":
+          description: Signed out; the token no longer authenticates.
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+components:
+  securitySchemes:
+    bearerSession:
+      type: http
+      scheme: bearer
+      description: The `session_token` of `signIn`, opaque to the caller.
+  responses:
+    AuthenticationRequired:
+      description: |
+        No bearer session, or an unknown, ended, or expired one. The
+        `WWW-Authenticate` header is `Bearer realm="governance-node"`, with
+        `error="invalid_token"` when a token was sent but does not
+        authenticate (RFC 6750).
+      headers:
+        WWW-Authenticate:
+          schema:
+            type: string
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          examples:
+            missing:
+              value:
+                type: about:blank
+                title: Authentication required
+                status: 401
+                detail: A bearer session is required.
+                code: authentication_required
+            expired:
+              value:
+                type: about:blank
+                title: Authentication required
+                status: 401
+                detail: The session has expired.
+                code: authentication_required
+  schemas:
+    OpaqueRef:
+      type: string
+      pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    SignInRequest:
+      type: object
+      additionalProperties: false
+      required: [person_ref, password]
+      properties:
+        person_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        password:
+          type: string
+          minLength: 1
+          maxLength: 1024
+          writeOnly: true
+    CurrentSession:
+      type: object
+      additionalProperties: false
+      required: [person_ref, role, organization_ref, issued_at, expires_at, notice]
+      properties:
+        person_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        role:
+          description: The person's role in the demo dataset, for display; not a permission.
+          type: string
+        organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        issued_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        notice:
+          type: string
+    SignedIn:
+      type: object
+      additionalProperties: false
+      required:
+        - session_token
+        - token_type
+        - person_ref
+        - role
+        - organization_ref
+        - issued_at
+        - expires_at
+        - notice
+      properties:
+        session_token:
+          type: string
+          minLength: 32
+        token_type:
+          type: string
+          const: Bearer
+        person_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        role:
+          type: string
+        organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        issued_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        notice:
+          type: string
+    Problem:
+      description: RFC 9457 problem details.
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+          enum:
+            - invalid_request
+            - authentication_failed
+            - authentication_required

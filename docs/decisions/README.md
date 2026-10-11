@@ -21,3 +21,4 @@ Clean/Hexagonal principles are an initial project constraint and do not require 
 | [ADR-0007](ADR-0007-permissioned-audit-ledger.md) | Permissioned audit ledger — Hyperledger Besu (QBFT) behind `AuditLedgerPort` | Accepted |
 | [ADR-0008](ADR-0008-medication-safety-check-host.md) | The Hospital Node serves the medication safety check | Accepted |
 | [ADR-0009](ADR-0009-validated-interaction-source.md) | Validated interaction source — ONC high-priority list, matched by ingredient name | Accepted |
+| [ADR-0010](ADR-0010-authentication-foundation.md) | Authentication foundation — each runtime authenticates its own users, password sign-in with opaque bearer sessions | Accepted |

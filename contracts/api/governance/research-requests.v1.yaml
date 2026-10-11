@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Governance Node Research Access Requests
-  version: 1.1.0
+  version: 1.2.0
   description: |
     Contract HC-133, version 1. The Governance / Ethics Authority's research
     access interface: a research project submits a data-access request, a
@@ -34,10 +34,16 @@ info:
       bounds), variable names, and a protocol document reference. Document
       contents are never sent.
 
-    Not decided by this version, and OPEN: who may call it (authentication:
-    `submitted_by_ref` and `reviewer_ref` are declared by the caller, not
-    authenticated), document upload and review, revoking or extending an
-    approval, carrying the minimum cell size in the authorization check,
+    Since 1.2.0 (HC-211), a Governance Node started with
+    authentication required (authentication.v1.yaml) answers a decision
+    without a valid bearer session `401 authentication_required`, and a
+    decision whose `reviewer_ref` is not the signed-in person `403
+    reviewer_mismatch`. With authentication off, its default,
+    `reviewer_ref` is declared by the caller, not authenticated.
+
+    Not decided by this version, and OPEN: who may submit and read
+    (`submitted_by_ref` is declared by the caller, not authenticated),
+    document upload and review, revoking or extending an approval, carrying the minimum cell size in the authorization check,
     and anchoring decisions in a ledger.
 
     Status: implemented by the Governance Node runtime (HC-133) over an
@@ -211,6 +217,9 @@ paths:
     post:
       operationId: decideResearchRequest
       summary: Record the reviewer's decision to approve or reject a request.
+      security:
+        - {}
+        - bearerSession: []
       requestBody:
         required: true
         content:
@@ -255,11 +264,15 @@ paths:
                     valid_until: "2027-04-10T10:00:00+01:00"
         "400":
           $ref: "#/components/responses/InvalidRequest"
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
         "403":
           description: |
             The reviewer may not decide: unknown here, not a governance
             reviewer, the submitter or principal investigator, or a member of
             the research organization or a participating organization.
+            With authentication required, also refused when
+            `reviewer_ref` is not the signed-in person (`reviewer_mismatch`).
           content:
             application/problem+json:
               schema:
@@ -273,6 +286,14 @@ paths:
                     status: 403
                     detail: Only a governance reviewer may decide.
                     code: reviewer_not_allowed
+                reviewerMismatch:
+                  summary: Fictional demo — signed in as Pr Olfa Hamdi, deciding as someone else (HC-211).
+                  value:
+                    type: about:blank
+                    title: Reviewer mismatch
+                    status: 403
+                    detail: reviewer_ref usr-mehdi is not the signed-in person usr-olfa.
+                    code: reviewer_mismatch
         "404":
           $ref: "#/components/responses/RequestNotFound"
         "409":
@@ -312,6 +333,13 @@ paths:
                       - field: minimum_cell_size
                         message: The minimum cell size must be at least 10.
 components:
+  securitySchemes:
+    bearerSession:
+      type: http
+      scheme: bearer
+      description: >-
+        A session of authentication.v1.yaml, required for decisions only when
+        the Governance Node is started with authentication required.
   parameters:
     RequestRef:
       name: request_ref
@@ -320,6 +348,26 @@ components:
       schema:
         $ref: "#/components/schemas/OpaqueRef"
   responses:
+    AuthenticationRequired:
+      description: |
+        Authentication is required and there is no bearer session, or an
+        unknown, ended, or expired one (`WWW-Authenticate: Bearer`).
+      headers:
+        WWW-Authenticate:
+          schema:
+            type: string
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          examples:
+            missing:
+              value:
+                type: about:blank
+                title: Authentication required
+                status: 401
+                detail: A bearer session is required.
+                code: authentication_required
     InvalidRequest:
       description: The request is malformed.
       content:
@@ -707,6 +755,8 @@ components:
             - invalid_request
             - request_not_found
             - reviewer_not_allowed
+            - reviewer_mismatch
+            - authentication_required
             - not_under_review
             - invalid_decision
         issues:
