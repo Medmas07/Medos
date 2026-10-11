@@ -5,8 +5,8 @@ import 'clinician_alert_center.dart';
 import 'clinician_dashboard.dart';
 import 'clinician_destination.dart';
 import 'clinician_theme.dart';
+import 'consultation_workspace.dart';
 import 'priority_queue_view.dart';
-import 'recording_consent_view.dart';
 
 enum ShellDemoState { content, loading, empty, error }
 
@@ -213,7 +213,7 @@ class _ContentView extends StatelessWidget {
         message:
             'La liste des patients autorisés, leur fiche et leur historique fédéré seront livrés par HC-033 à HC-035. Ce shell ne charge aucun dossier clinique.',
       ),
-      ClinicianDestination.consultation => const RecordingConsentView(),
+      ClinicianDestination.consultation => const ConsultationWorkspace(),
       ClinicianDestination.alerts => const ClinicianAlertCenter(),
     };
 

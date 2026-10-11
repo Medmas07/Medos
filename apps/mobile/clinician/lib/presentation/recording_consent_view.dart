@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../demo/canonical_consultation.dart';
+import 'adaptive_intake_flow.dart';
 import 'adaptive_intake_view.dart';
 import 'clinician_theme.dart';
 import 'medication_interaction_warning.dart';
@@ -14,8 +15,27 @@ enum SpeechToTextDemoState { ready, recording, transcribing, completed }
 const demoConsultationPatientName = 'Leïla Mansouri';
 const demoConsultationPatientId = 'pat-a';
 
+/// What the recording step has captured so far, for the consultation draft.
+class ConsultationCapture {
+  const ConsultationCapture({
+    required this.consent,
+    required this.transcriptReady,
+    this.intakeSummary,
+  });
+
+  final RecordingConsentState consent;
+
+  /// The simulated transcript has been revealed (recording accepted).
+  final bool transcriptReady;
+
+  /// The completed adaptive intake (recording refused), if any.
+  final List<IntakeSummaryLine>? intakeSummary;
+}
+
 class RecordingConsentView extends StatefulWidget {
-  const RecordingConsentView({super.key});
+  const RecordingConsentView({super.key, this.onCaptureChanged});
+
+  final ValueChanged<ConsultationCapture>? onCaptureChanged;
 
   @override
   State<RecordingConsentView> createState() => _RecordingConsentViewState();
@@ -26,9 +46,26 @@ class _RecordingConsentViewState extends State<RecordingConsentView> {
   SpeechToTextDemoState _speechState = SpeechToTextDemoState.ready;
   bool _explanationConfirmed = false;
   int _transcriptionGeneration = 0;
+  List<IntakeSummaryLine>? _intakeSummary;
+
+  void _report() {
+    widget.onCaptureChanged?.call(
+      ConsultationCapture(
+        consent: _state,
+        transcriptReady: _speechState == SpeechToTextDemoState.completed,
+        intakeSummary: _intakeSummary,
+      ),
+    );
+  }
 
   void _recordDecision(RecordingConsentState state) {
     setState(() => _state = state);
+    _report();
+  }
+
+  void _updateIntakeSummary(List<IntakeSummaryLine>? summary) {
+    _intakeSummary = summary;
+    _report();
   }
 
   void _resetDecision() {
@@ -37,11 +74,14 @@ class _RecordingConsentViewState extends State<RecordingConsentView> {
       _speechState = SpeechToTextDemoState.ready;
       _explanationConfirmed = false;
       _transcriptionGeneration += 1;
+      _intakeSummary = null;
     });
+    _report();
   }
 
   void _startRecordingSimulation() {
     setState(() => _speechState = SpeechToTextDemoState.recording);
+    _report();
   }
 
   Future<void> _stopAndTranscribe() async {
@@ -50,10 +90,12 @@ class _RecordingConsentViewState extends State<RecordingConsentView> {
     await Future<void>.delayed(const Duration(milliseconds: 700));
     if (!mounted || generation != _transcriptionGeneration) return;
     setState(() => _speechState = SpeechToTextDemoState.completed);
+    _report();
   }
 
   void _restartTranscriptDemo() {
     setState(() => _speechState = SpeechToTextDemoState.ready);
+    _report();
   }
 
   @override
@@ -91,6 +133,7 @@ class _RecordingConsentViewState extends State<RecordingConsentView> {
             onStartRecording: _startRecordingSimulation,
             onStopRecording: _stopAndTranscribe,
             onRestartTranscript: _restartTranscriptDemo,
+            onIntakeSummaryChanged: _updateIntakeSummary,
           ),
         const SizedBox(height: 16),
         const _DemoBoundaryCard(),
@@ -282,6 +325,7 @@ class _DecisionCard extends StatelessWidget {
     required this.onStartRecording,
     required this.onStopRecording,
     required this.onRestartTranscript,
+    required this.onIntakeSummaryChanged,
   });
 
   final RecordingConsentState state;
@@ -290,6 +334,7 @@ class _DecisionCard extends StatelessWidget {
   final VoidCallback onStartRecording;
   final VoidCallback onStopRecording;
   final VoidCallback onRestartTranscript;
+  final ValueChanged<List<IntakeSummaryLine>?> onIntakeSummaryChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -349,7 +394,7 @@ class _DecisionCard extends StatelessWidget {
           const SizedBox(height: 12),
           const MedicationInteractionWarningView(),
         ] else
-          const AdaptiveIntakeView(),
+          AdaptiveIntakeView(onSummaryChanged: onIntakeSummaryChanged),
       ],
     );
   }
