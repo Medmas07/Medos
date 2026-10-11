@@ -2,8 +2,9 @@
 
 Lists and reads hospital applications, records a reviewer's decision, and reads an
 approval decision. Requests are parsed strictly; anything outside the contract is a
-400 invalid_request. With authentication required (HC-211), a decision needs a bearer
-session and reviewer_ref must be the signed-in person; off, reviewer_ref is declared.
+400 invalid_request. With authentication required (HC-211), every operation needs a
+bearer session whose role grants governance review (HC-212), and a decision's
+reviewer_ref must be the signed-in person; off, reviewer_ref is declared.
 """
 
 from collections.abc import Callable
@@ -14,7 +15,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, ValidationError
 
-from adapters.inbound.http.authentication import ReviewerAuthentication
+from adapters.inbound.http.authentication import AccessControl
 from adapters.inbound.http.problems import OPAQUE_REF, first_error, problem
 
 from application.audit import AuditTrail
@@ -28,6 +29,7 @@ from application.hospital_approval import (
     list_applications,
 )
 from application.ledger import AuditLedgerPort
+from domain.access_control import Permission
 from domain.policy import PolicyHistory
 from domain.hospital_application import ApplicationStatus, HospitalApplication
 from domain.hospital_approval import (
@@ -121,12 +123,16 @@ def create_router(
     audit: AuditTrail,
     clock: Callable[[], datetime],
     ledger: AuditLedgerPort,
-    auth: ReviewerAuthentication,
+    auth: AccessControl,
 ) -> APIRouter:
     router = APIRouter(tags=["hospital approval"])
 
     @router.get("/v1/hospital-applications")
-    def list_hospital_applications(status: str | None = None) -> JSONResponse:
+    def list_hospital_applications(
+        request: Request, status: str | None = None
+    ) -> JSONResponse:
+        if isinstance(caller := auth.caller(request, Permission.REVIEW), JSONResponse):
+            return caller
         try:
             wanted = ApplicationStatus(status) if status is not None else None
         except ValueError:
@@ -140,7 +146,11 @@ def create_router(
         )
 
     @router.get("/v1/hospital-applications/{application_ref}")
-    def get_hospital_application(application_ref: str) -> JSONResponse:
+    def get_hospital_application(
+        application_ref: str, request: Request
+    ) -> JSONResponse:
+        if isinstance(caller := auth.caller(request, Permission.REVIEW), JSONResponse):
+            return caller
         try:
             application, decision = get_application(application_ref, store)
         except ApplicationNotFound:
@@ -151,7 +161,7 @@ def create_router(
     async def decide_hospital_application(
         application_ref: str, request: Request
     ) -> JSONResponse:
-        caller = auth.caller(request)
+        caller = auth.caller(request, Permission.REVIEW)
         if isinstance(caller, JSONResponse):
             return caller
         if store.application(application_ref) is None:
@@ -201,7 +211,9 @@ def create_router(
         return JSONResponse(_decision(decision), status_code=201)
 
     @router.get("/v1/hospital-approvals/{decision_ref}")
-    def get_approval(decision_ref: str) -> JSONResponse:
+    def get_approval(decision_ref: str, request: Request) -> JSONResponse:
+        if isinstance(caller := auth.caller(request, Permission.REVIEW), JSONResponse):
+            return caller
         decision = get_hospital_approval(decision_ref, store)
         if decision is None:
             return problem(
