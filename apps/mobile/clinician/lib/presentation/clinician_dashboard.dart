@@ -4,6 +4,7 @@ import '../demo/canonical_clinician.dart';
 import 'clinician_destination.dart';
 import 'clinician_labels.dart';
 import 'clinician_theme.dart';
+import 'patient_detail_screen.dart';
 
 /// Clinician dashboard (HC-031, D1): a read-only summary of the fictional
 /// authorized context of `clin-x` on the canonical demo day. Every figure is
@@ -260,6 +261,7 @@ class _AppointmentTile extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 10),
       child: Card(
         child: ListTile(
+          onTap: () => openPatientDetail(context, appointment.patientId),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 6,
@@ -300,6 +302,7 @@ class _AlertTile extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 10),
       child: Card(
         child: ListTile(
+          onTap: () => openPatientDetail(context, alert.patientId),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 6,
@@ -335,6 +338,7 @@ class _QueueTile extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 10),
       child: Card(
         child: ListTile(
+          onTap: () => openPatientDetail(context, entry.patientId),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 6,

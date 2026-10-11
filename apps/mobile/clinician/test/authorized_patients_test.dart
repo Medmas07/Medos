@@ -129,7 +129,8 @@ void main() {
     );
 
     expect(find.text('Aucun accès expiré ou révoqué.'), findsOneWidget);
-    expect(find.text('Fiche patient et historique fédéré'), findsOneWidget);
+    expect(find.text('Historique fédéré'), findsOneWidget);
+    expect(find.text('Ouvrir la fiche'), findsNWidgets(2));
   });
 
   testWidgets('shows an explicit empty state and ended grants', (tester) async {

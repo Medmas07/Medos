@@ -46,20 +46,28 @@ const demoClinician = CanonicalClinicianPreview(
 /// The dashboard is computed against it, never against the device clock.
 const demoReferenceDate = '2026-10-10';
 
-class CanonicalPatientName {
-  const CanonicalPatientName({
+class CanonicalPatient {
+  const CanonicalPatient({
     required this.id,
+    required this.federatedId,
     required this.firstName,
     required this.lastName,
+    required this.sex,
     required this.birthDate,
+    required this.city,
   });
 
   final String id;
+  final String federatedId;
   final String firstName;
   final String lastName;
+  final String sex;
   final String birthDate;
+  final String city;
 
   String get displayName => '$firstName $lastName';
+
+  String get initials => '${firstName[0]}${lastName[0]}';
 
   /// Age in whole years on [date] (`YYYY-MM-DD`).
   int ageOn(String date) {
@@ -71,25 +79,34 @@ class CanonicalPatientName {
   }
 }
 
-/// Names of the fictional patients appearing in `clin-x`'s demo data
-/// (`demo-data/people.json`).
-const demoPatients = <CanonicalPatientName>[
-  CanonicalPatientName(
+/// The fictional patients appearing in `clin-x`'s demo data
+/// (`demo-data/people.json`). Local hospital identifiers are left out.
+const demoPatients = <CanonicalPatient>[
+  CanonicalPatient(
     id: 'pat-a',
+    federatedId: 'FED-PAT-0001',
     firstName: 'Leïla',
     lastName: 'Mansouri',
+    sex: 'female',
     birthDate: '1968-04-17',
+    city: 'Tunis',
   ),
-  CanonicalPatientName(
+  CanonicalPatient(
     id: 'pat-b',
+    federatedId: 'FED-PAT-0002',
     firstName: 'Karim',
     lastName: 'Haddad',
+    sex: 'male',
     birthDate: '1979-11-02',
+    city: 'Ariana',
   ),
 ];
 
+CanonicalPatient demoPatientById(String patientId) =>
+    demoPatients.firstWhere((patient) => patient.id == patientId);
+
 String demoPatientName(String patientId) =>
-    demoPatients.firstWhere((patient) => patient.id == patientId).displayName;
+    demoPatientById(patientId).displayName;
 
 /// `clin-x`'s access grants (`demo-data/access.json`).
 class CanonicalAccessGrant {
