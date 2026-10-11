@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Governance Node Hospital Approval
-  version: 1.1.0
+  version: 1.2.0
   description: |
     Contract HC-131, version 1. The Governance / Ethics Authority's hospital
     approval interface: list the hospital applications it holds, read one
@@ -34,10 +34,16 @@ info:
       (node-registry.v1.yaml), confirm that a cited `decision_ref` is a
       hospital approval and for which organization.
 
-    Not decided by this version, and OPEN: who may call it (authentication
-    and reviewer identity: `reviewer_ref` is declared by the caller, not
-    authenticated), application submission and document upload, decision
-    expiry or revocation, Hospital Node configuration and package
+    Since 1.2.0 (HC-211), a Governance Node started with
+    authentication required (authentication.v1.yaml) answers a decision
+    without a valid bearer session `401 authentication_required`, and a
+    decision whose `reviewer_ref` is not the signed-in person `403
+    reviewer_mismatch`. With authentication off, its default,
+    `reviewer_ref` is declared by the caller, not authenticated.
+
+    Not decided by this version, and OPEN: who may call its other
+    operations (they are not authenticated), application submission and
+    document upload, decision expiry or revocation, Hospital Node configuration and package
     generation after approval, and anchoring the decision in a ledger
     (AuditLedgerPort, PLANNED).
 
@@ -139,6 +145,9 @@ paths:
     post:
       operationId: decideHospitalApplication
       summary: Record the reviewer's decision to approve or reject an application.
+      security:
+        - {}
+        - bearerSession: []
       requestBody:
         required: true
         content:
@@ -177,10 +186,14 @@ paths:
                       - Transmettre l'attestation d'assurance sous 30 jours.
         "400":
           $ref: "#/components/responses/InvalidRequest"
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
         "403":
           description: |
             The reviewer may not decide: unknown here, not a governance
             reviewer, or a member of the applicant organization.
+            With authentication required, also refused when
+            `reviewer_ref` is not the signed-in person (`reviewer_mismatch`).
           content:
             application/problem+json:
               schema:
@@ -194,6 +207,14 @@ paths:
                     status: 403
                     detail: Only a governance reviewer may decide.
                     code: reviewer_not_allowed
+                reviewerMismatch:
+                  summary: Fictional demo — signed in as Pr Olfa Hamdi, deciding as someone else (HC-211).
+                  value:
+                    type: about:blank
+                    title: Reviewer mismatch
+                    status: 403
+                    detail: reviewer_ref usr-mehdi is not the signed-in person usr-olfa.
+                    code: reviewer_mismatch
         "404":
           $ref: "#/components/responses/ApplicationNotFound"
         "409":
@@ -284,6 +305,13 @@ paths:
                     detail: No hospital approval decision dec-sync-002.
                     code: decision_not_found
 components:
+  securitySchemes:
+    bearerSession:
+      type: http
+      scheme: bearer
+      description: >-
+        A session of authentication.v1.yaml, required for decisions only when
+        the Governance Node is started with authentication required.
   parameters:
     ApplicationRef:
       name: application_ref
@@ -292,6 +320,26 @@ components:
       schema:
         $ref: "#/components/schemas/OpaqueRef"
   responses:
+    AuthenticationRequired:
+      description: |
+        Authentication is required and there is no bearer session, or an
+        unknown, ended, or expired one (`WWW-Authenticate: Bearer`).
+      headers:
+        WWW-Authenticate:
+          schema:
+            type: string
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          examples:
+            missing:
+              value:
+                type: about:blank
+                title: Authentication required
+                status: 401
+                detail: A bearer session is required.
+                code: authentication_required
     InvalidRequest:
       description: The request is malformed.
       content:
@@ -533,6 +581,8 @@ components:
             - application_not_found
             - decision_not_found
             - reviewer_not_allowed
+            - reviewer_mismatch
+            - authentication_required
             - not_awaiting_review
             - invalid_decision
         issues:

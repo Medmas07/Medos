@@ -27,6 +27,8 @@ def test_health_reports_the_demo_governance_authority():
         ],
         # create_app's default: the MOCKED fixture grants (tests and demos).
         "grants": "fixture",
+        # create_app's default without credentials: reviewers are declared (HC-211).
+        "authentication": "off",
         "notice": SKELETON_NOTICE,
     }
 

@@ -2,7 +2,8 @@
 
 Submits, lists, and reads synchronization requests, and records a reviewer's decision.
 Requests are parsed strictly; anything outside the contract is a 400 invalid_request.
-Callers are not authenticated: submitted_by_ref and reviewer_ref are declared.
+submitted_by_ref is declared. With authentication required (HC-211), a decision needs a
+bearer session and reviewer_ref must be the signed-in person; off, it is declared.
 """
 
 from collections.abc import Callable
@@ -21,6 +22,7 @@ from pydantic import (
     ValidationError,
 )
 
+from adapters.inbound.http.authentication import ReviewerAuthentication
 from adapters.inbound.http.problems import OPAQUE_REF, first_error, problem
 from application.audit import AuditTrail
 from application.hospital_approval import HospitalApplicationStore, ReviewerDirectory
@@ -195,6 +197,7 @@ def create_router(
     audit: AuditTrail,
     clock: Callable[[], datetime],
     ledger: AuditLedgerPort,
+    auth: ReviewerAuthentication,
 ) -> APIRouter:
     router = APIRouter(prefix="/v1/synchronization-requests", tags=["synchronization"])
 
@@ -253,12 +256,17 @@ def create_router(
     async def decide_synchronization_request(
         request_ref: str, request: Request
     ) -> JSONResponse:
+        caller = auth.caller(request)
+        if isinstance(caller, JSONResponse):
+            return caller
         if store.request(request_ref) is None:
             return _not_found(request_ref)
         try:
             body = DecisionBody.model_validate_json(await request.body())
         except ValidationError as error:
             return _invalid(first_error(error))
+        if (refused := auth.refuse(caller, body.reviewer_ref)) is not None:
+            return refused
         draft = SyncDecisionDraft(
             outcome=Outcome(body.outcome),
             rationale=body.rationale,
