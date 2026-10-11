@@ -24,12 +24,17 @@ class AuditAction(str, Enum):
     REQUEST_RECEIVED = "request_received"
     DECISION_RECORDED = "decision_recorded"
     AUTHORIZATION_CHECKED = "authorization_checked"
+    # HC-215: the security of the Node itself.
+    SIGNED_IN = "signed_in"
+    SIGN_IN_REFUSED = "sign_in_refused"
+    ACCESS_DENIED = "access_denied"
 
 
 class AuditDomain(str, Enum):
     HOSPITAL_APPROVAL = "hospital_approval"
     SYNCHRONIZATION = "synchronization"
     RESEARCH = "research"
+    SECURITY = "security"
 
 
 class SubjectType(str, Enum):
@@ -37,6 +42,10 @@ class SubjectType(str, Enum):
     SYNCHRONIZATION_REQUEST = "synchronization_request"
     RESEARCH_ACCESS_REQUEST = "research_access_request"
     DECISION = "decision"
+    # The account signing in.
+    PERSON = "person"
+    # The permission a protected route needs (domain/access_control.py).
+    PERMISSION = "permission"
 
 
 class AuditOutcome(str, Enum):
@@ -66,7 +75,19 @@ _RULES: dict[AuditAction, tuple[frozenset[SubjectType], frozenset]] = {
         frozenset({SubjectType.DECISION}),
         frozenset({AuditOutcome.AUTHORIZED, AuditOutcome.DENIED}),
     ),
+    AuditAction.SIGNED_IN: (frozenset({SubjectType.PERSON}), frozenset({None})),
+    AuditAction.SIGN_IN_REFUSED: (
+        frozenset({SubjectType.PERSON}),
+        frozenset({AuditOutcome.DENIED}),
+    ),
+    AuditAction.ACCESS_DENIED: (
+        frozenset({SubjectType.PERMISSION}),
+        frozenset({AuditOutcome.DENIED}),
+    ),
 }
+_SECURITY_ACTIONS = frozenset(
+    {AuditAction.SIGNED_IN, AuditAction.SIGN_IN_REFUSED, AuditAction.ACCESS_DENIED}
+)
 
 
 def _require(condition: bool, message: str) -> None:
@@ -85,7 +106,7 @@ class AuditEvent:
     subject_type: SubjectType
     subject_ref: str
     outcome: AuditOutcome | None
-    # The first failing reason of a denied authorization check.
+    # The first failing reason of a denied authorization check, sign-in, or access.
     reason: str | None
     # The organizations concerned, the Authority first when it acted.
     organization_refs: tuple[str, ...]
@@ -121,10 +142,14 @@ class AuditEvent:
             self.outcome in outcomes,
             f"{self.action.value} cannot have outcome {self.outcome}",
         )
+        _require(
+            (self.action in _SECURITY_ACTIONS) == (self.domain is AuditDomain.SECURITY),
+            "security actions, and only they, belong to the security domain",
+        )
         denied = self.outcome is AuditOutcome.DENIED
         _require(
             (self.reason is not None) == denied,
-            "a reason is given for a denied check, and only then",
+            "a reason is given for a denial, and only then",
         )
         _require(
             self.reason is None or bool(_REASON.fullmatch(self.reason)),

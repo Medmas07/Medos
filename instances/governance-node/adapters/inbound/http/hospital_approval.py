@@ -170,7 +170,9 @@ def create_router(
             body = DecisionRequest.model_validate_json(await request.body())
         except ValidationError as error:
             return _invalid(first_error(error))
-        if (refused := auth.refuse(caller, body.reviewer_ref)) is not None:
+        if (
+            refused := auth.refuse(caller, Permission.REVIEW, body.reviewer_ref)
+        ) is not None:
             return refused
         draft = DecisionDraft(
             outcome=Outcome(body.outcome),

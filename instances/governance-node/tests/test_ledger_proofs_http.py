@@ -37,6 +37,7 @@ OPEN = AccessControl(
     FixtureOrganizationDirectory.load(DEMO_DATA / "organizations.json"),
     DEMO_IDENTITY,
     lambda: DEMO_NOW,
+    InMemoryAuditTrail([]),
 )
 # Anything a proof must never carry, at any depth of the answer.
 FORBIDDEN = {"patient_ref", "actor_ref", "purpose", "rationale", "scope", "data_scope"}

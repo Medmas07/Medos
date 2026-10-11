@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Governance Node Audit Events
-  version: 1.1.1
+  version: 1.2.0
   description: |
     Contract HC-134, version 1. The audit trail the Governance / Ethics
     Authority keeps of its own governance actions: requests it receives,
@@ -21,9 +21,11 @@ info:
       reference leads to those through the API that owns them.
     - **Denials are audited too.** A denied authorization check is
       recorded with outcome `denied` and its reason code. A request
-      rejected as invalid (`400`), a refused decision (`403`, `409`,
-      `422`), and a research check on an unknown decision (`404`) are not
-      recorded: nothing was decided or answered.
+      rejected as invalid (`400`), a decision refused by the review rules
+      (`403`, `409`, `422`), and a research check on an unknown decision
+      (`404`) are not recorded: nothing was decided or answered. Since
+      1.2.0, refusals by authentication and access control are security
+      events (below).
     - **No audit, no answer.** An authorization check is recorded before
       it is answered; if it cannot be, the check fails and authorizes
       nothing.
@@ -49,6 +51,27 @@ info:
     authenticated. Since 1.1.1 (HC-213, ADR-0014), wording only: `403 permission_denied` also
     answers a governance reviewer whose organization is not the Authority the
     Node runs for.
+    Since 1.2.0 (HC-215), a Node requiring authentication also records
+    security events in domain `security`, minimized like the others
+    (never a password, a token, a header, or the request's content):
+
+    - `signed_in`: a person signed in (subject_type `person`, the person
+      as actor and subject, outcome `null`).
+    - `sign_in_refused`: a refused sign-in of a known account, outcome
+      `denied`, reason `invalid_credentials`, or `account_locked` for the
+      failure that locks the account. Refusals for an unknown person or a
+      locked account are not recorded, so no caller can grow the trail
+      without bound; the lockout limits the others to five per account
+      per fifteen minutes.
+    - `access_denied`: a signed-in person refused a protected route
+      (`403`), subject_type `permission`, subject_ref the permission the
+      route needs, outcome `denied`, reason `permission_denied`,
+      `reviewer_mismatch`, `submitter_mismatch`, or
+      `organization_mismatch`, as answered.
+
+    A request without a valid session (`401`) is not recorded: nobody is
+    known. Organizations are the Authority, then the person's own when
+    known. With authentication off, no security event is recorded.
     Reading is not itself audited. Retention is OPEN.
 paths:
   /v1/audit/events:
@@ -189,6 +212,58 @@ paths:
                         outcome: denied
                         reason: expired
                         organization_refs: [org-governance, org-private-practice]
+                security:
+                  summary: |
+                    Fictional demo — security events with authentication
+                    required (`?domain=security`): a governance reviewer's
+                    wrong password then sign-in, and a researcher signed in
+                    and refused the audit trail.
+                  value:
+                    node_ref: node-governance
+                    organization_ref: org-governance
+                    durable: false
+                    notice: "Fictional demo governance audit trail, held in memory by the Governance Node: events recorded at runtime are lost on restart and actors are declared, not authenticated. Recorded decisions are anchored in a simulated ledger (MOCKED), not a blockchain."
+                    events:
+                      - event_ref: evt-011
+                        recorded_at: "2026-10-10T10:03:00+01:00"
+                        action: access_denied
+                        domain: security
+                        actor_ref: usr-aymen
+                        subject_type: permission
+                        subject_ref: "governance:audit"
+                        outcome: denied
+                        reason: permission_denied
+                        organization_refs: [org-governance, org-research-lab]
+                      - event_ref: evt-010
+                        recorded_at: "2026-10-10T10:02:00+01:00"
+                        action: signed_in
+                        domain: security
+                        actor_ref: usr-aymen
+                        subject_type: person
+                        subject_ref: usr-aymen
+                        outcome: null
+                        reason: null
+                        organization_refs: [org-governance, org-research-lab]
+                      - event_ref: evt-009
+                        recorded_at: "2026-10-10T10:01:00+01:00"
+                        action: signed_in
+                        domain: security
+                        actor_ref: usr-olfa
+                        subject_type: person
+                        subject_ref: usr-olfa
+                        outcome: null
+                        reason: null
+                        organization_refs: [org-governance]
+                      - event_ref: evt-008
+                        recorded_at: "2026-10-10T10:00:00+01:00"
+                        action: sign_in_refused
+                        domain: security
+                        actor_ref: usr-olfa
+                        subject_type: person
+                        subject_ref: usr-olfa
+                        outcome: denied
+                        reason: invalid_credentials
+                        organization_refs: [org-governance]
                 empty:
                   summary: No event matches.
                   value:
@@ -388,8 +463,10 @@ components:
         actor_ref:
           description: |
             The person or caller who acted, as declared to the Node (not
-            authenticated): the submitter, the reviewer, or the actor of an
-            authorization check. `null` when not known.
+            authenticated, unless the Node requires authentication): the
+            submitter, the reviewer, or the actor of an authorization
+            check. For a security event, the person signing in or refused.
+            `null` when not known.
           oneOf:
             - $ref: "#/components/schemas/Ref"
             - type: "null"
@@ -400,12 +477,15 @@ components:
             - synchronization_request
             - research_access_request
             - decision
+            - person
+            - permission
         subject_ref:
           $ref: "#/components/schemas/Ref"
         outcome:
           description: |
             `approved` or `rejected` for `decision_recorded`; `authorized` or
-            `denied` for `authorization_checked`; `null` otherwise.
+            `denied` for `authorization_checked`; `denied` for
+            `sign_in_refused` and `access_denied`; `null` otherwise.
           oneOf:
             - type: string
               enum: [approved, rejected, authorized, denied]
@@ -413,7 +493,8 @@ components:
         reason:
           description: |
             The first failing reason code of a denied authorization check,
-            as its own contract names it; `null` otherwise.
+            as its own contract names it, or of a refused sign-in or access
+            (see the security events above); `null` otherwise.
           oneOf:
             - type: string
               pattern: "^[a-z][a-z_]{0,63}$"
@@ -436,10 +517,13 @@ components:
         - request_received
         - decision_recorded
         - authorization_checked
+        - signed_in
+        - sign_in_refused
+        - access_denied
 
     Domain:
       type: string
-      enum: [hospital_approval, synchronization, research]
+      enum: [hospital_approval, synchronization, research, security]
 
     Ref:
       description: |

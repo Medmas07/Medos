@@ -5,9 +5,11 @@ from datetime import timedelta
 
 import pytest
 
+from adapters.outbound.in_memory_audit_trail import InMemoryAuditTrail
 from adapters.outbound.in_memory_sessions import InMemorySessionStore
 from application.authentication import authenticate, sign_in, sign_out
 from domain.authentication import (
+    LOCKOUT,
     MAX_FAILURES,
     AuthenticationFailed,
     NotAuthenticated,
@@ -52,6 +54,8 @@ def world():
         "sessions": InMemorySessionStore(),
         "throttle": SignInThrottle(),
         "clock": lambda: DEMO_NOW,
+        "trail": InMemoryAuditTrail([]),
+        "authority_ref": "org-governance",
     }
 
 
@@ -138,3 +142,64 @@ def test_the_store_drops_sessions_expired_when_a_new_one_starts(world):
     assert len(world["sessions"]._sessions) == 1
     with pytest.raises(NotAuthenticated, match="unknown"):
         authenticate(first.token, world["sessions"], lambda: later)
+
+
+# HC-215: sign-ins are audited, within bounds.
+
+
+def recorded(world) -> list[tuple]:
+    return [
+        (e.action.value, e.subject_ref, e.reason, e.organization_refs)
+        for e in world["trail"].events()
+    ]
+
+
+def test_a_sign_in_is_recorded_without_its_password_or_token(world):
+    signed_in = attempt(world)
+
+    [event] = world["trail"].events()
+    assert recorded(world) == [("signed_in", "usr-olfa", None, ("org-governance",))]
+    assert event.actor_ref == "usr-olfa"
+    assert event.recorded_at == DEMO_NOW
+    assert signed_in.token not in repr(event) and "right" not in repr(event)
+
+
+def test_failures_are_recorded_until_the_one_that_locks(world):
+    for _ in range(MAX_FAILURES):
+        with pytest.raises(AuthenticationFailed):
+            attempt(world, password="wrong")
+
+    reasons = [reason for _, _, reason, _ in recorded(world)]
+    assert reasons == ["invalid_credentials"] * (MAX_FAILURES - 1) + ["account_locked"]
+
+
+def test_attempts_on_a_locked_account_are_not_recorded(world):
+    for _ in range(MAX_FAILURES):
+        with pytest.raises(AuthenticationFailed):
+            attempt(world, password="wrong")
+
+    for password in ("wrong", "right"):
+        with pytest.raises(AuthenticationFailed):
+            attempt(world, password=password)
+
+    assert len(world["trail"].events()) == MAX_FAILURES
+
+
+def test_an_unknown_person_is_not_recorded(world):
+    # Any reference can be tried: recording them would let anyone grow the trail.
+    with pytest.raises(AuthenticationFailed):
+        attempt(world, person_ref="usr-nobody")
+
+    assert world["trail"].events() == []
+
+
+def test_failures_are_recorded_again_once_the_lock_ends(world):
+    for _ in range(MAX_FAILURES):
+        with pytest.raises(AuthenticationFailed):
+            attempt(world, password="wrong")
+    later = DEMO_NOW + LOCKOUT
+
+    with pytest.raises(AuthenticationFailed):
+        attempt(world, password="wrong", clock=lambda: later)
+
+    assert recorded(world)[-1][2] == "invalid_credentials"
