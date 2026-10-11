@@ -394,7 +394,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('En attente de la décision du patient'), findsOneWidget);
-    expect(find.text('PLANNED · HC-040'), findsOneWidget);
+    expect(find.text('Après la transcription'), findsOneWidget);
     expect(find.text('Consentement à l’enregistrement'), findsOneWidget);
 
     final close = find.byKey(const ValueKey('close-consultation'));
@@ -470,6 +470,133 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Annuler'));
     await tester.pumpAndSettle();
     expect(find.text('Aucune consultation en cours'), findsOneWidget);
+  });
+
+  testWidgets('reviews the extraction draft item by item', (tester) async {
+    await tester.pumpWidget(const ClinicianApp());
+    await _grantRecordingConsent(tester);
+    expect(find.text('Extraction IA à relire'), findsNothing);
+    await _completeTranscript(tester);
+
+    expect(find.text('Extraction IA à relire'), findsOneWidget);
+    expect(find.textContaining('aucun modèle appelé'), findsOneWidget);
+    await _tapVisible(tester, find.byKey(const ValueKey('run-extraction')));
+    // _tapVisible settles, so the simulated delay has already elapsed.
+    expect(
+      find.text('8 en attente · 0 acceptée(s) · 0 modifiée(s) · 0 rejetée(s)'),
+      findsOneWidget,
+    );
+    expect(find.text('Symptômes'), findsOneWidget);
+    expect(find.text('Mesures'), findsOneWidget);
+    expect(find.text('Informations manquantes'), findsOneWidget);
+    expect(find.text('Signalée élevée par le brouillon'), findsOneWidget);
+    final finish = find.byKey(const ValueKey('finish-extraction-review'));
+    await _scrollTo(tester, finish);
+    expect(tester.widget<FilledButton>(finish).onPressed, isNull);
+
+    await _tapVisible(tester, find.byKey(const ValueKey('accept-ext-s1')));
+    await _tapVisible(tester, find.byKey(const ValueKey('reject-ext-o1')));
+    await _tapVisible(tester, find.byKey(const ValueKey('edit-ext-v1')));
+    await tester.enterText(
+      find.byKey(const ValueKey('extraction-edit-field')),
+      '',
+    );
+    await tester.tap(find.byKey(const ValueKey('extraction-edit-save')));
+    await tester.pumpAndSettle();
+    expect(find.text('Le texte ne peut pas être vide.'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const ValueKey('extraction-edit-field')),
+      'Pression artérielle : 150/90 mmHg',
+    );
+    await tester.tap(find.byKey(const ValueKey('extraction-edit-save')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pression artérielle : 150/90 mmHg'), findsOneWidget);
+    expect(
+      find.text('Suggestion initiale : Pression artérielle : 148/92 mmHg'),
+      findsOneWidget,
+    );
+    expect(find.text('MODIFIÉ'), findsOneWidget);
+    expect(find.text('REJETÉ'), findsOneWidget);
+    expect(find.text('5 suggestion(s) en attente'), findsOneWidget);
+
+    await _tapVisible(tester, find.byKey(const ValueKey('undo-ext-o1')));
+    expect(find.text('REJETÉ'), findsNothing);
+
+    for (final id in [
+      'ext-s2',
+      'ext-o1',
+      'ext-m1',
+      'ext-missing-1',
+      'ext-missing-2',
+      'ext-missing-3',
+    ]) {
+      await _tapVisible(tester, find.byKey(ValueKey('accept-$id')));
+    }
+    await _tapVisible(tester, finish);
+
+    expect(
+      find.byKey(const ValueKey('extraction-review-done')),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('8 élément(s) retenu(s), 0 rejeté(s)'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('accept-ext-s1')), findsNothing);
+    expect(find.text('Revue terminée'), findsOneWidget);
+
+    await _tapVisible(tester, find.byKey(const ValueKey('close-consultation')));
+    expect(find.text('Extraction IA retenue'), findsOneWidget);
+    expect(find.text('• Douleur du genou droit'), findsOneWidget);
+    expect(find.text('• Pression artérielle : 150/90 mmHg'), findsOneWidget);
+  });
+
+  testWidgets('closing before the extraction review retains nothing', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const ClinicianApp());
+    await _grantRecordingConsent(tester);
+    await _completeTranscript(tester);
+
+    await _tapVisible(tester, find.byKey(const ValueKey('close-consultation')));
+    expect(
+      find.byKey(const ValueKey('closed-extraction-not-reviewed')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('withdrawing consent discards the extraction review', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const ClinicianApp());
+    await _grantRecordingConsent(tester);
+    await _completeTranscript(tester);
+    await _tapVisible(tester, find.byKey(const ValueKey('run-extraction')));
+    await _tapVisible(tester, find.byKey(const ValueKey('accept-ext-s1')));
+
+    await _tapVisible(tester, find.text('Retirer le consentement'));
+    expect(find.text('Extraction IA à relire'), findsNothing);
+
+    await _tapVisible(tester, find.byType(CheckboxListTile));
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('recording-consent-grant')),
+    );
+    await _completeTranscript(tester);
+    expect(find.byKey(const ValueKey('run-extraction')), findsOneWidget);
+  });
+
+  testWidgets('the intake branch has no demo extraction', (tester) async {
+    await tester.pumpWidget(const ClinicianApp());
+    await _openConsultation(tester);
+    await _declineRecording(tester);
+
+    expect(
+      find.text('Pas d’extraction de démonstration pour l’anamnèse'),
+      findsOneWidget,
+    );
+    expect(find.text('Extraction IA à relire'), findsNothing);
   });
 
   test('the presentation fixture matches the canonical HC-005 data', () {
