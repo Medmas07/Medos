@@ -32,7 +32,7 @@ Environment names such as `.env.preview` and `.env.production` are conceptual. R
 
 ## Docker
 
-Docker may later reproduce production-like behavior. The root `docker-compose.yml` remains a neutral placeholder. A `docker-compose.preview.yml` may be introduced after real services exist and Docker is adopted by ADR.
+Docker is adopted for the Hospital Node only ([ADR-0015](../docs/decisions/ADR-0015-hospital-node-container-image.md), HC-220): its image and a demo composition of three fictional hospitals exist under [`infrastructure/docker/hospital-node/`](../infrastructure/docker/hospital-node/). The root `docker-compose.yml` remains a neutral placeholder. A `docker-compose.preview.yml` may be introduced once the other runtimes are containerized.
 
 ## Deployment
 

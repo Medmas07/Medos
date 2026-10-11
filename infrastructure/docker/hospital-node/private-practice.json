@@ -1,0 +1,11 @@
+{
+  "notice": "Fictional container configuration for the HC-005 dataset (HC-220). Same identity and port as instances/hospital-node/config/private-practice.demo.json; paths are inside the container, where compose.yaml mounts this hospital's files. Not a production configuration.",
+  "node_ref": "node-private-practice",
+  "organization_ref": "org-private-practice",
+  "port": 8104,
+  "storage_dir": "/var/lib/hospital-node",
+  "mock_clinical_records": "data/clinical-records.json",
+  "mock_access_grants": "data/access.json",
+  "mock_governance_decisions": "data/governance.json",
+  "mock_medication_rules": "data/medication-rules.json"
+}

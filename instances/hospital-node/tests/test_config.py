@@ -5,7 +5,9 @@ import pytest
 
 from infrastructure.config import (
     CONFIG_ENV,
+    HOST_ENV,
     ConfigError,
+    bind_host_from_env,
     config_path_from_env,
     load_config,
 )
@@ -142,3 +144,19 @@ def test_ai_explanations_are_off_unless_a_url_is_configured(tmp_path):
     )
     with pytest.raises(ConfigError):
         load_config(write_config(tmp_path, {**VALID, "ai_services_url": "ftp://x"}))
+
+
+def test_the_node_listens_on_loopback_unless_told_otherwise(monkeypatch):
+    monkeypatch.delenv(HOST_ENV, raising=False)
+    assert bind_host_from_env() == "127.0.0.1"
+
+    # The container image (HC-220) listens on every interface of its own network.
+    monkeypatch.setenv(HOST_ENV, "0.0.0.0")
+    assert bind_host_from_env() == "0.0.0.0"
+
+
+def test_a_bind_host_that_is_not_an_ip_address_stops_startup(monkeypatch):
+    monkeypatch.setenv(HOST_ENV, "localhost; rm")
+
+    with pytest.raises(ConfigError, match=HOST_ENV):
+        bind_host_from_env()

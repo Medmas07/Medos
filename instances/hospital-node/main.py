@@ -35,7 +35,12 @@ from adapters.outbound.isolated_research_sandbox import IsolatedResearchSandbox
 from application.check_medication_safety import CheckMedicationSafety
 from application.research_execution_agent import ResearchExecutionAgent
 from application.get_node_status import NODE_VERSION
-from infrastructure.config import HospitalNodeConfig, config_path_from_env, load_config
+from infrastructure.config import (
+    HospitalNodeConfig,
+    bind_host_from_env,
+    config_path_from_env,
+    load_config,
+)
 
 
 def _now() -> datetime:
@@ -111,4 +116,4 @@ if __name__ == "__main__":
     import uvicorn
 
     # Serves on the configured port; `fastapi dev/run --port` ignore it.
-    uvicorn.run(app, host="127.0.0.1", port=config.port)
+    uvicorn.run(app, host=bind_host_from_env(), port=config.port)

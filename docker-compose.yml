@@ -1,4 +1,6 @@
 name: hackathon
 
-# Docker is reserved as an option. Add services only after an ADR adopts it.
+# Neutral placeholder. ADR-0015 adopts containers for the Hospital Node only; its demo
+# composition is infrastructure/docker/hospital-node/compose.yaml. A full-ecosystem
+# composition belongs to the preview environment ticket (HC-225).
 services: {}

@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-CONFIRMED autonomous hospital-controlled boundary. Its stack (Python + FastAPI, one process per hospital from one codebase, flat layer layout that keeps `adapters/dmi/`) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED (HC-110): a FastAPI app with Clean/Hexagonal layers, pinned dependencies, and tests. Per-hospital configuration loading is IMPLEMENTED at D2 (HC-112). Its clinical repository is **MOCKED** at D2 (HC-113): fictional demo records, read-only, in memory. It serves `GET /health` (HC-111, IMPLEMENTED at D2) and the [patient history API](#patient-history-api-hc-114) (HC-114, IMPLEMENTED at D2): its side of the Federation contract, whose authorization check is **MOCKED** against fictional grants and decisions. Every query it answers or refuses is recorded in its own [audit trail](#audit-event-api-hc-116) (HC-116, IMPLEMENTED at D2), kept **in memory only** and readable through an unauthenticated API. The [access grants API](#access-grants-api-hc-115) (HC-115, IMPLEMENTED at D2) lists, records, and revokes a patient's grants on this node, which then enforces them; its grant store is **MOCKED** (in memory, seeded from fictional grants) and its callers are not authenticated. The [research execution agent](#research-execution-agent-hc-183) is IMPLEMENTED at D3 for one bounded installed aggregate; it never executes submitted source code, and demo results remain `mocked: true` because its local repository is fictional. The [medication safety check](#medication-safety-check-hc-162) (HC-162, IMPLEMENTED at D2, [ADR-0008](../../docs/decisions/ADR-0008-medication-safety-check-host.md)) is a deterministic drug-drug interaction engine. By default its rules are **MOCKED** (fictional, not a validated source); the configuration can select the validated ONC high-priority list instead (HC-163, IMPLEMENTED at D3, [ADR-0009](../../docs/decisions/ADR-0009-validated-interaction-source.md)). It is expected to become a separately packaged/containerized instance; container choices remain OPEN.
+CONFIRMED autonomous hospital-controlled boundary. Its stack (Python + FastAPI, one process per hospital from one codebase, flat layer layout that keeps `adapters/dmi/`) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED (HC-110): a FastAPI app with Clean/Hexagonal layers, pinned dependencies, and tests. Per-hospital configuration loading is IMPLEMENTED at D2 (HC-112). Its clinical repository is **MOCKED** at D2 (HC-113): fictional demo records, read-only, in memory. It serves `GET /health` (HC-111, IMPLEMENTED at D2) and the [patient history API](#patient-history-api-hc-114) (HC-114, IMPLEMENTED at D2): its side of the Federation contract, whose authorization check is **MOCKED** against fictional grants and decisions. Every query it answers or refuses is recorded in its own [audit trail](#audit-event-api-hc-116) (HC-116, IMPLEMENTED at D2), kept **in memory only** and readable through an unauthenticated API. The [access grants API](#access-grants-api-hc-115) (HC-115, IMPLEMENTED at D2) lists, records, and revokes a patient's grants on this node, which then enforces them; its grant store is **MOCKED** (in memory, seeded from fictional grants) and its callers are not authenticated. The [research execution agent](#research-execution-agent-hc-183) is IMPLEMENTED at D3 for one bounded installed aggregate; it never executes submitted source code, and demo results remain `mocked: true` because its local repository is fictional. The [medication safety check](#medication-safety-check-hc-162) (HC-162, IMPLEMENTED at D2, [ADR-0008](../../docs/decisions/ADR-0008-medication-safety-check-host.md)) is a deterministic drug-drug interaction engine. By default its rules are **MOCKED** (fictional, not a validated source); the configuration can select the validated ONC high-priority list instead (HC-163, IMPLEMENTED at D3, [ADR-0009](../../docs/decisions/ADR-0009-validated-interaction-source.md)). It runs as an [OCI container image](#container-hc-220) (HC-220, IMPLEMENTED at D3, [ADR-0015](../../docs/decisions/ADR-0015-hospital-node-container-image.md)); the installation package, runtime detection, and container health checks are PLANNED (HC-221 to HC-223).
 
 ## Running locally
 
@@ -18,7 +18,7 @@ From this directory (POSIX shell; on Windows activate with `.venv\Scripts\activa
 | Lint / format check | `ruff check . && ruff format --check .` |
 | Production-mode server (preview) | `HOSPITAL_NODE_CONFIG=config/hospital-a.demo.json fastapi run main.py --port 8101` |
 
-`python main.py` listens on `127.0.0.1` at the configured port. `fastapi dev` and `fastapi run` ignore the configured port, so pass the matching `--port`. In PowerShell, set the variable first: `$env:HOSPITAL_NODE_CONFIG = "config/hospital-a.demo.json"`. To run several hospitals at once, start one process per configuration file, each in its own terminal.
+`python main.py` listens on `127.0.0.1` at the configured port; `HOSPITAL_NODE_HOST` (an IP address) overrides the interface, and the [container image](#container-hc-220) sets it to `0.0.0.0`. `fastapi dev` and `fastapi run` ignore the configured port, so pass the matching `--port`. In PowerShell, set the variable first: `$env:HOSPITAL_NODE_CONFIG = "config/hospital-a.demo.json"`. To run several hospitals at once, start one process per configuration file, each in its own terminal.
 
 ## Configuration (HC-112)
 
@@ -261,6 +261,36 @@ Run live on 2026-10-11 with `config/hospital-a.ai-explanations.json` and AI Serv
 
 Not done: no product shows the explanation yet, and explanations for patients are out of scope.
 
+## Container (HC-220)
+
+IMPLEMENTED at D3 and checked locally with Docker Desktop 29.1 (Linux engine). [ADR-0015](../../docs/decisions/ADR-0015-hospital-node-container-image.md) records the decision.
+
+**One image for every hospital.** [`Dockerfile`](Dockerfile) builds from this directory alone. The image contains Python 3.12 (official slim image, pinned by digest), the pinned `requirements.txt`, and the Node's code, including the ONC reference snapshot. It contains no hospital configuration, no records, no tests, and no development dependencies ([`.dockerignore`](.dockerignore)). The Node runs as the unprivileged `hospital-node` user (uid 10001), which cannot write the code.
+
+**What a hospital mounts.** The image reads its configuration from `/etc/hospital-node/node.json` (`HOSPITAL_NODE_CONFIG`) and refuses to start without one, or with records held by another organization. The files the configuration names are mounted next to it, read-only. `storage_dir` is `/var/lib/hospital-node`, which nothing writes yet. Inside the container the Node listens on `0.0.0.0` at the configured port.
+
+**Demo composition.** [`infrastructure/docker/hospital-node/compose.yaml`](../../infrastructure/docker/hospital-node/compose.yaml) runs Hospital A, Hospital B, and the private practice from the same image, with the [container configurations](../../infrastructure/docker/hospital-node/) next to it. Each has the same identity and port as its demo configuration, but only its own fictional records file. Each container runs on a read-only filesystem with a `tmpfs` at `/tmp` for the research sandbox, drops every capability, sets `no-new-privileges`, and is published on `127.0.0.1` only, because callers are not authenticated. From the repository root:
+
+```bash
+docker compose -f infrastructure/docker/hospital-node/compose.yaml up --build -d
+curl -s localhost:8102/health
+docker compose -f infrastructure/docker/hospital-node/compose.yaml down
+```
+
+Services on the host, such as the Federation Service with its demo seed, reach the nodes at `localhost:8101`, `8102`, and `8104` as before. The containers are a replacement for running `python main.py` in three terminals, so do not run both at once.
+
+Checked by hand with the composition running:
+
+- `/health` answers on each port, with each hospital's own record counts.
+- Patient A's [federated query](../../services/federation/README.md#demo) is `complete`, with 1, 2, and 2 entries.
+- A research execution completes, and its sandbox reports `os_resource_limits: posix_rlimit`. On a Windows host outside a container it reports `parent_enforced`.
+- Writes to `/app` and to the mounted data fail with a read-only file system error.
+- Without a configuration, or with Hospital B's records under Hospital A's configuration, the Node stops at startup.
+
+[`tests/test_container_layout.py`](tests/test_container_layout.py) runs without Docker. For each container it rebuilds the mounted `/etc/hospital-node` from the composition and boots the app on it. It also checks that every mount is read-only, that a container sees only its own records, that ports are published on loopback at the configured port, and the user and image exclusions.
+
+Not done at D3: a container health check (HC-223), an installation package (HC-221), runtime detection (HC-222), an image registry or signing, and hosting. A container is a process boundary, not production security. Callers are unauthenticated, data is MOCKED, and there is no persistence.
+
 ## Health endpoint (HC-111)
 
 `GET /health` is a liveness check. It returns `200` with the node kind, version, the configured `node_ref` and `organization_ref`, its capabilities (including `research_execution`, `isolated_research_sandbox`, and `medication_safety_check`), the clinical repository's record counts and `mocked` flag, and a notice stating that the identity comes from fictional demo configuration, that the repository and authorization are MOCKED, that research execution is bounded, that the process sandbox is not production container isolation, that the audit trail is in memory and its readers are not authenticated, and that it is not a production health check:
@@ -284,6 +314,7 @@ instances/hospital-node/
 ├── adapters/inbound/http/      # health, Federation, audit, access-grant, research-execution, and medication-safety routers
 ├── adapters/outbound/          # fixture repositories/verifiers and interaction rules, installed aggregate, and in-memory stores
 ├── infrastructure/             # configuration loading and validation
+├── Dockerfile, .dockerignore   # container image recipe: code only, no hospital configuration or data (HC-220)
 ├── reference/                  # validated reference data read at startup (the ONC interaction snapshot, HC-163)
 ├── adapters/dmi/               # hospital-local DMI Adapters (port, HC-120; MOCKED local adapter, HC-121; mapping strategy, HC-122; Hospital B's adapter, HC-123)
 ├── contracts/                  # reserved for Node-local contract documents
