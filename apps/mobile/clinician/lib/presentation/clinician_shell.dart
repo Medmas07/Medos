@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../demo/canonical_clinician.dart';
 import 'clinician_theme.dart';
+import 'recording_consent_view.dart';
 
 enum ShellDemoState { content, loading, empty, error }
 
@@ -217,12 +218,7 @@ class _ContentView extends StatelessWidget {
         message:
             'La liste des patients autorisés, leur fiche et leur historique fédéré seront livrés par HC-033 à HC-035. Ce shell ne charge aucun dossier clinique.',
       ),
-      ClinicianDestination.consultation => const _PlannedContent(
-        icon: Icons.medical_services_rounded,
-        title: 'Espace de consultation',
-        message:
-            'Consultation, consentement à l’enregistrement, transcription, entretien adaptatif, revue des extractions IA et alertes médicamenteuses seront livrés par HC-036 à HC-042. Toute sortie d’IA restera un brouillon à valider par le clinicien.',
-      ),
+      ClinicianDestination.consultation => const RecordingConsentView(),
       ClinicianDestination.alerts => const _PlannedContent(
         icon: Icons.notifications_rounded,
         title: 'Centre d’alertes',
