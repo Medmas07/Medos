@@ -1,0 +1,198 @@
+openapi: 3.1.0
+info:
+  title: Notification Service — Push Subscriptions
+  version: 1.0.0
+  description: |
+    Contract HC-204, version 1. A mobile app registers, lists, and removes the
+    UnifiedPush subscriptions of its device, so that notification events with
+    the `push` channel (contracts/events/notification-event.v1.yaml) reach it
+    as real Web Push messages. The provider decision is ADR-0012.
+
+    Boundary rules carried by this contract:
+
+    - **W3C PushSubscription shape.** The body is what a push library already
+      produces: `endpoint` (the capability URL the device's UnifiedPush
+      distributor gave it) and `keys.p256dh` / `keys.auth` (base64url, RFC 8291).
+    - **Encrypted, minimal messages.** Every push is encrypted to the device's
+      keys (RFC 8291, aes128gcm), so the push server relays bytes it cannot
+      read. The message never carries the notification's title or body: only
+      a generic title per category and the notification id to open in the app.
+    - **Only configured push servers.** The service POSTs to the endpoint, so
+      an endpoint whose host is not an allowed push server is refused (no
+      server-side request forgery). Endpoints must be https.
+    - **The endpoint is a secret.** Answers give only its host, never the URL.
+    - **Honest delivery status.** A push accepted by the push server is `sent`,
+      not `delivered`. A push server answering 404 removes the subscription.
+
+    Not decided by this version, and OPEN: who may register a device for a
+    recipient (callers are not authenticated at demo depth), VAPID, and
+    durable storage (subscriptions are kept in memory).
+
+    Status: implemented by the Notification Service (HC-204). The RFC 8291
+    encryption reproduces the RFC's test vector. Live delivery to a device is
+    NOT VALIDATED: the public ntfy.sh server refuses pushes to topics without
+    a previously active device subscriber, and no device or self-hosted push
+    server was used. No mobile app registers a subscription yet.
+servers:
+  - url: http://localhost:8700
+    description: Local Notification Service runtime (development and preview only).
+paths:
+  /v1/recipients/{recipient_ref}/push-subscriptions:
+    parameters:
+      - $ref: "#/components/parameters/RecipientRef"
+    post:
+      operationId: registerPushSubscription
+      summary: Register a device's UnifiedPush subscription for a recipient.
+      description: |
+        Registering the same endpoint again replaces its keys and keeps its id.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushSubscriptionRequest"
+            examples:
+              patientPhone:
+                summary: Fictional demo — Patient A's phone on the public ntfy server.
+                value:
+                  endpoint: "https://ntfy.sh/upq2W8rT5yU1iO3pA6sD9fG4hJ7kL0zX?up=1"
+                  keys:
+                    p256dh: "BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4"
+                    auth: "BTBZMqHH6r4Tts7J_aSIgg"
+      responses:
+        "201":
+          description: The subscription is registered. The endpoint itself is not echoed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PushSubscription"
+              examples:
+                registered:
+                  value:
+                    subscription_id: psub-3f9a1c7e5b2d
+                    recipient_ref: pat-a
+                    channel: push
+                    endpoint_host: ntfy.sh
+                    registered_at: "2026-10-11T10:00:00+00:00"
+        "400":
+          description: >-
+            Invalid body or keys, an endpoint that is not https, or a host that is
+            not an allowed push server.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                notAllowed:
+                  value:
+                    type: "https://hackcure.org/errors/push-endpoint-not-allowed"
+                    title: Push Server Not Allowed
+                    status: 400
+                    detail: "endpoint host '169.254.169.254' is not an allowed push server."
+    get:
+      operationId: listPushSubscriptions
+      summary: List a recipient's registered devices, without their endpoints.
+      responses:
+        "200":
+          description: The recipient's push subscriptions.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [recipient_ref, count, subscriptions]
+                properties:
+                  recipient_ref:
+                    type: string
+                  count:
+                    type: integer
+                    minimum: 0
+                  subscriptions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PushSubscription"
+  /v1/recipients/{recipient_ref}/push-subscriptions/{subscription_id}:
+    parameters:
+      - $ref: "#/components/parameters/RecipientRef"
+      - name: subscription_id
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      operationId: removePushSubscription
+      summary: Remove a device's subscription.
+      responses:
+        "204":
+          description: Removed; the device receives no further push.
+        "404":
+          description: No such subscription for this recipient.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+components:
+  parameters:
+    RecipientRef:
+      name: recipient_ref
+      in: path
+      required: true
+      description: Opaque recipient reference, never a name.
+      schema:
+        type: string
+        pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+  schemas:
+    PushSubscriptionRequest:
+      type: object
+      additionalProperties: false
+      required: [endpoint, keys]
+      properties:
+        endpoint:
+          description: The device's UnifiedPush endpoint, an https capability URL.
+          type: string
+          format: uri
+          pattern: "^https://"
+          maxLength: 2048
+        keys:
+          type: object
+          additionalProperties: false
+          required: [p256dh, auth]
+          properties:
+            p256dh:
+              description: Uncompressed P-256 public key (65 bytes), base64url.
+              type: string
+              pattern: "^[A-Za-z0-9_-]+={0,2}$"
+            auth:
+              description: 16-byte authentication secret, base64url.
+              type: string
+              pattern: "^[A-Za-z0-9_-]+={0,2}$"
+    PushSubscription:
+      type: object
+      additionalProperties: false
+      required: [subscription_id, recipient_ref, channel, endpoint_host, registered_at]
+      properties:
+        subscription_id:
+          type: string
+        recipient_ref:
+          type: string
+        channel:
+          const: push
+        endpoint_host:
+          description: Host of the push server; the endpoint itself is never returned.
+          type: string
+        registered_at:
+          type: string
+          format: date-time
+    Problem:
+      description: RFC 9457 problem details.
+      type: object
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string

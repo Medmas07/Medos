@@ -11,6 +11,9 @@ class Settings:
     port: int = 8700
     fixtures_path: Path | None = None
     seed_demo_data: bool = True
+    # HC-204: push servers the service may POST to (it reaches device-supplied URLs).
+    push_allowed_hosts: frozenset[str] = frozenset({"ntfy.sh"})
+    push_timeout_seconds: float = 10.0
 
     @classmethod
     def from_environment(cls) -> "Settings":
@@ -18,6 +21,7 @@ class Settings:
         port = int(os.environ.get("NOTIFICATION_SERVICE_PORT", "8700"))
         fixtures = os.environ.get("NOTIFICATION_FIXTURES_PATH")
         seed = os.environ.get("NOTIFICATION_SEED_DEMO", "true").lower() == "true"
+        hosts = os.environ.get("NOTIFICATION_PUSH_ALLOWED_HOSTS", "ntfy.sh")
 
         repo_root = Path(__file__).resolve().parents[3]
         demo_fixtures = repo_root / "demo-data" / "notifications.json"
@@ -29,4 +33,10 @@ class Settings:
             port=port,
             fixtures_path=resolved_fixtures,
             seed_demo_data=seed,
+            push_allowed_hosts=frozenset(
+                h.strip().lower() for h in hosts.split(",") if h.strip()
+            ),
+            push_timeout_seconds=float(
+                os.environ.get("NOTIFICATION_PUSH_TIMEOUT_SECONDS", "10")
+            ),
         )

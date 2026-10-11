@@ -40,6 +40,8 @@ class Channel(str, Enum):
 
 class DeliveryStatus(str, Enum):
     PENDING = "pending"
+    # Accepted by the provider (for push, the push server); device receipt unconfirmed.
+    SENT = "sent"
     DELIVERED = "delivered"
     FAILED = "failed"
     SUPPRESSED = "suppressed"
