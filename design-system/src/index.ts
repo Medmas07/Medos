@@ -39,8 +39,8 @@ export type {
 export { Skeleton } from './components/Skeleton'
 export type { SkeletonProps } from './components/Skeleton'
 
-export { StatCard } from './components/StatCard'
-export type { StatCardProps } from './components/StatCard'
+export { StatCard, StatGroup } from './components/StatCard'
+export type { StatCardProps, StatGroupProps } from './components/StatCard'
 
 export { ThemeToggle } from './components/ThemeToggle'
 export type { ThemeToggleProps } from './components/ThemeToggle'

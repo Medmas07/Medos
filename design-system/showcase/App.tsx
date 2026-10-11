@@ -18,6 +18,7 @@ import {
   Skeleton,
   Spinner,
   StatCard,
+  StatGroup,
   Table,
   TextareaField,
   TextField,
@@ -137,7 +138,7 @@ function TypographySection() {
     <Section
       id="typography"
       title="Typography"
-      description="Geist for the interface, Instrument Serif for page titles and key figures; headings are styled globally by theme.css."
+      description="Bricolage Grotesque for everything, with optical sizing for large headings and figures; headings are styled globally by theme.css."
     >
       <Card>
         <div className="space-y-3">
@@ -397,12 +398,12 @@ function CardsSection() {
       title="Cards"
       description="Group related content. Optional header actions and footer."
     >
-      <div className="hc-stagger mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <StatGroup className="mb-4">
         <StatCard label="Pending approvals" value={3} hint="Awaiting a governance decision" badge={<Badge tone="warning" dot>Review</Badge>} onClick={() => undefined} />
         <StatCard label="Hospital Nodes" value={12} hint="10 online · 2 offline" tone="success" />
         <StatCard label="Ledger proofs" value={48} hint="Simulated anchoring" badge={<DemoBadge>Simulated</DemoBadge>} />
-        <StatCard label="Loading figure" value="—" hint="Skeleton while data loads" loading />
-      </div>
+        <StatCard label="Loading figure" value="-" hint="Skeleton while data loads" loading />
+      </StatGroup>
       <div className="hc-stagger grid gap-4 md:grid-cols-3">
         <Card title="Pending approvals" description="Awaiting a governance decision" interactive>
           <p className="tabular font-display text-4xl text-ink">3</p>

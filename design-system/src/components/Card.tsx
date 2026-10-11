@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { cx } from '../cx'
+import { trackPointer } from '../pointer'
 
 export interface CardProps {
   title?: ReactNode
@@ -9,7 +10,7 @@ export interface CardProps {
   footer?: ReactNode
   /** Removes body padding, for edge-to-edge content such as tables. */
   flush?: boolean
-  /** Adds hover lift for cards that sit inside a link or button. */
+  /** Adds hover lift and a cursor spotlight, for cards that act as a link or button. */
   interactive?: boolean
   children?: ReactNode
   className?: string
@@ -28,9 +29,10 @@ export function Card({
   const hasHeader = title || description || actions
   return (
     <section
+      onPointerMove={interactive ? trackPointer : undefined}
       className={cx(
-        'rounded-2xl border border-line bg-surface shadow-card',
-        interactive && 'hc-lift',
+        'rounded-2xl border border-line bg-surface',
+        interactive && 'hc-lift hc-spot transition-colors duration-200 hover:border-brand-400/70',
         className,
       )}
     >

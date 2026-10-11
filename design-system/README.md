@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-Shared visual foundation for the three web portals ([Hospital](../apps/web/hospital-portal/README.md), [Governance](../apps/web/governance-portal/README.md), [Research](../apps/web/research-portal/README.md)), delivered by HC-004 ([#27](https://github.com/Medmas07/Hackcure_hackathon/issues/27)) at depth D1. Location and styling are decided in [ADR-0002](../docs/decisions/ADR-0002-web-design-system.md).
+Shared visual foundation for the three web portals ([Hospital](../apps/web/landing/README.md), [Governance](../apps/web/governance-portal/README.md), [Research](../apps/web/research-portal/README.md)), delivered by HC-004 ([#27](https://github.com/Medmas07/Hackcure_hackathon/issues/27)) at depth D1. Location and styling are decided in [ADR-0002](../docs/decisions/ADR-0002-web-design-system.md).
 
 - **IMPLEMENTED:** design tokens, base typography, and the React components listed below, plus a showcase page.
 - **Checked on 2026-10-10:** `npm run build` (type-check and showcase build) and `npm run lint` pass; the showcase renders at desktop and 360px widths; a throwaway Vite portal outside the repository consumed the package through a `file:` dependency, and both `npm run build` and `npm run dev` rendered the components with working hooks. No portal in this repository consumes it yet, and there are no automated component tests.
@@ -12,7 +12,7 @@ Shared visual foundation for the three web portals ([Hospital](../apps/web/hospi
 ## Responsibilities
 
 - Design tokens in [`src/theme.css`](src/theme.css): the mint `brand` scale, semantic neutrals (`paper`, `surface`, `surface-raised`, `surface-muted`, `line`, `line-strong`, `ink`, `ink-soft`, `ink-muted`, `primary`, `on-primary`, `chrome`), status tones (`info`, `success`, `warning`, `danger`, `demo`), radii, shadows, easing, fonts, and base typography. Spacing uses Tailwind's default 4px scale.
-- Presentational React components: `Button`, `TextField`, `SelectField`, `TextareaField`, `CheckboxField`, `Card`, `StatCard`, `Table`, `Badge`, `Alert`, `AppShell`, `SideNav`, `PageHeader`, `LoadingState`, `EmptyState`, `ErrorState`, `Spinner`, `Skeleton`, `Timeline`, `ThemeToggle`.
+- Presentational React components: `Button`, `TextField`, `SelectField`, `TextareaField`, `CheckboxField`, `Card`, `StatCard`, `StatGroup`, `Table`, `Badge`, `Alert`, `AppShell`, `SideNav`, `PageHeader`, `LoadingState`, `EmptyState`, `ErrorState`, `Spinner`, `Skeleton`, `Timeline`, `ThemeToggle`.
 - Theme preference: `useTheme()` / `setThemePreference()` store the light/dark/system choice in `localStorage` (`hc-theme`). This is a UI preference only.
 - Explicit demo labelling: `DemoBanner`, `DemoBadge`, and the `demo` tone mark MOCKED or fictional content so it is never presented as production behaviour.
 
@@ -108,7 +108,10 @@ CSS only, no animation library. Only `transform` and `opacity` animate, with sho
 | Utility / prop | Effect |
 |---|---|
 | `hc-stagger` on a grid or list | children rise in (opacity + 8px, 320ms), 40ms apart, up to 8 steps |
-| `Card interactive`, `StatCard onClick`, `hc-lift` | 2px hover lift; the deeper shadow fades in on a pseudo-element (pointer devices only) |
+| `Button` hover | primary: a mint layer slides up behind the label (translateY, 260ms); secondary and ghost: a wash fades in; a trailing icon nudges 3px |
+| `Card interactive`, `hc-lift` + `hc-spot` | 3px lift, the deeper shadow fades in on a pseudo-element, and a mint spotlight follows the cursor (`trackPointer` sets `--hc-x`/`--hc-y`) |
+| `StatCard onClick` | cursor spotlight, a 2px mint underline grows from the left (scaleX, 320ms), an arrow fades in |
+| `SideNav` | one mint indicator glides to the current item (translateY, 300ms) |
 | `hc-press` | scale 0.97 while pressed |
 | `AppShell pageKey` | content fades and rises (260ms) when the key changes |
 | `ThemeToggle` | cross-fades the theme through the View Transitions API where supported |
@@ -116,7 +119,9 @@ CSS only, no animation library. Only `transform` and `opacity` animate, with sho
 
 ## Fonts
 
-Geist (interface) and Instrument Serif (`h1` and `StatCard` figures, through `font-display`) are self-hosted from `@fontsource-variable/geist` and `@fontsource/instrument-serif`, imported by `theme.css`. Pages make no font CDN request.
+Bricolage Grotesque is the only typeface, self-hosted from `@fontsource-variable/bricolage-grotesque` (the `opsz` build, so large headings and figures get the display cut automatically) and imported by `theme.css`. Pages make no font CDN request.
+
+Shape rules: buttons, badges and segmented controls are pills; inputs are 12px; cards and stat strips are 18px; the page canvas is 24px. The visual direction, with light and dark screens and an annotated interaction-states board, is in the Figma file "HackCure Portals - Visual Direction".
 
 ## Usage rules
 

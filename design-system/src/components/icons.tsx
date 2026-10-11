@@ -135,3 +135,11 @@ export function CloseIcon({ className }: IconProps) {
     </Svg>
   )
 }
+
+export function ArrowRightIcon({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <path d="M4 10h12M11 5l5 5-5 5" />
+    </Svg>
+  )
+}

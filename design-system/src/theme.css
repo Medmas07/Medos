@@ -21,8 +21,7 @@
  *              `text-slate-900` / `bg-slate-50` utilities follow the theme.
  */
 
-@import "@fontsource-variable/geist";
-@import "@fontsource/instrument-serif";
+@import "@fontsource-variable/bricolage-grotesque/opsz.css";
 
 /* Generate the utility classes used inside the design-system components. */
 @source "./components";
@@ -31,8 +30,8 @@
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @theme {
-  --font-sans: "Geist Variable", ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
-  --font-display: "Instrument Serif", ui-serif, Georgia, serif;
+  --font-sans: "Bricolage Grotesque Variable", ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-display: var(--font-sans);
   --font-mono: ui-monospace, "Cascadia Code", "SFMono-Regular", Menlo, Consolas, monospace;
 
   /* Brand: mint #A7E3D4 = 300. */
@@ -49,34 +48,40 @@
   --color-brand-950: #0e3b36;
 
   /* Semantic neutrals (light values; dark values below). */
-  --color-paper: #f7fbfa;
+  --color-paper: #f3f6f5;
   --color-surface: #ffffff;
   --color-surface-raised: #ffffff;
-  --color-surface-muted: #eef5f3;
-  --color-line: #dbe8e4;
-  --color-line-strong: #c4d6d1;
-  --color-ink: #102e2a;
-  --color-ink-soft: #3f5c57;
-  --color-ink-muted: #557069;
-  --color-primary: #195d54;
-  --color-primary-hover: #114540;
+  --color-surface-muted: #eef4f2;
+  --color-line: #e1e9e6;
+  --color-line-strong: #c9d7d2;
+  --color-ink: #0e1f1b;
+  --color-ink-soft: #3d5751;
+  --color-ink-muted: #5b726c;
+  --color-primary: #0e1f1b;
+  --color-primary-hover: #1c332e;
   --color-on-primary: #ffffff;
   --color-focus: #309180;
+  /* Ink on mint fills (active nav, button hover layer); identical in both themes. */
+  --color-on-mint: #0e1f1b;
+  /* Layer that slides up behind a primary button on hover. */
+  --color-primary-wipe: #a7e3d4;
+  /* Cursor spotlight on interactive cards. */
+  --color-spot: rgb(167 227 212 / 0.45);
   /* Sidebar and other brand chrome; always dark, in both themes. */
   --color-chrome: #0e3b36;
 
   /* Teal-tinted neutrals replacing Tailwind's slate. */
-  --color-slate-50: #f2f8f6;
-  --color-slate-100: #e7f0ed;
-  --color-slate-200: #dbe8e4;
-  --color-slate-300: #c4d6d1;
-  --color-slate-400: #7a938d;
-  --color-slate-500: #5a736d;
-  --color-slate-600: #4a635d;
-  --color-slate-700: #3f5c57;
-  --color-slate-800: #23403b;
-  --color-slate-900: #102e2a;
-  --color-slate-950: #071a17;
+  --color-slate-50: #f3f6f5;
+  --color-slate-100: #eaf1ee;
+  --color-slate-200: #e1e9e6;
+  --color-slate-300: #c9d7d2;
+  --color-slate-400: #7a918b;
+  --color-slate-500: #5b726c;
+  --color-slate-600: #4a625c;
+  --color-slate-700: #3d5751;
+  --color-slate-800: #223934;
+  --color-slate-900: #0e1f1b;
+  --color-slate-950: #07100e;
 
   --color-info-50: #eff6ff;
   --color-info-100: #dbeafe;
@@ -116,9 +121,9 @@
   /* Solid fill behind white text (DemoBanner); identical in both themes. */
   --color-demo-solid: #6d28d9;
 
-  /* Radii: controls 12, cards 16, hero 28. */
+  /* Radii: buttons and badges are pills, inputs 12, cards 18, canvas 24. */
   --radius-xl: 0.75rem;
-  --radius-2xl: 1rem;
+  --radius-2xl: 1.125rem;
   --radius-3xl: 1.75rem;
 
   /* Shadows tinted with the teal ink, never pure black. */
@@ -147,19 +152,21 @@
 .hc-chrome {
   color-scheme: dark;
 
-  --color-paper: #071a17;
-  --color-surface: #0e2420;
-  --color-surface-raised: #132d28;
-  --color-surface-muted: #153530;
-  --color-line: #22433c;
-  --color-line-strong: #2d554c;
-  --color-ink: #e6f4f0;
-  --color-ink-soft: #b5cec8;
-  --color-ink-muted: #8eaaa3;
+  --color-paper: #070f0d;
+  --color-surface: #0d1916;
+  --color-surface-raised: #132320;
+  --color-surface-muted: #14251f;
+  --color-line: #1c2f2a;
+  --color-line-strong: #2a433c;
+  --color-ink: #e8f4f0;
+  --color-ink-soft: #b4cac4;
+  --color-ink-muted: #8ba49d;
   --color-primary: #a7e3d4;
   --color-primary-hover: #c3eae0;
   --color-on-primary: #0e3b36;
   --color-focus: #a7e3d4;
+  --color-primary-wipe: #def2ed;
+  --color-spot: rgb(167 227 212 / 0.12);
 
   /* Brand tints and text steps flip; 300-600 and 950 stay. */
   --color-brand-50: #0f2b27;
@@ -169,16 +176,16 @@
   --color-brand-800: #c3eae0;
   --color-brand-900: #def2ed;
 
-  --color-slate-50: #132d28;
-  --color-slate-100: #173530;
-  --color-slate-200: #22433c;
-  --color-slate-300: #2d554c;
-  --color-slate-400: #6b8a83;
-  --color-slate-500: #8eaaa3;
-  --color-slate-600: #a3bdb6;
-  --color-slate-700: #b5cec8;
-  --color-slate-800: #d3e5e0;
-  --color-slate-900: #e6f4f0;
+  --color-slate-50: #132320;
+  --color-slate-100: #14251f;
+  --color-slate-200: #1c2f2a;
+  --color-slate-300: #2a433c;
+  --color-slate-400: #6b847d;
+  --color-slate-500: #8ba49d;
+  --color-slate-600: #a0b8b1;
+  --color-slate-700: #b4cac4;
+  --color-slate-800: #d0e2dc;
+  --color-slate-900: #e8f4f0;
   --color-slate-950: #f3faf8;
 
   --color-info-50: #0f2440;
@@ -238,12 +245,12 @@
   }
 
   h1 {
-    @apply font-display text-[2rem] leading-[1.1] font-normal tracking-[-0.01em] text-ink sm:text-[2.375rem];
+    @apply text-[2rem] leading-[1.1] font-semibold tracking-[-0.035em] text-ink sm:text-[2.5rem];
     text-wrap: balance;
   }
 
   h2 {
-    @apply text-lg leading-7 font-semibold tracking-[-0.01em] text-ink;
+    @apply text-lg leading-7 font-semibold tracking-[-0.02em] text-ink;
     text-wrap: balance;
   }
 
@@ -252,7 +259,7 @@
   }
 
   h4 {
-    @apply text-[11px] leading-5 font-semibold tracking-[0.1em] text-ink-muted uppercase;
+    @apply text-xs leading-5 font-medium text-ink-muted;
   }
 
   code,
@@ -278,14 +285,12 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* Section label: tiny and loud. */
+  /* Small sentence-case label (stat labels, field groups). */
   .label-caps {
-    font-size: 11px;
+    font-size: 13px;
     line-height: 1.25rem;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--color-ink-muted);
+    font-weight: 500;
+    color: var(--color-ink-soft);
   }
 
   /* Staggered entrance for the direct children of a grid or list (max 8 steps). */
@@ -323,6 +328,29 @@
     z-index: -1;
     border-radius: inherit;
     box-shadow: var(--shadow-lift);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /*
+   * Cursor spotlight: a soft mint glow that follows the pointer. The element
+   * sets --hc-x / --hc-y on pointer move (see trackPointer); only opacity animates.
+   */
+  .hc-spot {
+    position: relative;
+    isolation: isolate;
+  }
+  .hc-spot::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: radial-gradient(
+      280px circle at var(--hc-x, 50%) var(--hc-y, 50%),
+      var(--color-spot),
+      transparent 70%
+    );
     opacity: 0;
     pointer-events: none;
   }
@@ -421,7 +449,13 @@
     transition: opacity 220ms var(--ease-out);
   }
   .hc-lift:hover {
-    transform: translateY(-2px);
+    transform: translateY(-3px);
+  }
+  .hc-spot::before {
+    transition: opacity 260ms var(--ease-out);
+  }
+  .hc-spot:hover::before {
+    opacity: 1;
   }
   .hc-lift:hover::after {
     opacity: 1;
@@ -448,6 +482,9 @@
   .hc-lift:hover,
   .hc-press:active {
     transform: none;
+  }
+  .hc-spot::before {
+    display: none;
   }
   .hc-skeleton {
     animation: none;

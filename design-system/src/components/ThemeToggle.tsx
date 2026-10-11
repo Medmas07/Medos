@@ -31,7 +31,7 @@ export function ThemeToggle({
       role="group"
       aria-label={label}
       className={cx(
-        'inline-flex shrink-0 items-center gap-0.5 rounded-xl bg-surface-muted p-0.5 ring-1 ring-line ring-inset',
+        'inline-flex shrink-0 items-center gap-0.5 rounded-full bg-surface-muted p-[3px]',
         className,
       )}
     >
@@ -46,9 +46,9 @@ export function ThemeToggle({
             title={labels[choice]}
             onClick={() => setPreference(choice)}
             className={cx(
-              'hc-press grid size-8 place-items-center rounded-[0.625rem] transition-colors duration-150',
+              'hc-press grid h-[30px] w-[34px] place-items-center rounded-full transition-colors duration-200',
               active
-                ? 'bg-surface-raised text-brand-700 shadow-card'
+                ? 'bg-surface-raised text-ink shadow-card'
                 : 'text-ink-muted hover:text-ink',
             )}
           >

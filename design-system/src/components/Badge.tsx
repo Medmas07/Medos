@@ -12,12 +12,12 @@ export interface BadgeProps {
 }
 
 const badgeTones: Record<Tone, string> = {
-  neutral: 'bg-surface-muted text-ink-soft ring-line',
-  info: 'bg-info-50 text-info-700 ring-info-200',
-  success: 'bg-success-50 text-success-700 ring-success-200',
-  warning: 'bg-warning-50 text-warning-800 ring-warning-200',
-  danger: 'bg-danger-50 text-danger-700 ring-danger-200',
-  demo: 'bg-demo-50 text-demo-700 ring-demo-200',
+  neutral: 'bg-surface-muted text-ink-soft',
+  info: 'bg-info-50 text-info-700',
+  success: 'bg-success-50 text-success-700',
+  warning: 'bg-warning-50 text-warning-800',
+  danger: 'bg-danger-50 text-danger-700',
+  demo: 'bg-demo-50 text-demo-700',
 }
 
 const dotTones: Record<Tone, string> = {
@@ -37,7 +37,7 @@ export function Badge({ tone = 'neutral', dot = false, children, className }: Ba
   return (
     <span
       className={cx(
-        'tabular inline-flex min-h-6 max-w-full items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs leading-4 font-medium ring-1 ring-inset sm:whitespace-nowrap',
+        'tabular inline-flex min-h-6 max-w-full items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs leading-4 font-medium sm:whitespace-nowrap',
         badgeTones[tone],
         className,
       )}

@@ -54,7 +54,7 @@ export function Table<Row>({
                 key={column.key}
                 scope="col"
                 className={cx(
-                  'border-b border-line px-4 py-2.5 text-[11px] font-semibold tracking-[0.08em] whitespace-nowrap text-ink-muted uppercase',
+                  'border-b border-line px-4 py-2.5 text-xs font-medium whitespace-nowrap text-ink-muted',
                   column.align === 'right' && 'text-right',
                 )}
               >
@@ -70,7 +70,7 @@ export function Table<Row>({
             </tr>
           ) : (
             rows.map((row) => (
-              <tr key={getRowKey(row)} className="transition-colors duration-150 hover:bg-brand-50/70">
+              <tr key={getRowKey(row)} className="transition-colors duration-150 hover:bg-brand-50/60">
                 {columns.map((column) => {
                   const Cell = column.rowHeader ? 'th' : 'td'
                   return (
