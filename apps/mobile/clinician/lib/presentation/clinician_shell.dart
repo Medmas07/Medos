@@ -6,8 +6,8 @@ import 'clinician_alert_center.dart';
 import 'clinician_dashboard.dart';
 import 'clinician_destination.dart';
 import 'clinician_theme.dart';
+import 'consultation_workspace.dart';
 import 'priority_queue_view.dart';
-import 'recording_consent_view.dart';
 
 enum ShellDemoState { content, loading, empty, error }
 
@@ -209,7 +209,7 @@ class _ContentView extends StatelessWidget {
       ClinicianDestination.home => ClinicianDashboard(onNavigate: onNavigate),
       ClinicianDestination.queue => const PriorityQueueView(),
       ClinicianDestination.patients => const AuthorizedPatientsView(),
-      ClinicianDestination.consultation => const RecordingConsentView(),
+      ClinicianDestination.consultation => const ConsultationWorkspace(),
       ClinicianDestination.alerts => const ClinicianAlertCenter(),
     };
 
