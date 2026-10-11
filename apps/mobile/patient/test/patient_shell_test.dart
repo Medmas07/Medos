@@ -188,6 +188,33 @@ void main() {
     expect(find.text('Revue hôpital / gouvernance'), findsOneWidget);
   });
 
+  testWidgets('shows the notification center and marks notifications read', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const PatientApp());
+
+    expect(find.text('1'), findsOneWidget);
+    await tester.tap(find.byTooltip('Notifications'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Accès accordé'), findsOneWidget);
+    expect(find.text('Nouveau bilan disponible'), findsOneWidget);
+    expect(find.text('NON LUE'), findsOneWidget);
+    expect(find.text('LUE'), findsOneWidget);
+
+    await tester.tap(find.text('Non lues (1)'));
+    await tester.pumpAndSettle();
+    expect(find.text('Nouveau bilan disponible'), findsNothing);
+
+    await tester.tap(find.text('Accès accordé'));
+    await tester.pumpAndSettle();
+    expect(find.text('Aucune notification non lue'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('1'), findsNothing);
+  });
+
   testWidgets('renders the federated authorized timeline fixtures', (
     tester,
   ) async {

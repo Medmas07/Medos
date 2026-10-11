@@ -2,6 +2,8 @@
 
 ## Purpose and status
 
+HC-022 Patient notification center is IMPLEMENTED at D1: a bell in the app bar shows the unread count and opens the list of Patient A's canonical fictional notifications (`notif-001`, `notif-002`, categories from [`notification-event.v1.yaml`](../../../contracts/events/notification-event.v1.yaml)), with an unread filter, mark-as-read on tap, and "Tout marquer comme lu". Read state is session-local and labelled MOCKED; the app does not call the Notification Service or receive push.
+
 HC-021 Digital restriction / erasure request is IMPLEMENTED at D1 in `Profil`: the patient submits a restriction, erasure (where legally permitted), anonymization, or optional-permission withdrawal request for one or all of Patient A's sources and follows its status. After a simulated delay it moves from `SOUMISE` to `EN ANALYSE`. Hospital/governance review and the decision stay pending, and the screen states that data needed for care or legal obligations may be retained. Requests exist only in session state and are labelled demo; nothing is sent to a Hospital Node or Governance Node, and no data is restricted or deleted.
 
 HC-020 Delegate access to a trusted relative is IMPLEMENTED at D1 in `Accès`: a "Proches de confiance" section shows the canonical fictional delegation `deleg-a-sami` (Sami Mansouri, read-only, parcours and médicaments, no expiry), a form to delegate to a named relative with a relationship, scope, duration, and opt-in grant management, and a confirmed withdrawal. Delegations exist only in session state and are labelled demo; nothing is issued to, recorded by, or enforced on a Hospital Node, and the relative has no app view.
