@@ -41,27 +41,31 @@ class CanonicalTimelineEvent {
   final String kind;
 }
 
+/// Patient A's encounters in the three HC-005 records files, newest first.
 const demoTimeline = <CanonicalTimelineEvent>[
   CanonicalTimelineEvent(
+    date: '20 mai 2026',
+    title: 'Consultation de médecine interne',
+    organization: 'Hôpital Régional Oued Zitoun',
+    summary:
+        "Trouble du rythme confirmé à l'enregistrement. Instauration d'un traitement anticoagulant et bilan biologique.",
+    kind: 'Consultation',
+  ),
+  CanonicalTimelineEvent(
     date: '12 juin 2025',
-    title: 'Consultation de suivi',
-    organization: 'Hôpital Carthage',
-    summary: 'Suivi annuel et recommandations de prévention.',
+    title: 'Suivi tensionnel',
+    organization: 'Cabinet médical Dr Hatem Bouzid',
+    summary:
+        'Hypertension artérielle confirmée sur plusieurs mesures. Traitement instauré, contrôle dans 3 mois.',
     kind: 'Consultation',
   ),
   CanonicalTimelineEvent(
-    date: '03 mai 2025',
-    title: 'Résultat de laboratoire',
-    organization: 'Laboratoire El Amal',
-    summary: 'Bilan de routine disponible dans votre vue autorisée.',
-    kind: 'Laboratoire',
-  ),
-  CanonicalTimelineEvent(
-    date: '18 février 2025',
-    title: 'Visite de médecine générale',
-    organization: 'Clinique Les Jasmins',
-    summary: 'Note de visite partagée avec votre autorisation.',
-    kind: 'Consultation',
+    date: '9 mars 2024',
+    title: 'Consultation aux urgences',
+    organization: 'Hôpital Universitaire Bab Ennour',
+    summary:
+        "Rythme cardiaque irrégulier à l'ECG. Surveillance de 6 heures puis retour à domicile avec orientation vers une consultation spécialisée.",
+    kind: 'Urgences',
   ),
 ];
 
@@ -85,16 +89,16 @@ const demoMedications = <CanonicalMedication>[
   CanonicalMedication(
     name: 'Coagulix',
     code: 'MED-COAGULIX',
-    organization: 'Hôpital Carthage',
-    period: 'Actif depuis mai 2025',
+    organization: 'Hôpital Régional Oued Zitoun',
+    period: 'Actif depuis le 20 mai 2026',
     status: 'Actif',
   ),
   CanonicalMedication(
     name: 'Tensiorel',
     code: 'MED-TENSIOREL',
-    organization: 'Clinique Les Jasmins',
-    period: 'Terminé en janvier 2025',
-    status: 'Terminé',
+    organization: 'Cabinet médical Dr Hatem Bouzid',
+    period: 'Actif depuis le 12 juin 2025',
+    status: 'Actif',
   ),
 ];
 
@@ -132,7 +136,7 @@ const demoLabReports = <CanonicalLabReport>[
   CanonicalLabReport(
     date: '20 mai 2026',
     title: 'Bilan avant traitement',
-    organization: 'Hôpital Carthage',
+    organization: 'Hôpital Régional Oued Zitoun',
     results: [
       CanonicalLabResult(
         test: 'Hémoglobine',
@@ -151,6 +155,34 @@ const demoLabReports = <CanonicalLabReport>[
       CanonicalLabResult(
         test: 'Créatinine',
         value: '11,4',
+        unit: 'mg/L',
+        referenceRange: '6,0–12,0',
+        flag: 'Normal',
+      ),
+    ],
+  ),
+  CanonicalLabReport(
+    date: '9 mars 2024',
+    title: 'Bilan aux urgences',
+    organization: 'Hôpital Universitaire Bab Ennour',
+    results: [
+      CanonicalLabResult(
+        test: 'Hémoglobine',
+        value: '13,1',
+        unit: 'g/dL',
+        referenceRange: '12,0–16,0',
+        flag: 'Normal',
+      ),
+      CanonicalLabResult(
+        test: 'Potassium',
+        value: '4,2',
+        unit: 'mmol/L',
+        referenceRange: '3,5–5,0',
+        flag: 'Normal',
+      ),
+      CanonicalLabResult(
+        test: 'Créatinine',
+        value: '8,9',
         unit: 'mg/L',
         referenceRange: '6,0–12,0',
         flag: 'Normal',
@@ -184,18 +216,18 @@ const demoCareHistory = <CanonicalCareEncounter>[
     summary: 'Consultation de médecine interne et bilan avant traitement.',
   ),
   CanonicalCareEncounter(
-    date: '14 mars 2026',
-    organization: 'Hôpital Universitaire Bab Ennour',
-    physician: 'Dr Youssef Gharbi',
-    specialty: 'Cardiologie',
-    summary: 'Suivi cardiologique et recommandations de prévention.',
-  ),
-  CanonicalCareEncounter(
-    date: '08 janvier 2026',
+    date: '12 juin 2025',
     organization: 'Cabinet médical Dr Hatem Bouzid',
     physician: 'Dr Hatem Bouzid',
     specialty: 'Médecine générale',
-    summary: 'Consultation de suivi avec le médecin traitant.',
+    summary: 'Suivi tensionnel avec le médecin traitant.',
+  ),
+  CanonicalCareEncounter(
+    date: '9 mars 2024',
+    organization: 'Hôpital Universitaire Bab Ennour',
+    physician: 'Dr Rania Kefi',
+    specialty: "Médecine d'urgence",
+    summary: 'Consultation aux urgences et bilan biologique.',
   ),
 ];
 
@@ -299,7 +331,8 @@ const demoNotifications = <CanonicalNotification>[
     id: 'notif-001',
     type: 'access_granted',
     title: 'Accès accordé',
-    body: 'Dr Youssef Gharbi peut consulter votre historique jusqu\'au 24/10/2026.',
+    body:
+        'Dr Youssef Gharbi peut consulter votre historique jusqu\'au 24/10/2026.',
     date: '10 octobre 2026',
     read: false,
   ),
@@ -307,7 +340,8 @@ const demoNotifications = <CanonicalNotification>[
     id: 'notif-002',
     type: 'new_record',
     title: 'Nouveau bilan disponible',
-    body: 'Un bilan biologique de l\'Hôpital Régional Oued Zitoun a été ajouté à votre historique.',
+    body:
+        'Un bilan biologique de l\'Hôpital Régional Oued Zitoun a été ajouté à votre historique.',
     date: '21 mai 2026',
     read: true,
   ),

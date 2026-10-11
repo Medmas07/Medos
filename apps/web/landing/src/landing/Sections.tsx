@@ -40,7 +40,7 @@ export function Features() {
               <CellText title={f.nodes.title} body={f.nodes.body} icon={Building2} />
               <div className="relative mt-8 flex-1" aria-hidden>
                 <NodeCard
-                  name="Hôpital Universitaire A"
+                  name="Hôpital Universitaire Bab Ennour"
                   node="node-hospital-a"
                   status="En ligne"
                   className="absolute top-0 left-[4%] w-[min(100%,21rem)] -rotate-2 opacity-80"

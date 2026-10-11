@@ -160,7 +160,7 @@ IMPLEMENTED at D1, adhering to [`demo-authentication.v1.yaml`](../../../contract
 4. **Portal role protection:** The Governance Portal enforces `governance_reviewer` role authorization. Attempting to access the portal with other personas displays an explicit HTTP 403 Forbidden state explaining the required role and providing a 1-click action to switch back to Pr Olfa Hamdi.
 5. **UI components:** `DemoSessionBanner` (top session info bar), `DemoAuthModal` (interactive persona switcher with scenario dropdown), and `UnauthorizedStateView` (resilient 401/403 states).
 
-The rules live in `src/services/authService.ts` and are unit-tested in `tests/authService.test.ts`.
+The rules live in `src/services/authService.ts` and are unit-tested in `tests/authService.test.ts`. Since HC-240 each persona's organization name comes from [`organizations.json`](../../../demo-data/organizations.json) (it previously named two real hospitals), and `tests/canonicalIdentities.test.ts` checks every persona's name and organization against HC-005.
 
 Not done at D1: no cryptographic JWT signature verification, OAuth2/OIDC provider integration, or durable credential store. Real authentication foundation is sequenced under HC-211 (D2).
 

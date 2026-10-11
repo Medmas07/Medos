@@ -14,7 +14,7 @@ Everything here is **MOCKED / fictional**: people, organizations, medicines, the
 
 | File | Owner it represents | Contents |
 |---|---|---|
-| [`manifest.json`](manifest.json) | — | Dataset version, reference date (`2026-10-10`, UTC+01:00), file list, and **scenario roles** mapping demo names ("Patient A", "Dr. X", "Medication A") to ids. |
+| [`manifest.json`](manifest.json) | — | Dataset version, reference date (`2026-10-10`, UTC+01:00), file list, and **scenario roles** mapping demo names ("Patient A", "Dr. X", "Medication A") to ids. The [cast and story map](../docs/planning/demo-scenario.md#cast-and-story-map-hc-240) (HC-240) shows who appears in which product and step. |
 | [`organizations.json`](organizations.json) | Registry view | Hospitals A, B, C (C is in onboarding), a private practice, the Governance / Ethics Authority, the platform operator, a research lab; node status for approved organizations. |
 | [`people.json`](people.json) | Identity view | Three patients with per-organization local identifiers, a trusted relative, physicians and nurses, a hospital manager, a governance reviewer, a researcher. |
 | [`records/hospital-a.json`](records/hospital-a.json), [`records/hospital-b.json`](records/hospital-b.json), [`records/private-practice.json`](records/private-practice.json) | Each Hospital Node | Encounters, medications, and lab reports **held by that organization only**, written by its own clinicians. |
@@ -37,6 +37,8 @@ The split mirrors ownership: clinical records live in the file of the organizati
 - These files are **not contracts**. API shapes are defined under [`contracts/`](../contracts/README.md) by HC-110 and later tickets; mock APIs (HC-115 to HC-117) should serve this data through those contracts.
 
 ## Canonical scenario
+
+The [cast and story map](../docs/planning/demo-scenario.md#cast-and-story-map-hc-240) (HC-240) is the reference for products: one identity per role, shown by its canonical name in every product, and the state of each step today.
 
 | Demo step | Data |
 |---|---|
