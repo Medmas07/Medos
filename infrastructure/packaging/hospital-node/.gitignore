@@ -1,0 +1,4 @@
+# Built packages and image archives are build outputs, never committed.
+dist/
+*.tar
+*.tar.gz

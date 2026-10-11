@@ -6,14 +6,18 @@ Mobile product for authorized clinician workflows serving physicians, nurses, an
 
 HC-031 Clinician dashboard is IMPLEMENTED at D1 in `Accueil`: a read-only summary of `clin-x`'s fictional authorized context on the canonical demo day (2026-10-10, `referenceDate` in [`demo-data/manifest.json`](../../../demo-data/manifest.json)), never the device clock. Four tiles count the day's scheduled appointments (2), the patients with an active access grant (2), unresolved alerts (3), and priority-queue entries (2), each opening its destination. Below them: the day's appointments in time order, unresolved alerts ordered by severity then recency, labelled fictional and advisory, and the priority queue in rank order with its reasons, labelled as a deterministic simulated method (MOCKED) and not clinical triage. Each section's `Voir` link opens its destination, whose content is still PLANNED. Figures are computed from presentation fixtures copied from `clinician.json`, `access.json`, and `people.json`; nothing is fetched, stored, ranked, or triaged by the app. Checked on the same emulator (Pixel 8, API 34): all sections render without overflow, and a `Voir` link opens its destination.
 
-IMPLEMENTED at D1 for HC-030: a Flutter Android shell provides five navigable destinations plus explicit content, loading, empty, and error states. It uses the fictional HC-005 clinician `clin-x` (Dr Youssef Gharbi, Cardiologie, Hôpital Universitaire Bab Ennour) in a simulated session and permanently labels demo content. Each other destination's content is PLANNED and names the ticket that will deliver it:
+IMPLEMENTED at D1 for HC-030: a Flutter Android shell provides five navigable destinations plus explicit content, loading, empty, and error states. It uses the fictional HC-005 clinician `clin-x` (Dr Youssef Gharbi, Cardiologie, Hôpital Universitaire Bab Ennour) in a simulated session and permanently labels demo content. Each destination's status and the tickets that deliver its content:
+
+HC-037 Recording consent UX is MOCKED at D1 in the Consultation destination. For fictional Patient A (`pat-a`, Leïla Mansouri), the clinician must confirm that the recording purpose, human review, and right to refuse or stop were explained before recording consent. Grant, refusal, and withdrawal/reconsideration states are reviewable. The decision is widget-local and session-only; no microphone is activated, no audio or consent is persisted, and no API is called. Real audio capture and the remaining consultation workflow stay PLANNED.
+
+HC-038 Speech-to-text consultation UX is MOCKED at D1 after recording consent. The clinician starts and stops a visibly simulated recording, sees deterministic transcription progress, then reviews the predefined fictional `script-a-2026-10-10` transcript from `demo-data/clinician.json`, with speaker attribution and a permanent MOCKED label. There is no microphone permission, audio capture, speech model, network call, persistence, or clinical extraction. Withdrawing consent hides and cancels the speech-to-text flow.
 
 | Destination | Planned content |
 |---|---|
 | `Accueil` | Clinician dashboard, IMPLEMENTED at D1 (HC-031, see above). |
 | `File` | Priority patient queue (HC-032) and its explanation (HC-044). |
 | `Patients` | Authorized patient list, patient detail, and federated history (HC-033 to HC-035). |
-| `Consultation` | Consultation workspace, recording consent, speech-to-text, adaptive intake, AI extraction and lab review, medication warning (HC-036 to HC-042). |
+| `Consultation` | Recording consent and speech-to-text UX are MOCKED (HC-037, HC-038); consultation workspace, real audio capture/transcription, adaptive intake, AI extraction and lab review, and medication warning remain PLANNED (HC-036, HC-039 to HC-042). |
 | `Alertes` | Clinician alert center (HC-043). |
 
 The profile sheet (app bar avatar) shows the fictional identity and states that the session is simulated: there is no authentication or authorization. The flask menu switches the current destination between content, loading, empty, and error states; navigating returns to content.

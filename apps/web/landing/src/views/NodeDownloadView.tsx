@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Alert, Badge, Button, Card, DemoBadge, EmptyState, PageHeader } from '@hackcure/design-system'
+import { Alert, Badge, Button, Card, DemoBadge, EmptyState, PageHeader, type Tone } from '@hackcure/design-system'
 import { formatSize } from '../services/documentService'
 import { nodeConfiguration } from '../services/nodeConfigService'
 import {
@@ -7,6 +7,7 @@ import {
   NOT_INCLUDED,
   PREPARATION_STEPS,
   preparePackage,
+  type PackageItem,
   type PreparedPackage,
 } from '../services/nodePackageService'
 import { formatDateTime } from '../presentation'
@@ -18,6 +19,12 @@ interface NodeDownloadViewProps {
   consumeSimulatedFailure: () => boolean
   onUpdated: (snapshot: OnboardingSnapshot) => void
   onNavigate: (step: StepId) => void
+}
+
+const ITEM_STATUS: Record<PackageItem['status'], { label: string; tone: Tone }> = {
+  open: { label: 'Non décidé', tone: 'warning' },
+  planned: { label: 'Prévu', tone: 'neutral' },
+  installation_package: { label: "Dans le package d'installation", tone: 'info' },
 }
 
 const INCLUDED = [
@@ -143,9 +150,7 @@ export function NodeDownloadView({ snapshot, consumeSimulatedFailure, onUpdated,
             <ul className="space-y-3">
               {NOT_INCLUDED.map((item) => (
                 <li key={item.item} className="flex flex-col items-start gap-1">
-                  <Badge tone={item.status === 'open' ? 'warning' : 'neutral'}>
-                    {item.status === 'open' ? 'Non décidé' : 'Prévu'}
-                  </Badge>
+                  <Badge tone={ITEM_STATUS[item.status].tone}>{ITEM_STATUS[item.status].label}</Badge>
                   <span className="text-slate-700">{item.note}</span>
                 </li>
               ))}

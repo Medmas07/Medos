@@ -4,7 +4,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hackcure_clinician/app/clinician_app.dart';
+import 'package:hackcure_clinician/demo/canonical_consultation.dart';
 import 'package:hackcure_clinician/demo/canonical_clinician.dart';
+import 'package:hackcure_clinician/presentation/recording_consent_view.dart';
 
 void main() {
   testWidgets('shows the D1 demo boundary and canonical fictional clinician', (
@@ -49,8 +51,8 @@ void main() {
     expect(find.text('PLANNED'), findsOneWidget);
 
     await _tapTab(tester, 'Consultation');
-    expect(find.text('Espace de consultation'), findsOneWidget);
-    expect(find.textContaining('brouillon à valider'), findsOneWidget);
+    expect(find.text('Consentement à l’enregistrement'), findsOneWidget);
+    expect(find.text('Décision requise'), findsOneWidget);
 
     await _tapTab(tester, 'Alertes');
     expect(find.text('Centre d’alertes'), findsOneWidget);
@@ -92,6 +94,103 @@ void main() {
     expect(find.text('Centre d’alertes'), findsOneWidget);
   });
 
+  testWidgets('requires an explanation before recording consent', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const ClinicianApp());
+    await _tapTab(tester, 'Consultation');
+
+    final grant = find.byKey(const ValueKey('recording-consent-grant'));
+    expect(tester.widget<FilledButton>(grant).onPressed, isNull);
+
+    final confirmation = find.byType(CheckboxListTile);
+    await tester.drag(find.byType(ListView), const Offset(0, -260));
+    await tester.pumpAndSettle();
+    await tester.tap(confirmation);
+    await tester.pump();
+    expect(tester.widget<FilledButton>(grant).onPressed, isNotNull);
+
+    await tester.ensureVisible(grant);
+    await tester.tap(grant);
+    await tester.pump();
+    expect(
+      find.text('Consentement consigné pour cette session'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('sans activer le microphone'), findsOneWidget);
+
+    final withdraw = find.text('Retirer le consentement');
+    await tester.ensureVisible(withdraw);
+    await tester.tap(withdraw);
+    await tester.pump();
+    expect(find.text('Décision requise'), findsOneWidget);
+  });
+
+  testWidgets('blocks recording when the fictional patient declines', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const ClinicianApp());
+    await _tapTab(tester, 'Consultation');
+
+    final decline = find.byKey(const ValueKey('recording-consent-decline'));
+    await tester.drag(find.byType(ListView), const Offset(0, -260));
+    await tester.pumpAndSettle();
+    await tester.tap(decline);
+    await tester.pump();
+
+    expect(find.text('Enregistrement bloqué'), findsOneWidget);
+    expect(find.textContaining('Aucun son n’est capturé'), findsOneWidget);
+    expect(find.text('Enregistrement refusé'), findsOneWidget);
+  });
+
+  testWidgets(
+    'simulates recording progress and displays the fixture transcript',
+    (tester) async {
+      await tester.pumpWidget(const ClinicianApp());
+      await _grantRecordingConsent(tester);
+
+      final start = find.byKey(const ValueKey('start-speech-demo'));
+      await tester.ensureVisible(start);
+      await tester.tap(start);
+      await tester.pump();
+      expect(find.text('Enregistrement simulé'), findsOneWidget);
+      expect(find.textContaining('aucun son capturé'), findsOneWidget);
+
+      final stop = find.byKey(const ValueKey('stop-speech-demo'));
+      await tester.ensureVisible(stop);
+      await tester.tap(stop);
+      await tester.pump();
+      expect(find.text('Transcription simulée en cours'), findsOneWidget);
+
+      await tester.pump(const Duration(milliseconds: 700));
+      await tester.pumpAndSettle();
+      expect(find.text('Transcription simulée'), findsOneWidget);
+      expect(find.text('MOCKED'), findsOneWidget);
+      expect(find.text(demoTranscriptSegments.first.text), findsOneWidget);
+      expect(find.text(demoTranscriptSegments.last.text), findsOneWidget);
+    },
+  );
+
+  testWidgets('withdrawing consent cancels and hides speech-to-text', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const ClinicianApp());
+    await _grantRecordingConsent(tester);
+
+    final start = find.byKey(const ValueKey('start-speech-demo'));
+    await tester.ensureVisible(start);
+    await tester.tap(start);
+    await tester.pump();
+
+    final withdraw = find.text('Retirer le consentement');
+    await tester.ensureVisible(withdraw);
+    await tester.tap(withdraw);
+    await tester.pump();
+
+    expect(find.text('Décision requise'), findsOneWidget);
+    expect(find.byKey(const ValueKey('stop-speech-demo')), findsNothing);
+  });
+
   test('the presentation fixture matches the canonical HC-005 data', () {
     final people = _readDemoData('people.json');
     final organizations = _readDemoData('organizations.json');
@@ -111,6 +210,36 @@ void main() {
       (o) => o['id'] == demoClinician.organizationId,
     );
     expect(organization['name'], demoClinician.organizationName);
+
+    final patient = (people['patients'] as List).firstWhere(
+      (p) => p['id'] == demoConsultationPatientId,
+    );
+    expect(
+      '${patient['firstName']} ${patient['lastName']}',
+      demoConsultationPatientName,
+    );
+
+    final clinicianDemo = _readDemoData('clinician.json');
+    final script = (clinicianDemo['consultationScripts'] as List).firstWhere(
+      (s) => s['id'] == demoConsultationScriptId,
+    );
+    expect(script['appointmentId'], demoConsultationAppointmentId);
+    expect(script['patientId'], demoConsultationPatientId);
+    expect(script['recordingConsent'], 'accepted');
+    expect(script['transcript']['mocked'], isTrue);
+    final canonicalSegments = script['transcript']['segments'] as List;
+    expect(canonicalSegments, hasLength(demoTranscriptSegments.length));
+    for (var index = 0; index < demoTranscriptSegments.length; index += 1) {
+      expect(canonicalSegments[index]['id'], demoTranscriptSegments[index].id);
+      expect(
+        (canonicalSegments[index]['text'] as String).replaceAll("'", '’'),
+        demoTranscriptSegments[index].text,
+      );
+      expect(
+        canonicalSegments[index]['speaker'],
+        demoTranscriptSegments[index].speaker,
+      );
+    }
   });
 }
 
@@ -133,4 +262,16 @@ Future<void> _selectDemoState(WidgetTester tester, String label) async {
   await tester.tap(find.text(label));
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 250));
+}
+
+Future<void> _grantRecordingConsent(WidgetTester tester) async {
+  await _tapTab(tester, 'Consultation');
+  await tester.drag(find.byType(ListView), const Offset(0, -260));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byType(CheckboxListTile));
+  await tester.pump();
+  final grant = find.byKey(const ValueKey('recording-consent-grant'));
+  await tester.ensureVisible(grant);
+  await tester.tap(grant);
+  await tester.pumpAndSettle();
 }

@@ -49,9 +49,9 @@ describe('Hospital Node download page: demo package', () => {
     const manifest = buildManifest(await load('decision-approved'), now.toISOString())!
     expect(manifest.fictional).toBe(true)
     expect(manifest.notIncluded.map((i) => [i.item, i.status])).toEqual([
-      ['containerImages', 'open'],
+      ['containerImages', 'installation_package'],
       ['nodeIdentity', 'planned'],
-      ['installationHelper', 'planned'],
+      ['installationHelper', 'installation_package'],
     ])
     expect(manifest.notIncluded).toBe(NOT_INCLUDED)
     const text = JSON.stringify(manifest).toLowerCase()
