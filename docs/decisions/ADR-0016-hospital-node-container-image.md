@@ -1,4 +1,4 @@
-# ADR-0015: Hospital Node container image — one OCI image, hospital configuration and data mounted at runtime
+# ADR-0016: Hospital Node container image — one OCI image, hospital configuration and data mounted at runtime
 
 ## Status
 
@@ -45,7 +45,7 @@ Forces:
 
 - The container is a process boundary, not a security certification. Callers are still unauthenticated, persistence is still absent, and nothing here makes the Node production-ready.
 - Hospital configuration files and data mounts must be written per hospital. The demo container configurations duplicate the identity and port of the demo configurations; a test keeps them in sync.
-- The image is about 290 MB, because `fastapi[standard]` brings development-server dependencies the Node does not need in production.
+- The image is about 310 MB, largely because `fastapi[standard]` brings development-server dependencies the Node does not need in production.
 - No image registry, signing, or software bill of materials yet: the image is built locally.
 
 ## Follow-up

@@ -81,6 +81,17 @@ class NodeQueryRequest(_Wire):
     purpose: Annotated[str, Field(min_length=1, max_length=200)]
     requested_by: _Requester
     authorization: _Authorization
+    # HC-214: the Governance Node's signed authorization, passed on unchanged.
+    signed_authorization: (
+        Annotated[
+            str,
+            Field(
+                max_length=4096,
+                pattern=r"^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$",
+            ),
+        ]
+        | None
+    ) = None
 
     def to_query(self) -> HistoryQuery:
         return HistoryQuery(
@@ -96,6 +107,7 @@ class NodeQueryRequest(_Wire):
                 self.authorization.ref,
                 self.authorization.expires_at,
             ),
+            signed_authorization=self.signed_authorization,
         )
 
 

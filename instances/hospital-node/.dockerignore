@@ -1,5 +1,5 @@
 # HC-220: the image holds the Node's code only. Hospital configuration and data are
-# mounted at runtime (ADR-0015), so demo configurations and tests stay out.
+# mounted at runtime (ADR-0016), so demo configurations and tests stay out.
 **/__pycache__/
 **/*.pyc
 .venv/

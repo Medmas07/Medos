@@ -32,7 +32,7 @@ from domain.node_capabilities import NodeDescriptor, NodeStatus
 
 
 def query_to_wire(query: NodeQuery) -> dict:
-    return {
+    wire = {
         "query_id": query.query_id,
         "patient_ref": query.patient_ref,
         "scope": sorted(item.value for item in query.scope),
@@ -47,6 +47,10 @@ def query_to_wire(query: NodeQuery) -> dict:
             "expires_at": query.authorization.expires_at.isoformat(),
         },
     }
+    if query.signed_authorization is not None:
+        # HC-214: unchanged, as the Governance Node signed it.
+        wire["signed_authorization"] = query.signed_authorization
+    return wire
 
 
 class InvalidNodeAnswer(NodeUnavailable):

@@ -1,0 +1,13 @@
+{
+  "notice": "Hospital B's fictional demo configuration that verifies Governance-signed synchronization authorizations (HC-214) instead of the fictional decisions. It trusts the public key written by the Governance Node's auth/create_signing_key.py; in production that key is distributed out of band. Same identity and port as hospital-b.demo.json: run one or the other. Not a production configuration.",
+  "node_ref": "node-hospital-b",
+  "organization_ref": "org-hospital-b",
+  "port": 8102,
+  "storage_dir": "../.storage/hospital-b",
+  "mock_clinical_records": "../../../demo-data/records/hospital-b.json",
+  "mock_access_grants": "../../../demo-data/access.json",
+  "mock_governance_decisions": "../../../demo-data/governance.json",
+  "mock_medication_rules": "../../../demo-data/medication-rules.json",
+  "governance_public_key": "../../governance-node/auth/.signing-key.pub.pem",
+  "governance_organization_ref": "org-governance"
+}

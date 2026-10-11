@@ -1,4 +1,5 @@
 import json
+from dataclasses import replace
 
 import httpx
 import pytest
@@ -42,6 +43,26 @@ def test_posts_the_contract_request_to_the_registered_url():
     assert request_schema.is_valid(body)
     assert body["query_id"] == QUERY.query_id
     assert [e.entry_ref for e in answer.entries] == ["med-b-leila-coagulix"]
+    assert "signed_authorization" not in body
+
+
+def test_passes_the_signed_authorization_on_unchanged():
+    # HC-214: the token of the Governance Node's 1.2.0 example, as received.
+    token = contract("sync-authorization-check.v1.yaml")["paths"][
+        "/v1/synchronization-authorizations/{decision_ref}/checks"
+    ]["post"]["responses"]["200"]["content"]["application/json"]["examples"][
+        "authorizedSigned"
+    ]["value"]["signed_authorization"]
+    seen = []
+
+    def handler(request):
+        seen.append(json.loads(request.content))
+        return httpx.Response(200, json=FOUND)
+
+    client(handler).query(B, replace(QUERY, signed_authorization=token))
+
+    assert seen[0]["signed_authorization"] == token
+    assert request_schema.is_valid(seen[0])
 
 
 @pytest.mark.parametrize(

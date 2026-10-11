@@ -1,4 +1,4 @@
-# Demo Hospital Nodes as containers (HC-220, ADR-0015).
+# Demo Hospital Nodes as containers (HC-220, ADR-0016).
 #
 # One image, one container per hospital (ADR-0003). Each container gets only its own
 # configuration and its own fictional records, mounted read-only; no container sees

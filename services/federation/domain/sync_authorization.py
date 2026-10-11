@@ -29,6 +29,9 @@ class SyncAuthorization:
     scope: frozenset[ScopeItem]
     purpose: str
     valid_until: datetime
+    # The Governance Node's signed statement of it (HC-214), when it signs: passed on
+    # unchanged to the target nodes, which verify it themselves.
+    signed_authorization: str | None = None
 
     def __post_init__(self) -> None:
         if not self.target_organization_refs or not self.scope:

@@ -1,4 +1,4 @@
-# Hospital Node container image (HC-220, ADR-0015).
+# Hospital Node container image (HC-220, ADR-0016).
 #
 # One image for every hospital: it holds the Node's code and pinned dependencies only.
 # Each hospital's configuration and data are mounted at runtime, read-only, under

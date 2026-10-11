@@ -19,6 +19,7 @@ from adapters.outbound.fixture_authorization_verifier import (
     FixtureAuthorizationVerifier,
 )
 from adapters.outbound.ai_services_warning_explainer import AiServicesWarningExplainer
+from adapters.outbound.ed25519_authorization_reader import Ed25519AuthorizationReader
 from adapters.outbound.fixture_clinical_repository import FixtureClinicalRepository
 from adapters.outbound.fixture_interaction_rules import FixtureInteractionRuleSource
 from adapters.outbound.validated_snapshot_rules import (
@@ -32,6 +33,10 @@ from adapters.outbound.in_memory_research_execution_store import (
 )
 from adapters.outbound.fixture_research_data_source import FixtureResearchDataSource
 from adapters.outbound.isolated_research_sandbox import IsolatedResearchSandbox
+from application.authorization_verifier import (
+    AuthorizationVerifier,
+    SignedDecisionVerifier,
+)
 from application.check_medication_safety import CheckMedicationSafety
 from application.research_execution_agent import ResearchExecutionAgent
 from application.get_node_status import NODE_VERSION
@@ -59,11 +64,22 @@ def create_app(
     # MOCKED (HC-115): seeded from fictional grants; changes are kept in memory only.
     access_grants = InMemoryAccessGrantStore.load(config.mock_access_grants)
     # MOCKED (HC-114): fictional decisions and the grant store stand in for Governance.
-    verifier = FixtureAuthorizationVerifier.load(
+    verifier: AuthorizationVerifier = FixtureAuthorizationVerifier.load(
         access_grants,
         config.mock_governance_decisions,
         config.identity.organization_ref,
     )
+    synchronization_decisions = "fixture"
+    if config.governance_public_key:
+        # HC-214: synchronization decisions only with a Governance-signed authorization,
+        # verified here; patient access grants still from this node's grant store.
+        verifier = SignedDecisionVerifier(
+            Ed25519AuthorizationReader.load(config.governance_public_key),
+            config.governance_organization_ref,
+            config.identity.organization_ref,
+            others=verifier,
+        )
+        synchronization_decisions = "signed"
     # HC-116: real events of the queries handled, kept in memory (persistence is OPEN).
     audit_log = InMemoryAuditLog()
     research_data = FixtureResearchDataSource(config.identity, repository)
@@ -80,7 +96,9 @@ def create_app(
         # MOCKED (HC-162): fictional deterministic rules for the canonical demo.
         rule_source = FixtureInteractionRuleSource.load(config.mock_medication_rules)
     app = FastAPI(title="Hospital Node", version=NODE_VERSION)
-    app.include_router(create_health_router(config.identity, repository))
+    app.include_router(
+        create_health_router(config.identity, repository, synchronization_decisions)
+    )
     app.include_router(
         create_federation_router(
             config.identity, repository, verifier, audit_log, clock

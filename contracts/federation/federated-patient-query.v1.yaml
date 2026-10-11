@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Federated Patient Query
-  version: 1.3.0
+  version: 1.3.1
   description: |
     Contract HC-140, version 1. The Federation Service interface that
     consumers such as the Clinician App and Patient App use to get one
@@ -51,6 +51,11 @@ info:
     unreachable, or answered discovery badly is still asked, so missing or
     stale discovery never hides a source. A `not_asked` node makes the
     result `partial`. Run discovery again after a node changes.
+
+    Signed authorization (1.3.1, HC-214): when the Governance Node signs,
+    its check answer carries a short-lived `signed_authorization`, which the
+    service passes on unchanged to each node it asks, for the node to
+    verify on its own. Callers of this contract never see or send it.
 
     Failure handling (1.3, HC-147), for real node calls: a node that cannot
     be reached, answers `503`, or times out is retried once after a short
@@ -509,8 +514,9 @@ components:
       description: |
         The Governance-backed basis for the query. A reference, not a
         credential. The Federation Service checks synchronization decisions
-        with the Governance Node (sync-authorization-check.v1, HC-144);
-        credentials and node-side verification are OPEN.
+        with the Governance Node (sync-authorization-check.v1, HC-144); the
+        Governance Node's signed authorization, when it signs, travels
+        beside it to the nodes (hospital-node-federation.v1 1.1.0, HC-214).
       type: object
       additionalProperties: false
       required: [basis, ref, expires_at]
