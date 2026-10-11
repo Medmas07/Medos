@@ -15,11 +15,12 @@ def test_health_reports_skeleton_status():
     assert response.json() == {
         "status": "ok",
         "service": "ai-services",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "capabilities": [
             "clinical-extraction:mocked",
             "hospital-document-review:mocked",
             "lab-extraction:mocked",
+            "medication-warning-explanation:template",
         ],
         "notice": ADVISORY_NOTICE,
     }
@@ -34,6 +35,7 @@ def test_model_mode_reports_model_capability():
         "clinical-extraction:model",
         "hospital-document-review:model",
         "lab-extraction:model",
+        "medication-warning-explanation:model",
     ]
 
 
@@ -48,6 +50,7 @@ def test_each_capability_has_its_own_mode():
         "clinical-extraction:model",
         "hospital-document-review:mocked",
         "lab-extraction:model",
+        "medication-warning-explanation:model",
     ]
 
 

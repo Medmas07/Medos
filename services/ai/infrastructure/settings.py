@@ -21,6 +21,11 @@ class LabMode(StrEnum):
     FIXTURE = "fixture"  # fixed results for the demo report (MOCKED), no model call
 
 
+class ExplanationMode(StrEnum):
+    MODEL = "model"  # real providers, model text checked, template when it fails
+    TEMPLATE = "template"  # deterministic template only, no model call
+
+
 class ProviderName(StrEnum):
     CLAUDE = "claude"
     OLLAMA = "ollama"
@@ -33,6 +38,8 @@ class Settings:
     review_mode: ReviewMode = ReviewMode.MODEL
     # HC-155: lab result extraction.
     lab_mode: LabMode = LabMode.MODEL
+    # HC-156: medication warning explanation.
+    explanation_mode: ExplanationMode = ExplanationMode.MODEL
     providers: tuple[ProviderName, ...] = (ProviderName.CLAUDE, ProviderName.OLLAMA)
     claude_model: str = "claude-opus-5-5"
     ollama_model: str = "qwen2.5:3b"
@@ -49,6 +56,9 @@ def load_settings(env: Mapping[str, str] = os.environ) -> Settings:
         ),
         review_mode=ReviewMode(env.get("AI_REVIEW_MODE", defaults.review_mode)),
         lab_mode=LabMode(env.get("AI_LAB_MODE", defaults.lab_mode)),
+        explanation_mode=ExplanationMode(
+            env.get("AI_EXPLANATION_MODE", defaults.explanation_mode)
+        ),
         providers=tuple(
             ProviderName(p.strip()) for p in providers.split(",") if p.strip()
         )

@@ -8,6 +8,9 @@ from adapters.inbound.http.clinical_extraction import (
 )
 from adapters.inbound.http.clinical_extraction import register_problem_handler
 from adapters.inbound.http.health import create_health_router
+from adapters.inbound.http.medication_explanation import (
+    create_router as create_medication_explanation_router,
+)
 from adapters.inbound.http.lab_extraction import (
     create_router as create_lab_extraction_router,
 )
@@ -27,15 +30,22 @@ from application.extract_clinical_information import (
 )
 from application.fallback_ai_provider import FallbackAiProvider
 from application.get_service_status import SERVICE_VERSION
+from application.explain_medication_warning import (
+    ExplainMedicationWarning,
+    TemplateExplainer,
+    WarningExplainer,
+)
 from application.extract_lab_results import ExtractLabResults, LabExtractor
 from application.model_clinical_extractor import ModelClinicalExtractor
 from application.model_lab_extractor import ModelLabExtractor
+from application.model_warning_explainer import ModelWarningExplainer
 from application.model_document_reviewer import ModelDocumentReviewer
 from application.review_hospital_documents import (
     DocumentReviewer,
     ReviewHospitalDocuments,
 )
 from infrastructure.settings import (
+    ExplanationMode,
     ExtractionMode,
     LabMode,
     ProviderName,
@@ -63,6 +73,7 @@ def create_app(settings: Settings) -> FastAPI:
     extractor: ClinicalExtractor
     reviewer: DocumentReviewer
     lab_extractor: LabExtractor
+    explainer: WarningExplainer
     model_chain = FallbackAiProvider(
         [_provider(n, settings) for n in settings.providers]
     )
@@ -88,7 +99,14 @@ def create_app(settings: Settings) -> FastAPI:
     else:
         lab_extractor = ModelLabExtractor(model_chain)
         lab = "lab-extraction:model"
-    capabilities = (extraction, review, lab)
+    # HC-156: a template explanation is deterministic, not a mock of the model.
+    if settings.explanation_mode is ExplanationMode.TEMPLATE:
+        explainer = TemplateExplainer()
+        explanation = "medication-warning-explanation:template"
+    else:
+        explainer = ModelWarningExplainer(model_chain)
+        explanation = "medication-warning-explanation:model"
+    capabilities = (extraction, review, lab, explanation)
 
     app = FastAPI(title="AI Services", version=SERVICE_VERSION)
     app.include_router(create_health_router(capabilities))
@@ -107,6 +125,13 @@ def create_app(settings: Settings) -> FastAPI:
     app.include_router(
         create_lab_extraction_router(
             ExtractLabResults(extractor=lab_extractor, clock=lambda: datetime.now(UTC))
+        )
+    )
+    app.include_router(
+        create_medication_explanation_router(
+            ExplainMedicationWarning(
+                explainer=explainer, clock=lambda: datetime.now(UTC)
+            )
         )
     )
     app.include_router(create_ai_provider_router(ai_provider))
