@@ -7,6 +7,7 @@ import 'package:hackcure_clinician/app/clinician_app.dart';
 import 'package:hackcure_clinician/demo/canonical_alerts.dart';
 import 'package:hackcure_clinician/demo/canonical_consultation.dart';
 import 'package:hackcure_clinician/demo/canonical_clinician.dart';
+import 'package:hackcure_clinician/demo/canonical_medication_warning.dart';
 import 'package:hackcure_clinician/presentation/recording_consent_view.dart';
 
 void main() {
@@ -200,7 +201,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 700));
       await tester.pumpAndSettle();
       expect(find.text('Transcription simulée'), findsOneWidget);
-      expect(find.text('MOCKED'), findsOneWidget);
+      expect(find.text('MOCKED'), findsWidgets);
       expect(find.text(demoTranscriptSegments.first.text), findsOneWidget);
       expect(find.text(demoTranscriptSegments.last.text), findsOneWidget);
     },
@@ -218,12 +219,43 @@ void main() {
     await tester.pump();
 
     final withdraw = find.text('Retirer le consentement');
-    await tester.ensureVisible(withdraw);
+    await tester.drag(find.byType(ListView), const Offset(0, 700));
+    await tester.pumpAndSettle();
     await tester.tap(withdraw);
     await tester.pump();
 
     expect(find.text('Décision requise'), findsOneWidget);
     expect(find.byKey(const ValueKey('stop-speech-demo')), findsNothing);
+  });
+
+  testWidgets('shows deterministic medication warning and clinician review', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const ClinicianApp());
+    await _grantRecordingConsent(tester);
+
+    final runCheck = find.byKey(const ValueKey('run-medication-check'));
+    await _scrollToBottom(tester);
+    await tester.tap(runCheck);
+    await tester.pump();
+    expect(find.text('Vérification déterministe simulée'), findsOneWidget);
+    expect(find.textContaining('Aucun LLM'), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 650));
+    await tester.pumpAndSettle();
+    expect(find.text('Interaction majeure à examiner'), findsOneWidget);
+    expect(find.text(demoMedicationWarning.effect), findsOneWidget);
+    expect(
+      find.textContaining(demoMedicationWarning.conflictingOrganizationName),
+      findsOneWidget,
+    );
+    expect(find.textContaining('n’autorise ni ne bloque'), findsOneWidget);
+
+    final review = find.byKey(const ValueKey('review-medication-warning'));
+    await _scrollToBottom(tester);
+    await tester.tap(review);
+    await tester.pumpAndSettle();
+    expect(find.text('Alerte examinée par le clinicien'), findsOneWidget);
   });
 
   test('the presentation fixture matches the canonical HC-005 data', () {
@@ -300,6 +332,78 @@ void main() {
         preview.patientName,
       );
     }
+
+    final medicationRules = _readDemoData('medication-rules.json');
+    final medications = medicationRules['medications'] as List;
+    final proposed = medications.firstWhere(
+      (medication) => medication['code'] == demoMedicationWarning.proposedCode,
+    );
+    final conflicting = medications.firstWhere(
+      (medication) =>
+          medication['code'] == demoMedicationWarning.conflictingCode,
+    );
+    expect(proposed['name'], demoMedicationWarning.proposedName);
+    expect(conflicting['name'], demoMedicationWarning.conflictingName);
+
+    final rule = (medicationRules['interactionRules'] as List).firstWhere(
+      (entry) => entry['id'] == demoMedicationWarning.ruleId,
+    );
+    expect(rule['severity'], demoMedicationWarning.severity);
+    expect(rule['effect'], demoMedicationWarning.effect);
+    expect(rule['recommendation'], demoMedicationWarning.recommendation);
+    expect(
+      medicationRules['ruleSet']['name'],
+      demoMedicationWarning.ruleSetName,
+    );
+    expect(
+      medicationRules['ruleSet']['version'],
+      demoMedicationWarning.ruleSetVersion,
+    );
+    expect(medicationRules['ruleSet']['validated'], isFalse);
+
+    final checkCase = (medicationRules['checkCases'] as List).firstWhere(
+      (entry) => entry['id'] == demoMedicationWarning.checkId,
+    );
+    expect(checkCase['patientId'], demoMedicationWarning.patientId);
+    expect(
+      checkCase['proposedMedicationCode'],
+      demoMedicationWarning.proposedCode,
+    );
+    expect(
+      checkCase['expectedWarnings'][0]['conflictingStatementId'],
+      demoMedicationWarning.conflictingStatementId,
+    );
+
+    expect(
+      script['plannedPrescription']['medicationCode'],
+      demoMedicationWarning.proposedCode,
+    );
+    expect(
+      script['plannedPrescription']['dosage'],
+      demoMedicationWarning.proposedDosage,
+    );
+
+    final hospitalB = _readDemoData('records/hospital-b.json');
+    final statement = (hospitalB['medications'] as List).firstWhere(
+      (entry) => entry['id'] == demoMedicationWarning.conflictingStatementId,
+    );
+    expect(statement['medicationCode'], demoMedicationWarning.conflictingCode);
+    expect(statement['dosage'], demoMedicationWarning.conflictingDosage);
+    expect(statement['status'], 'active');
+    expect(
+      hospitalB['heldBy'],
+      demoMedicationWarning.conflictingOrganizationId,
+    );
+
+    final sourceOrganization = (organizations['organizations'] as List)
+        .firstWhere(
+          (entry) =>
+              entry['id'] == demoMedicationWarning.conflictingOrganizationId,
+        );
+    expect(
+      sourceOrganization['name'],
+      demoMedicationWarning.conflictingOrganizationName,
+    );
   });
 }
 
@@ -333,5 +437,10 @@ Future<void> _grantRecordingConsent(WidgetTester tester) async {
   final grant = find.byKey(const ValueKey('recording-consent-grant'));
   await tester.ensureVisible(grant);
   await tester.tap(grant);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _scrollToBottom(WidgetTester tester) async {
+  await tester.drag(find.byType(ListView), const Offset(0, -1200));
   await tester.pumpAndSettle();
 }
