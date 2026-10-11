@@ -544,6 +544,7 @@ class _GrantAccessDialogState extends State<_GrantAccessDialog> {
           children: [
             DropdownButtonFormField<String>(
               initialValue: _physician,
+              isExpanded: true,
               decoration: const InputDecoration(labelText: 'Médecin'),
               items: const [
                 DropdownMenuItem(value: 'Dr Rania Kefi', child: Text('Dr Rania Kefi')),
@@ -554,11 +555,15 @@ class _GrantAccessDialogState extends State<_GrantAccessDialog> {
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _scope,
+              isExpanded: true,
               decoration: const InputDecoration(labelText: 'Portée'),
               items: const [
                 DropdownMenuItem(
                   value: 'Parcours, médicaments, laboratoires',
-                  child: Text('Parcours + médicaments + laboratoires'),
+                  child: Text(
+                    'Parcours + médicaments + laboratoires',
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 DropdownMenuItem(value: 'Parcours', child: Text('Parcours uniquement')),
               ],
@@ -567,6 +572,7 @@ class _GrantAccessDialogState extends State<_GrantAccessDialog> {
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _duration,
+              isExpanded: true,
               decoration: const InputDecoration(labelText: 'Durée'),
               items: const [
                 DropdownMenuItem(value: '30 jours', child: Text('30 jours')),
@@ -719,6 +725,7 @@ class _DelegateAccessDialogState extends State<_DelegateAccessDialog> {
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _relationship,
+              isExpanded: true,
               decoration: const InputDecoration(labelText: 'Lien'),
               items: const [
                 DropdownMenuItem(value: 'Fils', child: Text('Fils')),
@@ -731,6 +738,7 @@ class _DelegateAccessDialogState extends State<_DelegateAccessDialog> {
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _scope,
+              isExpanded: true,
               decoration: const InputDecoration(labelText: 'Portée'),
               items: const [
                 DropdownMenuItem(
@@ -744,6 +752,7 @@ class _DelegateAccessDialogState extends State<_DelegateAccessDialog> {
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _duration,
+              isExpanded: true,
               decoration: const InputDecoration(labelText: 'Durée'),
               items: const [
                 DropdownMenuItem(
