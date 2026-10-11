@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../demo/canonical_clinician.dart';
 import 'clinician_labels.dart';
 import 'clinician_theme.dart';
+import 'patient_detail_screen.dart';
 
 /// Priority patient queue (HC-032, D1): `clin-x`'s fictional queue in rank
 /// order with hard-coded deterministic priorities and their visible reasons.
@@ -165,6 +166,14 @@ class _QueueEntryCard extends StatelessWidget {
                 text: grant == null
                     ? 'Aucun accès actif ce jour'
                     : 'Accès autorisé jusqu’au ${formatDemoDate(grant.expiresAt.substring(0, 10))}',
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () => openPatientDetail(context, entry.patientId),
+                  icon: const Icon(Icons.person_search_outlined),
+                  label: const Text('Ouvrir la fiche'),
+                ),
               ),
             ],
           ),

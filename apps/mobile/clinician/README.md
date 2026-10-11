@@ -4,6 +4,8 @@
 
 Mobile product for authorized clinician workflows serving physicians, nurses, and clinics.
 
+HC-034 Clinician patient detail is IMPLEMENTED at D1: a `Fiche patient` page opened from a dashboard appointment, alert, or queue row, or from `Ouvrir la fiche` on a queue entry (the `Patients` list is HC-033). For a fictional patient with an active grant to `clin-x` on the demo day it shows identity (sex, age on the demo day, city, federated id; no local hospital identifier), the authorized access (purpose, granted and expiry dates, scope as Consultations / Médicaments / Biologie, revocable by the patient, no copy of the hospital record), today's appointment, queue position with its reasons labelled MOCKED and not triage, and unresolved alerts labelled fictional and advisory; the federated history is PLANNED (HC-035). Without an active grant the page shows `Accès non autorisé` and nothing about the patient, not even a name. Checked on the emulator (Pixel 8, API 34).
+
 HC-032 Priority patient queue is IMPLEMENTED at D1 in `File`: `clin-x`'s fictional queue on the demo day in rank order, each entry with its patient, hard-coded priority (`Priorité élevée` / `moyenne`), fixed-weight demonstration score, visible reasons, the fixture alerts it comes from with their severity, and the expiry of the patient's active access grant. A notice labels the order a deterministic simulated method (MOCKED), hard-coded and without AI, not clinical triage, with the dataset's method description; the per-priority explanation is PLANNED (HC-044). The app displays the fixture's ranking and computes, ranks, or triages nothing. A test checks that every entry matches `demo-data/clinician.json`, has unique rank, concerns a patient with an active grant on the demo day, and cites only that patient's alerts. Checked on the emulator (Pixel 8, API 34).
 
 HC-031 Clinician dashboard is IMPLEMENTED at D1 in `Accueil`: a read-only summary of `clin-x`'s fictional authorized context on the canonical demo day (2026-10-10, `referenceDate` in [`demo-data/manifest.json`](../../../demo-data/manifest.json)), never the device clock. Four tiles count the day's scheduled appointments (2), the patients with an active access grant (2), unresolved alerts (3), and priority-queue entries (2), each opening its destination. Below them: the day's appointments in time order, unresolved alerts ordered by severity then recency, labelled fictional and advisory, and the priority queue in rank order with its reasons, labelled as a deterministic simulated method (MOCKED) and not clinical triage. Each section's `Voir` link opens its destination, whose content is still PLANNED. Figures are computed from presentation fixtures copied from `clinician.json`, `access.json`, and `people.json`; nothing is fetched, stored, ranked, or triaged by the app. Checked on the same emulator (Pixel 8, API 34): all sections render without overflow, and a `Voir` link opens its destination.
@@ -24,7 +26,7 @@ HC-039 Adaptive intake workflow is MOCKED at D1 in the Consultation destination.
 |---|---|
 | `Accueil` | Clinician dashboard, IMPLEMENTED at D1 (HC-031, see above). |
 | `File` | Priority patient queue, IMPLEMENTED at D1 (HC-032, see above); its explanation is PLANNED (HC-044). |
-| `Patients` | Authorized patient list, patient detail, and federated history (HC-033 to HC-035). |
+| `Patients` | Authorized patient list (HC-033) and federated history (HC-035) are PLANNED; the patient detail (HC-034, see above) already opens from the dashboard and the queue. |
 | `Consultation` | Recording consent, speech-to-text, adaptive intake, and medication interaction warning UX are MOCKED (HC-037 to HC-039, HC-042); consultation workspace, real audio capture/transcription, and AI extraction/lab review remain PLANNED (HC-036, HC-040, HC-041). |
 | `Alertes` | Clinician alert center is MOCKED with canonical fixtures and session-local review state (HC-043). |
 
@@ -54,9 +56,9 @@ PLANNED authorization, patient-view, consultation, extraction-review, medication
 ## Structure
 
 - `lib/app/`: Flutter composition root.
-- `lib/presentation/`: Material theme, application shell, navigation, reviewable states, the dashboard, the priority queue, and shared label helpers; `adaptive_intake_flow.dart` holds the intake's branching rules without Flutter.
-- `lib/demo/`: fictional presentation fixtures (identity, demo day, appointments, alerts, priority queue, access grants, patient names); no real patient or clinician data.
-- `test/`: widget tests for navigation, demo labelling, canonical identity, UI states, the dashboard's figures, order, labels, and links, the priority queue's order, reasons, linked alerts, and labels, and fixture consistency with `demo-data/`; unit tests for the adaptive intake's branching and answer pruning.
+- `lib/presentation/`: Material theme, application shell, navigation, reviewable states, the dashboard, the priority queue, the patient detail page, and shared label helpers and demo banner; `adaptive_intake_flow.dart` holds the intake's branching rules without Flutter.
+- `lib/demo/`: fictional presentation fixtures (identity, demo day, appointments, alerts, priority queue, access grants with scope and purpose, patients); no real patient or clinician data.
+- `test/`: widget tests for navigation, demo labelling, canonical identity, UI states, the dashboard's figures, order, labels, and links, the patient detail's sections, entry points, and no-access state, the priority queue's order, reasons, linked alerts, and labels, and fixture consistency with `demo-data/`; unit tests for the adaptive intake's branching and answer pruning.
 - `android/`: application-local Android infrastructure generated by Flutter.
 
 ## Commands

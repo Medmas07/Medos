@@ -4,6 +4,7 @@ import '../demo/canonical_clinician.dart';
 import 'clinician_alert_center.dart';
 import 'clinician_dashboard.dart';
 import 'clinician_destination.dart';
+import 'clinician_labels.dart';
 import 'clinician_theme.dart';
 import 'priority_queue_view.dart';
 import 'recording_consent_view.dart';
@@ -220,7 +221,7 @@ class _ContentView extends StatelessWidget {
     return ListView(
       key: ValueKey('content-${destination.name}'),
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-      children: [const _DemoBanner(), const SizedBox(height: 20), content],
+      children: [const DemoBanner(), const SizedBox(height: 20), content],
     );
   }
 }
@@ -322,37 +323,6 @@ class _PlannedContent extends StatelessWidget {
             const _StatusPill(label: 'PLANNED'),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _DemoBanner extends StatelessWidget {
-  const _DemoBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: ClinicianColors.demoSoft,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFDDD6FE)),
-      ),
-      child: const Row(
-        children: [
-          Icon(Icons.science_outlined, color: ClinicianColors.demo),
-          SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'DÉMO D1 · Données entièrement fictives',
-              style: TextStyle(
-                color: ClinicianColors.demo,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

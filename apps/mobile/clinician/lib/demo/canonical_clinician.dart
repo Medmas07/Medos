@@ -46,42 +46,86 @@ const demoClinician = CanonicalClinicianPreview(
 /// The dashboard is computed against it, never against the device clock.
 const demoReferenceDate = '2026-10-10';
 
-class CanonicalPatientName {
-  const CanonicalPatientName({
+class CanonicalPatient {
+  const CanonicalPatient({
     required this.id,
+    required this.federatedId,
     required this.firstName,
     required this.lastName,
+    required this.sex,
+    required this.birthDate,
+    required this.city,
   });
 
   final String id;
+  final String federatedId;
   final String firstName;
   final String lastName;
+  final String sex;
+  final String birthDate;
+  final String city;
 
   String get displayName => '$firstName $lastName';
+
+  String get initials => '${firstName[0]}${lastName[0]}';
+
+  /// Age in whole years on [date] (`YYYY-MM-DD`).
+  int ageOn(String date) {
+    final years =
+        int.parse(date.substring(0, 4)) - int.parse(birthDate.substring(0, 4));
+    final hadBirthday =
+        date.substring(5).compareTo(birthDate.substring(5)) >= 0;
+    return hadBirthday ? years : years - 1;
+  }
 }
 
-/// Names of the fictional patients appearing in `clin-x`'s demo data
-/// (`demo-data/people.json`).
-const demoPatients = <CanonicalPatientName>[
-  CanonicalPatientName(id: 'pat-a', firstName: 'Leïla', lastName: 'Mansouri'),
-  CanonicalPatientName(id: 'pat-b', firstName: 'Karim', lastName: 'Haddad'),
+/// The fictional patients appearing in `clin-x`'s demo data
+/// (`demo-data/people.json`). Local hospital identifiers are left out.
+const demoPatients = <CanonicalPatient>[
+  CanonicalPatient(
+    id: 'pat-a',
+    federatedId: 'FED-PAT-0001',
+    firstName: 'Leïla',
+    lastName: 'Mansouri',
+    sex: 'female',
+    birthDate: '1968-04-17',
+    city: 'Tunis',
+  ),
+  CanonicalPatient(
+    id: 'pat-b',
+    federatedId: 'FED-PAT-0002',
+    firstName: 'Karim',
+    lastName: 'Haddad',
+    sex: 'male',
+    birthDate: '1979-11-02',
+    city: 'Ariana',
+  ),
 ];
 
+CanonicalPatient demoPatientById(String patientId) =>
+    demoPatients.firstWhere((patient) => patient.id == patientId);
+
 String demoPatientName(String patientId) =>
-    demoPatients.firstWhere((patient) => patient.id == patientId).displayName;
+    demoPatientById(patientId).displayName;
 
 /// `clin-x`'s access grants (`demo-data/access.json`).
 class CanonicalAccessGrant {
   const CanonicalAccessGrant({
     required this.id,
     required this.patientId,
+    required this.scope,
+    required this.purpose,
     required this.status,
+    required this.grantedAt,
     required this.expiresAt,
   });
 
   final String id;
   final String patientId;
+  final List<String> scope;
+  final String purpose;
   final String status;
+  final String grantedAt;
   final String expiresAt;
 
   bool isActiveOn(String date) =>
@@ -92,13 +136,19 @@ const demoAccessGrants = <CanonicalAccessGrant>[
   CanonicalAccessGrant(
     id: 'grant-a-drx',
     patientId: 'pat-a',
+    scope: ['encounters', 'medications', 'labReports'],
+    purpose: 'Consultation de cardiologie',
     status: 'active',
+    grantedAt: '2026-10-10T09:00:00+01:00',
     expiresAt: '2026-10-24T09:00:00+01:00',
   ),
   CanonicalAccessGrant(
     id: 'grant-b-drx',
     patientId: 'pat-b',
+    scope: ['encounters', 'medications', 'labReports'],
+    purpose: 'Suivi du diabète',
     status: 'active',
+    grantedAt: '2025-09-15T09:45:00+01:00',
     expiresAt: '2026-12-31T23:59:00+01:00',
   ),
 ];
