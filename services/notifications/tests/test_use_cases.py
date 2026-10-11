@@ -2,7 +2,12 @@
 
 from datetime import datetime, timezone
 
-from adapters.outbound.channel_providers import InAppDeliveryProvider, PushNotificationProvider
+from adapters.outbound.channel_providers import InAppDeliveryProvider
+from adapters.outbound.in_memory_push_subscriptions import (
+    InMemoryPushSubscriptionStore,
+)
+from application.push import PushDeliveryProvider
+from tests.test_push import AcceptingGateway, subscription_for
 from adapters.outbound.in_memory_store import InMemoryNotificationStore
 from application.use_cases import (
     GetNotificationEventStatusUseCase,
@@ -52,9 +57,11 @@ def make_event(
 
 def test_ingest_event_success_creates_receipt_and_deliveries():
     store = InMemoryNotificationStore()
+    subscriptions = InMemoryPushSubscriptionStore()
+    subscriptions.save(subscription_for("pat-a"))
     providers = {
         Channel.IN_APP: InAppDeliveryProvider(),
-        Channel.PUSH: PushNotificationProvider(),
+        Channel.PUSH: PushDeliveryProvider(subscriptions, AcceptingGateway()),
     }
     use_case = IngestNotificationEventUseCase(
         store=store, preference_store=store, providers=providers
@@ -72,8 +79,11 @@ def test_ingest_event_success_creates_receipt_and_deliveries():
     assert saved_event.payload.title == "Titre de test"
 
     deliveries = store.get_deliveries("evt-100")
-    assert len(deliveries) == 2
-    assert all(d.status == DeliveryStatus.DELIVERED for d in deliveries)
+    assert [(d.channel, d.status) for d in deliveries] == [
+        (Channel.IN_APP, DeliveryStatus.DELIVERED),
+        # Accepted by the push server; the device's receipt is not confirmed.
+        (Channel.PUSH, DeliveryStatus.SENT),
+    ]
 
 
 def test_ingest_event_suppressed_by_recipient_preference():
