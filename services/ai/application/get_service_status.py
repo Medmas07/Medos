@@ -1,7 +1,7 @@
 from domain.service_status import ServiceStatus
 
 SERVICE_NAME = "ai-services"
-SERVICE_VERSION = "0.4.0"
+SERVICE_VERSION = "0.7.0"
 
 
 def get_service_status(capabilities: tuple[str, ...]) -> ServiceStatus:

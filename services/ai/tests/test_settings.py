@@ -1,7 +1,9 @@
 import pytest
 
 from infrastructure.settings import (
+    ExplanationMode,
     ExtractionMode,
+    LabMode,
     ProviderName,
     ReviewMode,
     Settings,
@@ -49,3 +51,29 @@ def test_the_review_mode_is_model_by_default_and_set_on_its_own():
     )
     with pytest.raises(ValueError):
         load_settings({"AI_REVIEW_MODE": "simulated"})
+
+
+def test_the_lab_mode_is_model_by_default_and_set_on_its_own():
+    assert load_settings({}).lab_mode is LabMode.MODEL
+    assert load_settings({"AI_LAB_MODE": "fixture"}).lab_mode is LabMode.FIXTURE
+    with pytest.raises(ValueError):
+        load_settings({"AI_LAB_MODE": "simulated"})
+
+
+def test_the_explanation_mode_is_model_by_default_and_set_on_its_own():
+    assert load_settings({}).explanation_mode is ExplanationMode.MODEL
+    assert (
+        load_settings({"AI_EXPLANATION_MODE": "template"}).explanation_mode
+        is ExplanationMode.TEMPLATE
+    )
+    with pytest.raises(ValueError):
+        load_settings({"AI_EXPLANATION_MODE": "fixture"})
+
+
+def test_the_priority_explanation_mode_is_model_by_default_and_set_on_its_own():
+    assert load_settings({}).priority_explanation_mode is ExplanationMode.MODEL
+    settings = load_settings({"AI_PRIORITY_EXPLANATION_MODE": "template"})
+    assert settings.priority_explanation_mode is ExplanationMode.TEMPLATE
+    assert settings.explanation_mode is ExplanationMode.MODEL
+    with pytest.raises(ValueError):
+        load_settings({"AI_PRIORITY_EXPLANATION_MODE": "fixture"})

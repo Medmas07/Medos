@@ -21,4 +21,5 @@ def test_provider_port_adds_no_ai_capability():
     capabilities = client.get("/health").json()["capabilities"]
 
     assert not any("provider" in capability for capability in capabilities)
-    assert all(capability.endswith(":mocked") for capability in capabilities)
+    # Fixture settings call no model: mocked fixtures or the deterministic template.
+    assert not any(capability.endswith(":model") for capability in capabilities)

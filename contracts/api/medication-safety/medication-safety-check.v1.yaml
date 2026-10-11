@@ -14,9 +14,11 @@ info:
       `rule_source.kind` only allow `deterministic_rule_set` or
       `validated_source`.
     - **AI explanation is optional and separate.** A warning may carry an
-      `explanation` produced by AI Services (HC-164). It is advisory, it is
-      never the reason a warning exists, and the warning stays complete
-      without it.
+      `explanation` produced by AI Services. It is advisory, it is never the
+      reason a warning exists, and the warning stays complete without it.
+      AI Services produces it through
+      contracts/api/ai/medication-warning-explanation.v1.yaml (HC-156);
+      attaching it to this check's warnings is HC-164.
     - **The clinician decides.** The check never blocks or approves a
       prescription. `review_status` is always `pending_clinician_review`.
     - **"No warnings" is not "safe".** `outcome: no_warnings_found` only
