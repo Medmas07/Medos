@@ -15,7 +15,6 @@ from datetime import date, datetime
 from enum import Enum
 
 from domain.hospital_approval import (
-    GOVERNANCE_REVIEWER_ROLE,
     InvalidDecision,
     Issue,
     Outcome,
@@ -310,7 +309,7 @@ def checks(
 def _check_reviewer(request: ResearchRequest, reviewer: Reviewer | None) -> None:
     if reviewer is None:
         raise ReviewerNotAllowed("The reviewer is unknown to the Governance Node.")
-    if reviewer.role != GOVERNANCE_REVIEWER_ROLE:
+    if not reviewer.may_review:
         raise ReviewerNotAllowed("Only a governance reviewer may decide.")
     if (
         reviewer.person_ref

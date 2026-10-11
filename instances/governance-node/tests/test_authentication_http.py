@@ -273,17 +273,19 @@ def test_the_signed_in_reviewer_decides(client, kind):
 
 
 def test_signing_in_does_not_make_someone_a_reviewer(client):
-    # Authentication says who calls; the review rules still decide who may decide.
+    # Authentication says who calls; their role (HC-212) decides what they may do.
     mehdi = token(client, "usr-mehdi", "mehdi-pass")
     contract, operation = decide_op("hospital")
 
     response = decide(client, "hospital", bearer(mehdi), reviewer_ref="usr-mehdi")
 
-    assert check(response, contract, operation, 403)["code"] == "reviewer_not_allowed"
+    assert check(response, contract, operation, 403)["code"] == "permission_denied"
 
 
-def test_reads_stay_open(client):
-    assert client.get("/v1/hospital-applications").status_code == 200
+def test_reads_need_a_session_too(client):
+    # Since HC-212; health and the published policies stay open.
+    assert client.get("/v1/hospital-applications").status_code == 401
+    assert client.get("/v1/policies").status_code == 200
 
 
 def test_health_reports_authentication_required(client):

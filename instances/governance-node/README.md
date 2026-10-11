@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-CONFIRMED Governance / Ethics Authority boundary. Its stack (Python + FastAPI, one process) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED at D2 (HC-130): a FastAPI app with Clean/Hexagonal layers, pinned dependencies, tests, and a liveness `GET /health`. The [hospital approval API](#hospital-approval-api-hc-131) is IMPLEMENTED at D2 (HC-131), over applications and decisions held **in memory**, seeded from fictional demo data: decisions are lost on restart, and the reviewer is declared, not authenticated. The [synchronization request API](#synchronization-request-api-hc-132) and the synchronization authorization check the Federation Service calls are IMPLEMENTED at D2 (HC-132), in memory the same way; patient grants are checked against fictional demo grants (**MOCKED**). The [research access request API](#research-access-request-api-hc-133) and the research authorization check the Research Service calls are IMPLEMENTED at D2 (HC-133), in memory the same way. The [governance audit API](#governance-audit-api-hc-134) is IMPLEMENTED at D2 (HC-134): the Node records the requests it receives, the decisions it records, and every authorization check it answers in its own minimized audit trail, in memory the same way. The [governance policy engine](#governance-policy-engine-hc-135) is IMPLEMENTED at D3 (HC-135): the Authority's review rules are a versioned, effective-dated policy, read from fictional data at startup; every review and decision applies the version in effect and every decision cites it. The policy is a fictional demo policy, not a validated legal or ethical framework, and new versions are published by editing the data and restarting. [Consent policy evaluation](#consent-policy-evaluation-hc-136) is IMPLEMENTED at D3 (HC-136): a synchronization's patient grant is evaluated against the grants of the Hospital Node holding it, over real HTTP, when reviewing and again before each exchange; a grant revoked there stops the authorization. The demo Hospital Nodes' grant stores are themselves MOCKED. The [`AuditLedgerPort`](#audit-ledger-port-hc-190) is defined (HC-190, D1) and the [simulated immutable ledger](#simulated-immutable-ledger-hc-191) behind it is IMPLEMENTED at D2 (HC-191): every decision recorded is anchored as a minimized proof, served by a read-only proofs API. [Ledger event hashing](#ledger-event-hashing-hc-192) is IMPLEMENTED at D2 (HC-192): each proof holds its payload's SHA-256 hash, the one the demo data's proofs use, and is served with the Node's verification of that hash against its audit trail. That default ledger is **MOCKED**: an append-only list in memory, not a blockchain. The [Besu permissioned ledger adapter](#besu-permissioned-ledger-hc-194) is IMPLEMENTED at D4 (HC-194, [ADR-0007](../../docs/decisions/ADR-0007-permissioned-audit-ledger.md)), opt-in: decisions are anchored in a Hyperledger Besu (QBFT) contract instead. It is tested against the compiled contract in an in-process EVM, but not VALIDATED against a running Besu node. [Authentication](#authentication-hc-211) is IMPLEMENTED at D2 (HC-211, [ADR-0010](../../docs/decisions/ADR-0010-authentication-foundation.md)), opt-in: with `GOVERNANCE_AUTH=required`, a person signs in with a password for a bearer session, and each decision needs the session of the reviewer it names. Off, the default, the reviewer stays declared. Sessions are held in memory, for fictional demo people; reads, submissions, and service calls are not authenticated. There is no persistence. It is not deployed.
+CONFIRMED Governance / Ethics Authority boundary. Its stack (Python + FastAPI, one process) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED at D2 (HC-130): a FastAPI app with Clean/Hexagonal layers, pinned dependencies, tests, and a liveness `GET /health`. The [hospital approval API](#hospital-approval-api-hc-131) is IMPLEMENTED at D2 (HC-131), over applications and decisions held **in memory**, seeded from fictional demo data: decisions are lost on restart, and the reviewer is declared, not authenticated. The [synchronization request API](#synchronization-request-api-hc-132) and the synchronization authorization check the Federation Service calls are IMPLEMENTED at D2 (HC-132), in memory the same way; patient grants are checked against fictional demo grants (**MOCKED**). The [research access request API](#research-access-request-api-hc-133) and the research authorization check the Research Service calls are IMPLEMENTED at D2 (HC-133), in memory the same way. The [governance audit API](#governance-audit-api-hc-134) is IMPLEMENTED at D2 (HC-134): the Node records the requests it receives, the decisions it records, and every authorization check it answers in its own minimized audit trail, in memory the same way. The [governance policy engine](#governance-policy-engine-hc-135) is IMPLEMENTED at D3 (HC-135): the Authority's review rules are a versioned, effective-dated policy, read from fictional data at startup; every review and decision applies the version in effect and every decision cites it. The policy is a fictional demo policy, not a validated legal or ethical framework, and new versions are published by editing the data and restarting. [Consent policy evaluation](#consent-policy-evaluation-hc-136) is IMPLEMENTED at D3 (HC-136): a synchronization's patient grant is evaluated against the grants of the Hospital Node holding it, over real HTTP, when reviewing and again before each exchange; a grant revoked there stops the authorization. The demo Hospital Nodes' grant stores are themselves MOCKED. The [`AuditLedgerPort`](#audit-ledger-port-hc-190) is defined (HC-190, D1) and the [simulated immutable ledger](#simulated-immutable-ledger-hc-191) behind it is IMPLEMENTED at D2 (HC-191): every decision recorded is anchored as a minimized proof, served by a read-only proofs API. [Ledger event hashing](#ledger-event-hashing-hc-192) is IMPLEMENTED at D2 (HC-192): each proof holds its payload's SHA-256 hash, the one the demo data's proofs use, and is served with the Node's verification of that hash against its audit trail. That default ledger is **MOCKED**: an append-only list in memory, not a blockchain. The [Besu permissioned ledger adapter](#besu-permissioned-ledger-hc-194) is IMPLEMENTED at D4 (HC-194, [ADR-0007](../../docs/decisions/ADR-0007-permissioned-audit-ledger.md)), opt-in: decisions are anchored in a Hyperledger Besu (QBFT) contract instead. It is tested against the compiled contract in an in-process EVM, but not VALIDATED against a running Besu node. [Authentication](#authentication-hc-211) is IMPLEMENTED at D2 (HC-211, [ADR-0010](../../docs/decisions/ADR-0010-authentication-foundation.md)), opt-in: with `GOVERNANCE_AUTH=required`, a person signs in with a password for a bearer session, and each decision needs the session of the reviewer it names. Off, the default, the reviewer stays declared. [Role-based access control](#role-based-access-control-hc-212) is IMPLEMENTED at D2 (HC-212, [ADR-0011](../../docs/decisions/ADR-0011-role-based-access-control.md)) on the same switch: every route but health, the published policies, and the service authorization checks needs a session whose role grants it, from a fixed fictional role matrix. Sessions are held in memory, for fictional demo people; the service authorization checks are not authenticated. There is no persistence. It is not deployed.
 
 ## Running locally
 
@@ -24,7 +24,7 @@ Patient grants (HC-136) are asked of the Hospital Nodes listed in [`hospital-nod
 
 Decisions are anchored in the MOCKED simulated ledger by default. `GOVERNANCE_LEDGER=besu` anchors them on a Besu chain instead (see [Besu permissioned ledger](#besu-permissioned-ledger-hc-194)); any value other than `simulated` (default) or `besu` stops startup.
 
-Decisions name a declared reviewer by default. `GOVERNANCE_AUTH=required` makes each decision need the reviewer's sign-in session, against the password hashes of `auth/.credentials.json` (see [Authentication](#authentication-hc-211)); any value other than `off` (default) or `required` stops startup.
+Decisions name a declared reviewer by default, and no caller is checked. `GOVERNANCE_AUTH=required` makes each decision need the reviewer's sign-in session, against the password hashes of `auth/.credentials.json` (see [Authentication](#authentication-hc-211)), and every other route but health, the policies, and the service checks need a session whose role grants it (see [Role-based access control](#role-based-access-control-hc-212)); any value other than `off` (default) or `required` stops startup.
 
 ## Runtime skeleton (HC-130)
 
@@ -64,7 +64,8 @@ adapters/outbound/fixture_policies.py                 # policy versions, read fr
 adapters/outbound/simulated_audit_ledger.py           # HC-191 MOCKED ledger, seeded from governance.json
 adapters/outbound/besu_audit_ledger.py                # HC-194 Besu (QBFT) ledger, opt-in (ADR-0007)
 domain/authentication.py, application/authentication.py   # HC-211 sessions, throttling, sign-in use cases
-adapters/inbound/http/authentication.py               # HC-211 sign-in routes and the decisions' check
+adapters/inbound/http/authentication.py               # HC-211 sign-in routes; HC-212 AccessControl, each route's check
+domain/access_control.py, application/access_control.py  # HC-212 role matrix and authorize use case
 adapters/outbound/scrypt_password_hasher.py           # HC-211 password hashes (stdlib scrypt)
 adapters/outbound/credential_file.py                  # HC-211 credentials, from auth/.credentials.json
 adapters/outbound/in_memory_sessions.py               # HC-211 sessions, in memory
@@ -166,7 +167,7 @@ IMPLEMENTED at D2. Hospital Nodes must not synchronize patient data freely: a ho
 
 - `InMemorySynchronizationStore` holds requests and decisions. It is seeded from the fictional [`demo-data/governance.json`](../../demo-data/governance.json), checks each decided request against its decision, and records a decision atomically. Everything recorded through the API is **lost on restart**.
 - Patient grants are recorded and enforced by each Hospital Node ([`patient-access-grants.v1.yaml`](../../contracts/api/patient-access/patient-access-grants.v1.yaml), HC-115), not here. Since HC-136 the Node asks the Hospital Node holding a grant over HTTP ([consent policy evaluation](#consent-policy-evaluation-hc-136)). `FixturePatientGrantDirectory` (`GOVERNANCE_GRANTS=fixture`, the default of `create_app` in tests) is **MOCKED**: it reads the fictional [`demo-data/access.json`](../../demo-data/access.json), read-only, and never sees a grant recorded or revoked on a Hospital Node at runtime.
-- `submitted_by_ref` is declared by the caller, **not authenticated**. So is `reviewer_ref`, unless [authentication is required](#authentication-hc-211) (HC-211).
+- `submitted_by_ref` and `reviewer_ref` are declared by the caller, **not authenticated**, unless [authentication is required](#authentication-hc-211): then each must be the signed-in person (HC-211, HC-212).
 
 Demo, demo step 20, with the Node running:
 
@@ -231,7 +232,7 @@ An approval only narrows the request: the population stays the one requested. Th
 
 **Authorization check.** An unknown reference, a request still under review, or a decision on another subject is `404 decision_not_found`. Otherwise the answer is `approved`, with the decision's organizations, variables, and `valid_until`, or `denied` with the first failing `reason_code`, in this order: `not_approved`, `not_yet_valid`, `expired`, `project_mismatch`, `requester_mismatch` (the principal investigator or the submitter only), `organization_not_approved`, `variable_not_approved`, and `population_exceeded`. Every bound of the job must lie inside the requested population, and a bound the job leaves open where the request set one is wider. `purpose` is not compared. The decision's minimum cell size is not carried by this contract, so the Research Service's job sets its own output policy (OPEN).
 
-**Storage, at D2:** `InMemoryResearchStore` holds requests and decisions, seeded from the fictional [`demo-data/governance.json`](../../demo-data/governance.json) (requests and decisions, with the structured `researchAuthorization` of `dec-rar-001`) and `research.json` (each request's project content). Everything recorded through the API is **lost on restart**, and `submitted_by_ref` is declared, **not authenticated**. So is `reviewer_ref`, unless [authentication is required](#authentication-hc-211) (HC-211).
+**Storage, at D2:** `InMemoryResearchStore` holds requests and decisions, seeded from the fictional [`demo-data/governance.json`](../../demo-data/governance.json) (requests and decisions, with the structured `researchAuthorization` of `dec-rar-001`) and `research.json` (each request's project content). Everything recorded through the API is **lost on restart**, and `submitted_by_ref` and `reviewer_ref` are declared, **not authenticated**, unless [authentication is required](#authentication-hc-211): then each must be the signed-in person (HC-211, HC-212).
 
 Demo, with the Node running:
 
@@ -505,11 +506,11 @@ IMPLEMENTED at D2, opt-in. [ADR-0010](../../docs/decisions/ADR-0010-authenticati
 
 | Route | Purpose |
 |---|---|
-| `POST /v1/auth/sessions` | Sign in with `person_ref` and `password`. `201` with a `session_token` (shown once), the person's role and organization, and `expires_at`; `401 authentication_failed` otherwise. |
-| `GET /v1/auth/session` | Who the bearer session belongs to, and until when; never the token. |
+| `POST /v1/auth/sessions` | Sign in with `person_ref` and `password`. `201` with a `session_token` (shown once), the person's role, organization, and `permissions` (HC-212), and `expires_at`; `401 authentication_failed` otherwise. |
+| `GET /v1/auth/session` | Who the bearer session belongs to, what their role grants, and until when; never the token. |
 | `DELETE /v1/auth/session` | Sign out. `204`. |
 
-**Decisions.** With authentication required, the three decision routes (hospital applications, synchronization requests, research requests) check the session first: none, an unknown one, or an expired one is `401 authentication_required`, with a `WWW-Authenticate: Bearer` challenge. Then a `reviewer_ref` that is not the signed-in person is `403 reviewer_mismatch`. The review rules apply after that, unchanged: signing in does not make anyone a reviewer, so Hospital C's manager who signs in still gets `403 reviewer_not_allowed`. Reads, submissions, and the Federation and Research Services' authorization checks are not authenticated.
+**Decisions.** With authentication required, the three decision routes (hospital applications, synchronization requests, research requests) check the session first: none, an unknown one, or an expired one is `401 authentication_required`, with a `WWW-Authenticate: Bearer` challenge. Then a `reviewer_ref` that is not the signed-in person is `403 reviewer_mismatch`. The review rules apply after that, unchanged. Since HC-212, a signed-in person whose role does not grant `governance:review` is refused before that, `403 permission_denied`, and reads and submissions need a session too: see [Role-based access control](#role-based-access-control-hc-212). The Federation and Research Services' authorization checks are not authenticated.
 
 **Credentials.** `python -m auth.set_password usr-olfa` asks for a password (at least 12 characters) twice and writes only its salted scrypt hash (n=2^15, r=8, p=3) to `auth/.credentials.json`, gitignored; `GOVERNANCE_CREDENTIALS` names another file. Only staff and clinicians of [`demo-data/people.json`](../../demo-data/people.json) can have one. A missing or malformed file, an unknown person, or a hash that is not scrypt stops startup. The credentials of this demo belong to fictional people and are created on each machine: nothing is committed.
 
@@ -537,7 +538,42 @@ curl -s -X DELETE localhost:8200/v1/auth/session -H "Authorization: Bearer $TOKE
 
 **Tests:** domain rules (`test_authentication.py`), use cases with test doubles (`test_authentication_use_cases.py`), the hasher and credential file (`test_password_credentials.py`), the environment switch (`test_auth_mode.py`), and HTTP against the authentication contract and the three decision contracts (`test_authentication_http.py`). The flow was also run over HTTP against a running Node.
 
-Not done at D2: an OIDC provider or federation with organizations' identity providers; MFA; password reset and account administration; sign-in audit events; persistence of sessions; role-based access control (HC-212); service-to-service authentication (HC-214); and the Governance Portal signing in to this Node (it still uses HC-210's demo personas, MOCKED). This is not production identity.
+Not done at D2: an OIDC provider or federation with organizations' identity providers; MFA; password reset and account administration; sign-in audit events; persistence of sessions; service-to-service authentication (HC-214); and the Governance Portal signing in to this Node (it still uses HC-210's demo personas, MOCKED). This is not production identity.
+
+## Role-based access control (HC-212)
+
+IMPLEMENTED at D2, on the same opt-in switch as [authentication](#authentication-hc-211). [ADR-0011](../../docs/decisions/ADR-0011-role-based-access-control.md) records the decision: a fixed role-to-permission matrix in the Node's domain ([`domain/access_control.py`](domain/access_control.py)), deny by default, checked on every protected route at every call.
+
+| Role (demo data) | Permissions | So it may |
+|---|---|---|
+| `governance_reviewer` (`usr-olfa`) | `governance:review`, `governance:audit` | read and decide hospital applications, synchronization and research requests; read the audit trail and ledger proofs |
+| `hospital_manager` (`usr-mehdi`), `physician` (`clin-ines`, …) | `synchronization:request` | submit a synchronization request |
+| `researcher` (`usr-aymen`) | `research:request` | submit a research access request |
+| `nurse`, and any other role | none | nothing here |
+
+With `GOVERNANCE_AUTH=required`, each protected route checks, in order: a valid session (`401 authentication_required`); the person's role grants the route's permission (`403 permission_denied`, before anything is looked up, so a role without it cannot learn which records exist); then, for submissions and decisions, that `submitted_by_ref` or `reviewer_ref` is the signed-in person (`403 submitter_mismatch`, `403 reviewer_mismatch`). The domain's review rules read the same matrix: only a role granting `governance:review` may decide, with authentication off too. `GET /health`, the published policies, sign-in, and the Federation and Research Services' authorization checks stay open (service authentication is HC-214). The sign-in and session responses list the person's `permissions` (`authentication.v1.yaml` 1.1.0), for display only. Off, the default, nothing is checked.
+
+Contracts: the hospital approval (1.3.0), synchronization requests (1.4.0), research requests (1.3.0), audit events (1.1.0), and ledger proofs (1.3.0) contracts declare the optional bearer session, `401`, and `403 permission_denied` on each protected operation.
+
+Demo, from this directory, after `python -m auth.set_password` for `usr-olfa` and `usr-aymen`:
+
+```bash
+GOVERNANCE_AUTH=required GOVERNANCE_GRANTS=fixture python main.py
+
+tok() { curl -s -X POST localhost:8200/v1/auth/sessions -H 'content-type: application/json' \
+  -d "{\"person_ref\":\"$1\",\"password\":\"$2\"}" \
+  | python -c "import json, sys; print(json.load(sys.stdin)['session_token'])"; }
+OLFA=$(tok usr-olfa '<her password>'); AYMEN=$(tok usr-aymen '<his password>')
+
+curl -s localhost:8200/v1/audit/events                                   # 401 authentication_required
+curl -s localhost:8200/v1/audit/events -H "Authorization: Bearer $AYMEN" # 403 permission_denied
+curl -s localhost:8200/v1/audit/events -H "Authorization: Bearer $OLFA"  # 200
+curl -s localhost:8200/v1/auth/session -H "Authorization: Bearer $AYMEN" # permissions: ["research:request"]
+```
+
+**Tests:** the matrix and the `authorize` use case (`test_access_control.py`), and over HTTP every protected route against its contract, without a session, with a role that does not grant it, with one that does, and with authentication off (`test_access_control_http.py`). These scenarios, and a physician's synchronization request (`201`), a hospital manager's submitted as someone else (`403 submitter_mismatch`), and a physician's decision (`403 permission_denied`), were also run over HTTP against a running Node.
+
+Not done at D2: restricting a person to their own organization's records and requests (HC-213); auditing denials (HC-215); service authentication (HC-214); more than one role per person; editing the matrix without code; and the Governance Portal using these permissions (it still uses HC-210's browser-side scopes, MOCKED). The matrix is fictional demo policy, not a validated access policy, and this is not production security.
 
 ## Responsibilities and owned concepts
 
@@ -546,7 +582,7 @@ Not done at D2: an OIDC provider or federation with organizations' identity prov
 - Governance audit, served by the [governance audit API](#governance-audit-api-hc-134) (HC-134).
 - Policy evaluation, served by the [governance policy engine](#governance-policy-engine-hc-135) (HC-135).
 - Consent policy evaluation, served by [consent policy evaluation](#consent-policy-evaluation-hc-136) (HC-136): the Node evaluates grants held by the Hospital Nodes; it records none.
-- Authentication of the people who decide here, served by [authentication](#authentication-hc-211) (HC-211, opt-in), from its own credentials.
+- Authentication of the people who act here, served by [authentication](#authentication-hc-211) (HC-211, opt-in), from its own credentials, and what each may do, by [role-based access control](#role-based-access-control-hc-212) (HC-212, opt-in).
 - OPTIONAL ledger adapters behind the application-owned [`AuditLedgerPort`](#audit-ledger-port-hc-190) (HC-190): the [simulated immutable ledger](#simulated-immutable-ledger-hc-191) (HC-191, MOCKED, default) and the [Besu permissioned ledger](#besu-permissioned-ledger-hc-194) (HC-194, opt-in, not VALIDATED against a running node).
 
 ## Communication boundaries

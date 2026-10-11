@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Authentication
-  version: 1.0.0
+  version: 1.1.0
   description: |
     Contract HC-211, version 1. How a person signs in to a runtime that
     authenticates its own users, holds a bearer session, and signs out
@@ -23,9 +23,11 @@ info:
       (8 hours after sign-in), on sign-out, or when the runtime restarts.
       Responses carrying session data are `Cache-Control: no-store`.
     - **Authentication is not authorization.** A session says who is
-      calling. What that person may do stays with each API's own rules (for
-      example the Governance Node's review rules); role-based access control
-      is HC-212.
+      calling. Since 1.1.0 (HC-212, ADR-0011), it also lists the
+      `permissions` the runtime's role matrix grants the person's role, for
+      display: each protected operation checks its own permission on every
+      call, and each API's own rules (for example the Governance Node's
+      review rules) still apply on top.
     - **No clinical data.** Sessions hold an opaque person reference, the
       person's role and organization, and times.
 
@@ -72,6 +74,7 @@ paths:
                     person_ref: usr-olfa
                     role: governance_reviewer
                     organization_ref: org-governance
+                    permissions: ["governance:audit", "governance:review"]
                     issued_at: "2026-10-10T10:00:00+01:00"
                     expires_at: "2026-10-10T18:00:00+01:00"
                     notice: >-
@@ -135,6 +138,7 @@ paths:
                     person_ref: usr-olfa
                     role: governance_reviewer
                     organization_ref: org-governance
+                    permissions: ["governance:audit", "governance:review"]
                     issued_at: "2026-10-10T10:00:00+01:00"
                     expires_at: "2026-10-10T18:00:00+01:00"
                     notice: >-
@@ -208,15 +212,24 @@ components:
     CurrentSession:
       type: object
       additionalProperties: false
-      required: [person_ref, role, organization_ref, issued_at, expires_at, notice]
+      required:
+        - person_ref
+        - role
+        - organization_ref
+        - permissions
+        - issued_at
+        - expires_at
+        - notice
       properties:
         person_ref:
           $ref: "#/components/schemas/OpaqueRef"
         role:
-          description: The person's role in the demo dataset, for display; not a permission.
+          description: The person's role in the demo dataset.
           type: string
         organization_ref:
           $ref: "#/components/schemas/OpaqueRef"
+        permissions:
+          $ref: "#/components/schemas/Permissions"
         issued_at:
           type: string
           format: date-time
@@ -234,6 +247,7 @@ components:
         - person_ref
         - role
         - organization_ref
+        - permissions
         - issued_at
         - expires_at
         - notice
@@ -250,6 +264,8 @@ components:
           type: string
         organization_ref:
           $ref: "#/components/schemas/OpaqueRef"
+        permissions:
+          $ref: "#/components/schemas/Permissions"
         issued_at:
           type: string
           format: date-time
@@ -258,6 +274,23 @@ components:
           format: date-time
         notice:
           type: string
+    Permissions:
+      description: |
+        What the person's role grants at this runtime (since 1.1.0, HC-212),
+        sorted; empty when it grants nothing. Read at sign-in and again for
+        each session read. In the Governance Node: `governance:review`
+        (read and decide applications and requests), `governance:audit`
+        (read the audit trail and ledger proofs), `synchronization:request`
+        and `research:request` (submit those requests).
+      type: array
+      uniqueItems: true
+      items:
+        type: string
+        enum:
+          - governance:review
+          - governance:audit
+          - synchronization:request
+          - research:request
     Problem:
       description: RFC 9457 problem details.
       type: object

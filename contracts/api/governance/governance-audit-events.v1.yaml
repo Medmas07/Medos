@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Governance Node Audit Events
-  version: 1.0.1
+  version: 1.1.0
   description: |
     Contract HC-134, version 1. The audit trail the Governance / Ethics
     Authority keeps of its own governance actions: requests it receives,
@@ -40,14 +40,21 @@ info:
 
     Status: served by the Governance Node runtime (HC-134), which keeps
     events in memory, seeded from fictional demo events. Actors are
-    declared by the callers of the other governance APIs, not
-    authenticated. Who may read the trail, how readers are authenticated,
-    and retention are OPEN; the demo runtime does not authenticate them.
+    declared by the callers of the other governance APIs unless the Node
+    requires authentication (HC-211). Since 1.1.0 (HC-212, ADR-0011), a
+    Node requiring authentication serves the trail only to a bearer
+    session whose role grants `governance:audit`, held by governance
+    reviewers (`401 authentication_required`, `403 permission_denied`);
+    with authentication off, its default, readers are not
+    authenticated. Reading is not itself audited. Retention is OPEN.
 paths:
   /v1/audit/events:
     get:
       operationId: listGovernanceAuditEvents
       summary: List the Governance Node's audit events, newest first.
+      security:
+        - {}
+        - bearerSession: []
       description: |
         Newest first by `recorded_at`; among events recorded at the same
         time, the later recorded first. Filters combine.
@@ -201,10 +208,17 @@ paths:
                     status: 400
                     detail: "Invalid or unknown parameters: limit"
                     code: invalid_request
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "403":
+          $ref: "#/components/responses/PermissionDenied"
   /v1/audit/events/{event_ref}:
     get:
       operationId: getGovernanceAuditEvent
       summary: One audit event by reference.
+      security:
+        - {}
+        - bearerSession: []
       parameters:
         - name: event_ref
           in: path
@@ -243,6 +257,10 @@ paths:
                           org-hospital-a,
                           org-hospital-b,
                         ]
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "403":
+          $ref: "#/components/responses/PermissionDenied"
         "404":
           description: No event has this reference.
           content:
@@ -258,6 +276,51 @@ paths:
                     detail: No governance audit event evt-999.
                     code: event_not_found
 components:
+  securitySchemes:
+    bearerSession:
+      type: http
+      scheme: bearer
+      description: >-
+        A session of authentication.v1.yaml, required only when the
+        Governance Node is started with authentication required.
+  responses:
+    AuthenticationRequired:
+      description: |
+        Authentication is required and there is no bearer session, or an
+        unknown, ended, or expired one (`WWW-Authenticate: Bearer`).
+      headers:
+        WWW-Authenticate:
+          schema:
+            type: string
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          examples:
+            missing:
+              value:
+                type: about:blank
+                title: Authentication required
+                status: 401
+                detail: A bearer session is required.
+                code: authentication_required
+    PermissionDenied:
+      description: |
+        Authentication is required and the signed-in person's role does not
+        grant `governance:audit` (HC-212).
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          examples:
+            permissionDenied:
+              summary: Fictional demo — a researcher (usr-aymen) signed in.
+              value:
+                type: about:blank
+                title: Permission denied
+                status: 403
+                detail: The role researcher does not grant governance:audit.
+                code: permission_denied
   schemas:
     AuditEventList:
       type: object
@@ -403,4 +466,8 @@ components:
           type: string
         code:
           type: string
-          enum: [invalid_request, event_not_found]
+          enum:
+            - invalid_request
+            - event_not_found
+            - authentication_required
+            - permission_denied

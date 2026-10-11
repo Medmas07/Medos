@@ -2,8 +2,10 @@
 
 Submits, lists, and reads synchronization requests, and records a reviewer's decision.
 Requests are parsed strictly; anything outside the contract is a 400 invalid_request.
-submitted_by_ref is declared. With authentication required (HC-211), a decision needs a
-bearer session and reviewer_ref must be the signed-in person; off, it is declared.
+With authentication required (HC-211), every operation needs a bearer session whose
+role grants it (HC-212): synchronization:request to submit, governance:review to read and
+decide; submitted_by_ref and reviewer_ref must be the signed-in person. Off, both are
+declared.
 """
 
 from collections.abc import Callable
@@ -22,7 +24,7 @@ from pydantic import (
     ValidationError,
 )
 
-from adapters.inbound.http.authentication import ReviewerAuthentication
+from adapters.inbound.http.authentication import AccessControl
 from adapters.inbound.http.problems import OPAQUE_REF, first_error, problem
 from application.audit import AuditTrail
 from application.hospital_approval import HospitalApplicationStore, ReviewerDirectory
@@ -37,6 +39,7 @@ from application.synchronization import (
     list_requests,
     submit_request,
 )
+from domain.access_control import Permission
 from domain.policy import PolicyHistory
 from domain.hospital_approval import InvalidDecision, Outcome, ReviewerNotAllowed
 from domain.synchronization import (
@@ -197,7 +200,7 @@ def create_router(
     audit: AuditTrail,
     clock: Callable[[], datetime],
     ledger: AuditLedgerPort,
-    auth: ReviewerAuthentication,
+    auth: AccessControl,
 ) -> APIRouter:
     router = APIRouter(prefix="/v1/synchronization-requests", tags=["synchronization"])
 
@@ -205,7 +208,11 @@ def create_router(
         return get_request(request_ref, store, grants, applications, policies, clock)
 
     @router.get("")
-    def list_synchronization_requests(status: str | None = None) -> JSONResponse:
+    def list_synchronization_requests(
+        request: Request, status: str | None = None
+    ) -> JSONResponse:
+        if isinstance(caller := auth.caller(request, Permission.REVIEW), JSONResponse):
+            return caller
         try:
             wanted = RequestStatus(status) if status is not None else None
         except ValueError:
@@ -221,10 +228,16 @@ def create_router(
 
     @router.post("")
     async def submit_synchronization_request(request: Request) -> JSONResponse:
+        caller = auth.caller(request, Permission.REQUEST_SYNCHRONIZATION)
+        if isinstance(caller, JSONResponse):
+            return caller
         try:
             body = NewRequestBody.model_validate_json(await request.body())
         except ValidationError as error:
             return _invalid(first_error(error))
+        refused = auth.refuse(caller, body.submitted_by_ref, "submitted_by_ref")
+        if refused is not None:
+            return refused
         try:
             submitted = submit_request(
                 requester_organization_ref=body.requester_organization_ref,
@@ -246,7 +259,9 @@ def create_router(
         return JSONResponse(_detail(view(submitted.request_ref)), status_code=201)
 
     @router.get("/{request_ref}")
-    def get_synchronization_request(request_ref: str) -> JSONResponse:
+    def get_synchronization_request(request_ref: str, request: Request) -> JSONResponse:
+        if isinstance(caller := auth.caller(request, Permission.REVIEW), JSONResponse):
+            return caller
         try:
             return JSONResponse(_detail(view(request_ref)))
         except RequestNotFound:
@@ -256,7 +271,7 @@ def create_router(
     async def decide_synchronization_request(
         request_ref: str, request: Request
     ) -> JSONResponse:
-        caller = auth.caller(request)
+        caller = auth.caller(request, Permission.REVIEW)
         if isinstance(caller, JSONResponse):
             return caller
         if store.request(request_ref) is None:

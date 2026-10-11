@@ -3,13 +3,15 @@
 Reads the proofs the Governance Node anchored in its audit ledger: the simulated ledger
 (MOCKED, `simulated: true`) by default, or the Besu ledger (`simulated: false`), each
 with its own notice. Each proof is served with its payload's hash and the Node's
-verification of that hash against its audit trail. Readers are not authenticated, as
-for the audit trail.
+verification of that hash against its audit trail. As for the audit trail, with
+authentication required a reader needs a bearer session whose role grants
+governance:audit (HC-212); off, readers are not authenticated.
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
+from adapters.inbound.http.authentication import AccessControl
 from adapters.inbound.http.problems import problem
 from application.audit import AuditTrail, EventNotFound, get_event
 from application.ledger import (
@@ -20,6 +22,7 @@ from application.ledger import (
     list_proofs,
     verify_proof,
 )
+from domain.access_control import Permission
 from domain.ledger import LedgerProof
 from domain.node_identity import NodeIdentity
 
@@ -70,7 +73,10 @@ def _unavailable() -> JSONResponse:
 
 
 def create_router(
-    identity: NodeIdentity, ledger: AuditLedgerPort, trail: AuditTrail
+    identity: NodeIdentity,
+    ledger: AuditLedgerPort,
+    trail: AuditTrail,
+    auth: AccessControl,
 ) -> APIRouter:
     router = APIRouter(tags=["ledger"])
 
@@ -84,7 +90,9 @@ def create_router(
         }
 
     @router.get("/v1/ledger/proofs")
-    def list_ledger_proofs() -> JSONResponse:
+    def list_ledger_proofs(request: Request) -> JSONResponse:
+        if isinstance(caller := auth.caller(request, Permission.AUDIT), JSONResponse):
+            return caller
         try:
             proofs = list_proofs(ledger)
         except LedgerUnavailable:
@@ -92,7 +100,9 @@ def create_router(
         return JSONResponse(envelope(proofs=[_wire(p, trail) for p in proofs]))
 
     @router.get("/v1/audit/events/{event_ref}/proof")
-    def get_ledger_proof(event_ref: str) -> JSONResponse:
+    def get_ledger_proof(event_ref: str, request: Request) -> JSONResponse:
+        if isinstance(caller := auth.caller(request, Permission.AUDIT), JSONResponse):
+            return caller
         try:
             get_event(event_ref, trail)
             return JSONResponse(
