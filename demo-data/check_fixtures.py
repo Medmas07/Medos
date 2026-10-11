@@ -155,6 +155,8 @@ def check(print_proof_hashes: bool = False) -> list[str]:
         errors.append(f"ruleSet: kind {rule_set['kind']!r} is not a deterministic rule set or validated source")
     if rule_set.get("validated") is not False:
         errors.append("ruleSet: demo rules must be marked validated: false")
+    if not rule_set.get("codeSystem"):
+        errors.append("ruleSet: missing the codeSystem that identifies its medication codes")
     evaluated = set(rule_set["evaluatedMedicationCodes"])
     errors.extend(
         f"ruleSet.evaluatedMedicationCodes: unknown medication code {c!r}" for c in sorted(evaluated - catalog.keys())

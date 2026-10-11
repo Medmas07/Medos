@@ -25,6 +25,7 @@ VALID = {
     "mock_clinical_records": "records/test.json",
     "mock_access_grants": "access.json",
     "mock_governance_decisions": "governance.json",
+    "mock_medication_rules": "medication-rules.json",
 }
 
 

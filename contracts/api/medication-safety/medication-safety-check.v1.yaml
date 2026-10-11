@@ -34,11 +34,12 @@ info:
     v1 covers drug–drug interactions only. Allergy, dose, renal, and
     pregnancy checks are not part of this version.
 
-    Status: this contract has no implementation. Which component provides
-    it is OPEN (see docs/OPEN_QUESTIONS.md). The demo fixtures (HC-161) are
-    in demo-data/medication-rules.json: a fictional deterministic rule set
-    and check cases whose expected results fit this contract. The
-    deterministic engine is HC-162.
+    Status: implemented by each Hospital Node (HC-162, ADR-0008) with a
+    deterministic engine. Its only rule source is the fictional rule set of
+    demo-data/medication-rules.json (HC-161), so every result is
+    `mocked: true`; a validated source is HC-163. When the rules cannot
+    identify the proposed medication, no check is performed and the answer
+    is a 503. No product calls it yet.
 paths:
   /v1/medication-safety-checks:
     post:

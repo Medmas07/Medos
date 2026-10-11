@@ -3,8 +3,8 @@
 Each check case of demo-data/medication-rules.json becomes the request a caller would
 send (the patient's active medication records, from every organization that holds
 them) and the result the rules prescribe. demo-data/check_fixtures.py checks that the
-result follows from the rules; this test checks that both fit the contract. The
-medication code system below is a fictional local one: the terminology is OPEN.
+result follows from the rules; this test checks that both fit the contract. The rule
+set's code system is a fictional local one: the terminology is OPEN.
 """
 
 import json
@@ -37,7 +37,7 @@ explanation_request_schema = validator(
 def medication(code):
     return {
         "name": CATALOG[code]["name"],
-        "code": {"system": "urn:hackcure:demo:medication", "code": code},
+        "code": {"system": RULE_SET["codeSystem"], "code": code},
     }
 
 
