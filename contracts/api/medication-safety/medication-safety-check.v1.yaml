@@ -35,9 +35,11 @@ info:
     pregnancy checks are not part of this version.
 
     Status: implemented by each Hospital Node (HC-162, ADR-0008) with a
-    deterministic engine. Its only rule source is the fictional rule set of
-    demo-data/medication-rules.json (HC-161), so every result is
-    `mocked: true`; a validated source is HC-163. When the rules cannot
+    deterministic engine. By default its rules are the fictional rule set of
+    demo-data/medication-rules.json (HC-161), and results are
+    `mocked: true`. A node can instead use the validated ONC high-priority
+    list (HC-163, ADR-0009), a minimum set of contraindicated pairs, with
+    `mocked: false`. When the rules cannot
     identify the proposed medication, no check is performed and the answer
     is a 503. No product calls it yet.
 paths:

@@ -1,0 +1,12 @@
+{
+  "notice": "Hospital A's fictional demo configuration with the validated ONC high-priority interaction list (HC-163) instead of the fictional demo rules. Same identity and port as hospital-a.demo.json: run one or the other. Not a production configuration.",
+  "node_ref": "node-hospital-a",
+  "organization_ref": "org-hospital-a",
+  "port": 8101,
+  "storage_dir": "../.storage/hospital-a",
+  "mock_clinical_records": "../../../demo-data/records/hospital-a.json",
+  "mock_access_grants": "../../../demo-data/access.json",
+  "mock_governance_decisions": "../../../demo-data/governance.json",
+  "mock_medication_rules": "../../../demo-data/medication-rules.json",
+  "medication_rule_source": "onc_high_priority_2012"
+}
