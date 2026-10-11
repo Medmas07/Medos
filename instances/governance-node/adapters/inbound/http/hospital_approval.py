@@ -25,6 +25,7 @@ from application.hospital_approval import (
     get_hospital_approval,
     list_applications,
 )
+from application.ledger import AuditLedgerPort
 from domain.policy import PolicyHistory
 from domain.hospital_application import ApplicationStatus, HospitalApplication
 from domain.hospital_approval import (
@@ -117,6 +118,7 @@ def create_router(
     policies: PolicyHistory,
     audit: AuditTrail,
     clock: Callable[[], datetime],
+    ledger: AuditLedgerPort,
 ) -> APIRouter:
     router = APIRouter(tags=["hospital approval"])
 
@@ -168,6 +170,7 @@ def create_router(
                 policies,
                 audit,
                 clock,
+                ledger,
             )
         except ApplicationNotFound:
             return _application_not_found(application_ref)

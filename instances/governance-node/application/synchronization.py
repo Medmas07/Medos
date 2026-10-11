@@ -7,6 +7,7 @@ from typing import Protocol
 
 from application.audit import AUTHORITY_ORGANIZATION_REF, AuditTrail, record
 from application.hospital_approval import HospitalApplicationStore, ReviewerDirectory
+from application.ledger import AuditLedgerPort, anchor_recorded
 from domain.audit import AuditAction, AuditDomain, AuditOutcome, SubjectType
 from domain.hospital_application import ApplicationStatus
 from domain.policy import PolicyHistory
@@ -221,6 +222,7 @@ def decide_request(
     policies: PolicyHistory,
     audit: AuditTrail,
     clock: Callable[[], datetime],
+    ledger: AuditLedgerPort | None = None,
 ) -> SynchronizationDecision:
     """Decided under the governance policy in effect now, which it cites."""
     request = store.request(request_ref)
@@ -234,7 +236,7 @@ def decide_request(
         _context(request, grants, applications, policies, clock()),
     )
     store.record(decided, decision)
-    record(
+    event = record(
         audit,
         decision.decided_at,
         AuditAction.DECISION_RECORDED,
@@ -249,6 +251,8 @@ def decide_request(
         ),
         AuditOutcome(decision.outcome.value),
     )
+    # HC-191: anchored in the ledger, if any; the decision stands either way.
+    anchor_recorded(ledger, event)
     return decision
 
 

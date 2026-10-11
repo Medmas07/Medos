@@ -1,9 +1,9 @@
-"""Anchoring governance decisions in an audit ledger (HC-190), and the port it owns.
+"""Anchoring governance decisions in an audit ledger (HC-190, HC-191), and the port.
 
-D1: the port and its use cases only. No adapter implements `AuditLedgerPort` and the
-Node anchors nothing at runtime; a simulated ledger (HC-191), payload hashing (HC-192),
-and a real permissioned ledger (HC-194) are PLANNED behind this port. Ledger
-technology is OPEN.
+The decision use cases anchor each decision they record through `anchor_recorded`;
+the only adapter is the simulated ledger of HC-191 (MOCKED: in memory, not a
+blockchain). Payload hashing (HC-192) and a real permissioned ledger (HC-194) are
+PLANNED behind this port. Ledger technology is OPEN.
 """
 
 from typing import Protocol
@@ -34,6 +34,10 @@ class AuditLedgerPort(Protocol):
         """The proof anchoring this event, if any. Raises LedgerUnavailable."""
         ...
 
+    def proofs(self) -> list[LedgerProof]:
+        """Every proof, in the order anchored. Raises LedgerUnavailable."""
+        ...
+
     # Whether proofs are held by a simulation rather than a real ledger.
     simulated: bool
 
@@ -51,8 +55,26 @@ def anchor_decision(ledger: AuditLedgerPort, event: AuditEvent) -> LedgerProof:
     return ledger.anchor(payload)
 
 
+def anchor_recorded(
+    ledger: AuditLedgerPort | None, event: AuditEvent
+) -> LedgerProof | None:
+    """Anchor a decision just recorded. The decision stands whatever happens: with no
+    ledger, or the ledger unavailable, it stays unanchored and is not retried (OPEN)."""
+    if ledger is None:
+        return None
+    try:
+        return anchor_decision(ledger, event)
+    except LedgerUnavailable:
+        return None
+
+
 def get_proof(event_ref: str, ledger: AuditLedgerPort) -> LedgerProof:
     proof = ledger.proof(event_ref)
     if proof is None:
         raise ProofNotFound(event_ref)
     return proof
+
+
+def list_proofs(ledger: AuditLedgerPort) -> list[LedgerProof]:
+    """Every proof, the latest anchored first."""
+    return list(reversed(ledger.proofs()))

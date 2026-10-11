@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-CONFIRMED Governance / Ethics Authority boundary. Its stack (Python + FastAPI, one process) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED at D2 (HC-130): a FastAPI app with Clean/Hexagonal layers, pinned dependencies, tests, and a liveness `GET /health`. The [hospital approval API](#hospital-approval-api-hc-131) is IMPLEMENTED at D2 (HC-131), over applications and decisions held **in memory**, seeded from fictional demo data: decisions are lost on restart, and the reviewer is declared, not authenticated. The [synchronization request API](#synchronization-request-api-hc-132) and the synchronization authorization check the Federation Service calls are IMPLEMENTED at D2 (HC-132), in memory the same way; patient grants are checked against fictional demo grants (**MOCKED**). The [research access request API](#research-access-request-api-hc-133) and the research authorization check the Research Service calls are IMPLEMENTED at D2 (HC-133), in memory the same way. The [governance audit API](#governance-audit-api-hc-134) is IMPLEMENTED at D2 (HC-134): the Node records the requests it receives, the decisions it records, and every authorization check it answers in its own minimized audit trail, in memory the same way. The [governance policy engine](#governance-policy-engine-hc-135) is IMPLEMENTED at D3 (HC-135): the Authority's review rules are a versioned, effective-dated policy, read from fictional data at startup; every review and decision applies the version in effect and every decision cites it. The policy is a fictional demo policy, not a validated legal or ethical framework, and new versions are published by editing the data and restarting. [Consent policy evaluation](#consent-policy-evaluation-hc-136) is IMPLEMENTED at D3 (HC-136): a synchronization's patient grant is evaluated against the grants of the Hospital Node holding it, over real HTTP, when reviewing and again before each exchange; a grant revoked there stops the authorization. The demo Hospital Nodes' grant stores are themselves MOCKED. There is no persistence, no authentication, and no ledger adapter: only the [`AuditLedgerPort`](#audit-ledger-port-hc-190) is defined (HC-190, D1). It is not deployed.
+CONFIRMED Governance / Ethics Authority boundary. Its stack (Python + FastAPI, one process) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED at D2 (HC-130): a FastAPI app with Clean/Hexagonal layers, pinned dependencies, tests, and a liveness `GET /health`. The [hospital approval API](#hospital-approval-api-hc-131) is IMPLEMENTED at D2 (HC-131), over applications and decisions held **in memory**, seeded from fictional demo data: decisions are lost on restart, and the reviewer is declared, not authenticated. The [synchronization request API](#synchronization-request-api-hc-132) and the synchronization authorization check the Federation Service calls are IMPLEMENTED at D2 (HC-132), in memory the same way; patient grants are checked against fictional demo grants (**MOCKED**). The [research access request API](#research-access-request-api-hc-133) and the research authorization check the Research Service calls are IMPLEMENTED at D2 (HC-133), in memory the same way. The [governance audit API](#governance-audit-api-hc-134) is IMPLEMENTED at D2 (HC-134): the Node records the requests it receives, the decisions it records, and every authorization check it answers in its own minimized audit trail, in memory the same way. The [governance policy engine](#governance-policy-engine-hc-135) is IMPLEMENTED at D3 (HC-135): the Authority's review rules are a versioned, effective-dated policy, read from fictional data at startup; every review and decision applies the version in effect and every decision cites it. The policy is a fictional demo policy, not a validated legal or ethical framework, and new versions are published by editing the data and restarting. [Consent policy evaluation](#consent-policy-evaluation-hc-136) is IMPLEMENTED at D3 (HC-136): a synchronization's patient grant is evaluated against the grants of the Hospital Node holding it, over real HTTP, when reviewing and again before each exchange; a grant revoked there stops the authorization. The demo Hospital Nodes' grant stores are themselves MOCKED. The [`AuditLedgerPort`](#audit-ledger-port-hc-190) is defined (HC-190, D1) and the [simulated immutable ledger](#simulated-immutable-ledger-hc-191) behind it is IMPLEMENTED at D2 (HC-191): every decision recorded is anchored as a minimized proof, served by a read-only proofs API. The ledger is **MOCKED**: an append-only list in memory, not a blockchain. There is no persistence and no authentication. It is not deployed.
 
 ## Running locally
 
@@ -37,6 +37,7 @@ application/synchronization.py            # HC-132 use cases and their ports
 application/research.py                   # HC-133 use cases and their ports
 application/audit.py                      # HC-134 use cases and the AuditTrail port the others record to
 application/policy.py                     # HC-135 use cases: the policy versions and their status
+application/ledger.py                     # HC-190 AuditLedgerPort and anchoring use cases
 adapters/inbound/http/health.py           # GET /health
 adapters/inbound/http/hospital_approval.py
 adapters/inbound/http/synchronization_requests.py
@@ -45,6 +46,7 @@ adapters/inbound/http/research_requests.py
 adapters/inbound/http/research_authorization.py   # the Research Service's check
 adapters/inbound/http/audit_events.py     # GET /v1/audit/events[/{event_ref}]
 adapters/inbound/http/policies.py         # GET /v1/policies[/{policy_ref}]
+adapters/inbound/http/ledger_proofs.py    # GET /v1/ledger/proofs, GET /v1/audit/events/{event_ref}/proof
 adapters/inbound/http/problems.py         # RFC 9457 problem details
 adapters/outbound/in_memory_hospital_applications.py  # store, seeded from demo-data/governance.json
 adapters/outbound/fixture_reviewer_directory.py       # who a reviewer_ref names (demo-data/people.json)
@@ -55,6 +57,7 @@ hospital-nodes.demo.json                              # which Hospital Node hold
 adapters/outbound/in_memory_research.py               # store, seeded from governance.json and research.json
 adapters/outbound/in_memory_audit_trail.py            # trail, seeded from governance.json
 adapters/outbound/fixture_policies.py                 # policy versions, read from governance.json
+adapters/outbound/simulated_audit_ledger.py           # HC-191 MOCKED ledger, seeded from governance.json
 tests/                                    # domain, use case, adapter, HTTP, and layer-boundary tests
 ```
 
@@ -64,12 +67,12 @@ tests/                                    # domain, use case, adapter, HTTP, and
 {
   "status": "ok",
   "node": "governance-node",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "node_ref": "node-governance",
   "organization_ref": "org-governance",
-  "capabilities": ["hospital_approval", "synchronization", "research", "audit", "policy"],
+  "capabilities": ["hospital_approval", "synchronization", "research", "audit", "policy", "ledger"],
   "grants": "http",
-  "notice": "Governance Node (HC-130 to HC-135). ... Liveness only; not a production health check."
+  "notice": "Governance Node (HC-130 to HC-136, HC-191). ... Liveness only; not a production health check."
 }
 ```
 
@@ -120,7 +123,7 @@ curl -s localhost:8200/v1/hospital-approvals/dec-hospital-c
 
 Other states to show on Hospital C: `reviewer_ref: "usr-mehdi"` (its own manager) gives `403`; `findings_acknowledged: false` with no condition gives `422` with both rules; a second decision gives `409`.
 
-Not done at D2: nothing calls this API yet. The Governance Portal still records simulated decisions in the browser (HC-073), and the Federation Service's node registry still reports approvals `verified: false` without calling `getHospitalApproval`. Application submission and document upload, decision expiry or revocation, Hospital Node configuration and package generation after approval, and anchoring decisions in a ledger are out of scope. Each decision recorded through the API is added to the [governance audit trail](#governance-audit-api-hc-134).
+Not done at D2: nothing calls this API yet. The Governance Portal still records simulated decisions in the browser (HC-073), and the Federation Service's node registry still reports approvals `verified: false` without calling `getHospitalApproval`. Application submission and document upload, decision expiry or revocation, and Hospital Node configuration and package generation after approval are out of scope. Each decision recorded through the API is added to the [governance audit trail](#governance-audit-api-hc-134) and anchored in the [simulated ledger](#simulated-immutable-ledger-hc-191).
 
 ## Synchronization request API (HC-132)
 
@@ -179,7 +182,7 @@ The same check then answers `authorized`, naming `org-hospital-b`. Other states 
 
 How a Hospital Node verifies a decision with the Governance Node is OPEN ([OPEN_QUESTIONS.md](../../docs/OPEN_QUESTIONS.md)).
 
-Not done at D2: the Governance Portal still records simulated synchronization decisions (HC-076) and does not call this API; revoking or extending an approval; anchoring decisions in a ledger.
+Not done at D2: the Governance Portal still records simulated synchronization decisions (HC-076) and does not call this API; revoking or extending an approval. Decisions are anchored in the [simulated ledger](#simulated-immutable-ledger-hc-191) (MOCKED) since HC-191.
 
 ## Research access request API (HC-133)
 
@@ -248,7 +251,7 @@ Other states to show: `reviewer_ref: "usr-aymen"` (the investigator) gives `403`
 - Jobs outside a decision are denied here before any node is asked.
 - Under `dec-rar-001`, no job can complete. The HC-183 aggregate refuses age bounds (no local demographic data), and this Node refuses a job without them as wider than the approved population (ages 40–79).
 
-Not done at D2: the Governance Portal still records simulated research decisions (HC-078), and the Research Portal does not submit to this API; revoking or extending an approval; anchoring decisions in a ledger.
+Not done at D2: the Governance Portal still records simulated research decisions (HC-078), and the Research Portal does not submit to this API; revoking or extending an approval. Decisions are anchored in the [simulated ledger](#simulated-immutable-ledger-hc-191) (MOCKED) since HC-191.
 
 ## Governance audit API (HC-134)
 
@@ -274,7 +277,7 @@ IMPLEMENTED at D2. The Node serves [`governance-audit-events.v1.yaml`](../../con
 
 **No audit, no answer.** A check is recorded before it is answered; if recording fails, the request fails and authorizes nothing (the Research Service fails closed). A submission or decision is stored first, then recorded: in memory recording cannot fail, but the two stores are not one transaction, so a durable trail would need that settled (OPEN).
 
-**Storage, at D2:** `InMemoryAuditTrail` holds the events, append-only, numbered `evt-NNN`. At startup it loads the seven fictional events of [`demo-data/governance.json`](../../demo-data/governance.json), taking a decision event's domain and outcome from the decision it names. Events recorded at runtime are **lost on restart** (`durable: false`). Actors are those the callers declare, **not authenticated**, and readers are not authenticated either; who may read the trail and retention are OPEN. No event is anchored in a ledger: the OPTIONAL [`AuditLedgerPort`](#audit-ledger-port-hc-190) has no adapter, and the Governance Portal's ledger proofs remain fixtures (MOCKED BLOCKCHAIN, HC-080).
+**Storage, at D2:** `InMemoryAuditTrail` holds the events, append-only, numbered `evt-NNN`. At startup it loads the seven fictional events of [`demo-data/governance.json`](../../demo-data/governance.json), taking a decision event's domain and outcome from the decision it names. Events recorded at runtime are **lost on restart** (`durable: false`). Actors are those the callers declare, **not authenticated**, and readers are not authenticated either; who may read the trail and retention are OPEN. Each `decision_recorded` event is anchored in the [simulated ledger](#simulated-immutable-ledger-hc-191) (HC-191, MOCKED); its proof is served by the ledger proofs API, not this one. The Governance Portal's ledger proofs remain fixtures (MOCKED BLOCKCHAIN, HC-080).
 
 Demo, with the Node running:
 
@@ -295,7 +298,7 @@ curl -s 'localhost:8200/v1/audit/events?subject_ref=dec-sync-001'
 
 The last call lists the authorized check, the decision, and the denied check, none naming the patient. Other states to show: `?limit=0` or `?patient_ref=pat-a` gives `400`; `evt-999` gives `404`; after a restart only the seven seed events remain.
 
-Not done at D2: the Governance Portal's audit timeline (HC-079) still reads fixtures and local state and does not call this API; persistence, retention, authenticated readers and actors, auditing refused decisions, and anchoring events in a ledger.
+Not done at D2: the Governance Portal's audit timeline (HC-079) still reads fixtures and local state and does not call this API; persistence, retention, authenticated readers and actors, auditing refused decisions, and anchoring events other than decisions.
 
 ## Governance policy engine (HC-135)
 
@@ -377,7 +380,7 @@ Not done at D3: authenticated node-to-node calls, node discovery from the Federa
 
 ## Audit ledger port (HC-190)
 
-IMPLEMENTED at D1, as a boundary only. [`application/ledger.py`](application/ledger.py) owns the OPTIONAL `AuditLedgerPort` through which a ledger adapter would anchor governance proofs; **no adapter implements it, nothing is wired into the runtime, and no event is anchored**. There is no route and no demo command: the D1 boundary is the port, its payload, and its tests.
+IMPLEMENTED at D1, as a boundary. [`application/ledger.py`](application/ledger.py) owns the OPTIONAL `AuditLedgerPort` through which a ledger adapter anchors governance proofs. Its only adapter is the [simulated immutable ledger](#simulated-immutable-ledger-hc-191) (HC-191, MOCKED); no real ledger implements it.
 
 **What may be anchored** ([`domain/ledger.py`](domain/ledger.py)): `proof_payload` turns a `decision_recorded` audit event into a `ProofPayload` of six fields only: the event reference, the decision reference, the outcome, the time decided, the organizations (the Authority first), and the payload version (`1`). These are the fields the demo ledger proofs of [`demo-data/governance.json`](../../demo-data/governance.json) anchor, and the seed events `evt-003` and `evt-004` give exactly those payloads. The actor is not anchored. The type has no field for a patient reference, a purpose, a rationale, a data scope, or clinical content, so none can reach a ledger through it. Requests received and authorization checks are not anchorable (`NotAnchorable`).
 
@@ -385,11 +388,43 @@ IMPLEMENTED at D1, as a boundary only. [`application/ledger.py`](application/led
 |---|---|
 | `anchor(payload) -> LedgerProof` | Anchors append-only and returns the receipt: proof reference, payload, ledger name, time anchored. Raises `LedgerUnavailable` when nothing was anchored. |
 | `proof(event_ref) -> LedgerProof \| None` | The proof anchoring an event, if any. Raises `LedgerUnavailable`. |
+| `proofs() -> list[LedgerProof]` | Every proof, in the order anchored (added by HC-191 to serve them). Raises `LedgerUnavailable`. |
 | `simulated` | Whether proofs are held by a simulation rather than a real ledger, so a simulation is never shown as a real ledger. |
 
-**Use cases:** `anchor_decision` anchors a recorded decision once: anchoring it again returns its proof, and the same event with another payload is a `ProofConflict`. `get_proof` raises `ProofNotFound` for an event without proof. Both are tested against a test double that stays in `tests/` (`test_ledger.py`, `test_ledger_use_cases.py`); the layer test keeps any ledger library out of `domain/` and `application/`.
+**Use cases:** `anchor_decision` anchors a recorded decision once: anchoring it again returns its proof, and the same event with another payload is a `ProofConflict`. `anchor_recorded` is what the decision use cases call after recording a decision (HC-191): the decision stands whatever happens, and a ledger that is unavailable leaves it unanchored. `get_proof` raises `ProofNotFound` for an event without proof; `list_proofs` lists them, the latest anchored first. They are tested against a test double that stays in `tests/` (`test_ledger.py`, `test_ledger_use_cases.py`); the layer test keeps any ledger library out of `domain/` and `application/`.
 
-Not done at D1: a simulated ledger adapter (HC-191), hashing the payload (HC-192), a real permissioned ledger (HC-194, after the technology evaluation HC-193; the technology is OPEN), signatures, anchoring decisions as they are recorded, what happens to a decision when the ledger is unavailable, an API or contract serving proofs, and the Governance Portal reading them (its proof explorer, HC-080, still shows the MOCKED BLOCKCHAIN fixtures).
+Not done: hashing the payload (HC-192), a real permissioned ledger (HC-194, after the technology evaluation HC-193; the technology is OPEN), and signatures.
+
+## Simulated immutable ledger (HC-191)
+
+IMPLEMENTED at D2, **MOCKED**. [`adapters/outbound/simulated_audit_ledger.py`](adapters/outbound/simulated_audit_ledger.py) implements the `AuditLedgerPort` as an append-only list in this process's memory, named `local-simulation`, with `simulated: true`. It is **not a blockchain and not a real ledger**: no consensus, signature, replication, hashing, or durability. Proofs anchored at runtime are **lost on restart**. "Immutable" means only that nothing changes or removes a proof once anchored: an event is anchored once, the same payload again returns the same proof, and another payload for the same event is refused (`ProofConflict`), even under concurrent calls.
+
+**Anchoring.** Each hospital approval, synchronization, or research decision recorded through the APIs (HC-131 to HC-133) is stored, recorded in the audit trail as `decision_recorded`, and then anchored: its [six-field minimized payload](#audit-ledger-port-hc-190) becomes the next `proof-NNN`, at the Node's clock time. A refused decision (`403`, `409`, `422`) records nothing, so it anchors nothing. Requests received and authorization checks are never anchored. The decision stands whether or not it was anchored; an unanchored decision is not retried (OPEN). The simulated ledger is always available, so at D2 this never happens.
+
+**Seed.** At startup the ledger loads the two fictional simulated proofs of [`demo-data/governance.json`](../../demo-data/governance.json) (`proof-003` for `evt-003`, `proof-004` for `evt-004`). Each must be marked simulated in `local-simulation`, anchor exactly the six payload fields, and match the payload of the seed audit event it names; otherwise startup stops. The seed decisions `evt-001`, `evt-002`, and `evt-005` have no proof in the demo data and stay unanchored. The fixtures' `hash` is not read: hashing is HC-192.
+
+| Route | Contract | Purpose |
+|---|---|---|
+| `GET /v1/ledger/proofs` | [`governance-ledger-proofs.v1.yaml`](../../contracts/api/governance/governance-ledger-proofs.v1.yaml) | Every proof, the latest anchored first, with `simulated` and a MOCKED BLOCKCHAIN notice. |
+| `GET /v1/audit/events/{event_ref}/proof` | same | The proof anchoring one audit event. `404 event_not_found` for an unknown event; `404 proof_not_found` for an event without proof. |
+
+Either route answers `503 ledger_unavailable` if the ledger cannot be read; the simulated ledger always can. A proof carries the proof reference, the ledger name, the time anchored, and the payload, never the actor, a patient reference, a purpose, a rationale, a scope, or clinical content. Readers are not authenticated.
+
+Demo, with the Node running (`GOVERNANCE_GRANTS=fixture python main.py` to run without Hospital Nodes):
+
+```bash
+# The two simulated seed proofs.
+curl -s localhost:8200/v1/ledger/proofs
+
+# Approve sync-001 as in the synchronization demo (201): it is recorded as evt-008 ...
+curl -s 'localhost:8200/v1/audit/events?subject_ref=dec-sync-001'
+# ... and anchored at once as proof-005, with its minimized payload only.
+curl -s localhost:8200/v1/audit/events/evt-008/proof
+```
+
+Other states to show: `evt-007` (a request received) and `evt-001` (a seed decision without a demo proof) give `404 proof_not_found`; `evt-999` gives `404 event_not_found`; a second decision on `sync-001` gives `409` and anchors nothing; after a restart only `proof-003` and `proof-004` remain.
+
+Not done at D2: payload hashing and verification (HC-192), a real permissioned ledger (HC-193, HC-194), signatures, durability, retrying an unanchored decision, anchoring the policy version, and the Governance Portal reading these proofs (its proof explorer, HC-080, still shows the MOCKED BLOCKCHAIN fixtures).
 
 ## Responsibilities and owned concepts
 
@@ -398,7 +433,7 @@ Not done at D1: a simulated ledger adapter (HC-191), hashing the payload (HC-192
 - Governance audit, served by the [governance audit API](#governance-audit-api-hc-134) (HC-134).
 - Policy evaluation, served by the [governance policy engine](#governance-policy-engine-hc-135) (HC-135).
 - Consent policy evaluation, served by [consent policy evaluation](#consent-policy-evaluation-hc-136) (HC-136): the Node evaluates grants held by the Hospital Nodes; it records none.
-- OPTIONAL Blockchain Adapter behind the application-owned [`AuditLedgerPort`](#audit-ledger-port-hc-190) (HC-190); no adapter exists.
+- OPTIONAL ledger adapter behind the application-owned [`AuditLedgerPort`](#audit-ledger-port-hc-190) (HC-190); only the [simulated immutable ledger](#simulated-immutable-ledger-hc-191) exists (HC-191, MOCKED), no blockchain adapter.
 
 ## Communication boundaries
 
@@ -410,4 +445,4 @@ It does not own raw hospital clinical databases, clinician workflows, patient me
 
 ## Expected contracts
 
-This Node provides [`hospital-approval.v1.yaml`](../../contracts/api/governance/hospital-approval.v1.yaml) (HC-131), [`synchronization-requests.v1.yaml`](../../contracts/api/governance/synchronization-requests.v1.yaml), and the Federation's [`sync-authorization-check.v1.yaml`](../../contracts/federation/sync-authorization-check.v1.yaml) (HC-132), [`research-requests.v1.yaml`](../../contracts/api/governance/research-requests.v1.yaml), and the Research Service's [`research-authorization-check.v1.yaml`](../../contracts/api/research/research-authorization-check.v1.yaml) (HC-133), [`governance-audit-events.v1.yaml`](../../contracts/api/governance/governance-audit-events.v1.yaml) (HC-134), and [`governance-policies.v1.yaml`](../../contracts/api/governance/governance-policies.v1.yaml) (HC-135). Consent and immutable-proof contracts remain PLANNED.
+This Node provides [`hospital-approval.v1.yaml`](../../contracts/api/governance/hospital-approval.v1.yaml) (HC-131), [`synchronization-requests.v1.yaml`](../../contracts/api/governance/synchronization-requests.v1.yaml), and the Federation's [`sync-authorization-check.v1.yaml`](../../contracts/federation/sync-authorization-check.v1.yaml) (HC-132), [`research-requests.v1.yaml`](../../contracts/api/governance/research-requests.v1.yaml), and the Research Service's [`research-authorization-check.v1.yaml`](../../contracts/api/research/research-authorization-check.v1.yaml) (HC-133), [`governance-audit-events.v1.yaml`](../../contracts/api/governance/governance-audit-events.v1.yaml) (HC-134), [`governance-policies.v1.yaml`](../../contracts/api/governance/governance-policies.v1.yaml) (HC-135), and [`governance-ledger-proofs.v1.yaml`](../../contracts/api/governance/governance-ledger-proofs.v1.yaml) (HC-191, simulated ledger). A consent contract remains PLANNED.

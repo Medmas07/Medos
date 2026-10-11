@@ -10,6 +10,7 @@ from adapters.inbound.http.health import create_router as create_health_router
 from adapters.inbound.http.hospital_approval import (
     create_router as create_hospital_approval_router,
 )
+from adapters.inbound.http.ledger_proofs import create_router as create_ledger_router
 from adapters.inbound.http.policies import create_router as create_policy_router
 from adapters.inbound.http.research_authorization import (
     create_router as create_research_authorization_router,
@@ -37,6 +38,7 @@ from adapters.outbound.in_memory_hospital_applications import (
 )
 from adapters.outbound.in_memory_research import InMemoryResearchStore
 from adapters.outbound.in_memory_synchronization import InMemorySynchronizationStore
+from adapters.outbound.simulated_audit_ledger import SimulatedAuditLedger
 from application.get_node_status import NODE_VERSION
 from application.synchronization import PatientGrantDirectory
 from domain.node_identity import NodeIdentity
@@ -86,14 +88,26 @@ def create_app(
     policies = load_policies(demo_data / "governance.json")
     # HC-134: in memory, seeded from fictional events; runtime events lost on restart.
     audit = InMemoryAuditTrail.load(demo_data / "governance.json")
+    # HC-191: MOCKED simulated ledger, in memory, seeded from the fictional proofs;
+    # every decision recorded is anchored there. Runtime proofs lost on restart.
+    ledger = SimulatedAuditLedger.load(demo_data / "governance.json", audit, clock)
     app = FastAPI(title="Governance Node", version=NODE_VERSION)
     app.include_router(create_health_router(identity, grants.mode))
     app.include_router(
-        create_hospital_approval_router(applications, reviewers, policies, audit, clock)
+        create_hospital_approval_router(
+            applications, reviewers, policies, audit, clock, ledger
+        )
     )
     app.include_router(
         create_synchronization_router(
-            synchronizations, reviewers, grants, applications, policies, audit, clock
+            synchronizations,
+            reviewers,
+            grants,
+            applications,
+            policies,
+            audit,
+            clock,
+            ledger,
         )
     )
     app.include_router(
@@ -101,11 +115,12 @@ def create_app(
     )
     app.include_router(
         create_research_router(
-            research, reviewers, applications, policies, audit, clock
+            research, reviewers, applications, policies, audit, clock, ledger
         )
     )
     app.include_router(create_research_authorization_router(research, audit, clock))
     app.include_router(create_audit_router(identity, audit))
+    app.include_router(create_ledger_router(identity, ledger, audit))
     app.include_router(create_policy_router(policies, clock))
     return app
 

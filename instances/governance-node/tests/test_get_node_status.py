@@ -17,6 +17,7 @@ def test_status_names_the_node_and_its_capabilities():
         "research",
         "audit",
         "policy",
+        "ledger",
     )
     assert status.notice == SKELETON_NOTICE
 
@@ -27,6 +28,7 @@ def test_notice_states_what_is_not_implemented():
         "not authenticated",
         "lost on restart",
         "not a production",
+        "not a blockchain",
     ):
         assert phrase in SKELETON_NOTICE
 
