@@ -12,13 +12,15 @@ HC-037 Recording consent UX is MOCKED at D1 in the Consultation destination. For
 
 HC-038 Speech-to-text consultation UX is MOCKED at D1 after recording consent. The clinician starts and stops a visibly simulated recording, sees deterministic transcription progress, then reviews the predefined fictional `script-a-2026-10-10` transcript from `demo-data/clinician.json`, with speaker attribution and a permanent MOCKED label. There is no microphone permission, audio capture, speech model, network call, persistence, or clinical extraction. Withdrawing consent hides and cancels the speech-to-text flow.
 
+HC-043 Clinician alert center is MOCKED at D1 with the three canonical fictional alerts from `demo-data/clinician.json`. The center shows patient, date, source reference, and visibly demo-only priority, and lets the clinician mark an alert as examined or restore it. The pending/all filters and reviewed state are widget-local and session-only. Ordering is not clinical triage, no alert is received in real time, and no acknowledgement is persisted or sent to the Notification Service.
+
 | Destination | Planned content |
 |---|---|
 | `Accueil` | Clinician dashboard, IMPLEMENTED at D1 (HC-031, see above). |
 | `File` | Priority patient queue (HC-032) and its explanation (HC-044). |
 | `Patients` | Authorized patient list, patient detail, and federated history (HC-033 to HC-035). |
 | `Consultation` | Recording consent and speech-to-text UX are MOCKED (HC-037, HC-038); consultation workspace, real audio capture/transcription, adaptive intake, AI extraction and lab review, and medication warning remain PLANNED (HC-036, HC-039 to HC-042). |
-| `Alertes` | Clinician alert center (HC-043). |
+| `Alertes` | Clinician alert center is MOCKED with canonical fixtures and session-local review state (HC-043). |
 
 The profile sheet (app bar avatar) shows the fictional identity and states that the session is simulated: there is no authentication or authorization. The flask menu switches the current destination between content, loading, empty, and error states; navigating returns to content.
 
@@ -33,7 +35,7 @@ Flutter + Dart and the Android-first development path are CONFIRMED by [ADR-0004
 
 The Clinician App consumes authorized context through explicit APIs and never accesses hospital databases directly. Clinical AI output is advisory and subject to clinician review.
 
-At D1 there is no HTTP client, persistence, authentication, or backend integration. `lib/demo/canonical_clinician.dart` is a presentation-only copy of the canonical fictional `clin-x` identity from [`demo-data/people.json`](../../../demo-data/people.json) and its organization from [`organizations.json`](../../../demo-data/organizations.json); a test fails if the copy drifts from them. It is not an identity, authorization, or clinical domain model. Planned destinations state that they load no clinical data.
+At D1 there is no HTTP client, persistence, authentication, or backend integration. Files under `lib/demo/` are presentation-only copies of the canonical fictional clinician identity, consultation, and alerts from [`demo-data/`](../../../demo-data/); tests fail if those copies drift. They are not identity, authorization, notification, or clinical domain models. Planned destinations state that they load no clinical data.
 
 ## Non-responsibilities
 
@@ -41,7 +43,7 @@ It does not have autonomous diagnostic or prescription authority, make Governanc
 
 ## Expected contracts
 
-PLANNED authorization, patient-view, consultation, extraction-review, medication-safety, alert, queue, and notification contracts. Existing candidates include the Federation [patient query](../../../contracts/federation/federated-patient-query.v1.yaml) (served through HC-114 / HC-141), the [medication safety check](../../../contracts/api/medication-safety/medication-safety-check.v1.yaml), and the Notification Service's clinician alerts; the shell consumes none of them.
+PLANNED authorization, patient-view, consultation, extraction-review, medication-safety, alert, queue, and notification contracts. Existing candidates include the Federation [patient query](../../../contracts/federation/federated-patient-query.v1.yaml) (served through HC-114 / HC-141), the [medication safety check](../../../contracts/api/medication-safety/medication-safety-check.v1.yaml), and the Notification Service's clinician alerts; the app consumes none of them.
 
 ## Structure
 
