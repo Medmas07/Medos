@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-CONFIRMED Governance / Ethics Authority boundary. Its stack (Python + FastAPI, one process) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED at D2 (HC-130): a FastAPI app with Clean/Hexagonal layers, pinned dependencies, tests, and a liveness `GET /health`. The [hospital approval API](#hospital-approval-api-hc-131) is IMPLEMENTED at D2 (HC-131), over applications and decisions held **in memory**, seeded from fictional demo data: decisions are lost on restart, and the reviewer is declared, not authenticated. The [synchronization request API](#synchronization-request-api-hc-132) and the synchronization authorization check the Federation Service calls are IMPLEMENTED at D2 (HC-132), in memory the same way; patient grants are checked against fictional demo grants (**MOCKED**). The [research access request API](#research-access-request-api-hc-133) and the research authorization check the Research Service calls are IMPLEMENTED at D2 (HC-133), in memory the same way. The [governance audit API](#governance-audit-api-hc-134) is IMPLEMENTED at D2 (HC-134): the Node records the requests it receives, the decisions it records, and every authorization check it answers in its own minimized audit trail, in memory the same way. The [governance policy engine](#governance-policy-engine-hc-135) is IMPLEMENTED at D3 (HC-135): the Authority's review rules are a versioned, effective-dated policy, read from fictional data at startup; every review and decision applies the version in effect and every decision cites it. The policy is a fictional demo policy, not a validated legal or ethical framework, and new versions are published by editing the data and restarting. [Consent policy evaluation](#consent-policy-evaluation-hc-136) is IMPLEMENTED at D3 (HC-136): a synchronization's patient grant is evaluated against the grants of the Hospital Node holding it, over real HTTP, when reviewing and again before each exchange; a grant revoked there stops the authorization. The demo Hospital Nodes' grant stores are themselves MOCKED. The [`AuditLedgerPort`](#audit-ledger-port-hc-190) is defined (HC-190, D1) and the [simulated immutable ledger](#simulated-immutable-ledger-hc-191) behind it is IMPLEMENTED at D2 (HC-191): every decision recorded is anchored as a minimized proof, served by a read-only proofs API. The ledger is **MOCKED**: an append-only list in memory, not a blockchain. There is no persistence and no authentication. It is not deployed.
+CONFIRMED Governance / Ethics Authority boundary. Its stack (Python + FastAPI, one process) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED at D2 (HC-130): a FastAPI app with Clean/Hexagonal layers, pinned dependencies, tests, and a liveness `GET /health`. The [hospital approval API](#hospital-approval-api-hc-131) is IMPLEMENTED at D2 (HC-131), over applications and decisions held **in memory**, seeded from fictional demo data: decisions are lost on restart, and the reviewer is declared, not authenticated. The [synchronization request API](#synchronization-request-api-hc-132) and the synchronization authorization check the Federation Service calls are IMPLEMENTED at D2 (HC-132), in memory the same way; patient grants are checked against fictional demo grants (**MOCKED**). The [research access request API](#research-access-request-api-hc-133) and the research authorization check the Research Service calls are IMPLEMENTED at D2 (HC-133), in memory the same way. The [governance audit API](#governance-audit-api-hc-134) is IMPLEMENTED at D2 (HC-134): the Node records the requests it receives, the decisions it records, and every authorization check it answers in its own minimized audit trail, in memory the same way. The [governance policy engine](#governance-policy-engine-hc-135) is IMPLEMENTED at D3 (HC-135): the Authority's review rules are a versioned, effective-dated policy, read from fictional data at startup; every review and decision applies the version in effect and every decision cites it. The policy is a fictional demo policy, not a validated legal or ethical framework, and new versions are published by editing the data and restarting. [Consent policy evaluation](#consent-policy-evaluation-hc-136) is IMPLEMENTED at D3 (HC-136): a synchronization's patient grant is evaluated against the grants of the Hospital Node holding it, over real HTTP, when reviewing and again before each exchange; a grant revoked there stops the authorization. The demo Hospital Nodes' grant stores are themselves MOCKED. The [`AuditLedgerPort`](#audit-ledger-port-hc-190) is defined (HC-190, D1) and the [simulated immutable ledger](#simulated-immutable-ledger-hc-191) behind it is IMPLEMENTED at D2 (HC-191): every decision recorded is anchored as a minimized proof, served by a read-only proofs API. [Ledger event hashing](#ledger-event-hashing-hc-192) is IMPLEMENTED at D2 (HC-192): each proof holds its payload's SHA-256 hash, the one the demo data's proofs use, and is served with the Node's verification of that hash against its audit trail. The ledger is **MOCKED**: an append-only list in memory, not a blockchain. There is no persistence and no authentication. It is not deployed.
 
 ## Running locally
 
@@ -37,7 +37,7 @@ application/synchronization.py            # HC-132 use cases and their ports
 application/research.py                   # HC-133 use cases and their ports
 application/audit.py                      # HC-134 use cases and the AuditTrail port the others record to
 application/policy.py                     # HC-135 use cases: the policy versions and their status
-application/ledger.py                     # HC-190 AuditLedgerPort and anchoring use cases
+application/ledger.py                     # HC-190 AuditLedgerPort, anchoring and HC-192 verification use cases
 adapters/inbound/http/health.py           # GET /health
 adapters/inbound/http/hospital_approval.py
 adapters/inbound/http/synchronization_requests.py
@@ -67,12 +67,12 @@ tests/                                    # domain, use case, adapter, HTTP, and
 {
   "status": "ok",
   "node": "governance-node",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "node_ref": "node-governance",
   "organization_ref": "org-governance",
   "capabilities": ["hospital_approval", "synchronization", "research", "audit", "policy", "ledger"],
   "grants": "http",
-  "notice": "Governance Node (HC-130 to HC-136, HC-191). ... Liveness only; not a production health check."
+  "notice": "Governance Node (HC-130 to HC-136, HC-191, HC-192). ... Liveness only; not a production health check."
 }
 ```
 
@@ -386,29 +386,29 @@ IMPLEMENTED at D1, as a boundary. [`application/ledger.py`](application/ledger.p
 
 | Port member | Contract |
 |---|---|
-| `anchor(payload) -> LedgerProof` | Anchors append-only and returns the receipt: proof reference, payload, ledger name, time anchored. Raises `LedgerUnavailable` when nothing was anchored. |
+| `anchor(payload) -> LedgerProof` | Anchors append-only and returns the receipt: proof reference, payload, ledger name, time anchored, and the payload's hash (HC-192). Raises `LedgerUnavailable` when nothing was anchored. |
 | `proof(event_ref) -> LedgerProof \| None` | The proof anchoring an event, if any. Raises `LedgerUnavailable`. |
 | `proofs() -> list[LedgerProof]` | Every proof, in the order anchored (added by HC-191 to serve them). Raises `LedgerUnavailable`. |
 | `simulated` | Whether proofs are held by a simulation rather than a real ledger, so a simulation is never shown as a real ledger. |
 
 **Use cases:** `anchor_decision` anchors a recorded decision once: anchoring it again returns its proof, and the same event with another payload is a `ProofConflict`. `anchor_recorded` is what the decision use cases call after recording a decision (HC-191): the decision stands whatever happens, and a ledger that is unavailable leaves it unanchored. `get_proof` raises `ProofNotFound` for an event without proof; `list_proofs` lists them, the latest anchored first. They are tested against a test double that stays in `tests/` (`test_ledger.py`, `test_ledger_use_cases.py`); the layer test keeps any ledger library out of `domain/` and `application/`.
 
-Not done: hashing the payload (HC-192), a real permissioned ledger (HC-194, after the technology evaluation HC-193; the technology is OPEN), and signatures.
+Not done: a real permissioned ledger (HC-194, after the technology evaluation HC-193; the technology is OPEN), and signatures.
 
 ## Simulated immutable ledger (HC-191)
 
-IMPLEMENTED at D2, **MOCKED**. [`adapters/outbound/simulated_audit_ledger.py`](adapters/outbound/simulated_audit_ledger.py) implements the `AuditLedgerPort` as an append-only list in this process's memory, named `local-simulation`, with `simulated: true`. It is **not a blockchain and not a real ledger**: no consensus, signature, replication, hashing, or durability. Proofs anchored at runtime are **lost on restart**. "Immutable" means only that nothing changes or removes a proof once anchored: an event is anchored once, the same payload again returns the same proof, and another payload for the same event is refused (`ProofConflict`), even under concurrent calls.
+IMPLEMENTED at D2, **MOCKED**. [`adapters/outbound/simulated_audit_ledger.py`](adapters/outbound/simulated_audit_ledger.py) implements the `AuditLedgerPort` as an append-only list in this process's memory, named `local-simulation`, with `simulated: true`. It is **not a blockchain and not a real ledger**: no consensus, signature, replication, or durability; the payload hash (HC-192) is computed by the Node itself. Proofs anchored at runtime are **lost on restart**. "Immutable" means only that nothing changes or removes a proof once anchored: an event is anchored once, the same payload again returns the same proof, and another payload for the same event is refused (`ProofConflict`), even under concurrent calls.
 
 **Anchoring.** Each hospital approval, synchronization, or research decision recorded through the APIs (HC-131 to HC-133) is stored, recorded in the audit trail as `decision_recorded`, and then anchored: its [six-field minimized payload](#audit-ledger-port-hc-190) becomes the next `proof-NNN`, at the Node's clock time. A refused decision (`403`, `409`, `422`) records nothing, so it anchors nothing. Requests received and authorization checks are never anchored. The decision stands whether or not it was anchored; an unanchored decision is not retried (OPEN). The simulated ledger is always available, so at D2 this never happens.
 
-**Seed.** At startup the ledger loads the two fictional simulated proofs of [`demo-data/governance.json`](../../demo-data/governance.json) (`proof-003` for `evt-003`, `proof-004` for `evt-004`). Each must be marked simulated in `local-simulation`, anchor exactly the six payload fields, and match the payload of the seed audit event it names; otherwise startup stops. The seed decisions `evt-001`, `evt-002`, and `evt-005` have no proof in the demo data and stay unanchored. The fixtures' `hash` is not read: hashing is HC-192.
+**Seed.** At startup the ledger loads the two fictional simulated proofs of [`demo-data/governance.json`](../../demo-data/governance.json) (`proof-003` for `evt-003`, `proof-004` for `evt-004`). Each must be marked simulated in `local-simulation`, anchor exactly the six payload fields, and match the payload of the seed audit event it names; and, since HC-192, hold the SHA-256 hash of that payload (`hashAlgorithm`, `hash`); otherwise startup stops. The seed decisions `evt-001`, `evt-002`, and `evt-005` have no proof in the demo data and stay unanchored.
 
 | Route | Contract | Purpose |
 |---|---|---|
 | `GET /v1/ledger/proofs` | [`governance-ledger-proofs.v1.yaml`](../../contracts/api/governance/governance-ledger-proofs.v1.yaml) | Every proof, the latest anchored first, with `simulated` and a MOCKED BLOCKCHAIN notice. |
 | `GET /v1/audit/events/{event_ref}/proof` | same | The proof anchoring one audit event. `404 event_not_found` for an unknown event; `404 proof_not_found` for an event without proof. |
 
-Either route answers `503 ledger_unavailable` if the ledger cannot be read; the simulated ledger always can. A proof carries the proof reference, the ledger name, the time anchored, and the payload, never the actor, a patient reference, a purpose, a rationale, a scope, or clinical content. Readers are not authenticated.
+Either route answers `503 ledger_unavailable` if the ledger cannot be read; the simulated ledger always can. A proof carries the proof reference, the ledger name, the time anchored, the [payload hash and its verification](#ledger-event-hashing-hc-192), and the payload, never the actor, a patient reference, a purpose, a rationale, a scope, or clinical content. Readers are not authenticated.
 
 Demo, with the Node running (`GOVERNANCE_GRANTS=fixture python main.py` to run without Hospital Nodes):
 
@@ -424,7 +424,33 @@ curl -s localhost:8200/v1/audit/events/evt-008/proof
 
 Other states to show: `evt-007` (a request received) and `evt-001` (a seed decision without a demo proof) give `404 proof_not_found`; `evt-999` gives `404 event_not_found`; a second decision on `sync-001` gives `409` and anchors nothing; after a restart only `proof-003` and `proof-004` remain.
 
-Not done at D2: payload hashing and verification (HC-192), a real permissioned ledger (HC-193, HC-194), signatures, durability, retrying an unanchored decision, anchoring the policy version, and the Governance Portal reading these proofs (its proof explorer, HC-080, still shows the MOCKED BLOCKCHAIN fixtures).
+Not done at D2: a real permissioned ledger (HC-193, HC-194), signatures, durability, retrying an unanchored decision, anchoring the policy version, and the Governance Portal reading these proofs (its proof explorer, HC-080, still shows the MOCKED BLOCKCHAIN fixtures).
+
+## Ledger event hashing (HC-192)
+
+IMPLEMENTED at D2. Each proof holds the SHA-256 hash of its [six-field payload](#audit-ledger-port-hc-190), so a change to an anchored payload, or to the audit event it anchors, is evident. It is not a signature: it proves no author, and the hash is computed and held by the same Node, in the same **MOCKED** simulated ledger, anchored nowhere else.
+
+**Canonical form** ([`domain/ledger.py`](domain/ledger.py), `canonical_payload` and `hash_payload`): the payload as a JSON object with the field names of the demo proofs' `anchoredPayload` (`eventId`, `decisionId`, `outcome`, `decidedAt`, `organizationIds`, `version`), keys sorted, no whitespace, non-ASCII characters unescaped, encoded as UTF-8, `decidedAt` in ISO 8601 with its offset as served. This is the hash [`demo-data/check_fixtures.py`](../../demo-data/check_fixtures.py) checks: the seed events `evt-003` and `evt-004` hash to the fixtures' `hash`, and a test pins the two implementations together, non-ASCII included.
+
+**Anchoring.** The simulated ledger hashes each payload it anchors; the seed proofs must already hold their payload's hash (see [Seed](#simulated-immutable-ledger-hc-191)).
+
+**Verification** (`domain.ledger.verify`, `application.ledger.verify_proof`): whenever a proof is served, the Node recomputes the hash of the proof's payload and of the payload of the audit event it anchors, as the trail holds it now, and answers, in the states of the portal's proof explorer (HC-080):
+
+| `verification` | When |
+|---|---|
+| `verified` | The hash is the payload's, and the audit event still gives that payload. |
+| `tampered` | The hash differs from the payload's, or from the audit event's payload, or the algorithm is not SHA-256. |
+| `inconsistent` | The audit event is missing or is not a recorded decision. |
+
+The proofs API (contract 1.1.0) serves `hash_algorithm`, `payload_hash`, and `verification` with each proof. At D2 every proof the Node serves is `verified`: its trail and ledger are both in its own memory and immutable there; `tampered` and `inconsistent` are shown by tests with a forged proof or a changed event. This is a self-check by the Node that holds the proofs, not an independent verification; anyone can re-hash the served payload instead.
+
+```bash
+# proof-005 for evt-008, after approving sync-001: verification "verified" and
+# payload_hash 44556e2c...ad8df, the SHA-256 of its canonical payload.
+curl -s localhost:8200/v1/audit/events/evt-008/proof
+```
+
+Not done at D2: signatures, anchoring hashes in a ledger outside the Node (HC-194), hash chaining between proofs, and the Governance Portal reading these hashes (its proof explorer, HC-080, re-hashes the fixtures in the browser and escapes non-ASCII characters, unlike this form; they agree on the ASCII-only demo data).
 
 ## Responsibilities and owned concepts
 

@@ -1,5 +1,6 @@
+import importlib.util
 import json
-from dataclasses import fields
+from dataclasses import fields, replace
 from datetime import datetime
 
 import pytest
@@ -12,7 +13,16 @@ from domain.audit import (
     AuditOutcome,
     SubjectType,
 )
-from domain.ledger import NotAnchorable, ProofPayload, proof_payload
+from domain.ledger import (
+    LedgerProof,
+    NotAnchorable,
+    ProofPayload,
+    ProofVerification,
+    canonical_payload,
+    hash_payload,
+    proof_payload,
+    verify,
+)
 from tests.conftest import DEMO_DATA, DEMO_NOW
 
 # The fields a demo ledger proof may anchor (demo-data/check_fixtures.py
@@ -101,3 +111,94 @@ def test_seed_decisions_give_the_payloads_of_the_demo_proofs(event_ref):
         "organizationIds": list(payload.organization_refs),
         "version": payload.version,
     } == anchored | {"decidedAt": datetime.fromisoformat(anchored["decidedAt"])}
+
+
+def _check_fixtures():
+    spec = importlib.util.spec_from_file_location(
+        "check_fixtures", DEMO_DATA / "check_fixtures.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _proof(event, **overrides) -> LedgerProof:
+    payload = proof_payload(event)
+    values = dict(
+        proof_ref="proof-042",
+        payload=payload,
+        ledger="test",
+        anchored_at=DEMO_NOW,
+        payload_hash=hash_payload(payload),
+    )
+    return LedgerProof(**(values | overrides))
+
+
+def test_the_canonical_payload_is_sorted_compact_json_of_the_demo_field_names():
+    assert canonical_payload(proof_payload(decision_event())) == (
+        '{"decidedAt":"2026-10-10T10:00:00+01:00","decisionId":"dec-sync-001",'
+        '"eventId":"evt-042","organizationIds":["org-governance","org-hospital-a",'
+        '"org-hospital-b"],"outcome":"approved","version":1}'
+    )
+
+
+@pytest.mark.parametrize("event_ref", ["evt-003", "evt-004"])
+def test_seed_decisions_hash_to_the_demo_proofs_hashes(event_ref):
+    trail = InMemoryAuditTrail.load(DEMO_DATA / "governance.json")
+    proofs = json.loads((DEMO_DATA / "governance.json").read_text(encoding="utf-8"))[
+        "ledgerProofs"
+    ]
+    demo = next(p for p in proofs if p["auditEventId"] == event_ref)
+
+    assert demo["hashAlgorithm"] == "SHA-256"
+    assert hash_payload(proof_payload(trail.event(event_ref))) == demo["hash"]
+
+
+def test_the_hash_is_the_one_check_fixtures_computes_also_for_non_ascii_refs():
+    payload = replace(proof_payload(decision_event()), decision_ref="dec-é-001")
+    anchored = json.loads(canonical_payload(payload))
+
+    assert hash_payload(payload) == _check_fixtures().proof_hash(anchored)
+
+
+def test_a_proof_of_its_audit_event_is_verified():
+    assert verify(_proof(decision_event()), decision_event()) is (
+        ProofVerification.VERIFIED
+    )
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"payload_hash": "0" * 64},
+        {"hash_algorithm": "MD5"},
+        # The payload changed, its hash not.
+        {"payload": proof_payload(decision_event(outcome=AuditOutcome.REJECTED))},
+    ],
+)
+def test_a_hash_that_is_not_its_payloads_is_tampered(overrides):
+    proof = _proof(decision_event(), **overrides)
+
+    assert verify(proof, decision_event()) is ProofVerification.TAMPERED
+
+
+def test_an_audit_event_that_no_longer_gives_the_payload_is_tampered():
+    changed = decision_event(organization_refs=("org-governance", "org-hospital-a"))
+
+    assert verify(_proof(decision_event()), changed) is ProofVerification.TAMPERED
+
+
+@pytest.mark.parametrize(
+    "event",
+    [
+        None,
+        decision_event(event_ref="evt-043"),
+        decision_event(
+            action=AuditAction.AUTHORIZATION_CHECKED,
+            outcome=AuditOutcome.DENIED,
+            reason="revoked",
+        ),
+    ],
+)
+def test_a_proof_without_its_recorded_decision_is_inconsistent(event):
+    assert verify(_proof(decision_event()), event) is ProofVerification.INCONSISTENT

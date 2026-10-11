@@ -1,9 +1,9 @@
 openapi: 3.1.0
 info:
   title: Governance Node Ledger Proofs
-  version: 1.0.0
+  version: 1.1.0
   description: |
-    Contract HC-191, version 1. The proofs with which the Governance /
+    Contract HC-191, version 1 (1.1.0: payload hash, HC-192). The proofs with which the Governance /
     Ethics Authority anchors its recorded decisions in its audit ledger,
     behind the Governance Node's `AuditLedgerPort` (HC-190). A proof is
     the ledger's receipt for one decision's minimized payload; the
@@ -23,6 +23,22 @@ info:
       received and authorization checks are not.
     - **Append-only.** An event is anchored once; a proof is never changed
       or removed through this API.
+    - **Hashed payload.** Each proof holds the SHA-256 hash of its payload
+      (`payload_hash`, lowercase hex) in this canonical form: a JSON object
+      with the keys `eventId`, `decisionId`, `outcome`, `decidedAt`,
+      `organizationIds`, and `version` (the payload's six fields, in the
+      field names of the demo dataset's simulated proofs), keys sorted, no
+      whitespace, non-ASCII characters unescaped, encoded as UTF-8;
+      `decidedAt` is written as served in `decided_at`. It is the hash
+      demo-data/check_fixtures.py checks. A hash makes a change evident; it
+      is not a signature and proves no author.
+    - **Verification.** `verification` is the Governance Node's own
+      recomputation when answering: `verified` when the hash is the
+      payload's and the payload is still that of the audit event it
+      anchors (governance-audit-events.v1.yaml); `tampered` when either
+      hash differs; `inconsistent` when that event is missing or is not a
+      recorded decision. It is a check by the Node that holds the proofs,
+      not an independent verification: re-hash the payload to check it.
     - **The decision stands.** A decision is recorded whether or not the
       ledger anchors it; a decision the ledger could not anchor has no
       proof (`proof_not_found`) and is not retried by this version.
@@ -32,11 +48,11 @@ info:
     a simulated immutable ledger (MOCKED BLOCKCHAIN), an append-only list
     in the Governance Node's memory, named `local-simulation`. It is not a
     blockchain: no consensus, signature, replication, or durability, and
-    proofs anchored at runtime are lost on restart. Payload hashing
-    (HC-192) and a real permissioned ledger (HC-194) are PLANNED; ledger
-    technology is OPEN.
+    proofs anchored at runtime are lost on restart. Hashes are computed by
+    the Node itself and anchored nowhere else. A real permissioned ledger
+    (HC-194) is PLANNED; ledger technology is OPEN.
 
-    Status: served by the Governance Node runtime (HC-191), seeded from
+    Status: served by the Governance Node runtime (HC-191, HC-192), seeded from
     the fictional simulated proofs of the demo dataset. Readers are not
     authenticated; who may read proofs is OPEN.
 paths:
@@ -60,11 +76,14 @@ paths:
                     node_ref: node-governance
                     organization_ref: org-governance
                     simulated: true
-                    notice: "MOCKED BLOCKCHAIN. Fictional demo proofs held by the Governance Node's simulated immutable ledger: an append-only list in memory, not a blockchain or a real ledger; proofs anchored at runtime are lost on restart and payloads are not hashed. Only a decision's minimized payload is anchored, never clinical content."
+                    notice: "MOCKED BLOCKCHAIN. Fictional demo proofs held by the Governance Node's simulated immutable ledger: an append-only list in memory, not a blockchain or a real ledger; proofs anchored at runtime are lost on restart. Each payload's SHA-256 hash is computed by the Node itself, not signed, and anchored nowhere else. Only a decision's minimized payload is anchored, never clinical content."
                     proofs:
                       - proof_ref: proof-004
                         ledger: local-simulation
                         anchored_at: "2026-07-20T15:00:04+01:00"
+                        hash_algorithm: SHA-256
+                        payload_hash: 8a978e8a05a24d2c56c464881aeb7b2b7649e7294cec62f22ce615c0fe380a2a
+                        verification: verified
                         payload:
                           event_ref: evt-004
                           decision_ref: dec-rar-001
@@ -81,6 +100,9 @@ paths:
                       - proof_ref: proof-003
                         ledger: local-simulation
                         anchored_at: "2025-12-12T14:30:05+01:00"
+                        hash_algorithm: SHA-256
+                        payload_hash: e75bbc395362bd1d52b865b691cde3d46c405477e4f7e87934cfcb138d9b5700
+                        verification: verified
                         payload:
                           event_ref: evt-003
                           decision_ref: dec-sync-002
@@ -121,11 +143,14 @@ paths:
                     node_ref: node-governance
                     organization_ref: org-governance
                     simulated: true
-                    notice: "MOCKED BLOCKCHAIN. Fictional demo proofs held by the Governance Node's simulated immutable ledger: an append-only list in memory, not a blockchain or a real ledger; proofs anchored at runtime are lost on restart and payloads are not hashed. Only a decision's minimized payload is anchored, never clinical content."
+                    notice: "MOCKED BLOCKCHAIN. Fictional demo proofs held by the Governance Node's simulated immutable ledger: an append-only list in memory, not a blockchain or a real ledger; proofs anchored at runtime are lost on restart. Each payload's SHA-256 hash is computed by the Node itself, not signed, and anchored nowhere else. Only a decision's minimized payload is anchored, never clinical content."
                     proof:
                       proof_ref: proof-004
                       ledger: local-simulation
                       anchored_at: "2026-07-20T15:00:04+01:00"
+                      hash_algorithm: SHA-256
+                      payload_hash: 8a978e8a05a24d2c56c464881aeb7b2b7649e7294cec62f22ce615c0fe380a2a
+                      verification: verified
                       payload:
                         event_ref: evt-004
                         decision_ref: dec-rar-001
@@ -148,11 +173,14 @@ paths:
                     node_ref: node-governance
                     organization_ref: org-governance
                     simulated: true
-                    notice: "MOCKED BLOCKCHAIN. Fictional demo proofs held by the Governance Node's simulated immutable ledger: an append-only list in memory, not a blockchain or a real ledger; proofs anchored at runtime are lost on restart and payloads are not hashed. Only a decision's minimized payload is anchored, never clinical content."
+                    notice: "MOCKED BLOCKCHAIN. Fictional demo proofs held by the Governance Node's simulated immutable ledger: an append-only list in memory, not a blockchain or a real ledger; proofs anchored at runtime are lost on restart. Each payload's SHA-256 hash is computed by the Node itself, not signed, and anchored nowhere else. Only a decision's minimized payload is anchored, never clinical content."
                     proof:
                       proof_ref: proof-005
                       ledger: local-simulation
                       anchored_at: "2026-10-10T10:00:00+01:00"
+                      hash_algorithm: SHA-256
+                      payload_hash: 44556e2cf2a5e455a3f51745a80f3b36f8adb45b45896d76d7c7a127283ad8df
+                      verification: verified
                       payload:
                         event_ref: evt-008
                         decision_ref: dec-sync-001
@@ -242,7 +270,14 @@ components:
     Proof:
       type: object
       additionalProperties: false
-      required: [proof_ref, ledger, anchored_at, payload]
+      required:
+        - proof_ref
+        - ledger
+        - anchored_at
+        - hash_algorithm
+        - payload_hash
+        - verification
+        - payload
       properties:
         proof_ref:
           $ref: "#/components/schemas/OpaqueRef"
@@ -254,6 +289,21 @@ components:
         anchored_at:
           type: string
           format: date-time
+        hash_algorithm:
+          type: string
+          const: SHA-256
+        payload_hash:
+          description: |
+            The hash the ledger holds for the payload, over its canonical
+            form (see the description). Since 1.1.0.
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+        verification:
+          description: |
+            The Governance Node's recomputation of the hash when answering
+            (see the description). Since 1.1.0.
+          type: string
+          enum: [verified, tampered, inconsistent]
         payload:
           $ref: "#/components/schemas/ProofPayload"
 

@@ -1,8 +1,9 @@
-"""contracts/api/governance/governance-ledger-proofs.v1.yaml (HC-191).
+"""contracts/api/governance/governance-ledger-proofs.v1.yaml (HC-191, HC-192).
 
 Reads the proofs the Governance Node anchored in its audit ledger: today the simulated
-ledger only (MOCKED), so every answer says `simulated: true`. Readers are not
-authenticated, as for the audit trail.
+ledger only (MOCKED), so every answer says `simulated: true`. Each proof is served with
+its payload's hash and the Node's verification of that hash against its audit trail.
+Readers are not authenticated, as for the audit trail.
 """
 
 from fastapi import APIRouter
@@ -16,6 +17,7 @@ from application.ledger import (
     ProofNotFound,
     get_proof,
     list_proofs,
+    verify_proof,
 )
 from domain.ledger import LedgerProof
 from domain.node_identity import NodeIdentity
@@ -23,17 +25,21 @@ from domain.node_identity import NodeIdentity
 NOTICE = (
     "MOCKED BLOCKCHAIN. Fictional demo proofs held by the Governance Node's simulated "
     "immutable ledger: an append-only list in memory, not a blockchain or a real "
-    "ledger; proofs anchored at runtime are lost on restart and payloads are not "
-    "hashed. Only a decision's minimized payload is anchored, never clinical content."
+    "ledger; proofs anchored at runtime are lost on restart. Each payload's SHA-256 "
+    "hash is computed by the Node itself, not signed, and anchored nowhere else. Only a "
+    "decision's minimized payload is anchored, never clinical content."
 )
 
 
-def _wire(proof: LedgerProof) -> dict:
+def _wire(proof: LedgerProof, trail: AuditTrail) -> dict:
     payload = proof.payload
     return {
         "proof_ref": proof.proof_ref,
         "ledger": proof.ledger,
         "anchored_at": proof.anchored_at.isoformat(),
+        "hash_algorithm": proof.hash_algorithm,
+        "payload_hash": proof.payload_hash,
+        "verification": verify_proof(proof, trail).value,
         "payload": {
             "event_ref": payload.event_ref,
             "decision_ref": payload.decision_ref,
@@ -74,13 +80,15 @@ def create_router(
             proofs = list_proofs(ledger)
         except LedgerUnavailable:
             return _unavailable()
-        return JSONResponse(envelope(proofs=[_wire(p) for p in proofs]))
+        return JSONResponse(envelope(proofs=[_wire(p, trail) for p in proofs]))
 
     @router.get("/v1/audit/events/{event_ref}/proof")
     def get_ledger_proof(event_ref: str) -> JSONResponse:
         try:
             get_event(event_ref, trail)
-            return JSONResponse(envelope(proof=_wire(get_proof(event_ref, ledger))))
+            return JSONResponse(
+                envelope(proof=_wire(get_proof(event_ref, ledger), trail))
+            )
         except EventNotFound:
             return problem(
                 404,

@@ -10,9 +10,10 @@ from application.ledger import (
     anchor_recorded,
     get_proof,
     list_proofs,
+    verify_proof,
 )
 from domain.audit import AuditAction, AuditOutcome, SubjectType
-from domain.ledger import LedgerProof, NotAnchorable
+from domain.ledger import LedgerProof, NotAnchorable, ProofVerification, hash_payload
 from tests.conftest import DEMO_NOW
 from tests.test_ledger import decision_event
 
@@ -34,6 +35,7 @@ class FakeAuditLedger:
             payload=payload,
             ledger="test-double",
             anchored_at=DEMO_NOW + timedelta(seconds=5),
+            payload_hash=hash_payload(payload),
         )
         self.anchored[payload.event_ref] = proof
         return proof
@@ -124,3 +126,34 @@ def test_a_decision_stands_unanchored_without_a_ledger_or_when_it_is_unavailable
     ledger = FakeAuditLedger(available=False)
     assert anchor_recorded(ledger, decision_event()) is None
     assert ledger.anchored == {}
+
+
+class FakeTrail:
+    """Test double at the AuditTrail port: only event() is used."""
+
+    def __init__(self, *events) -> None:
+        self._events = {e.event_ref: e for e in events}
+
+    def event(self, event_ref):
+        return self._events.get(event_ref)
+
+
+def test_a_proof_of_its_audit_event_is_verified():
+    proof = anchor_decision(FakeAuditLedger(), decision_event())
+
+    assert (
+        verify_proof(proof, FakeTrail(decision_event())) is ProofVerification.VERIFIED
+    )
+
+
+def test_an_audit_event_changed_after_anchoring_makes_its_proof_tampered():
+    proof = anchor_decision(FakeAuditLedger(), decision_event())
+    changed = decision_event(outcome=AuditOutcome.REJECTED)
+
+    assert verify_proof(proof, FakeTrail(changed)) is ProofVerification.TAMPERED
+
+
+def test_a_proof_of_a_missing_audit_event_is_inconsistent():
+    proof = anchor_decision(FakeAuditLedger(), decision_event())
+
+    assert verify_proof(proof, FakeTrail()) is ProofVerification.INCONSISTENT
