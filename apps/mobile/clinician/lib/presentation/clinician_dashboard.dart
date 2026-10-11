@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../demo/canonical_clinician.dart';
 import 'clinician_destination.dart';
+import 'clinician_labels.dart';
 import 'clinician_theme.dart';
 
 /// Clinician dashboard (HC-031, D1): a read-only summary of the fictional
@@ -51,7 +52,7 @@ class ClinicianDashboard extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'Journée de démonstration du ${_formatDate(demoReferenceDate)}',
+          'Journée de démonstration du ${formatDemoDate(demoReferenceDate)}',
           style: const TextStyle(
             color: ClinicianColors.demo,
             fontWeight: FontWeight.w600,
@@ -145,9 +146,6 @@ int _severityRank(String severity) => switch (severity) {
   'low' => 2,
   _ => 3,
 };
-
-String _formatDate(String isoDate) =>
-    '${isoDate.substring(8, 10)}/${isoDate.substring(5, 7)}/${isoDate.substring(0, 4)}';
 
 class _BoundaryNote extends StatelessWidget {
   const _BoundaryNote();
@@ -279,7 +277,7 @@ class _AppointmentTile extends StatelessWidget {
             style: Theme.of(context).textTheme.titleMedium,
           ),
           subtitle: Text(appointment.reason),
-          trailing: const _Tag(
+          trailing: const LabelTag(
             label: 'Programmé',
             color: ClinicianColors.brand,
             background: ClinicianColors.brandSoft,
@@ -297,7 +295,7 @@ class _AlertTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (label, color, background) = _severityStyle(alert.severity);
+    final (label, color, background) = severityStyle(alert.severity);
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Card(
@@ -312,20 +310,18 @@ class _AlertTile extends StatelessWidget {
             style: Theme.of(context).textTheme.titleMedium,
           ),
           subtitle: Text(
-            '${demoPatientName(alert.patientId)} · ${_formatDate(alert.createdAt.substring(0, 10))}',
+            '${demoPatientName(alert.patientId)} · ${formatDemoDate(alert.createdAt.substring(0, 10))}',
           ),
-          trailing: _Tag(label: label, color: color, background: background),
+          trailing: LabelTag(
+            label: label,
+            color: color,
+            background: background,
+          ),
         ),
       ),
     );
   }
 }
-
-(String, Color, Color) _severityStyle(String severity) => switch (severity) {
-  'high' => ('Élevée', ClinicianColors.danger, const Color(0xFFFEF2F2)),
-  'medium' => ('Moyenne', const Color(0xFFB45309), const Color(0xFFFFFBEB)),
-  _ => ('Faible', ClinicianColors.muted, const Color(0xFFF1F5F9)),
-};
 
 class _QueueTile extends StatelessWidget {
   const _QueueTile({required this.entry});
@@ -334,7 +330,7 @@ class _QueueTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (label, color, background) = _severityStyle(entry.priority);
+    final (label, color, background) = severityStyle(entry.priority);
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Card(
@@ -357,7 +353,7 @@ class _QueueTile extends StatelessWidget {
             style: Theme.of(context).textTheme.titleMedium,
           ),
           subtitle: Text(entry.reasons.join(' · ')),
-          trailing: _Tag(
+          trailing: LabelTag(
             label: 'Priorité ${label.toLowerCase()}',
             color: color,
             background: background,
@@ -397,37 +393,6 @@ class _Footnote extends StatelessWidget {
         color: ClinicianColors.muted,
         fontSize: 12,
         height: 1.4,
-      ),
-    );
-  }
-}
-
-class _Tag extends StatelessWidget {
-  const _Tag({
-    required this.label,
-    required this.color,
-    required this.background,
-  });
-
-  final String label;
-  final Color color;
-  final Color background;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
-        ),
       ),
     );
   }
