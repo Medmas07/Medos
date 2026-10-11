@@ -29,6 +29,8 @@ def test_health_reports_the_demo_governance_authority():
         "grants": "fixture",
         # create_app's default without credentials: reviewers are declared (HC-211).
         "authentication": "off",
+        # create_app's default without a signer: checks are unsigned (HC-214).
+        "federation_signing": "off",
         "notice": SKELETON_NOTICE,
     }
 

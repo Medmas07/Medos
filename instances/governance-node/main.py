@@ -33,6 +33,7 @@ from adapters.inbound.http.synchronization_requests import (
 )
 from adapters.outbound.besu_audit_ledger import BesuAuditLedger
 from adapters.outbound.credential_file import CredentialFile
+from adapters.outbound.ed25519_authorization_signer import Ed25519AuthorizationSigner
 from adapters.outbound.in_memory_audit_trail import InMemoryAuditTrail
 from adapters.outbound.fixture_policies import load_policies
 from adapters.outbound.fixture_patient_grants import FixturePatientGrantDirectory
@@ -54,6 +55,7 @@ from adapters.outbound.in_memory_synchronization import InMemorySynchronizationS
 from adapters.outbound.scrypt_password_hasher import ScryptPasswordHasher
 from adapters.outbound.simulated_audit_ledger import SimulatedAuditLedger
 from application.authentication import CredentialStore, PasswordHasher
+from application.federation_authorization import AuthorizationSigner
 from application.get_node_status import NODE_VERSION
 from application.ledger import AuditLedgerPort
 from application.synchronization import PatientGrantDirectory
@@ -92,6 +94,13 @@ LEDGER_CONTRACT_ENV = "GOVERNANCE_LEDGER_CONTRACT"
 AUTH_ENV = "GOVERNANCE_AUTH"
 CREDENTIALS_ENV = "GOVERNANCE_CREDENTIALS"
 DEFAULT_CREDENTIALS = Path(__file__).resolve().parent / "auth" / ".credentials.json"
+# Whether authorized synchronization checks are signed (HC-214, ADR-0015): `off`
+# (default) answers them unsigned, as before; `ed25519` signs each with the private key
+# of GOVERNANCE_SIGNING_KEY (auth/.signing-key.pem, made by auth/create_signing_key.py),
+# for the target Hospital Node to verify with the matching public key.
+SIGNING_ENV = "GOVERNANCE_FEDERATION_SIGNING"
+SIGNING_KEY_ENV = "GOVERNANCE_SIGNING_KEY"
+DEFAULT_SIGNING_KEY = Path(__file__).resolve().parent / "auth" / ".signing-key.pem"
 
 
 def _now() -> datetime:
@@ -106,12 +115,14 @@ def create_app(
     ledger: AuditLedgerPort | None = None,
     credentials: CredentialStore | None = None,
     hasher: PasswordHasher | None = None,
+    signer: AuthorizationSigner | None = None,
 ) -> FastAPI:
     """`grants` defaults to the MOCKED fixture grants of `demo_data`, for tests and
     demos; the module-level app chooses from GOVERNANCE_GRANTS, HTTP by default.
     `ledger` defaults to the MOCKED simulated ledger; the module-level app chooses
     from GOVERNANCE_LEDGER, simulated by default. Without `credentials`,
-    authentication is off; with them it is required (HC-211)."""
+    authentication is off; with them it is required (HC-211). Without `signer`,
+    authorized federation checks are unsigned (HC-214)."""
     # HC-131: in memory, seeded from fictional applications; decisions lost on restart.
     applications = InMemoryHospitalApplicationStore.load(demo_data / "governance.json")
     reviewers = FixtureReviewerDirectory.load(demo_data / "people.json")
@@ -139,7 +150,11 @@ def create_app(
     organizations = FixtureOrganizationDirectory.load(demo_data / "organizations.json")
     auth = AccessControl(sessions, reviewers, organizations, identity, clock)
     app = FastAPI(title="Governance Node", version=NODE_VERSION)
-    app.include_router(create_health_router(identity, grants.mode, auth.mode))
+    app.include_router(
+        create_health_router(
+            identity, grants.mode, auth.mode, signer.algorithm if signer else "off"
+        )
+    )
     if credentials is not None and sessions is not None:
         ports = AuthenticationPorts(
             credentials, hasher or ScryptPasswordHasher(), sessions, SignInThrottle()
@@ -164,7 +179,9 @@ def create_app(
         )
     )
     app.include_router(
-        create_sync_authorization_router(synchronizations, grants, audit, clock)
+        create_sync_authorization_router(
+            synchronizations, grants, audit, clock, identity, signer
+        )
     )
     app.include_router(
         create_research_router(
@@ -221,12 +238,26 @@ def credentials_from_env(demo_data: Path) -> CredentialStore | None:
     raise SeedError(f"{AUTH_ENV} must be 'off' or 'required', not {mode!r}")
 
 
+def signer_from_env() -> AuthorizationSigner | None:
+    """HC-214: None when signing is off (default), or the Ed25519 signer. Any other
+    value, or a missing or invalid key, stops startup."""
+    mode = os.environ.get(SIGNING_ENV, "off")
+    if mode == "off":
+        return None
+    if mode == "ed25519":
+        return Ed25519AuthorizationSigner.load(
+            Path(os.environ.get(SIGNING_KEY_ENV, DEFAULT_SIGNING_KEY))
+        )
+    raise SeedError(f"{SIGNING_ENV} must be 'off' or 'ed25519', not {mode!r}")
+
+
 _demo_data = Path(os.environ.get(DEMO_DATA_ENV, DEFAULT_DEMO_DATA))
 app = create_app(
     demo_data=_demo_data,
     grants=grants_from_env(_demo_data),
     ledger=ledger_from_env(),
     credentials=credentials_from_env(_demo_data),
+    signer=signer_from_env(),
 )
 
 

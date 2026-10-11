@@ -16,11 +16,16 @@ class HealthResponse(BaseModel):
     grants: str
     # Who may decide (HC-211): "off" (reviewer declared) or "required" (signed in).
     authentication: str
+    # Whether authorized federation checks are signed (HC-214): "off" or "ed25519".
+    federation_signing: str
     notice: str
 
 
 def create_router(
-    identity: NodeIdentity, grants_mode: str, authentication_mode: str
+    identity: NodeIdentity,
+    grants_mode: str,
+    authentication_mode: str,
+    signing_mode: str = "off",
 ) -> APIRouter:
     router = APIRouter()
 
@@ -36,6 +41,7 @@ def create_router(
             capabilities=list(node_status.capabilities),
             grants=grants_mode,
             authentication=authentication_mode,
+            federation_signing=signing_mode,
             notice=node_status.notice,
         )
 

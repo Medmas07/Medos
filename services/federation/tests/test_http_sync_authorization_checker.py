@@ -23,6 +23,7 @@ REQUEST = OPERATION["requestBody"]["content"]["application/json"]["examples"][
 ]["value"]
 RESULTS = OPERATION["responses"]["200"]["content"]["application/json"]["examples"]
 AUTHORIZED = RESULTS["authorized"]["value"]
+SIGNED = RESULTS["authorizedSigned"]["value"]
 request_schema = validator(CONTRACT, "CheckRequest")
 
 
@@ -91,6 +92,9 @@ def test_denials_carry_governance_reason(name, reason):
         ),
         lambda request: httpx.Response(200, json=AUTHORIZED | {"extra": 1}),
         lambda request: httpx.Response(
+            200, json=AUTHORIZED | {"signed_authorization": 42}
+        ),
+        lambda request: httpx.Response(
             200,
             json=RESULTS["expired"]["value"]
             | {"decision_ref": "dec-sync-001", "reason": "because"},
@@ -108,9 +112,33 @@ def test_denials_carry_governance_reason(name, reason):
         "no_targets",
         "naive_valid_until",
         "extra_field",
+        "signed_not_a_string",
         "unknown_reason",
     ],
 )
 def test_anything_else_denies_by_default(handler):
     with pytest.raises(GovernanceUnavailable):
         check(handler)
+
+
+# HC-214: the Governance Node's signed authorization (sync-authorization-check 1.2.0)
+
+
+def test_keeps_the_signed_authorization_unchanged():
+    authorization = check(lambda request: httpx.Response(200, json=SIGNED))
+
+    assert authorization.signed_authorization == SIGNED["signed_authorization"]
+
+
+@pytest.mark.parametrize(
+    "result",
+    [
+        AUTHORIZED,
+        {k: v for k, v in AUTHORIZED.items() if k != "signed_authorization"},
+    ],
+    ids=["unsigned", "governance_1_1"],
+)
+def test_an_unsigned_answer_still_authorizes(result):
+    authorization = check(lambda request: httpx.Response(200, json=result))
+
+    assert authorization.signed_authorization is None

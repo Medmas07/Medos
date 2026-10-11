@@ -26,6 +26,8 @@ RESULT_FIELDS = {
     "valid_until",
     "checked_at",
 }
+# Since sync-authorization-check 1.2.0 (HC-214); absent from a 1.1 Governance Node.
+SIGNED_FIELD = "signed_authorization"
 
 
 class HttpSyncAuthorizationChecker:
@@ -77,8 +79,11 @@ class HttpSyncAuthorizationChecker:
 
 
 def _from_wire(decision_ref: str, result: object) -> SyncAuthorization:
-    if not isinstance(result, dict) or set(result) != RESULT_FIELDS:
+    if not isinstance(result, dict) or set(result) - {SIGNED_FIELD} != RESULT_FIELDS:
         raise ValueError("not a CheckResult")
+    signed = result.get(SIGNED_FIELD)
+    if signed is not None and not isinstance(signed, str):
+        raise ValueError("invalid signed authorization")
     if result["decision_ref"] != decision_ref:
         raise ValueError("answer for another decision")
     if result["outcome"] == "denied":
@@ -100,4 +105,5 @@ def _from_wire(decision_ref: str, result: object) -> SyncAuthorization:
         scope=frozenset(ScopeItem(item) for item in scope),
         purpose=result["purpose"],
         valid_until=valid_until,
+        signed_authorization=signed,
     )
