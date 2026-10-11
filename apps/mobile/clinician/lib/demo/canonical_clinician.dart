@@ -51,20 +51,41 @@ class CanonicalPatientName {
     required this.id,
     required this.firstName,
     required this.lastName,
+    required this.birthDate,
   });
 
   final String id;
   final String firstName;
   final String lastName;
+  final String birthDate;
 
   String get displayName => '$firstName $lastName';
+
+  /// Age in whole years on [date] (`YYYY-MM-DD`).
+  int ageOn(String date) {
+    final years =
+        int.parse(date.substring(0, 4)) - int.parse(birthDate.substring(0, 4));
+    final hadBirthday =
+        date.substring(5).compareTo(birthDate.substring(5)) >= 0;
+    return hadBirthday ? years : years - 1;
+  }
 }
 
 /// Names of the fictional patients appearing in `clin-x`'s demo data
 /// (`demo-data/people.json`).
 const demoPatients = <CanonicalPatientName>[
-  CanonicalPatientName(id: 'pat-a', firstName: 'Leïla', lastName: 'Mansouri'),
-  CanonicalPatientName(id: 'pat-b', firstName: 'Karim', lastName: 'Haddad'),
+  CanonicalPatientName(
+    id: 'pat-a',
+    firstName: 'Leïla',
+    lastName: 'Mansouri',
+    birthDate: '1968-04-17',
+  ),
+  CanonicalPatientName(
+    id: 'pat-b',
+    firstName: 'Karim',
+    lastName: 'Haddad',
+    birthDate: '1979-11-02',
+  ),
 ];
 
 String demoPatientName(String patientId) =>
@@ -75,13 +96,22 @@ class CanonicalAccessGrant {
   const CanonicalAccessGrant({
     required this.id,
     required this.patientId,
+    required this.scope,
+    required this.purpose,
     required this.status,
+    required this.grantedAt,
     required this.expiresAt,
   });
 
   final String id;
   final String patientId;
+
+  /// Record kinds the patient authorized: `encounters`, `medications`,
+  /// `labReports`.
+  final List<String> scope;
+  final String purpose;
   final String status;
+  final String grantedAt;
   final String expiresAt;
 
   bool isActiveOn(String date) =>
@@ -92,13 +122,19 @@ const demoAccessGrants = <CanonicalAccessGrant>[
   CanonicalAccessGrant(
     id: 'grant-a-drx',
     patientId: 'pat-a',
+    scope: ['encounters', 'medications', 'labReports'],
+    purpose: 'Consultation de cardiologie',
     status: 'active',
+    grantedAt: '2026-10-10T09:00:00+01:00',
     expiresAt: '2026-10-24T09:00:00+01:00',
   ),
   CanonicalAccessGrant(
     id: 'grant-b-drx',
     patientId: 'pat-b',
+    scope: ['encounters', 'medications', 'labReports'],
+    purpose: 'Suivi du diabète',
     status: 'active',
+    grantedAt: '2025-09-15T09:45:00+01:00',
     expiresAt: '2026-12-31T23:59:00+01:00',
   ),
 ];
