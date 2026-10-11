@@ -1,0 +1,159 @@
+/*
+ * MedOS landing: atmosphere, glass, intro, and scroll-reveal styles, adapted
+ * from the Medora concept to the design-system tokens (light and dark).
+ */
+
+@layer utilities {
+  /* Frosted material: one layer only, never stacked. */
+  .glass {
+    background: rgb(255 255 255 / 0.62);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid rgb(255 255 255 / 0.7);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.7),
+      0 10px 40px -16px rgb(14 59 54 / 0.25);
+  }
+  .glass-chrome {
+    background: rgb(247 251 250 / 0.78);
+    backdrop-filter: blur(16px) saturate(150%);
+    -webkit-backdrop-filter: blur(16px) saturate(150%);
+    border: 1px solid rgb(255 255 255 / 0.6);
+  }
+  [data-theme="dark"] .glass {
+    background: rgb(13 25 22 / 0.62);
+    border-color: rgb(167 227 212 / 0.14);
+    box-shadow:
+      inset 0 1px 0 rgb(167 227 212 / 0.08),
+      0 10px 40px -16px rgb(0 0 0 / 0.6);
+  }
+  [data-theme="dark"] .glass-chrome {
+    background: rgb(7 15 13 / 0.78);
+    border-color: rgb(167 227 212 / 0.12);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  .glass-chrome {
+    background: var(--color-surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* Soft mint fog behind the canvas: two slow-drifting light pools, static under reduced motion. */
+.atmosphere {
+  --fog-a: rgb(167 227 212 / 0.55);
+  --fog-b: rgb(195 234 224 / 0.6);
+  --fog-top: #f2faf7;
+  background:
+    radial-gradient(60% 55% at 72% 42%, var(--fog-a), transparent 70%),
+    radial-gradient(45% 40% at 18% 80%, var(--fog-b), transparent 70%),
+    linear-gradient(180deg, var(--fog-top) 0%, var(--color-paper) 60%);
+}
+[data-theme="dark"] .atmosphere {
+  --fog-a: rgb(67 177 155 / 0.22);
+  --fog-b: rgb(34 119 105 / 0.2);
+  --fog-top: #0a1916;
+}
+.atmosphere::before,
+.atmosphere::after {
+  content: "";
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(60px);
+  opacity: 0.55;
+}
+.atmosphere::before {
+  width: 42vmax;
+  height: 42vmax;
+  right: -8vmax;
+  top: -10vmax;
+  background: var(--fog-a);
+  animation: medos-drift-a 38s ease-in-out infinite alternate;
+}
+.atmosphere::after {
+  width: 30vmax;
+  height: 30vmax;
+  left: 20vmax;
+  bottom: -12vmax;
+  background: var(--fog-b);
+  animation: medos-drift-b 46s ease-in-out infinite alternate;
+}
+@keyframes medos-drift-a {
+  to { transform: translate3d(-6vmax, 5vmax, 0); }
+}
+@keyframes medos-drift-b {
+  to { transform: translate3d(8vmax, -4vmax, 0); }
+}
+
+/* Intro: index.html sets data-intro="pending" only when the 3D intro will play. */
+.intro-hide {
+  transition:
+    opacity 700ms var(--ease-out),
+    transform 900ms var(--ease-out);
+  transition-delay: calc(var(--i, 0) * 60ms);
+}
+[data-intro="pending"] .intro-hide {
+  opacity: 0;
+  transform: translateY(14px);
+}
+.intro-label {
+  opacity: 0;
+  transition: opacity 300ms var(--ease-out);
+}
+[data-intro="pending"] .intro-label {
+  opacity: 1;
+}
+.intro-bar {
+  transform: scaleX(0);
+}
+[data-intro="pending"] .intro-bar {
+  animation: medos-intro-bar 1.8s cubic-bezier(0.77, 0, 0.175, 1) forwards;
+}
+@keyframes medos-intro-bar {
+  to { transform: scaleX(1); }
+}
+
+/* Scroll reveal for chapter copy and sections (IntersectionObserver sets data-inview). */
+.reveal > * {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 600ms var(--ease-out),
+    transform 800ms var(--ease-out);
+  transition-delay: calc(var(--i, 0) * 70ms);
+}
+.reveal[data-inview="true"] > * {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atmosphere::before,
+  .atmosphere::after {
+    animation: none;
+  }
+  [data-intro="pending"] .intro-hide,
+  .reveal > * {
+    transform: none;
+  }
+  .intro-hide,
+  .reveal > * {
+    transition: opacity 300ms ease;
+  }
+}
+
+/* Hover lift only where hover is real. */
+@media (hover: hover) and (pointer: fine) {
+  .lift {
+    transition:
+      transform 260ms var(--ease-out),
+      box-shadow 260ms var(--ease-out);
+  }
+  .lift:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lift);
+  }
+}

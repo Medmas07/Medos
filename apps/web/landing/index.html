@@ -17,9 +17,23 @@
         document.documentElement.dataset.theme =
           saved === 'light' || saved === 'dark' ? saved : dark ? 'dark' : 'light'
       })()
+      // Landing only: hold the hero while the particle intro plays, when the 3D scene will render.
+      ;(function () {
+        try {
+          var d = document.documentElement
+          if (/^#(adhesion|connexion)/.test(location.hash)) return
+          if (!matchMedia('(min-width: 768px)').matches || matchMedia('(prefers-reduced-motion: reduce)').matches) return
+          var c = document.createElement('canvas')
+          if (!(c.getContext('webgl2') || c.getContext('webgl'))) return
+          d.dataset.intro = 'pending'
+          setTimeout(function () {
+            d.dataset.intro = 'done'
+          }, 3200)
+        } catch (e) {}
+      })()
     </script>
-    <title>Portail Hospitalier — Federated Healthcare Ecosystem</title>
-    <meta name="description" content="Hospital onboarding portal for the Federated Healthcare Ecosystem (demo, fictional data)." />
+    <title>MedOS — Écosystème de santé fédéré</title>
+    <meta name="description" content="MedOS: federated healthcare ecosystem. Landing page, hospital onboarding journey, and Hospital Node download (demo, fictional data)." />
   </head>
   <body>
     <div id="root"></div>
