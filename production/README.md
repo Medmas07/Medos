@@ -32,7 +32,7 @@ Environment names such as `.env.preview` and `.env.production` are conceptual. R
 
 ## Docker
 
-Docker is adopted for the Hospital Node only ([ADR-0016](../docs/decisions/ADR-0016-hospital-node-container-image.md), HC-220): its image and a demo composition of three fictional hospitals exist under [`infrastructure/docker/hospital-node/`](../infrastructure/docker/hospital-node/). The root `docker-compose.yml` remains a neutral placeholder. A `docker-compose.preview.yml` may be introduced once the other runtimes are containerized.
+Docker is adopted for the Hospital Node only ([ADR-0016](../docs/decisions/ADR-0016-hospital-node-container-image.md), HC-220): its image and a demo composition of three fictional hospitals exist under [`infrastructure/docker/hospital-node/`](../infrastructure/docker/hospital-node/), and an approved hospital's installation package is built by [`infrastructure/packaging/hospital-node/`](../infrastructure/packaging/hospital-node/README.md) (HC-221). The root `docker-compose.yml` remains a neutral placeholder. A `docker-compose.preview.yml` may be introduced once the other runtimes are containerized.
 
 ## Deployment
 
