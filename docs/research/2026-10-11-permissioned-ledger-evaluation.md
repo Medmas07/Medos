@@ -4,6 +4,7 @@
 - **Date:** 2026-10-11
 - **Status:** research note. This note is evidence for a decision, not a decision. The ledger technology stays **OPEN** until an ADR accepts one; the Immutable Audit Ledger itself stays **OPTIONAL**. No code, dependency, or runtime was added, and no candidate was installed, prototyped, or benchmarked.
 - **Unblocks:** [HC-194 — Implement real blockchain/ledger adapter (#157)](https://github.com/Medmas07/Hackcure_hackathon/issues/157), once an ADR records the choice.
+- **Outcome:** [ADR-0007](../decisions/ADR-0007-permissioned-audit-ledger.md) accepted trust model B and Besu (QBFT), and anchors the full six-field payload rather than recommendation 4's hash and references.
 
 ## 1. Question
 
