@@ -39,8 +39,8 @@ void main() {
     expect(find.text('Rang 2'), findsOneWidget);
     expect(find.text('Priorité moyenne'), findsOneWidget);
     expect(find.text('Nouvelle consultation externe'), findsOneWidget);
-    expect(find.textContaining('livré par HC-035'), findsOneWidget);
-    expect(find.text('PLANNED'), findsOneWidget);
+    expect(find.byKey(const ValueKey('detail-open-history')), findsOneWidget);
+    expect(find.text('PLANNED'), findsNothing);
 
     await tester.pageBack();
     await tester.pumpAndSettle();
