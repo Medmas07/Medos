@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { cx } from '../cx'
 import { ErrorIcon, InboxIcon } from './icons'
+import { Skeleton } from './Skeleton'
 
 export interface SpinnerProps {
   size?: 'sm' | 'md' | 'lg'
@@ -42,24 +43,60 @@ function StateFrame({ icon, title, description, action, role, className }: State
     <div
       role={role}
       className={cx(
-        'flex flex-col items-center justify-center gap-2 px-6 py-10 text-center',
+        'flex flex-col items-center justify-center gap-2 px-6 py-12 text-center animate-(--animate-fade-in)',
         className,
       )}
     >
       {icon}
-      <p className="font-semibold text-slate-900">{title}</p>
-      {description && <p className="max-w-md text-slate-600">{description}</p>}
-      {action && <div className="mt-2">{action}</div>}
+      <p className="mt-2 font-semibold text-ink">{title}</p>
+      {description && <p className="max-w-md text-ink-soft">{description}</p>}
+      {action && <div className="mt-3">{action}</div>}
     </div>
+  )
+}
+
+function IconTile({ tone = 'brand', children }: { tone?: 'brand' | 'danger'; children: ReactNode }) {
+  return (
+    <span
+      className={cx(
+        'grid size-12 place-items-center rounded-2xl',
+        tone === 'danger' ? 'bg-danger-100 text-danger-700' : 'bg-brand-100 text-brand-800',
+      )}
+    >
+      {children}
+    </span>
   )
 }
 
 export interface LoadingStateProps {
   label?: ReactNode
+  /**
+   * `spinner` (default) centres a spinner; `skeleton` sketches a page
+   * (header, KPI row, card) while keeping the label for assistive technology.
+   */
+  variant?: 'spinner' | 'skeleton'
   className?: string
 }
 
-export function LoadingState({ label = 'Loading…', className }: LoadingStateProps) {
+export function LoadingState({ label = 'Loading…', variant = 'spinner', className }: LoadingStateProps) {
+  if (variant === 'skeleton') {
+    return (
+      <div role="status" className={cx('space-y-6', className)}>
+        <span className="sr-only">{label}</span>
+        <div className="space-y-3">
+          <Skeleton className="h-3 w-40" />
+          <Skeleton className="h-9 w-72 max-w-full" />
+          <Skeleton className="h-4 w-96 max-w-full" />
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[0, 1, 2, 3].map((n) => (
+            <Skeleton key={n} className="h-32 rounded-2xl" />
+          ))}
+        </div>
+        <Skeleton className="h-64 rounded-2xl" />
+      </div>
+    )
+  }
   return (
     <StateFrame
       role="status"
@@ -80,7 +117,11 @@ export interface EmptyStateProps {
 export function EmptyState({ title, description, action, className }: EmptyStateProps) {
   return (
     <StateFrame
-      icon={<InboxIcon className="size-8 text-slate-400" />}
+      icon={
+        <IconTile>
+          <InboxIcon className="size-6" />
+        </IconTile>
+      }
       title={title}
       description={description}
       action={action}
@@ -105,7 +146,11 @@ export function ErrorState({
   return (
     <StateFrame
       role="alert"
-      icon={<ErrorIcon className="size-8 text-danger-600" />}
+      icon={
+        <IconTile tone="danger">
+          <ErrorIcon className="size-6" />
+        </IconTile>
+      }
       title={title}
       description={description}
       action={action}

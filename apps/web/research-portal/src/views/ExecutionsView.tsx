@@ -51,9 +51,9 @@ function PhaseBadge({ state }: { state: ExecutionPhase['state'] }) {
 }
 
 const phaseBorder: Record<ExecutionPhase['state'], string> = {
-  pending: 'border-slate-200 bg-white',
+  pending: 'border-slate-200 bg-surface',
   running: 'border-info-600 bg-info-50',
-  completed: 'border-success-600 bg-white',
+  completed: 'border-success-600 bg-surface',
   failed: 'border-danger-600 bg-danger-50',
 }
 
@@ -86,7 +86,7 @@ function Pipeline({ execution, stages }: { execution: Execution; stages: Compute
                 {nodeStages.map((s) => {
                   const org = organizationOf(s.organizationId)
                   return (
-                    <li key={s.id} className="rounded-md border border-slate-200 bg-white p-2 text-xs">
+                    <li key={s.id} className="rounded-xl border border-slate-200 bg-surface p-2 text-xs">
                       <div className="flex flex-wrap items-center justify-between gap-1">
                         <span className="font-medium text-slate-800">{org?.shortName ?? s.organizationId}</span>
                         <PhaseBadge state={s.status} />
@@ -256,7 +256,7 @@ export function ExecutionsView({ snapshot, onNavigate }: ExecutionsViewProps) {
         </Alert>
 
         <Card title="Vos exécutions" description={`${executions.length} exécution(s), la plus récente d'abord.`}>
-          <ul className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+          <ul className="hc-stagger grid gap-2 md:grid-cols-2 xl:grid-cols-3">
             {executions.map((e) => {
               const display = jobStatusDisplay[e.status]
               const selected = e.id === execution.id
@@ -270,7 +270,7 @@ export function ExecutionsView({ snapshot, onNavigate }: ExecutionsViewProps) {
                       setReplay(null)
                     }}
                     className={`w-full rounded-lg border p-3 text-left text-sm transition-colors focus:ring-2 focus:ring-brand-600/20 focus:outline-none ${
-                      selected ? 'border-brand-600 bg-brand-50' : 'border-slate-200 bg-white hover:bg-slate-50'
+                      selected ? 'border-brand-600 bg-brand-50' : 'border-slate-200 bg-surface hover:bg-brand-50/60'
                     }`}
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -314,7 +314,7 @@ export function ExecutionsView({ snapshot, onNavigate }: ExecutionsViewProps) {
             </div>
           </Card>
 
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="hc-stagger grid gap-6 md:grid-cols-2">
             <Card title="Étapes détaillées">
               <StageTimeline stages={stages} />
             </Card>

@@ -25,7 +25,7 @@ export interface TimelineProps {
 }
 
 const markerTones: Record<Tone, string> = {
-  neutral: 'bg-slate-400 ring-slate-100',
+  neutral: 'bg-ink-muted ring-surface-muted',
   info: 'bg-info-600 ring-info-100',
   success: 'bg-success-600 ring-success-100',
   warning: 'bg-warning-600 ring-warning-100',
@@ -47,26 +47,26 @@ export function Timeline({ label, items, className }: TimelineProps) {
             className="relative flex gap-4 pb-6 last:pb-0"
           >
             {!isLast && (
-              <span aria-hidden="true" className="absolute top-4 left-[5px] h-full w-px bg-slate-200" />
+              <span aria-hidden="true" className="absolute top-4 left-[5px] h-full w-px bg-line" />
             )}
             <span
               aria-hidden="true"
               className={cx(
                 'relative mt-1.5 size-3 shrink-0 rounded-full ring-4',
                 markerTones[tone],
-                item.current && 'animate-pulse',
+                item.current && 'outline-2 outline-offset-4 outline-brand-400/70',
               )}
             />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-                <p className={cx('font-medium text-slate-900', item.current && 'font-semibold')}>
+                <p className={cx('font-medium text-ink', item.current && 'font-semibold')}>
                   {item.title}
                 </p>
-                <time dateTime={item.dateTime} className="text-xs text-slate-500">
+                <time dateTime={item.dateTime} className="tabular text-xs text-ink-muted">
                   {item.timestamp}
                 </time>
               </div>
-              {item.description && <div className="mt-0.5 text-slate-600">{item.description}</div>}
+              {item.description && <div className="mt-0.5 text-ink-soft">{item.description}</div>}
               {item.meta && (
                 <div className="mt-1.5 flex flex-wrap items-center gap-2">{item.meta}</div>
               )}

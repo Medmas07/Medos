@@ -75,9 +75,9 @@ export function VerifierView({ initialProofId = 'proof-003' }: VerifierViewProps
                 <div
                   key={p.id}
                   onClick={() => handleSelectProof(p.id)}
-                  className={`cursor-pointer rounded-md border p-3 text-xs transition-colors ${selectedProofId === p.id
+                  className={`cursor-pointer rounded-xl border p-3 text-xs transition-colors ${selectedProofId === p.id
                     ? 'border-brand-600 bg-brand-50'
-                    : 'border-slate-200 bg-white hover:bg-slate-50'
+                    : 'border-slate-200 bg-surface hover:bg-brand-50/60'
                     }`}
                 >
                   <div className="flex items-center justify-between font-semibold text-slate-900">
@@ -140,35 +140,35 @@ export function VerifierView({ initialProofId = 'proof-003' }: VerifierViewProps
             </p>
 
             <textarea
-              className="w-full rounded-md border border-slate-300 p-2.5 font-mono text-xs text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+              className="w-full rounded-xl border border-slate-300 p-2.5 font-mono text-xs text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
               rows={8}
               value={tamperedPayloadText}
               onChange={(e) => setTamperedPayloadText(e.target.value)}
             />
 
-            <div className="mt-4 space-y-3 rounded-md bg-slate-50 p-4">
+            <div className="mt-4 space-y-3 rounded-xl bg-slate-50 p-4">
               <div>
                 <span className="text-xs font-semibold text-slate-600">Condensat SHA-256 Recalculé côté client :</span>
-                <div className="mt-1 break-all rounded bg-white p-2 font-mono text-xs text-slate-900 border border-slate-200">
+                <div className="mt-1 break-all rounded bg-surface p-2 font-mono text-xs text-slate-900 border border-slate-200">
                   {isVerifying ? 'Calcul en cours...' : computedHash}
                 </div>
               </div>
 
               <div>
                 <span className="text-xs font-semibold text-slate-600">Empreinte Officielle du Registre :</span>
-                <div className="mt-1 break-all rounded bg-white p-2 font-mono text-xs text-slate-700 border border-slate-200">
+                <div className="mt-1 break-all rounded bg-surface p-2 font-mono text-xs text-slate-700 border border-slate-200">
                   {selectedProof?.hash}
                 </div>
               </div>
 
               <div className="pt-2">
                 {isValidMatch ? (
-                  <div className="flex items-center gap-2 rounded-md bg-success-50 p-3 text-xs text-success-800 border border-success-200">
+                  <div className="flex items-center gap-2 rounded-xl bg-success-50 p-3 text-xs text-success-800 border border-success-200">
                     <Badge tone="success" dot>Preuve Intègre</Badge>
                     <span>L'empreinte recalculée concorde rigoureusement avec le registre. La décision n'a subi aucune modification.</span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 rounded-md bg-danger-50 p-3 text-xs text-danger-800 border border-danger-200">
+                  <div className="flex items-center gap-2 rounded-xl bg-danger-50 p-3 text-xs text-danger-800 border border-danger-200">
                     <Badge tone="danger" dot>Divergence / Altération</Badge>
                     <span>Le condensat ne correspond pas au registre d'audit. Toute tentative de modification est immédiatement invalidée.</span>
                   </div>

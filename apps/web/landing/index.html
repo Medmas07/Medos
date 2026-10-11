@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7fbfa" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#071a17" />
+    <script>
+      // Apply the saved or system theme before first paint (design-system README, "Theming").
+      (function () {
+        var dark = window.matchMedia('(prefers-color-scheme: dark)').matches
+        var saved = null
+        try {
+          saved = window.localStorage.getItem('hc-theme')
+        } catch (e) {}
+        document.documentElement.dataset.theme =
+          saved === 'light' || saved === 'dark' ? saved : dark ? 'dark' : 'light'
+      })()
+      // Landing only: hold the hero while the particle intro plays, when the 3D scene will render.
+      ;(function () {
+        try {
+          var d = document.documentElement
+          if (/^#(adhesion|connexion)/.test(location.hash)) return
+          if (!matchMedia('(min-width: 768px)').matches || matchMedia('(prefers-reduced-motion: reduce)').matches) return
+          var c = document.createElement('canvas')
+          if (!(c.getContext('webgl2') || c.getContext('webgl'))) return
+          d.dataset.intro = 'pending'
+          setTimeout(function () {
+            d.dataset.intro = 'done'
+          }, 3200)
+        } catch (e) {}
+      })()
+    </script>
+    <title>MedOS — Écosystème de santé fédéré</title>
+    <meta name="description" content="MedOS: federated healthcare ecosystem. Landing page, hospital onboarding journey, and Hospital Node download (demo, fictional data)." />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

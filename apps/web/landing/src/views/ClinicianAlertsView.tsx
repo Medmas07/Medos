@@ -21,6 +21,9 @@ import {
   EmptyState,
   LoadingState,
   PageHeader,
+  StatCard,
+  StatGroup,
+  type Tone,
 } from '@hackcure/design-system'
 import { formatDateTime } from '../presentation'
 import {
@@ -40,12 +43,19 @@ type LoadState =
   | { kind: 'error'; message: string; data: ClinicianAlertsResponse }
   | { kind: 'ready'; data: ClinicianAlertsResponse; source: 'service' | 'demo' }
 
-const PRIORITY_TONE = {
-  urgent: 'critical',
+const PRIORITY_TONE: Record<ClinicianAlert['priority'], Tone> = {
+  urgent: 'danger',
   high: 'warning',
   normal: 'info',
   low: 'neutral',
-} as const
+}
+
+const PRIORITY_BORDER: Record<ClinicianAlert['priority'], string> = {
+  urgent: 'border-l-danger-600',
+  high: 'border-l-warning-600',
+  normal: 'border-l-info-600',
+  low: 'border-l-line-strong',
+}
 
 const PRIORITY_LABEL: Record<ClinicianAlert['priority'], string> = {
   urgent: 'Urgent',
@@ -70,52 +80,26 @@ function sortAlerts(alerts: ClinicianAlert[]): ClinicianAlert[] {
 }
 
 function AlertCard({ alert }: { alert: ClinicianAlert }) {
-  const tone = PRIORITY_TONE[alert.priority] ?? 'neutral'
   return (
     <div
       id={`clinician-alert-${alert.notification_id}`}
-      style={{
-        borderLeft: `4px solid var(--color-${
-          tone === 'critical'
-            ? 'red-500'
-            : tone === 'warning'
-              ? 'amber-400'
-              : tone === 'info'
-                ? 'blue-400'
-                : 'slate-300'
-        })`,
-        padding: '0.75rem 1rem',
-        marginBottom: '0.75rem',
-        background: 'var(--color-white, #fff)',
-        borderRadius: '0 0.375rem 0.375rem 0',
-        boxShadow: '0 1px 3px rgba(0,0,0,.06)',
-      }}
+      className={`rounded-xl border border-l-4 border-line bg-surface px-4 py-3 shadow-card ${PRIORITY_BORDER[alert.priority]}`}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
-        <p style={{ fontWeight: 600, color: 'var(--color-slate-900, #0f172a)', margin: 0 }}>
-          {alert.title}
-        </p>
-        <Badge tone={tone as 'critical' | 'warning' | 'info' | 'neutral'}>
-          {PRIORITY_LABEL[alert.priority]}
-        </Badge>
+      <div className="flex items-start justify-between gap-2">
+        <p className="font-semibold text-ink">{alert.title}</p>
+        <Badge tone={PRIORITY_TONE[alert.priority]}>{PRIORITY_LABEL[alert.priority]}</Badge>
       </div>
-      <p style={{ color: 'var(--color-slate-700, #334155)', margin: '0.25rem 0 0' }}>
-        {alert.body}
-      </p>
+      <p className="mt-1 text-ink-soft">{alert.body}</p>
       {alert.alert_metadata.finding_type && (
-        <p style={{ fontSize: '0.75rem', color: 'var(--color-slate-500, #64748b)', marginTop: '0.25rem' }}>
+        <p className="mt-1 text-xs text-ink-muted">
           Type : {alert.alert_metadata.finding_type.replace(/_/g, ' ')}
         </p>
       )}
-      <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--color-slate-400, #94a3b8)' }}>
-        <span>{formatDateTime(alert.occurred_at)}</span>
-        {alert.related_resource && (
-          <span>Réf : {alert.related_resource.resource_ref}</span>
-        )}
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
+        <span className="tabular">{formatDateTime(alert.occurred_at)}</span>
+        {alert.related_resource && <span>Réf : {alert.related_resource.resource_ref}</span>}
         {alert.alert_metadata.advisory && (
-          <span style={{ color: 'var(--color-amber-600, #d97706)', fontWeight: 500 }}>
-            ⚠ Consultatif — revue clinicien requise
-          </span>
+          <span className="font-medium text-warning-700">⚠ Consultatif — revue clinicien requise</span>
         )}
       </div>
     </div>
@@ -192,55 +176,34 @@ export function ClinicianAlertsView() {
       )}
 
       {state.kind === 'loading' ? (
-        <LoadingState label="Chargement des alertes clinicien…" />
+        <LoadingState variant="skeleton" label="Chargement des alertes clinicien…" />
       ) : (
-        <div style={{ display: 'grid', gap: '1.5rem', gridTemplateColumns: '1fr' }}>
+        <div className="grid gap-6">
           {/* Summary cards */}
-          <div
-            style={{
-              display: 'grid',
-              gap: '1rem',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-            }}
-          >
-            <Card
-              title="Total alertes"
-              actions={
-                isFallback ? <DemoBadge>Simulé</DemoBadge> : <DemoBadge>Fictif</DemoBadge>
-              }
-            >
-              <p
+          <StatGroup columns={3}>
+              <StatCard
                 id="clinician-alert-count"
-                style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--color-slate-900, #0f172a)', margin: 0 }}
-              >
-                {alerts.length}
-              </p>
-              <p style={{ fontSize: '0.75rem', color: 'var(--color-slate-500)', marginTop: 4 }}>
-                {lastRefreshed
-                  ? `Actualisé ${formatDateTime(lastRefreshed.toISOString())}`
-                  : '—'}
-              </p>
-            </Card>
-            <Card title="Urgentes / Élevées" actions={<DemoBadge>Fictif</DemoBadge>}>
-              <p
-                style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--color-red-600, #dc2626)', margin: 0 }}
-              >
-                {alerts.filter((a) => a.priority === 'urgent' || a.priority === 'high').length}
-              </p>
-            </Card>
-            <Card title="Mode actualisation" actions={<DemoBadge>D3</DemoBadge>}>
-              <p style={{ fontSize: '0.85rem', color: 'var(--color-slate-700)', margin: 0 }}>
-                Polling {POLL_INTERVAL_MS / 1000}s
-              </p>
-              <p style={{ fontSize: '0.75rem', color: 'var(--color-slate-500)', marginTop: 4 }}>
-                Non broker-backed (D3)
-              </p>
-            </Card>
-          </div>
+                label="Total alertes"
+                value={alerts.length}
+                hint={lastRefreshed ? `Actualisé ${formatDateTime(lastRefreshed.toISOString())}` : '—'}
+                badge={isFallback ? <DemoBadge>Simulé</DemoBadge> : <DemoBadge>Fictif</DemoBadge>}
+              />
+            <StatCard
+              label="Urgentes / Élevées"
+              value={alerts.filter((a) => a.priority === 'urgent' || a.priority === 'high').length}
+              badge={<DemoBadge>Fictif</DemoBadge>}
+            />
+            <StatCard
+              label="Mode actualisation"
+              value={`${POLL_INTERVAL_MS / 1000} s`}
+              hint="Polling · non broker-backed (D3)"
+              badge={<DemoBadge>D3</DemoBadge>}
+            />
+          </StatGroup>
 
           {/* Alert list */}
+          <div id="clinician-alerts-list-card">
           <Card
-            id="clinician-alerts-list-card"
             title="File de priorité — alertes cliniques"
             description={`Clinicien : ${DEMO_CLINICIAN_REF} · Triées par priorité puis date · Toutes consultatives`}
           >
@@ -250,13 +213,14 @@ export function ClinicianAlertsView() {
                 description="Aucune alerte clinique en attente pour ce clinicien."
               />
             ) : (
-              <div style={{ marginTop: '0.5rem' }}>
+              <div className="hc-stagger space-y-3">
                 {alerts.map((alert) => (
                   <AlertCard key={alert.event_id} alert={alert} />
                 ))}
               </div>
             )}
           </Card>
+          </div>
         </div>
       )}
     </>

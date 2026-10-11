@@ -162,7 +162,7 @@ export function ResearchReviewForm({ context: request, reviewer, reviewerName }:
 
       <ul className="space-y-2" aria-label="Contrôles préalables">
         {checks.map((check) => (
-          <li key={check.id} className="rounded-md border border-slate-200 bg-slate-50 p-2.5">
+          <li key={check.id} className="rounded-xl border border-slate-200 bg-slate-50 p-2.5">
             <div className="flex items-center justify-between gap-2">
               <span className="font-semibold text-slate-800">{check.label}</span>
               <Badge tone={check.state === 'pass' ? 'success' : 'danger'} dot>
@@ -215,7 +215,7 @@ export function ResearchReviewForm({ context: request, reviewer, reviewerName }:
 
       {approving && project && (
         <>
-          <fieldset className="space-y-2 rounded-md border border-slate-200 p-3">
+          <fieldset className="space-y-2 rounded-xl border border-slate-200 p-3">
             <legend className="px-1 font-medium text-slate-800">Établissements autorisés</legend>
             {project.participatingOrganizationIds.map((id) => {
               const org = context.organization(id)
@@ -245,7 +245,7 @@ export function ResearchReviewForm({ context: request, reviewer, reviewerName }:
             )}
           </fieldset>
 
-          <fieldset className="space-y-2 rounded-md border border-slate-200 p-3">
+          <fieldset className="space-y-2 rounded-xl border border-slate-200 p-3">
             <legend className="px-1 font-medium text-slate-800">Variables autorisées</legend>
             <p className="text-slate-500">Décochez toute variable non nécessaire à la finalité du protocole.</p>
             {project.variables.map((variable) => (

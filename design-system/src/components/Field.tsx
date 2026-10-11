@@ -15,12 +15,13 @@ interface FieldBaseProps {
 }
 
 const controlBase =
-  'block w-full rounded-md border bg-white px-3 text-sm text-slate-900 shadow-xs placeholder:text-slate-400 ' +
-  'focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20 focus:outline-none ' +
-  'disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500'
+  'block w-full rounded-xl border bg-surface px-3.5 text-base text-ink shadow-card placeholder:text-ink-muted sm:text-sm ' +
+  'transition-[border-color,box-shadow] duration-150 ' +
+  'focus:border-brand-600 focus:ring-4 focus:ring-brand-300/40 focus:outline-none ' +
+  'disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-ink-muted'
 
 function controlState(error: ReactNode) {
-  return error ? 'border-danger-600' : 'border-slate-300'
+  return error ? 'border-danger-600' : 'border-line-strong hover:border-brand-400'
 }
 
 /** Wires label, hint, and error ids to one control. */
@@ -53,7 +54,7 @@ function FieldShell({
 }: FieldShellProps) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor={controlId} className="block font-medium text-slate-800">
+      <label htmlFor={controlId} className="block font-medium text-ink">
         {label}
         {required && (
           <span aria-hidden="true" className="ml-0.5 text-danger-700">
@@ -63,7 +64,7 @@ function FieldShell({
       </label>
       {children}
       {hint && (
-        <p id={hintId} className="text-xs text-slate-500">
+        <p id={hintId} className="text-xs text-ink-muted">
           {hint}
         </p>
       )}
@@ -86,7 +87,7 @@ export function TextField({ label, hint, error, id, className, ...input }: TextF
         id={ids.controlId}
         aria-describedby={ids.describedBy}
         aria-invalid={error ? true : undefined}
-        className={cx(controlBase, 'h-10', controlState(error), className)}
+        className={cx(controlBase, 'h-11', controlState(error), className)}
         {...input}
       />
     </FieldShell>
@@ -148,7 +149,7 @@ export function SelectField({
         id={ids.controlId}
         aria-describedby={ids.describedBy}
         aria-invalid={error ? true : undefined}
-        className={cx(controlBase, 'h-10 pr-8', controlState(error), className)}
+        className={cx(controlBase, 'h-11 pr-8', controlState(error), className)}
         {...select}
       >
         {placeholder !== undefined && <option value="">{placeholder}</option>}
@@ -174,15 +175,15 @@ export function CheckboxField({ label, hint, error, id, className, ...input }: C
         id={ids.controlId}
         aria-describedby={ids.describedBy}
         aria-invalid={error ? true : undefined}
-        className="mt-1 size-4 shrink-0 rounded border-slate-300 accent-brand-700"
+        className="mt-1 size-4 shrink-0 rounded border-line-strong accent-brand-600"
         {...input}
       />
       <div className="space-y-0.5">
-        <label htmlFor={ids.controlId} className="font-medium text-slate-800">
+        <label htmlFor={ids.controlId} className="font-medium text-ink">
           {label}
         </label>
         {hint && (
-          <p id={ids.hintId} className="text-xs text-slate-500">
+          <p id={ids.hintId} className="text-xs text-ink-muted">
             {hint}
           </p>
         )}

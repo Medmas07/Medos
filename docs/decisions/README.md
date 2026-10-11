@@ -24,3 +24,4 @@ Clean/Hexagonal principles are an initial project constraint and do not require 
 | [ADR-0010](ADR-0010-authentication-foundation.md) | Authentication foundation — each runtime authenticates its own users, password sign-in with opaque bearer sessions | Accepted |
 | [ADR-0011](ADR-0011-role-based-access-control.md) | Role-based access control — a fixed role matrix per runtime, checked on every protected route | Accepted |
 | [ADR-0012](ADR-0012-mobile-push-provider.md) | Mobile push — UnifiedPush with encrypted Web Push, no clinical text | Accepted |
+| [ADR-0013](ADR-0013-medos-landing-and-hospital-journey.md) | MedOS landing page as the hospital entry point, with a guided onboarding journey | Accepted |

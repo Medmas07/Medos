@@ -3,15 +3,14 @@ import {
   AppShell,
   Badge,
   Button,
-  DemoBanner,
   ErrorState,
   LoadingState,
   SideNav,
+  ThemeToggle,
   type SideNavItem,
   type SideNavSection,
 } from '@hackcure/design-system'
 import { pageStatusDisplay } from './presentation'
-import { sciAgentsIntegrationConfigured } from './services/sciagentsApi'
 import {
   DEMO_RESEARCHER_ID,
   loadResearchSnapshot,
@@ -139,7 +138,7 @@ export default function App() {
   ]
 
   const renderContent = () => {
-    if (load.kind === 'loading') return <LoadingState label="Chargement des projets de recherche…" />
+    if (load.kind === 'loading') return <LoadingState variant="skeleton" label="Chargement des projets de recherche…" />
     if (load.kind === 'error') {
       return (
         <ErrorState
@@ -241,20 +240,16 @@ export default function App() {
     <AppShell
       productName="Portail de Recherche"
       productContext={snapshot?.organization.name ?? 'Recherche gouvernée'}
-      banner={
-        <DemoBanner>
-          Démonstration D1 : données fictives (HC-005), service de recherche et identité simulés. Aucune
-          exécution réelle (le notebook est simulé), aucun accès aux Hospital Nodes. SciAgents : {sciAgentsIntegrationConfigured ? 'frontière D2 configurée ; les anciennes investigations restent des fixtures identifiées' : 'intégration non configurée ; investigations fictives uniquement'}.
-        </DemoBanner>
-      }
       navigation={<SideNav label="Navigation principale" sections={navigationSections} />}
+      toolbar={<ThemeToggle />}
+      pageKey={currentView}
       sidebarFooter={
         snapshot && (
           <div className="space-y-1">
-            <div className="font-semibold text-slate-800">
+            <div className="font-semibold text-ink">
               {snapshot.researcher.title} {snapshot.researcher.firstName} {snapshot.researcher.lastName}
             </div>
-            <div className="text-slate-500">Chercheur principal (identité simulée)</div>
+            <div className="text-ink-muted">Chercheur principal (identité simulée)</div>
           </div>
         )
       }

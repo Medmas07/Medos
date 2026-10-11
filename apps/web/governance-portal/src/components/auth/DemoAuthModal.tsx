@@ -54,7 +54,7 @@ export function DemoAuthModal({ isOpen, onClose }: DemoAuthModalProps) {
       aria-modal="true"
       aria-labelledby="demo-auth-title"
     >
-      <div className="relative w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-slate-900/10">
+      <div className="relative w-full max-w-2xl rounded-2xl bg-surface p-6 shadow-2xl ring-1 ring-slate-900/10">
         <div className="mb-4 flex items-start justify-between">
           <div>
             <h2 id="demo-auth-title" className="text-xl font-bold text-slate-900">

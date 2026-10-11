@@ -39,22 +39,22 @@ export function Table<Row>({
 }: TableProps<Row>) {
   return (
     <div className={cx('overflow-x-auto', className)}>
-      <table className="w-full border-collapse text-left text-sm">
+      <table className="w-full border-collapse text-left text-sm [&_tbody_tr:last-child>*]:border-b-0">
         <caption
           className={
-            showCaption ? 'px-4 py-2 text-left text-xs font-medium text-slate-500' : 'sr-only'
+            showCaption ? 'px-4 py-2 text-left text-xs font-medium text-ink-muted' : 'sr-only'
           }
         >
           {caption}
         </caption>
-        <thead className="bg-slate-50">
+        <thead className="bg-surface-muted">
           <tr>
             {columns.map((column) => (
               <th
                 key={column.key}
                 scope="col"
                 className={cx(
-                  'border-b border-slate-200 px-4 py-2.5 text-xs font-semibold tracking-wide whitespace-nowrap text-slate-600 uppercase',
+                  'border-b border-line px-4 py-2.5 text-xs font-medium whitespace-nowrap text-ink-muted',
                   column.align === 'right' && 'text-right',
                 )}
               >
@@ -70,7 +70,7 @@ export function Table<Row>({
             </tr>
           ) : (
             rows.map((row) => (
-              <tr key={getRowKey(row)} className="hover:bg-slate-50">
+              <tr key={getRowKey(row)} className="transition-colors duration-150 hover:bg-brand-50/60">
                 {columns.map((column) => {
                   const Cell = column.rowHeader ? 'th' : 'td'
                   return (
@@ -78,9 +78,9 @@ export function Table<Row>({
                       key={column.key}
                       scope={column.rowHeader ? 'row' : undefined}
                       className={cx(
-                        'border-b border-slate-100 px-4 py-3 align-middle text-slate-700',
-                        column.rowHeader && 'font-medium text-slate-900',
-                        column.align === 'right' && 'text-right',
+                        'border-b border-line px-4 py-3 align-middle text-ink-soft',
+                        column.rowHeader && 'font-medium text-ink',
+                        column.align === 'right' && 'tabular text-right',
                       )}
                     >
                       {column.render(row)}
