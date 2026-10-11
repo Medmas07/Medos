@@ -28,9 +28,9 @@ void main() {
       find.text('Accordé le 10/10/2026 · jusqu’au 24/10/2026'),
       findsOneWidget,
     );
-    expect(find.text('Consultations'), findsOneWidget);
+    expect(find.text('Parcours'), findsOneWidget);
     expect(find.text('Médicaments'), findsOneWidget);
-    expect(find.text('Biologie'), findsOneWidget);
+    expect(find.text('Laboratoires'), findsOneWidget);
 
     expect(
       find.text('10:30 · Douleur du genou droit et contrôle cardiologique'),
@@ -84,6 +84,30 @@ void main() {
       ),
       findsOneWidget,
     );
+  });
+
+  testWidgets('opens a patient from the authorized patient list', (
+    tester,
+  ) async {
+    await _pumpTall(tester, const ClinicianApp());
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.text('Patients'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('authorized-pat-a')),
+        matching: find.text('Ouvrir la fiche'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Fiche patient'), findsOneWidget);
+    expect(find.text('Femme · 58 ans · Tunis'), findsOneWidget);
   });
 
   testWidgets('shows nothing about a patient without an active grant', (

@@ -123,7 +123,7 @@ class _AuthorizedDetail extends StatelessWidget {
               children: [
                 for (final item in grant.scope)
                   LabelTag(
-                    label: _scopeLabel(item),
+                    label: scopeLabel(item),
                     color: ClinicianColors.brand,
                     background: ClinicianColors.brandSoft,
                   ),
@@ -177,13 +177,6 @@ class _AuthorizedDetail extends StatelessWidget {
 
 String _date(String isoDateTime) =>
     formatDemoDate(isoDateTime.substring(0, 10));
-
-String _scopeLabel(String scope) => switch (scope) {
-  'encounters' => 'Consultations',
-  'medications' => 'Médicaments',
-  'labReports' => 'Biologie',
-  _ => scope,
-};
 
 class _IdentityCard extends StatelessWidget {
   const _IdentityCard({required this.patient});

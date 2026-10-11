@@ -6,6 +6,14 @@ import 'clinician_theme.dart';
 String formatDemoDate(String isoDate) =>
     '${isoDate.substring(8, 10)}/${isoDate.substring(5, 7)}/${isoDate.substring(0, 4)}';
 
+/// French label of an access grant's record kind.
+String scopeLabel(String kind) => switch (kind) {
+  'encounters' => 'Parcours',
+  'medications' => 'Médicaments',
+  'labReports' => 'Laboratoires',
+  _ => kind,
+};
+
 /// French label and colors for a fixture's `high` / `medium` / `low` value,
 /// shared by alert severity and queue priority.
 (String, Color, Color) severityStyle(String severity) => switch (severity) {

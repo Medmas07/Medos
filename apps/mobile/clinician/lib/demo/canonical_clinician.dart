@@ -122,6 +122,9 @@ class CanonicalAccessGrant {
 
   final String id;
   final String patientId;
+
+  /// Record kinds the patient authorized: `encounters`, `medications`,
+  /// `labReports`.
   final List<String> scope;
   final String purpose;
   final String status;
