@@ -6,12 +6,14 @@ Mobile product for authorized clinician workflows serving physicians, nurses, an
 
 IMPLEMENTED at D1 for HC-030: a Flutter Android shell provides five navigable destinations plus explicit content, loading, empty, and error states. It uses the fictional HC-005 clinician `clin-x` (Dr Youssef Gharbi, Cardiologie, Hôpital Universitaire Bab Ennour) in a simulated session and permanently labels demo content. Each destination's content is PLANNED and names the ticket that will deliver it:
 
+HC-037 Recording consent UX is MOCKED at D1 in the Consultation destination. For fictional Patient A (`pat-a`, Leïla Mansouri), the clinician must confirm that the recording purpose, human review, and right to refuse or stop were explained before recording consent. Grant, refusal, and withdrawal/reconsideration states are reviewable. The decision is widget-local and session-only; no microphone is activated, no audio or consent is persisted, and no API is called. Audio capture (HC-038) and the remaining consultation workflow stay PLANNED.
+
 | Destination | Planned content |
 |---|---|
 | `Accueil` | Clinician dashboard (HC-031); the shell shows the identity, the authorized-context boundary, and shortcuts to the other destinations. |
 | `File` | Priority patient queue (HC-032) and its explanation (HC-044). |
 | `Patients` | Authorized patient list, patient detail, and federated history (HC-033 to HC-035). |
-| `Consultation` | Consultation workspace, recording consent, speech-to-text, adaptive intake, AI extraction and lab review, medication warning (HC-036 to HC-042). |
+| `Consultation` | Recording consent UX is MOCKED (HC-037); consultation workspace, audio capture, speech-to-text, adaptive intake, AI extraction and lab review, and medication warning remain PLANNED (HC-036, HC-038 to HC-042). |
 | `Alertes` | Clinician alert center (HC-043). |
 
 The profile sheet (app bar avatar) shows the fictional identity and states that the session is simulated: there is no authentication or authorization. The flask menu switches the current destination between content, loading, empty, and error states; navigating returns to content.
