@@ -14,6 +14,7 @@ FIXTURE_SETTINGS = Settings(
     review_mode=ReviewMode.FIXTURE,
     lab_mode=LabMode.FIXTURE,
     explanation_mode=ExplanationMode.TEMPLATE,
+    priority_explanation_mode=ExplanationMode.TEMPLATE,
 )
 
 

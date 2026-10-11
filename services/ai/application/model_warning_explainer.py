@@ -7,27 +7,17 @@ rule source has decided both. ExplainMedicationWarning checks its text before us
 
 import json
 from collections.abc import Callable
-from typing import Any
 from uuid import uuid4
 
 from application.ai_provider import AiProvider, AiProviderError, AiRequest, AiTask
-from application.explain_medication_warning import (
+from application.explanation import (
+    OUTPUT_SCHEMA,
     ExplanationUnavailable,
     ProposedExplanation,
+    explanation_text,
 )
-from domain.medication_explanation import (
-    MAX_EXPLANATION_LENGTH,
-    GeneratedBy,
-    GeneratorKind,
-    MedicationWarning,
-)
-
-OUTPUT_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "additionalProperties": False,
-    "required": ["explanation"],
-    "properties": {"explanation": {"type": "string"}},
-}
+from domain.explanation import GeneratedBy, GeneratorKind
+from domain.medication_explanation import MAX_EXPLANATION_LENGTH, MedicationWarning
 
 INSTRUCTIONS = f"""\
 You explain a medication interaction warning to a clinician in plain language. The
@@ -72,7 +62,7 @@ class ModelWarningExplainer:
             )
         except AiProviderError as error:
             raise ExplanationUnavailable(str(error)) from error
-        text = _text(output.text)
+        text = explanation_text(output.text)
         provenance = output.provenance
         return ProposedExplanation(
             text=text,
@@ -103,17 +93,3 @@ def _warning_json(warning: MedicationWarning) -> str:
         },
         ensure_ascii=False,
     )
-
-
-def _text(raw: str) -> str:
-    cleaned = raw.strip()
-    if cleaned.startswith("```"):
-        cleaned = cleaned.strip("`").removeprefix("json").strip()
-    try:
-        payload = json.loads(cleaned)
-    except json.JSONDecodeError as error:
-        raise ExplanationUnavailable("The model did not return valid JSON.") from error
-    text = payload.get("explanation") if isinstance(payload, dict) else None
-    if not isinstance(text, str):
-        raise ExplanationUnavailable("The model returned no explanation text.")
-    return text
