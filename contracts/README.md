@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-This is the canonical location for significant, versionable cross-component communication definitions. The directory structure is IMPLEMENTED. API contracts exist under [`api/`](api/README.md), Federation contracts under [`federation/`](federation/README.md), and Event contracts under [`events/`](events/README.md); shared-schema contracts remain PLANNED.
+This is the canonical location for significant, versionable cross-component communication definitions. The directory structure is IMPLEMENTED. API contracts exist under [`api/`](api/README.md), Federation contracts under [`federation/`](federation/README.md), and Event contracts under [`events/`](events/README.md), all OpenAPI 3.1 files checked by the [contract tests](../tests/contracts/); shared-schema contracts remain PLANNED.
 
 ## Responsibilities and owned concepts
 

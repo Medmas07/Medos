@@ -4,7 +4,7 @@ Place validated, versioned asynchronous cross-component event specifications and
 
 | Contract | Producers | Consumers | Status |
 |---|---|---|---|
-| [`notification-event.v1.yaml`](notification-event.v1.yaml) | Hospital Nodes, Governance Node, Research Service, AI Services | Notification Service (HC-202) | IMPLEMENTED as OpenAPI 3.1 specification with canonical fictional examples at depth D1 (HC-201). Runtime delivery service PLANNED (HC-202). |
+| [`notification-event.v1.yaml`](notification-event.v1.yaml) | Hospital Nodes, Governance Node, Research Service, AI Services | Notification Service (HC-202) | IMPLEMENTED as OpenAPI 3.1 specification with canonical fictional examples at depth D1 (HC-201). Received by the [Notification Service](../../services/notifications/README.md) (HC-202, HC-203); no producer emits it over the network yet. |
 
 ## Boundary invariants for event contracts
 

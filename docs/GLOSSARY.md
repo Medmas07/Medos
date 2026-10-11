@@ -1,10 +1,14 @@
 # Glossary
 
+- **MedOS:** the name of the ecosystem shown to users, from the landing page onward ([ADR-0013](decisions/ADR-0013-medos-landing-and-hospital-journey.md)).
+- **Depth (D0 to D4):** how far a ticket goes: D0 visual only, D1 interactive mock or contract, D2 basic functional integration, D3 real distributed integration, D4 production or security depth. A depth describes the ticket's target, not validation.
 - **Hospital Node:** autonomous hospital-controlled runtime boundary for local clinical integration, storage, consent enforcement, audit generation, and Federation participation.
 - **Governance Node:** runtime boundary operated conceptually by the Governance / Ethics Authority for institutional, synchronization, and research authorization and governance audit.
 - **DMI:** *Dossier Médical Informatisé*; a hospital's existing electronic medical-record system or data environment integrated locally through its Hospital Node.
 - **HIS:** Hospital Information System; a broader hospital operational/clinical system that may be a DMI Adapter source.
 - **FHIR:** Fast Healthcare Interoperability Resources; a possible interoperability representation whose exact version and profiles remain OPEN.
+- **Governance Portal:** the web interface of the Governance / Ethics Authority; it displays and records decisions, distinct from the Governance Node runtime that holds them.
+- **Signed authorization:** a short-lived Ed25519 statement by the Governance Node of one authorized synchronization exchange, which a Hospital Node verifies on its own ([ADR-0015](decisions/ADR-0015-signed-federation-authorization.md)).
 - **Federation:** controlled discovery, authorization, query, synchronization, and result coordination across autonomous Nodes without one unrestricted central clinical database.
 - **Compute-to-Data:** model in which authorized code executes near controlled data and only controlled results return to the researcher.
 - **SciAgents:** an existing external scientific-agent system integrated through contracts and an adapter; it is not implemented here.

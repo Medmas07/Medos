@@ -1,6 +1,6 @@
 # Infrastructure
 
-Status: OPEN. Place deployment, environment, and platform assets here only after they are justified and documented by the applicable ADR.
+Status: IMPLEMENTED (D3) for the Hospital Node's container, demo composition, and installation package; everything else is OPEN. Place deployment, environment, and platform assets here only after they are justified and documented by the applicable ADR.
 
 ## Docker
 

@@ -117,7 +117,7 @@ Not done at D1: events come from fixtures and local state; the portal does not c
 
 ## Blockchain proof explorer (HC-080) — MOCKED BLOCKCHAIN
 
-IMPLEMENTED at D1 against a **MOCKED BLOCKCHAIN**: the "ledger" is the simulated proof list in `demo-data/governance.json`. There is no chain, network, consensus, or real anchoring; the explorer, its badge, and its banner say so. The `AuditLedgerPort` and a simulated or real ledger are PLANNED (HC-190 to HC-194).
+IMPLEMENTED at D1 against a **MOCKED BLOCKCHAIN**: the "ledger" is the simulated proof list in `demo-data/governance.json`. There is no chain, network, consensus, or real anchoring; the explorer, its badge, and its banner say so. The Governance Node implements the `AuditLedgerPort`, a simulated ledger, and an opt-in Besu adapter (HC-190 to HC-194), but this portal does not call it; it re-verifies the fictional fixture proofs only.
 
 **Piste d’Audit & Registre** lists each proof with its event type in plain language (`Décision : accès recherche approuvée`), proof and event ids, hash, organizations, anchoring time, and its verification state. That state is **recomputed in the browser**, not read from the fixture's own `verificationStatus` claim:
 
@@ -145,7 +145,7 @@ IMPLEMENTED at D1, from the canonical fixtures (`demo-data/notifications.json`).
 
 The rules live in `src/services/notificationService.ts` and are unit-tested (19 tests covering data loading, type mapping, ordering, filtering, counts, mark-as-read simulation, session store subscription, relative time formatting, and data integrity).
 
-Not done at D1: no broker, WebSocket, or real notification delivery service is connected. Notifications come from static fixtures, not from a Notification Service API (HC-201 to HC-204 are PLANNED upgrades). The banner says so explicitly.
+Not done at D1: no broker, WebSocket, or real notification delivery service is connected. Notifications come from static fixtures, not from the Notification Service (HC-202 to HC-204), which this portal does not call yet. The banner says so explicitly.
 
 ## Demo authentication flow (HC-210)
 
