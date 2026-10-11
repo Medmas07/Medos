@@ -3,13 +3,14 @@
 Not a blockchain and not a real ledger: an append-only list in this process's memory,
 lost on restart (`durable` is false), with no consensus, signature, or replication.
 Immutable only in that nothing here changes or removes a proof once anchored: an event
-is anchored once, and anchoring it again with another payload is a ProofConflict.
-Payload hashing is HC-192 and is not computed here.
+is anchored once, and anchoring it again with another payload is a ProofConflict. Each
+proof holds its payload's SHA-256 hash (HC-192), computed here by the Node itself: not
+signed, and not anchored anywhere else.
 
 At startup it reads the fictional simulated proofs of demo-data/governance.json, and
-checks that each anchors exactly the minimized payload of the audit event it names.
-A file not marked fictional, a proof not marked simulated, or an inconsistent proof
-stops startup.
+checks that each anchors exactly the minimized payload of the audit event it names,
+with that payload's hash. A file not marked fictional, a proof not marked simulated,
+or an inconsistent proof stops startup.
 """
 
 import json
@@ -23,7 +24,14 @@ from adapters.outbound.in_memory_hospital_applications import SeedError
 from application.audit import AuditTrail
 from application.ledger import ProofConflict
 from domain.audit import AuditOutcome
-from domain.ledger import LedgerProof, NotAnchorable, ProofPayload, proof_payload
+from domain.ledger import (
+    HASH_ALGORITHM,
+    LedgerProof,
+    NotAnchorable,
+    ProofPayload,
+    hash_payload,
+    proof_payload,
+)
 
 # The ledger name of the demo proofs; never the name of a real ledger.
 LEDGER_NAME = "local-simulation"
@@ -88,6 +96,7 @@ class SimulatedAuditLedger:
                 payload=payload,
                 ledger=LEDGER_NAME,
                 anchored_at=self._clock(),
+                payload_hash=hash_payload(payload),
             )
             self._store(proof)
             return proof
@@ -137,9 +146,12 @@ def _proof(raw: dict, trail: AuditTrail) -> LedgerProof:
         raise SeedError(f"{ref}: {error}") from error
     if payload != expected:
         raise SeedError(f"{ref} does not anchor the payload of {event.event_ref}")
+    if raw["hashAlgorithm"] != HASH_ALGORITHM or raw["hash"] != hash_payload(payload):
+        raise SeedError(f"{ref} does not hold the {HASH_ALGORITHM} hash of its payload")
     return LedgerProof(
         proof_ref=ref,
         payload=payload,
         ledger=LEDGER_NAME,
         anchored_at=_time(raw["anchoredAt"], ref),
+        payload_hash=raw["hash"],
     )

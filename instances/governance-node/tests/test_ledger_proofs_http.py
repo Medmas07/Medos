@@ -5,15 +5,18 @@ contract's examples are the expected answers on the demo data. Each decision rec
 through the governance APIs is anchored in the simulated ledger at once (MOCKED).
 """
 
+from dataclasses import replace
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from adapters.inbound.http.ledger_proofs import create_router
 from adapters.outbound.in_memory_audit_trail import InMemoryAuditTrail
+from adapters.outbound.simulated_audit_ledger import SimulatedAuditLedger
 from application.ledger import LedgerUnavailable
 from main import DEMO_IDENTITY, create_app
-from tests.conftest import DEMO_DATA
+from tests.conftest import DEMO_DATA, DEMO_NOW
 from tests.test_hospital_approval_http import APPROVE_C
 from tests.test_research_http import APPROVE_002
 from tests.test_synchronization_http import APPROVE_001, ASK_A, Clock, check, example
@@ -191,3 +194,31 @@ def test_an_unavailable_ledger_answers_503():
         assert check(client.get(path), PROOFS, operation, 503)["code"] == (
             "ledger_unavailable"
         )
+
+
+def test_every_proof_carries_its_payload_hash_verified_against_the_trail(client):
+    client.post("/v1/synchronization-requests/sync-001/decision", json=APPROVE_001)
+
+    proofs = check(client.get("/v1/ledger/proofs"), PROOFS, LIST, 200)["proofs"]
+
+    assert all(p["hash_algorithm"] == "SHA-256" for p in proofs)
+    assert all(p["verification"] == "verified" for p in proofs)
+    assert len({p["payload_hash"] for p in proofs}) == 3
+
+
+def test_a_proof_whose_hash_is_not_its_payloads_is_served_as_tampered():
+    trail = InMemoryAuditTrail.load(DEMO_DATA / "governance.json")
+    seeded = SimulatedAuditLedger.load(
+        DEMO_DATA / "governance.json", trail, lambda: DEMO_NOW
+    )
+    forged = SimulatedAuditLedger(
+        lambda: DEMO_NOW,
+        [replace(p, payload_hash="0" * 64) for p in seeded.proofs()],
+    )
+    app = FastAPI()
+    app.include_router(create_router(DEMO_IDENTITY, forged, trail))
+
+    proof = proof_of(TestClient(app), "evt-004")["proof"]
+
+    assert proof["verification"] == "tampered"
+    assert proof["payload_hash"] == "0" * 64

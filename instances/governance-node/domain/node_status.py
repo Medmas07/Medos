@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 SKELETON_NOTICE = (
-    "Governance Node (HC-130 to HC-136, HC-191). Its identity is the fictional demo Governance "
+    "Governance Node (HC-130 to HC-136, HC-191, HC-192). Its identity is the fictional demo Governance "
     "/ Ethics Authority. It serves the hospital approval, synchronization request, and "
     "research access request APIs, the synchronization and research authorization "
     "checks, its audit trail, its governance policy, and the proofs anchoring its "
@@ -12,7 +12,8 @@ SKELETON_NOTICE = (
     "grants are checked with the Hospital Node holding them over HTTP (`grants`: "
     "http), or against fictional demo grants (`grants`: fixture, MOCKED); the demo "
     "Hospital Nodes' grants are themselves MOCKED. Its audit ledger is a simulated "
-    "immutable ledger in memory (MOCKED), not a blockchain. No persistence and no "
+    "immutable ledger in memory (MOCKED), not a blockchain; proof hashes are computed "
+    "by the Node itself and not signed. No persistence and no "
     "authentication; a policy-editing workflow and a real ledger are PLANNED. Liveness "
     "only; not a production health check."
 )

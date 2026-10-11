@@ -2,7 +2,7 @@ from domain.node_identity import NodeIdentity
 from domain.node_status import NodeStatus
 
 NODE_NAME = "governance-node"
-NODE_VERSION = "0.8.0"
+NODE_VERSION = "0.9.0"
 # Governance APIs are added as their tickets land (HC-131 to HC-136).
 # hospital-approval.v1: list, read, and decide hospital applications (HC-131).
 # synchronization-requests.v1 and sync-authorization-check.v1: submit, list, read,
@@ -12,7 +12,7 @@ NODE_VERSION = "0.8.0"
 # governance-audit-events.v1: list and read the governance audit trail (HC-134).
 # governance-policies.v1: the versioned policy every decision applies (HC-135).
 # governance-ledger-proofs.v1: the proofs anchoring its decisions in its simulated
-# audit ledger (HC-191, MOCKED).
+# audit ledger (HC-191, MOCKED), each with its payload's hash (HC-192).
 CAPABILITIES: tuple[str, ...] = (
     "hospital_approval",
     "synchronization",

@@ -10,7 +10,7 @@ from adapters.outbound.in_memory_hospital_applications import SeedError
 from adapters.outbound.simulated_audit_ledger import LEDGER_NAME, SimulatedAuditLedger
 from application.ledger import ProofConflict, anchor_decision
 from domain.audit import AuditOutcome
-from domain.ledger import proof_payload
+from domain.ledger import hash_payload, proof_payload
 from tests.conftest import DEMO_DATA, DEMO_NOW
 from tests.test_ledger import decision_event
 
@@ -35,6 +35,8 @@ def test_seeds_the_simulated_demo_proofs_with_their_audit_events_payloads():
     for proof in seeded.proofs():
         assert proof.ledger == LEDGER_NAME
         assert proof.payload == proof_payload(trail.event(proof.payload.event_ref))
+        assert proof.hash_algorithm == "SHA-256"
+        assert proof.payload_hash == hash_payload(proof.payload)
     assert seeded.proof("evt-001") is None
 
 
@@ -46,6 +48,7 @@ def test_anchors_a_new_payload_with_the_next_reference_at_the_clock_time():
     assert proof.proof_ref == "proof-005"
     assert proof.anchored_at == DEMO_NOW
     assert proof.ledger == LEDGER_NAME
+    assert proof.payload_hash == hash_payload(proof_payload(decision_event()))
     assert seeded.proof("evt-042") == proof
     assert seeded.proofs()[-1] == proof
 
@@ -122,6 +125,9 @@ def _payload(data, **fields):
         lambda d: d["ledgerProofs"][0].update(anchoredAt="2025-12-12T14:30:05"),
         lambda d: d["ledgerProofs"][0].update(auditEventId="evt-004"),
         lambda d: d["ledgerProofs"][0].update(auditEventId="evt-999"),
+        lambda d: d["ledgerProofs"][0].update(hash="0" * 64),
+        lambda d: d["ledgerProofs"][0].update(hashAlgorithm="MD5"),
+        lambda d: d["ledgerProofs"][0].pop("hash"),
         lambda d: _payload(d, patientId="pat-a"),
         lambda d: _payload(d, outcome="rejected"),
         lambda d: _payload(d, organizationIds=["org-governance"]),
