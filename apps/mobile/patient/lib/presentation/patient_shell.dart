@@ -17,6 +17,14 @@ class PatientShell extends StatefulWidget {
 class _PatientShellState extends State<PatientShell> {
   int _selectedIndex = 0;
   ShellDemoState _demoState = ShellDemoState.content;
+  final Set<String> _readNotifications = {
+    for (final notification in demoNotifications)
+      if (notification.read) notification.id,
+  };
+
+  int get _unreadCount => demoNotifications
+      .where((notification) => !_readNotifications.contains(notification.id))
+      .length;
 
   static const _destinations = <NavigationDestination>[
     NavigationDestination(
@@ -68,6 +76,15 @@ class _PatientShellState extends State<PatientShell> {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'Notifications',
+            onPressed: _openNotifications,
+            icon: Badge(
+              isLabelVisible: _unreadCount > 0,
+              label: Text('$_unreadCount'),
+              child: const Icon(Icons.notifications_outlined),
+            ),
+          ),
           PopupMenuButton<ShellDemoState>(
             tooltip: 'Choisir un état de démonstration',
             initialValue: _demoState,
@@ -111,6 +128,17 @@ class _PatientShellState extends State<PatientShell> {
             _demoState = ShellDemoState.content;
           });
         },
+      ),
+    );
+  }
+
+  void _openNotifications() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => _NotificationCenterPage(
+          read: _readNotifications,
+          onRead: (ids) => setState(() => _readNotifications.addAll(ids)),
+        ),
       ),
     );
   }
@@ -1471,6 +1499,156 @@ class _PreviewCard extends StatelessWidget {
             ),
             const Icon(Icons.chevron_right_rounded, color: PatientColors.muted),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NotificationCenterPage extends StatefulWidget {
+  const _NotificationCenterPage({required this.read, required this.onRead});
+
+  final Set<String> read;
+  final ValueChanged<Iterable<String>> onRead;
+
+  @override
+  State<_NotificationCenterPage> createState() => _NotificationCenterPageState();
+}
+
+class _NotificationCenterPageState extends State<_NotificationCenterPage> {
+  bool _unreadOnly = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final unread = demoNotifications
+        .where((notification) => !widget.read.contains(notification.id))
+        .map((notification) => notification.id)
+        .toList();
+    final visible = demoNotifications
+        .where((notification) => !_unreadOnly || unread.contains(notification.id))
+        .toList();
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Notifications'),
+        actions: [
+          TextButton(
+            onPressed: unread.isEmpty ? null : () => _markRead(unread),
+            child: const Text('Tout marquer comme lu'),
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+        children: [
+          const _DemoBanner(),
+          const SizedBox(height: 12),
+          const Text(
+            'Notifications fictives (MOCKED). Aucune notification n’est '
+            'réellement envoyée ; les notifications push ne sont pas encore '
+            'connectées à cette application.',
+            style: TextStyle(color: PatientColors.muted),
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: FilterChip(
+              label: Text('Non lues (${unread.length})'),
+              selected: _unreadOnly,
+              onSelected: (value) => setState(() => _unreadOnly = value),
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (visible.isEmpty)
+            const Card(
+              child: ListTile(
+                leading: Icon(Icons.notifications_none_rounded),
+                title: Text('Aucune notification non lue'),
+              ),
+            ),
+          for (final notification in visible)
+            _NotificationCard(
+              notification: notification,
+              unread: unread.contains(notification.id),
+              onTap: () => _markRead([notification.id]),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _markRead(Iterable<String> ids) {
+    widget.onRead(ids);
+    setState(() {});
+  }
+}
+
+class _NotificationCard extends StatelessWidget {
+  const _NotificationCard({
+    required this.notification,
+    required this.unread,
+    required this.onTap,
+  });
+
+  final CanonicalNotification notification;
+  final bool unread;
+  final VoidCallback onTap;
+
+  static const _categoryLabels = {
+    'access_granted': 'ACCÈS',
+    'new_record': 'NOUVEAU DOCUMENT',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                unread ? Icons.circle : Icons.circle_outlined,
+                size: 12,
+                color: unread ? PatientColors.brand : PatientColors.muted,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      notification.title,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: unread ? FontWeight.w800 : null,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(notification.body),
+                    const SizedBox(height: 8),
+                    Text(
+                      notification.date,
+                      style: const TextStyle(color: PatientColors.muted),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        _StatusPill(
+                          label: _categoryLabels[notification.type] ??
+                              notification.type.toUpperCase(),
+                        ),
+                        const SizedBox(width: 8),
+                        _StatusPill(label: unread ? 'NON LUE' : 'LUE'),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -272,3 +272,43 @@ const demoPatientSources = <String>[
 const demoRestrictionNotice =
     'Votre demande est en cours d\'analyse. Certaines données peuvent devoir '
     'être conservées pour des obligations légales ou de soins.';
+
+class CanonicalNotification {
+  const CanonicalNotification({
+    required this.id,
+    required this.type,
+    required this.title,
+    required this.body,
+    required this.date,
+    required this.read,
+  });
+
+  final String id;
+
+  /// Category from `contracts/events/notification-event.v1.yaml`.
+  final String type;
+  final String title;
+  final String body;
+  final String date;
+  final bool read;
+}
+
+/// Patient A's notifications from HC-005 `notifications.json`.
+const demoNotifications = <CanonicalNotification>[
+  CanonicalNotification(
+    id: 'notif-001',
+    type: 'access_granted',
+    title: 'Accès accordé',
+    body: 'Dr Youssef Gharbi peut consulter votre historique jusqu\'au 24/10/2026.',
+    date: '10 octobre 2026',
+    read: false,
+  ),
+  CanonicalNotification(
+    id: 'notif-002',
+    type: 'new_record',
+    title: 'Nouveau bilan disponible',
+    body: 'Un bilan biologique de l\'Hôpital Régional Oued Zitoun a été ajouté à votre historique.',
+    date: '21 mai 2026',
+    read: true,
+  ),
+];
