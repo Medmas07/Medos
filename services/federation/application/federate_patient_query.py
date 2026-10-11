@@ -159,8 +159,9 @@ class FederatePatientQuery:
         if request.authorization.expires_at <= self._clock():
             raise AuthorizationExpired()
 
+        signed_authorization = None
         if request.authorization.basis is AuthorizationBasis.SYNCHRONIZATION_DECISION:
-            targets = self._sync_targets(request)
+            targets, signed_authorization = self._sync_targets(request)
         else:
             targets = self._targets(request.target_organization_refs)
         query = NodeQuery(
@@ -170,6 +171,7 @@ class FederatePatientQuery:
             purpose=request.purpose,
             requested_by=request.requested_by,
             authorization=request.authorization,
+            signed_authorization=signed_authorization,
         )
         not_asked = {
             node: self._reason_not_to_ask(node, request.scope) for node in targets
@@ -201,7 +203,11 @@ class FederatePatientQuery:
             aggregated_at=self._clock(),
         )
 
-    def _sync_targets(self, request: FederatedQueryRequest) -> tuple[NodeRef, ...]:
+    def _sync_targets(
+        self, request: FederatedQueryRequest
+    ) -> tuple[tuple[NodeRef, ...], str | None]:
+        """The nodes to ask, and the Governance-signed authorization to pass on to them
+        unchanged (HC-214), if the Governance Node signs."""
         # Governance decides; nothing is asked unless it confirms the authorization.
         authorization = self._sync_authorizations.check(
             decision_ref=request.authorization.ref,
@@ -221,12 +227,15 @@ class FederatePatientQuery:
             )
             if outside:
                 raise TargetsNotAuthorized(outside)
-            return self._targets(request.target_organization_refs)
+            return (
+                self._targets(request.target_organization_refs),
+                authorization.signed_authorization,
+            )
         registered = self._registry.approved_nodes()
         targets = tuple(node for node in registered if node.organization_ref in allowed)
         if not targets:
             raise NoNodesRegistered()
-        return targets
+        return targets, authorization.signed_authorization
 
     def _targets(
         self, organization_refs: tuple[str, ...] | None

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Hospital Node Federation Interface
-  version: 1.0.3
+  version: 1.1.0
   description: |
     Contract HC-140, version 1. The interface every Hospital Node exposes to
     the Federation Service. A node describes itself and answers authorized,
@@ -18,11 +18,20 @@ info:
       grant or an approved synchronization decision. The node denies by
       default (`403 authorization_denied`) when the basis is unknown,
       expired, revoked, issued to someone else, or narrower than the
-      requested scope or purpose. How the node itself verifies the basis
-      with the Governance Node, and any token or signature format, are
-      OPEN. The Federation Service already checks synchronization decisions
-      with the Governance Node before asking any node (HC-144), but a node
-      must not rely on that check.
+      requested scope or purpose. The Federation Service already checks
+      synchronization decisions with the Governance Node before asking any
+      node (HC-144), but a node must not rely on that check.
+    - **Signed synchronization authorizations (since 1.1.0, HC-214).**
+      Under a synchronization decision, the Federation Service passes on,
+      unchanged, the `signed_authorization` the Governance Node returned for
+      this exact exchange (sync-authorization-check.v1.yaml, which defines
+      its format). A node that trusts the Governance Node's public key
+      verifies it on its own, without asking the Governance Node: signature,
+      issuer, its own organization in the audience, decision, requester,
+      actor, patient, purpose, scope at most the attested one, and expiry.
+      Such a node denies a synchronization-decision query without one. The
+      field is ignored for a patient access grant, which the node holding
+      it checks in its own grant store.
     - **An empty result is not an empty history.** `entries: []` means the
       node disclosed nothing inside the scope. The node answers the same way
       for a patient it does not know, so a query does not reveal whether a
@@ -44,10 +53,14 @@ info:
 
     Status: the Hospital Node runtime serves both operations (HC-114),
     answering from MOCKED fictional records and checking the authorization
-    against fictional grants and decisions in place of the Governance Node;
-    it audits every query in memory (HC-116). Simulated nodes (HC-141)
-    also answer it, without an audit trail. Transport, node identity, and
-    trust establishment are OPEN.
+    against its grant store and, for synchronization decisions, either the
+    Governance-signed authorization (HC-214, when configured with the
+    Governance Node's public key) or fictional decisions (MOCKED, the
+    default); it audits every query in memory (HC-116). Simulated nodes
+    (HC-141) also answer it, ignoring `signed_authorization`, without an
+    audit trail. Transport security, the identity of the calling service,
+    and trust establishment beyond a public key distributed out of band
+    are OPEN.
 paths:
   /v1/federation/node:
     get:
@@ -249,6 +262,15 @@ components:
           $ref: "#/components/schemas/Requester"
         authorization:
           $ref: "#/components/schemas/Authorization"
+        signed_authorization:
+          description: >-
+            Since 1.1.0 (HC-214). The Governance Node's signed authorization
+            for this exchange, as returned by sync-authorization-check.v1.yaml
+            (compact JWS, Ed25519), passed on unchanged. Only with basis
+            `synchronization_decision`.
+          type: string
+          maxLength: 4096
+          pattern: '^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$'
 
     NodeQueryResult:
       type: object
@@ -302,8 +324,9 @@ components:
       description: |
         The Governance-backed basis for the query. A reference, not a
         credential. The Federation Service checks synchronization decisions
-        with the Governance Node (sync-authorization-check.v1, HC-144);
-        credentials and node-side verification are OPEN.
+        with the Governance Node (sync-authorization-check.v1, HC-144); the
+        Governance Node's signed authorization, when it signs, travels
+        beside it to the nodes (hospital-node-federation.v1 1.1.0, HC-214).
       type: object
       additionalProperties: false
       required: [basis, ref, expires_at]

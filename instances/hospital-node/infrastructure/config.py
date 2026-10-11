@@ -40,6 +40,12 @@ class HospitalNodeConfig:
     # AI Services base URL for advisory warning explanations (HC-164); None turns them
     # off. Only a warning's content is sent, never a patient reference.
     ai_services_url: str | None = None
+    # The Governance Node's public key (HC-214): with it, a synchronization decision
+    # counts only with an authorization signed by that key, verified here; without
+    # it, the MOCKED fictional decisions above are used. Distributed out of band.
+    governance_public_key: Path | None = None
+    # The Governance / Ethics Authority whose signed authorizations this node accepts.
+    governance_organization_ref: str = "org-governance"
 
 
 class _ConfigFile(BaseModel):
@@ -58,6 +64,10 @@ class _ConfigFile(BaseModel):
         "demo_fixture"
     )
     ai_services_url: HttpUrl | None = None
+    governance_public_key: str | None = Field(default=None, min_length=1)
+    governance_organization_ref: str = Field(
+        default="org-governance", pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    )
 
 
 def config_path_from_env() -> Path:
@@ -93,4 +103,8 @@ def load_config(path: Path) -> HospitalNodeConfig:
         mock_medication_rules=(path.parent / raw.mock_medication_rules).resolve(),
         medication_rule_source=raw.medication_rule_source,
         ai_services_url=str(raw.ai_services_url) if raw.ai_services_url else None,
+        governance_public_key=(path.parent / raw.governance_public_key).resolve()
+        if raw.governance_public_key
+        else None,
+        governance_organization_ref=raw.governance_organization_ref,
     )

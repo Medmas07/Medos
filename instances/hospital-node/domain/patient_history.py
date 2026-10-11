@@ -51,6 +51,9 @@ class HistoryQuery:
     purpose: str
     requested_by: Requester
     authorization: Authorization
+    # The Governance Node's signed statement of a synchronization decision (HC-214),
+    # as received; verified by the AuthorizationVerifier, never trusted as is.
+    signed_authorization: str | None = None
 
     def __post_init__(self) -> None:
         refs = {
