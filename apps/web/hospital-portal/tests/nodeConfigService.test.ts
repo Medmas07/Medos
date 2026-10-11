@@ -57,6 +57,7 @@ describe('Hospital Node configuration summary', () => {
       mock_governance_decisions: '../../../demo-data/governance.json',
       mock_medication_rules: '../../../demo-data/medication-rules.json',
       medication_rule_source: 'demo_fixture',
+      ai_services_url: null,
     })
     expect(summary.approvalDecisionRef).toBe(snapshot.decision!.id)
     expect(summary.federationBaseUrl).toBe('http://localhost:8103')

@@ -178,7 +178,9 @@ curl -s -X POST localhost:8600/v1/medication-warning-explanations -H 'content-ty
 
 Checked live on 2026-10-11 with the warning as `major` and as `moderate`. **Claude** (`claude-opus-5-5`, 4 to 7 s) explained both faithfully and passed every check ("interaction de sévérité majeure", "... modérée"). **Ollama** alone (`qwen2.5:3b`, about 1.5 s) had both texts replaced by the template: for the major warning it called the interaction merely "importante" (severity not stated), and for the moderate one it wrote that the advice is "de ne pas associer" the two medications, a recommendation the warning does not make. Those two runs are why the severity and directive checks exist. Every answer conforms to both contracts. Output varies between runs and models and is **not clinically validated**.
 
-Not done: no medication safety engine exists (HC-162), so nothing produces warnings or attaches these explanations to them (HC-164); explanations for patients; languages other than the warning's own.
+Hospital Nodes configured with this service's URL call this endpoint for each warning of their medication safety check (HC-162) and attach the result (HC-164).
+
+Not done: explanations for patients; languages other than the warning's own.
 
 ## Priority queue explanation (HC-157)
 

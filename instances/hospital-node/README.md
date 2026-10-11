@@ -34,6 +34,7 @@ One codebase runs as one process per hospital ([ADR-0003](../../docs/decisions/A
 | `mock_access_grants` | Fictional patient access grants that seed the [access grant store](#access-grants-api-hc-115) used by the [MOCKED authorization check](#patient-history-api-hc-114), resolved like `storage_dir`. The demo configurations point to [`demo-data/access.json`](../../demo-data/access.json). |
 | `mock_governance_decisions` | Fictional Governance decisions and synchronization requests for the same check. The demo configurations point to [`demo-data/governance.json`](../../demo-data/governance.json). |
 | `mock_medication_rules` | Fictional deterministic interaction rules for the [medication safety check](#medication-safety-check-hc-162). The demo configurations point to [`demo-data/medication-rules.json`](../../demo-data/medication-rules.json). |
+| `ai_services_url` | Optional. AI Services base URL for [advisory warning explanations](#ai-explanation-layer-hc-164); absent or `null` (default) keeps them off. [`config/hospital-a.ai-explanations.json`](config/hospital-a.ai-explanations.json) is Hospital A with `http://localhost:8600`: same identity and port as its demo configuration, so run one or the other. |
 | `medication_rule_source` | Optional. `demo_fixture` (default) uses the fictional rules above; `onc_high_priority_2012` uses the [validated ONC snapshot](#validated-interaction-source-hc-163) bundled with the node. [`config/hospital-a.onc-rules.json`](config/hospital-a.onc-rules.json) is Hospital A with it: same identity and port, so run one or the other. |
 | `notice` | Optional free-text note. |
 
@@ -205,7 +206,7 @@ IMPLEMENTED at D2 against [`medication-safety-check.v1.yaml`](../../contracts/ap
   - Warnings come out most severe first, each with its rule, the conflicting statement, and the organization it came from.
 - **Rules** come through the `InteractionRuleSource` port ([`application/check_medication_safety.py`](application/check_medication_safety.py)). By default, [`adapters/outbound/fixture_interaction_rules.py`](adapters/outbound/fixture_interaction_rules.py) reads the fictional HC-161 rule set at startup. It refuses a file that is not fictional, is marked validated, or is not a consistent deterministic rule set. Every result then says `provenance.mocked: true`, and its notice says the rules are fictional. The [validated source](#validated-interaction-source-hc-163) is the other adapter.
 - **No check is ever reported as "no warnings".** If the rules are unavailable, or they cannot identify the proposed medication, the answer is `503 safety_check_unavailable` with "No check was performed". `no_warnings_found` lists the medications that could not be evaluated, and its notice says it is not a statement of safety.
-- **Stateless:** the node does not read its own clinical repository for the check, stores nothing from the request, and does not audit it (the audit contract has no such event yet). Callers are not authenticated (demo depth). `explanation` is always `null`; attaching AI explanations is HC-164.
+- **Stateless:** the node does not read its own clinical repository for the check, stores nothing from the request, and does not audit it (the audit contract has no such event yet). Callers are not authenticated (demo depth). `explanation` is `null` unless the node is configured for [AI explanations](#ai-explanation-layer-hc-164).
 
 Demo (Hospital A's node, the canonical scenario of steps 12–13):
 
@@ -226,7 +227,7 @@ It returns one `major` warning ("Risque hémorragique accru.", rule `rule-coagul
 
 The tests run every HC-161 check case through the route, and each answer matches its expected result and the contract.
 
-Not done: attaching explanations (HC-164), any product calling the check, and a real medication terminology (OPEN; the demo uses the fictional `urn:hackcure:demo:medication`).
+Not done: any product calling the check, and a real medication terminology (OPEN; the demo uses the fictional `urn:hackcure:demo:medication`).
 
 ### Validated interaction source (HC-163)
 
@@ -244,6 +245,21 @@ Demo, run with `HOSPITAL_NODE_CONFIG=config/hospital-a.onc-rules.json python mai
 - *Dolorane* (fictional) gave a `503`.
 
 Not done: a broader licensed source and a medication terminology (OPEN), and re-transcription if the list is revised.
+
+### AI explanation layer (HC-164)
+
+IMPLEMENTED at D3. When `ai_services_url` is configured, each warning gets an advisory plain-language explanation. It is added **after** the deterministic check has produced the warning, and the explanation never creates, removes, or changes one.
+
+- **How:** the `WarningExplainer` port ([`application/check_medication_safety.py`](application/check_medication_safety.py)) is implemented by [`adapters/outbound/ai_services_warning_explainer.py`](adapters/outbound/ai_services_warning_explainer.py). It calls AI Services' [`medication-warning-explanation.v1.yaml`](../../contracts/api/ai/medication-warning-explanation.v1.yaml) (HC-156) once per warning, in parallel, with a 30 s timeout. AI Services checks model text and falls back to a deterministic template itself.
+- **What leaves the hospital:** only the warning's content (severity, summary, the two medication names, the rule source) and the opaque `requested_by`. No patient reference, no other medications. With AI Services in model mode, that content goes on to the model provider (ADR-0006). This is why the layer is **off unless a hospital configures it**: whether clinical text may leave the hospital boundary is OPEN.
+- **What comes back:** the answer is kept only if it is an advisory explanation of that very warning, in the contract's shape. Anything else, an error, or a timeout means `explanation: null`; the warning is complete without it and the check still answers `200`. When at least one explanation is attached, the notice adds that explanations are advisory and never decide whether a warning exists.
+
+Run live on 2026-10-11 with `config/hospital-a.ai-explanations.json` and AI Services on port 8600, on the canonical demo (Dolorane for Patient A):
+- **Template mode:** the deterministic template's text.
+- **Model mode:** Claude's checked text ("Une interaction de sévérité majeure est signalée entre … Dolorane, et … Coagulix …"), in about 15 s.
+- **AI Services stopped:** the same `major` warning with `explanation: null`.
+
+Not done: no product shows the explanation yet, and explanations for patients are out of scope.
 
 ## Health endpoint (HC-111)
 

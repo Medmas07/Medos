@@ -3,12 +3,14 @@
 Requests are parsed strictly; anything outside the contract is a 400 invalid_request.
 When no check is performed the answer is a 503 safety_check_unavailable, never an empty
 list of warnings. Callers are not authenticated (demo depth), and nothing in the
-request is stored.
+request is stored. The check runs in the threadpool: explaining warnings (HC-164) may
+call AI Services and wait for it.
 """
 
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, ValidationError
 
@@ -17,6 +19,8 @@ from application.check_medication_safety import (
     CheckNotPerformed,
     SafetyCheckRequest,
     SafetyCheckResult,
+    WarningExplanation,
+    warning_id,
 )
 from domain.medication_safety import (
     Coding,
@@ -37,6 +41,10 @@ NO_WARNINGS_NOTICE = (
     "is not a statement that the prescription is safe."
 )
 MOCKED_NOTICE = " Fictional demo rules (MOCKED), not a validated source."
+EXPLANATION_NOTICE = (
+    " Explanations are advisory, from AI Services; they never decide whether a warning "
+    "exists."
+)
 
 OpaqueRef = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")]
 
@@ -141,9 +149,26 @@ def _source_wire(source: StatementSource) -> dict:
     return wire
 
 
+def _explanation_wire(explanation: WarningExplanation | None) -> dict | None:
+    if explanation is None:
+        return None
+    return {
+        "text": explanation.text,
+        "advisory": True,
+        "generated_by": {
+            "kind": explanation.generator_kind,
+            "name": explanation.generator_name,
+            "version": explanation.generator_version,
+            "mocked": explanation.generator_mocked,
+        },
+        "generated_at": explanation.generated_at,
+    }
+
+
 def _wire(result: SafetyCheckResult) -> dict:
     request, outcome, rules = result.request, result.outcome, result.rule_set
     notice = WARNINGS_NOTICE if outcome.warnings_found else NO_WARNINGS_NOTICE
+    explanations = result.explanations or (None,) * len(outcome.warnings)
     body = {
         "check_id": result.check_id,
         "contract_version": CONTRACT_VERSION,
@@ -153,10 +178,11 @@ def _wire(result: SafetyCheckResult) -> dict:
         "review_status": "pending_clinician_review",
         "notice": notice
         + (MOCKED_NOTICE if result.mocked else "")
-        + (f" {rules.scope_note}" if rules.scope_note else ""),
+        + (f" {rules.scope_note}" if rules.scope_note else "")
+        + (EXPLANATION_NOTICE if any(explanations) else ""),
         "warnings": [
             {
-                "warning_id": f"warning-{index}",
+                "warning_id": warning_id(index),
                 "type": "drug_drug_interaction",
                 "severity": w.rule.severity.value,
                 "summary": w.rule.summary,
@@ -171,10 +197,10 @@ def _wire(result: SafetyCheckResult) -> dict:
                     "rule_id": w.rule.rule_id,
                     "reference": w.rule.reference,
                 },
-                # The optional AI explanation is attached by HC-164, not here.
-                "explanation": None,
+                # Optional and advisory (HC-164); null when none was produced.
+                "explanation": _explanation_wire(explanations[index]),
             }
-            for index, w in enumerate(outcome.warnings, start=1)
+            for index, w in enumerate(outcome.warnings)
         ],
         "unevaluated_medications": [
             {
@@ -217,7 +243,7 @@ def create_router(check: CheckMedicationSafety) -> APIRouter:
                 "Invalid or missing fields: " + ", ".join(fields),
             )
         try:
-            result = check(_request(body))
+            result = await run_in_threadpool(check, _request(body))
         except CheckNotPerformed as error:
             return _problem(
                 503,

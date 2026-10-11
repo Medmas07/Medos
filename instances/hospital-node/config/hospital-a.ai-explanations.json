@@ -1,0 +1,12 @@
+{
+  "notice": "Hospital A's fictional demo configuration with advisory AI warning explanations (HC-164) from AI Services on its default local port. Same identity and port as hospital-a.demo.json: run one or the other. Only a warning's content is sent to AI Services, never a patient reference. Not a production configuration.",
+  "node_ref": "node-hospital-a",
+  "organization_ref": "org-hospital-a",
+  "port": 8101,
+  "storage_dir": "../.storage/hospital-a",
+  "mock_clinical_records": "../../../demo-data/records/hospital-a.json",
+  "mock_access_grants": "../../../demo-data/access.json",
+  "mock_governance_decisions": "../../../demo-data/governance.json",
+  "mock_medication_rules": "../../../demo-data/medication-rules.json",
+  "ai_services_url": "http://localhost:8600"
+}
