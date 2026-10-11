@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-Company-managed web product: the **MedOS** public landing page and the hospital onboarding portal. Formerly `apps/web/hospital-portal/` (package `hospital-portal`); renamed `landing` when the landing page was added; why the old dashboard-first portal was a misconception is recorded in [ADR-0012](../../../docs/decisions/ADR-0012-medos-landing-and-hospital-journey.md). React 19 + TypeScript + Vite SPA per [ADR-0001](../../../docs/decisions/ADR-0001-web-frontend-technology.md), styled with Tailwind CSS v4 and the shared [design system](../../../design-system/README.md) ([ADR-0002](../../../docs/decisions/ADR-0002-web-design-system.md)).
+Company-managed web product: the **MedOS** public landing page and the hospital onboarding portal. Formerly `apps/web/hospital-portal/` (package `hospital-portal`); renamed `landing` when the landing page was added; why the old dashboard-first portal was a misconception is recorded in [ADR-0013](../../../docs/decisions/ADR-0013-medos-landing-and-hospital-journey.md). React 19 + TypeScript + Vite SPA per [ADR-0001](../../../docs/decisions/ADR-0001-web-frontend-technology.md), styled with Tailwind CSS v4 and the shared [design system](../../../design-system/README.md) ([ADR-0002](../../../docs/decisions/ADR-0002-web-design-system.md)).
 
 Hash routes (`src/route.ts`):
 
