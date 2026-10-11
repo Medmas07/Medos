@@ -13,6 +13,11 @@ from domain.access_control import (
 )
 from domain.authentication import NotAuthenticated, Session
 from domain.hospital_approval import Reviewer
+from domain.organization_identity import (
+    AffiliationNotRecognized,
+    Organization,
+    OrganizationType,
+)
 from tests.conftest import DEMO_NOW
 
 # Matrix
@@ -66,6 +71,21 @@ def test_the_review_rules_read_the_same_matrix():
 
 OLFA = Reviewer("usr-olfa", "governance_reviewer", "org-governance")
 AYMEN = Reviewer("usr-aymen", "researcher", "org-research")
+AUTHORITY = "org-governance"
+
+
+class Organizations:
+    def __init__(self, *organizations: Organization) -> None:
+        self._organizations = {o.organization_ref: o for o in organizations}
+
+    def organization(self, organization_ref: str) -> Organization | None:
+        return self._organizations.get(organization_ref)
+
+
+KNOWN = Organizations(
+    Organization("org-governance", OrganizationType.GOVERNANCE_AUTHORITY),
+    Organization("org-research", OrganizationType.RESEARCH_INSTITUTION),
+)
 
 
 class People:
@@ -87,7 +107,13 @@ def test_authorize_returns_the_signed_in_person_when_their_role_grants_it():
     sessions = signed_in("usr-olfa")
 
     person = authorize(
-        "token-usr-olfa", Permission.AUDIT, sessions, People(OLFA), lambda: DEMO_NOW
+        "token-usr-olfa",
+        Permission.AUDIT,
+        sessions,
+        People(OLFA),
+        KNOWN,
+        AUTHORITY,
+        lambda: DEMO_NOW,
     )
 
     assert person == OLFA
@@ -102,6 +128,8 @@ def test_authorize_refuses_a_role_without_the_permission():
             Permission.REVIEW,
             sessions,
             People(AYMEN),
+            KNOWN,
+            AUTHORITY,
             lambda: DEMO_NOW,
         )
 
@@ -113,6 +141,8 @@ def test_authorize_needs_a_valid_session_first():
             Permission.REVIEW,
             signed_in(),
             People(OLFA),
+            KNOWN,
+            AUTHORITY,
             lambda: DEMO_NOW,
         )
 
@@ -124,5 +154,36 @@ def test_authorize_refuses_a_session_whose_person_is_no_longer_known():
             Permission.REVIEW,
             signed_in("usr-olfa"),
             People(),
+            KNOWN,
+            AUTHORITY,
+            lambda: DEMO_NOW,
+        )
+
+
+def test_authorize_refuses_a_person_whose_organization_is_not_recognized():
+    sessions = signed_in("usr-olfa")
+
+    with pytest.raises(AffiliationNotRecognized):
+        authorize(
+            "token-usr-olfa",
+            Permission.REVIEW,
+            sessions,
+            People(OLFA),
+            Organizations(),
+            AUTHORITY,
+            lambda: DEMO_NOW,
+        )
+
+
+def test_authorize_checks_the_role_before_the_organization():
+    # A role without the permission is refused as such, whatever its organization.
+    with pytest.raises(PermissionDenied):
+        authorize(
+            "token-usr-aymen",
+            Permission.REVIEW,
+            signed_in("usr-aymen"),
+            People(AYMEN),
+            Organizations(),
+            AUTHORITY,
             lambda: DEMO_NOW,
         )

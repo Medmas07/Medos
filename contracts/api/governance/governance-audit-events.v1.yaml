@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Governance Node Audit Events
-  version: 1.1.0
+  version: 1.1.1
   description: |
     Contract HC-134, version 1. The audit trail the Governance / Ethics
     Authority keeps of its own governance actions: requests it receives,
@@ -46,7 +46,10 @@ info:
     session whose role grants `governance:audit`, held by governance
     reviewers (`401 authentication_required`, `403 permission_denied`);
     with authentication off, its default, readers are not
-    authenticated. Reading is not itself audited. Retention is OPEN.
+    authenticated. Since 1.1.1 (HC-213, ADR-0014), wording only: `403 permission_denied` also
+    answers a governance reviewer whose organization is not the Authority the
+    Node runs for.
+    Reading is not itself audited. Retention is OPEN.
 paths:
   /v1/audit/events:
     get:

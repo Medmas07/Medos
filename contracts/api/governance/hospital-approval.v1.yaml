@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Governance Node Hospital Approval
-  version: 1.3.0
+  version: 1.3.1
   description: |
     Contract HC-131, version 1. The Governance / Ethics Authority's hospital
     approval interface: list the hospital applications it holds, read one
@@ -47,8 +47,9 @@ info:
     session the answer is `401 authentication_required`; with a role that
     does not grant it, `403 permission_denied`, before anything is looked
     up. The role matrix is fixed fictional demo policy, not a validated
-    access policy, and does not restrict a person to their own
-    organization's records (HC-213).
+    access policy. Since 1.3.1 (HC-213, ADR-0014), wording only: `403 permission_denied` also
+    answers a governance reviewer whose organization is not the Authority the
+    Node runs for.
 
     Not decided by this version, and OPEN: application submission and
     document upload, decision expiry or revocation, Hospital Node configuration and package
