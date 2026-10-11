@@ -4,13 +4,16 @@ import '../demo/canonical_clinician.dart';
 import '../demo/canonical_consultation.dart';
 import 'clinician_labels.dart';
 import 'clinician_theme.dart';
+import 'extraction_review.dart';
+import 'extraction_review_card.dart';
 import 'recording_consent_view.dart';
 
 enum _WorkspacePhase { notStarted, inProgress, closed }
 
 /// HC-036 consultation workspace: starts a consultation from the demo day's
 /// appointments, frames the recording, transcription or intake steps, and
-/// assembles a local draft.
+/// assembles a local draft. After a simulated transcript, the clinician reviews
+/// the fictional AI extraction draft item by item (HC-040).
 ///
 /// MOCKED D1: the consultation, its draft, and its notes live in this widget
 /// only. Closing creates no clinical record and sends nothing.
@@ -28,6 +31,9 @@ class _ConsultationWorkspaceState extends State<ConsultationWorkspace> {
     transcriptReady: false,
   );
   final _notes = TextEditingController();
+  ExtractionPhase _extractionPhase = ExtractionPhase.idle;
+  ExtractionReview _review = ExtractionReview(demoExtractionItems);
+  int _extractionGeneration = 0;
 
   CanonicalAppointment get _appointment => demoAppointments.firstWhere(
     (appointment) => appointment.id == demoConsultationAppointmentId,
@@ -37,6 +43,31 @@ class _ConsultationWorkspaceState extends State<ConsultationWorkspace> {
   void dispose() {
     _notes.dispose();
     super.dispose();
+  }
+
+  bool get _extractionAvailable =>
+      _capture.consent == RecordingConsentState.granted &&
+      _capture.transcriptReady;
+
+  void _onCaptureChanged(ConsultationCapture capture) {
+    setState(() {
+      _capture = capture;
+      if (!_extractionAvailable) _resetExtraction();
+    });
+  }
+
+  void _resetExtraction() {
+    _extractionPhase = ExtractionPhase.idle;
+    _review = ExtractionReview(demoExtractionItems);
+    _extractionGeneration += 1;
+  }
+
+  Future<void> _runExtraction() async {
+    final generation = ++_extractionGeneration;
+    setState(() => _extractionPhase = ExtractionPhase.extracting);
+    await Future<void>.delayed(const Duration(milliseconds: 800));
+    if (!mounted || generation != _extractionGeneration) return;
+    setState(() => _extractionPhase = ExtractionPhase.ready);
   }
 
   void _start() {
@@ -55,6 +86,7 @@ class _ConsultationWorkspaceState extends State<ConsultationWorkspace> {
         transcriptReady: false,
       );
       _notes.clear();
+      _resetExtraction();
     });
   }
 
@@ -101,14 +133,29 @@ class _ConsultationWorkspaceState extends State<ConsultationWorkspace> {
           _WorkspacePhase.inProgress => [
             _ConsultationHeader(appointment: _appointment, closed: false),
             const SizedBox(height: 12),
-            _WorkflowSteps(capture: _capture),
-            const SizedBox(height: 20),
-            RecordingConsentView(
-              onCaptureChanged: (capture) => setState(() => _capture = capture),
+            _WorkflowSteps(
+              capture: _capture,
+              extractionPhase: _extractionPhase,
+              review: _review,
             ),
+            const SizedBox(height: 20),
+            RecordingConsentView(onCaptureChanged: _onCaptureChanged),
             const SizedBox(height: 20),
             _DraftCard(capture: _capture, notes: _notes),
             const SizedBox(height: 12),
+            if (_extractionAvailable) ...[
+              ExtractionReviewCard(
+                phase: _extractionPhase,
+                review: _review,
+                onStart: _runExtraction,
+                onChanged: (review) => setState(() => _review = review),
+                onFinish: () =>
+                    setState(() => _extractionPhase = ExtractionPhase.finished),
+                onReopen: () =>
+                    setState(() => _extractionPhase = ExtractionPhase.ready),
+              ),
+              const SizedBox(height: 12),
+            ],
             FilledButton.icon(
               key: const ValueKey('close-consultation'),
               onPressed: _hasSource(_capture) ? _close : null,
@@ -133,6 +180,8 @@ class _ConsultationWorkspaceState extends State<ConsultationWorkspace> {
             const SizedBox(height: 12),
             _ClosedSummary(
               capture: _capture,
+              extractionPhase: _extractionPhase,
+              review: _review,
               notes: _notes.text.trim(),
               onReset: _reset,
             ),
@@ -319,9 +368,15 @@ class _ConsultationHeader extends StatelessWidget {
 enum _StepStatus { pending, active, done, planned }
 
 class _WorkflowSteps extends StatelessWidget {
-  const _WorkflowSteps({required this.capture});
+  const _WorkflowSteps({
+    required this.capture,
+    required this.extractionPhase,
+    required this.review,
+  });
 
   final ConsultationCapture capture;
+  final ExtractionPhase extractionPhase;
+  final ExtractionReview review;
 
   @override
   Widget build(BuildContext context) {
@@ -351,7 +406,25 @@ class _WorkflowSteps extends StatelessWidget {
         captured ? 'Prêt à clôturer' : 'En attente du recueil',
         captured ? _StepStatus.active : _StepStatus.pending,
       ),
-      ('Extraction IA à relire', 'PLANNED · HC-040', _StepStatus.planned),
+      (
+        'Extraction IA à relire',
+        declined
+            ? 'Pas d’extraction de démonstration pour l’anamnèse'
+            : !captured
+            ? 'Après la transcription'
+            : switch (extractionPhase) {
+                ExtractionPhase.idle => 'À lancer',
+                ExtractionPhase.extracting => 'Extraction simulée en cours',
+                ExtractionPhase.ready =>
+                  '${review.count(ReviewDecision.pending)} suggestion(s) en attente',
+                ExtractionPhase.finished => 'Revue terminée',
+              },
+        switch (extractionPhase) {
+          ExtractionPhase.finished => _StepStatus.done,
+          _ when captured && !declined => _StepStatus.active,
+          _ => _StepStatus.pending,
+        },
+      ),
       (
         'Validation et dossier clinique',
         'PLANNED · aucun dossier créé',
@@ -546,11 +619,15 @@ class _SourceBlock extends StatelessWidget {
 class _ClosedSummary extends StatelessWidget {
   const _ClosedSummary({
     required this.capture,
+    required this.extractionPhase,
+    required this.review,
     required this.notes,
     required this.onReset,
   });
 
   final ConsultationCapture capture;
+  final ExtractionPhase extractionPhase;
+  final ExtractionReview review;
   final String notes;
   final VoidCallback onReset;
 
@@ -568,7 +645,7 @@ class _ClosedSummary extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             const Text(
-              'Le brouillon reste dans cet écran. Aucun dossier clinique n’est créé et rien n’est transmis ; l’extraction IA et la validation restent PLANNED (HC-040).',
+              'Le brouillon reste dans cet écran. Aucun dossier clinique n’est créé et rien n’est transmis ; la validation finale et le dossier clinique restent PLANNED.',
               style: TextStyle(color: ClinicianColors.muted),
             ),
             const Divider(height: 24),
@@ -580,6 +657,26 @@ class _ClosedSummary extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(notes.isEmpty ? 'Aucune note saisie.' : notes),
+            if (capture.consent == RecordingConsentState.granted) ...[
+              const SizedBox(height: 12),
+              const Text(
+                'Extraction IA retenue',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 4),
+              if (extractionPhase == ExtractionPhase.finished) ...[
+                for (final item in review.items)
+                  if (review.retainedText(item) case final text?)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text('• $text'),
+                    ),
+              ] else
+                const Text(
+                  'Revue non terminée : aucune suggestion n’est retenue.',
+                  key: ValueKey('closed-extraction-not-reviewed'),
+                ),
+            ],
             const SizedBox(height: 16),
             OutlinedButton.icon(
               key: const ValueKey('new-consultation'),
