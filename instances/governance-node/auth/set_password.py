@@ -1,4 +1,4 @@
-"""Set a person's Governance Node password (HC-211, ADR-0008). From the Node's folder:
+"""Set a person's Governance Node password (HC-211, ADR-0010). From the Node's folder:
 
     python -m auth.set_password usr-olfa
 

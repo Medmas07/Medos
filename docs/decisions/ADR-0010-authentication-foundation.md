@@ -1,4 +1,4 @@
-# ADR-0008: Authentication foundation — each runtime authenticates its own users, password sign-in with opaque bearer sessions
+# ADR-0010: Authentication foundation — each runtime authenticates its own users, password sign-in with opaque bearer sessions
 
 ## Status
 

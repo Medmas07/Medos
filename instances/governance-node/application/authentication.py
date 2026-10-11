@@ -1,4 +1,4 @@
-"""HC-211 use cases: sign in, authenticate a bearer token, sign out (ADR-0008).
+"""HC-211 use cases: sign in, authenticate a bearer token, sign out (ADR-0010).
 
 The Governance Node authenticates the people who act on it, from its own credentials.
 A session token is random, given to the caller once, and kept here only as its

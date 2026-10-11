@@ -23,7 +23,7 @@ info:
       clinical records or sensitive data are embedded.
 
     Status: IMPLEMENTED at initial depth D1. The real authentication
-    foundation is authentication.v1.yaml (HC-211, D2, ADR-0008).
+    foundation is authentication.v1.yaml (HC-211, D2, ADR-0010).
 paths:
   /v1/auth/demo-identities:
     get:

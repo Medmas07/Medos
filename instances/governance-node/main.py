@@ -80,7 +80,7 @@ LEDGER_RPC_ENV = "GOVERNANCE_LEDGER_RPC_URL"
 DEFAULT_LEDGER_RPC = "http://127.0.0.1:8545"
 LEDGER_KEY_FILE_ENV = "GOVERNANCE_LEDGER_KEY_FILE"
 LEDGER_CONTRACT_ENV = "GOVERNANCE_LEDGER_CONTRACT"
-# Who may decide (HC-211, ADR-0008): `off` (default) keeps the declared reviewer_ref;
+# Who may decide (HC-211, ADR-0010): `off` (default) keeps the declared reviewer_ref;
 # `required` serves sign-in and makes each decision need the reviewer's bearer session,
 # against the password hashes of GOVERNANCE_CREDENTIALS (auth/.credentials.json).
 AUTH_ENV = "GOVERNANCE_AUTH"

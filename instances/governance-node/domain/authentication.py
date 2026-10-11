@@ -1,4 +1,4 @@
-"""Who is calling the Governance Node: sessions and sign-in throttling (HC-211, ADR-0008).
+"""Who is calling the Governance Node: sessions and sign-in throttling (HC-211, ADR-0010).
 
 A person signs in with a password and gets a bearer session that expires. Repeated
 failures lock the account for a while, whatever password is tried next. Passwords,

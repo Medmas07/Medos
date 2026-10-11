@@ -1,4 +1,4 @@
-"""CredentialStore over a local JSON file of password hashes (HC-211, ADR-0008).
+"""CredentialStore over a local JSON file of password hashes (HC-211, ADR-0010).
 
     {"credentials": [{"person_ref": "usr-olfa", "password_hash": "scrypt$..."}]}
 

@@ -5,7 +5,7 @@ info:
   description: |
     Contract HC-211, version 1. How a person signs in to a runtime that
     authenticates its own users, holds a bearer session, and signs out
-    (ADR-0008, initial depth D2).
+    (ADR-0010, initial depth D2).
 
     Boundary rules carried by this contract:
 

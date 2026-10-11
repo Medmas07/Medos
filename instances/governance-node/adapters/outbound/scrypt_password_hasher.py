@@ -1,4 +1,4 @@
-"""PasswordHasher with the standard library's scrypt (HC-211, ADR-0008).
+"""PasswordHasher with the standard library's scrypt (HC-211, ADR-0010).
 
 A hash is stored as `scrypt$<n>$<r>$<p>$<salt>$<key>`, salt and key in base64, so its
 cost parameters travel with it and can be raised for new hashes without breaking old

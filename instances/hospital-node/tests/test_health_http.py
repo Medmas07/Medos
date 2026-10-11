@@ -17,7 +17,7 @@ def test_health_reports_the_configured_hospital():
     assert response.json() == {
         "status": "ok",
         "node": "hospital-node",
-        "version": "0.3.0",
+        "version": "0.4.0",
         "node_ref": "node-hospital-b",
         "organization_ref": "org-hospital-b",
         "capabilities": [
@@ -26,6 +26,7 @@ def test_health_reports_the_configured_hospital():
             "access_grants",
             "research_execution",
             "isolated_research_sandbox",
+            "medication_safety_check",
         ],
         "clinical_records": {
             "mocked": True,

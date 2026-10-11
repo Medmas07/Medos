@@ -1,4 +1,4 @@
-"""contracts/api/auth/authentication.v1.yaml (HC-211, ADR-0008).
+"""contracts/api/auth/authentication.v1.yaml (HC-211, ADR-0010).
 
 Sign in with a password for a bearer session, read it, and sign out. With
 authentication required, the decision routes call `ReviewerAuthentication`: a decision
