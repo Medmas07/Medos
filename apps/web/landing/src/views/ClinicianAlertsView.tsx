@@ -22,6 +22,7 @@ import {
   LoadingState,
   PageHeader,
   StatCard,
+  StatGroup,
   type Tone,
 } from '@hackcure/design-system'
 import { formatDateTime } from '../presentation'
@@ -179,16 +180,14 @@ export function ClinicianAlertsView() {
       ) : (
         <div className="grid gap-6">
           {/* Summary cards */}
-          <div className="hc-stagger grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div id="clinician-alert-count">
+          <StatGroup columns={3}>
               <StatCard
+                id="clinician-alert-count"
                 label="Total alertes"
                 value={alerts.length}
                 hint={lastRefreshed ? `Actualisé ${formatDateTime(lastRefreshed.toISOString())}` : '—'}
                 badge={isFallback ? <DemoBadge>Simulé</DemoBadge> : <DemoBadge>Fictif</DemoBadge>}
-                className="h-full"
               />
-            </div>
             <StatCard
               label="Urgentes / Élevées"
               value={alerts.filter((a) => a.priority === 'urgent' || a.priority === 'high').length}
@@ -200,7 +199,7 @@ export function ClinicianAlertsView() {
               hint="Polling · non broker-backed (D3)"
               badge={<DemoBadge>D3</DemoBadge>}
             />
-          </div>
+          </StatGroup>
 
           {/* Alert list */}
           <div id="clinician-alerts-list-card">

@@ -7,6 +7,7 @@ import {
   EmptyState,
   PageHeader,
   StatCard,
+  StatGroup,
   Table,
   type TableColumn,
 } from '@hackcure/design-system'
@@ -238,7 +239,7 @@ export function DashboardView({ snapshot, onNavigate }: DashboardViewProps) {
     <>
       {header}
 
-      <div className="hc-stagger mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <StatGroup className="mb-6">
         <StatCard
           label="Projets"
           value={metrics.projects}
@@ -259,7 +260,7 @@ export function DashboardView({ snapshot, onNavigate }: DashboardViewProps) {
           value={metrics.releasedResults}
           hint="Agrégats ayant passé le contrôle de divulgation"
         />
-      </div>
+      </StatGroup>
 
       {alerts.map(({ summary, state, daysLeft }) => (
         <Alert

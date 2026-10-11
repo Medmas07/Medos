@@ -3,7 +3,6 @@ import {
   AppShell,
   Badge,
   Button,
-  DemoBanner,
   ErrorState,
   LoadingState,
   SideNav,
@@ -241,12 +240,6 @@ export default function App() {
     <AppShell
       productName="Portail de Recherche"
       productContext={snapshot?.organization.name ?? 'Recherche gouvernée'}
-      banner={
-        <DemoBanner>
-          Démonstration D1 : données fictives (HC-005), service de recherche et identité simulés. Aucune
-          exécution réelle (le notebook est simulé), aucun accès aux Hospital Nodes, aucune connexion à SciAgents (investigations fictives).
-        </DemoBanner>
-      }
       navigation={<SideNav label="Navigation principale" sections={navigationSections} />}
       toolbar={<ThemeToggle />}
       pageKey={currentView}

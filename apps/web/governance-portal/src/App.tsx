@@ -2,7 +2,6 @@ import { useEffect, useState, useSyncExternalStore } from 'react'
 import {
   AppShell,
   Badge,
-  DemoBanner,
   SideNav,
   ThemeToggle,
   type SideNavSection,
@@ -179,11 +178,6 @@ export default function App() {
     <AppShell
       productName="Portail de Gouvernance"
       productContext="Autorité de Gouvernance et d'Éthique Fédérée"
-      banner={
-        <DemoBanner>
-          Démonstration D1. Données fictives (HC-005) & preuves de registre simulées. Aucun accès direct aux bases hospitalières.
-        </DemoBanner>
-      }
       navigation={<SideNav label="Navigation principale" sections={navigationSections} />}
       toolbar={<ThemeToggle />}
       pageKey={currentView}

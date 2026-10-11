@@ -7,6 +7,7 @@ import {
   DemoBadge,
   PageHeader,
   StatCard,
+  StatGroup,
   Table,
 } from '@hackcure/design-system'
 import { auditTimeline } from '../../services/auditTimeline'
@@ -123,7 +124,7 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
       )}
 
       {/* KPI Cards */}
-      <div className="hc-stagger grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <StatGroup>
         <StatCard
           label="Adhésions Nœuds"
           value={metrics.totalApplications}
@@ -170,7 +171,7 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
           badge={<DemoBadge>Simulées D1</DemoBadge>}
           onClick={() => onNavigate('audit')}
         />
-      </div>
+      </StatGroup>
 
       {/* Urgent Action Queues Panel (when tab is 'all' or 'urgent') */}
       {(activeTab === 'all' || activeTab === 'urgent') && (
