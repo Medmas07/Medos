@@ -62,18 +62,6 @@ void main() {
     expect(find.text('PLANNED'), findsNothing);
   });
 
-  testWidgets('home preview cards open their destination', (tester) async {
-    await tester.pumpWidget(const ClinicianApp());
-
-    await tester.tap(find.text('Patients autorisés'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Mes patients'), findsOneWidget);
-    expect(find.textContaining('HC-033 à HC-035'), findsOneWidget);
-    final bar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-    expect(bar.selectedIndex, 2);
-  });
-
   testWidgets('exposes loading, empty, error, and retry states', (
     tester,
   ) async {

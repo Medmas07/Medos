@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../demo/canonical_clinician.dart';
+import 'clinician_dashboard.dart';
+import 'clinician_destination.dart';
 import 'clinician_theme.dart';
 import 'recording_consent_view.dart';
 
 enum ShellDemoState { content, loading, empty, error }
-
-/// Destinations of the clinician shell, in navigation order. Each planned
-/// destination names the backlog tickets that will deliver its content.
-enum ClinicianDestination { home, queue, patients, consultation, alerts }
 
 class ClinicianShell extends StatefulWidget {
   const ClinicianShell({super.key});
@@ -205,7 +203,7 @@ class _ContentView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final content = switch (destination) {
-      ClinicianDestination.home => _HomeContent(onNavigate: onNavigate),
+      ClinicianDestination.home => ClinicianDashboard(onNavigate: onNavigate),
       ClinicianDestination.queue => const _PlannedContent(
         icon: Icons.format_list_numbered_rounded,
         title: 'File de priorité',
@@ -231,88 +229,6 @@ class _ContentView extends StatelessWidget {
       key: ValueKey('content-${destination.name}'),
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
       children: [const _DemoBanner(), const SizedBox(height: 20), content],
-    );
-  }
-}
-
-class _HomeContent extends StatelessWidget {
-  const _HomeContent({required this.onNavigate});
-
-  final ValueChanged<ClinicianDestination> onNavigate;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Bonjour ${demoClinician.title} ${demoClinician.lastName}',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-        const SizedBox(height: 6),
-        Text(
-          '${demoClinician.specialty} · ${demoClinician.organizationName}',
-          style: const TextStyle(color: ClinicianColors.muted, fontSize: 16),
-        ),
-        const SizedBox(height: 16),
-        const _BoundaryNote(),
-        const SizedBox(height: 20),
-        _PreviewCard(
-          icon: Icons.format_list_numbered_rounded,
-          title: 'File de priorité',
-          description: 'Aperçu — fonctionnalité prévue par HC-032.',
-          onTap: () => onNavigate(ClinicianDestination.queue),
-        ),
-        const SizedBox(height: 12),
-        _PreviewCard(
-          icon: Icons.people_rounded,
-          title: 'Patients autorisés',
-          description: 'Aperçu — fonctionnalité prévue par HC-033.',
-          onTap: () => onNavigate(ClinicianDestination.patients),
-        ),
-        const SizedBox(height: 12),
-        _PreviewCard(
-          icon: Icons.medical_services_rounded,
-          title: 'Espace de consultation',
-          description: 'Aperçu — fonctionnalité prévue par HC-036.',
-          onTap: () => onNavigate(ClinicianDestination.consultation),
-        ),
-        const SizedBox(height: 12),
-        _PreviewCard(
-          icon: Icons.notifications_rounded,
-          title: 'Centre d’alertes',
-          description: 'Aperçu — fonctionnalité prévue par HC-043.',
-          onTap: () => onNavigate(ClinicianDestination.alerts),
-        ),
-      ],
-    );
-  }
-}
-
-class _BoundaryNote extends StatelessWidget {
-  const _BoundaryNote();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: ClinicianColors.brandSoft,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: const Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.shield_outlined, color: ClinicianColors.brand),
-          SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Contexte patient autorisé uniquement : cette application ne se connecte à aucune base hospitalière. L’IA reste une aide soumise à votre validation.',
-              style: TextStyle(color: ClinicianColors.ink, height: 1.4),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -413,61 +329,6 @@ class _PlannedContent extends StatelessWidget {
             const SizedBox(height: 16),
             const _StatusPill(label: 'PLANNED'),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PreviewCard extends StatelessWidget {
-  const _PreviewCard({
-    required this.icon,
-    required this.title,
-    required this.description,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String description;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: const BoxDecoration(
-                  color: ClinicianColors.brandSoft,
-                  borderRadius: BorderRadius.all(Radius.circular(15)),
-                ),
-                child: Icon(icon, color: ClinicianColors.brand),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 3),
-                    Text(description),
-                  ],
-                ),
-              ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: ClinicianColors.muted,
-              ),
-            ],
-          ),
         ),
       ),
     );
