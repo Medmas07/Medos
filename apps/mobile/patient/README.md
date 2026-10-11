@@ -37,7 +37,7 @@ Flutter + Dart and the Android-first development path are CONFIRMED by [ADR-0004
 
 The Patient App consumes authorized views through explicit Federation/Hospital Node-facing API contracts. It does not directly access or own hospital databases.
 
-At D1 there is no HTTP client, persistence, authentication, or backend integration. `lib/demo/canonical_patient.dart` is a presentation-only copy of the canonical fictional `pat-a` identity from [`demo-data/people.json`](../../../demo-data/people.json); it is not a clinical domain model. Planned screens explicitly state that they do not load or modify clinical data.
+At D1 there is no HTTP client, persistence, authentication, or backend integration. `lib/demo/canonical_patient.dart` is a presentation-only copy of the canonical fictional `pat-a` identity from [`demo-data/people.json`](../../../demo-data/people.json) and of Patient A's records in the three `demo-data/records/` files; it is not a clinical domain model. Since HC-240 its timeline, medications, labs, care history, grantees, and delegate match the [cast and story map](../../../docs/planning/demo-scenario.md#cast-and-story-map-hc-240): Coagulix comes from Hôpital Régional Oued Zitoun, and the dashboard counts come from the fixtures. `test/canonical_patient_test.dart` reads `demo-data/` so the copy cannot drift. Planned screens explicitly state that they do not load or modify clinical data.
 
 ## Non-responsibilities
 

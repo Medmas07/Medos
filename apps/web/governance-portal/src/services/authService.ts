@@ -11,6 +11,8 @@
  * - Explicit role-to-portal authorization checks with friendly 401/403 states.
  */
 
+import organizationsFixtures from '../../../../../demo-data/organizations.json'
+
 export type DemoRole =
   | 'governance_reviewer'
   | 'hospital_manager'
@@ -50,6 +52,13 @@ export type AuthResult =
   | { kind: 'success'; session: DemoSession }
   | { kind: 'error'; code: 'INVALID_CREDENTIALS' | 'IDENTITY_NOT_FOUND' | 'EXPIRED_SESSION'; message: string }
 
+/** Organization names come from HC-005 (HC-240), never a local copy that can drift. */
+function organizationName(organizationId: string): string {
+  const organization = organizationsFixtures.organizations.find((o) => o.id === organizationId)
+  if (!organization) throw new Error(`Unknown demo organization ${organizationId}`)
+  return organization.name
+}
+
 export const CANONICAL_DEMO_IDENTITIES: readonly DemoIdentity[] = [
   {
     id: 'usr-olfa',
@@ -57,7 +66,7 @@ export const CANONICAL_DEMO_IDENTITIES: readonly DemoIdentity[] = [
     title: 'Pr',
     role: 'governance_reviewer',
     organizationId: 'org-governance',
-    organizationName: "Autorité de Gouvernance et d'Éthique",
+    organizationName: organizationName('org-governance'),
     description: "Réviseure de gouvernance habilitée à évaluer les adhésions et demandes d'accès",
     defaultPortal: 'governance-portal',
   },
@@ -66,7 +75,7 @@ export const CANONICAL_DEMO_IDENTITIES: readonly DemoIdentity[] = [
     displayName: 'Mehdi Sassi',
     role: 'hospital_manager',
     organizationId: 'org-hospital-c',
-    organizationName: 'Hôpital Universitaire C (La Rabta)',
+    organizationName: organizationName('org-hospital-c'),
     description: "Responsable d'établissement hospitalier en cours d'adhésion",
     defaultPortal: 'hospital-portal',
   },
@@ -76,7 +85,7 @@ export const CANONICAL_DEMO_IDENTITIES: readonly DemoIdentity[] = [
     title: 'Dr',
     role: 'researcher',
     organizationId: 'org-research-lab',
-    organizationName: 'Laboratoire de Recherche Médicale',
+    organizationName: organizationName('org-research-lab'),
     description: "Chercheur principal soumettant des projets d'accès aux données",
     defaultPortal: 'research-portal',
   },
@@ -86,7 +95,7 @@ export const CANONICAL_DEMO_IDENTITIES: readonly DemoIdentity[] = [
     title: 'Dr',
     role: 'physician',
     organizationId: 'org-hospital-a',
-    organizationName: 'Hôpital Universitaire A (Charles Nicolle)',
+    organizationName: organizationName('org-hospital-a'),
     description: 'Praticien cardiologue traitant recevant des alertes cliniques',
     defaultPortal: 'clinician-app',
   },
@@ -95,7 +104,7 @@ export const CANONICAL_DEMO_IDENTITIES: readonly DemoIdentity[] = [
     displayName: 'Leïla Mansouri',
     role: 'patient',
     organizationId: 'org-hospital-a',
-    organizationName: 'Hôpital Universitaire A (Charles Nicolle)',
+    organizationName: organizationName('org-hospital-a'),
     description: 'Patiente titulaire consultant son dossier et gérant ses consentements',
     defaultPortal: 'patient-app',
   },
@@ -104,7 +113,7 @@ export const CANONICAL_DEMO_IDENTITIES: readonly DemoIdentity[] = [
     displayName: 'Sami Mansouri',
     role: 'relative',
     organizationId: 'org-hospital-a',
-    organizationName: 'Hôpital Universitaire A (Charles Nicolle)',
+    organizationName: organizationName('org-hospital-a'),
     description: 'Fils et proche délégué de la patiente Leïla Mansouri',
     defaultPortal: 'patient-app',
   },

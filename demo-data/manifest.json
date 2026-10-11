@@ -1,7 +1,7 @@
 {
   "fictional": true,
   "notice": "FICTIONAL DEMO DATA / DONNÉES FICTIVES DE DÉMONSTRATION. Not real people, organizations, medicines, or clinical guidance. Never use for clinical decisions.",
-  "datasetVersion": "1.6.0",
+  "datasetVersion": "1.7.0",
   "scenario": "docs/planning/demo-scenario.md",
   "referenceDate": "2026-10-10",
   "utcOffset": "+01:00",
@@ -24,9 +24,13 @@
     "Hospital A": "org-hospital-a",
     "Hospital B": "org-hospital-b",
     "New hospital (onboarding)": "org-hospital-c",
+    "Hospital manager (onboarding)": "usr-mehdi",
+    "Hospital onboarding application (step 18)": "app-hospital-c",
     "Private doctor": "clin-hatem",
     "Governance / Ethics Authority": "org-governance",
     "Patient A": "pat-a",
+    "Patient A's trusted relative": "rel-sami",
+    "Patient A's grant to Dr. X (step 3)": "grant-a-drx",
     "Dr. X": "clin-x",
     "Medication A": "MED-COAGULIX",
     "Medication B": "MED-DOLORANE",
@@ -36,6 +40,7 @@
     "Researcher": "usr-aymen",
     "Governance reviewer": "usr-olfa",
     "Approved research project": "proj-001",
+    "Research access request (steps 27-29)": "rar-001",
     "Compute-to-data job": "job-001",
     "SciAgents investigation": "inv-001"
   }

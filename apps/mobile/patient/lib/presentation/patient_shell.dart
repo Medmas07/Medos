@@ -222,20 +222,20 @@ class _DashboardContent extends StatelessWidget {
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 10),
-        const Row(
+        Row(
           children: [
             Expanded(
               child: _DashboardMetric(
                 icon: Icons.timeline_rounded,
-                value: '3',
+                value: '${demoTimeline.length}',
                 label: 'evenements autorises',
               ),
             ),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Expanded(
               child: _DashboardMetric(
                 icon: Icons.verified_user_outlined,
-                value: '2',
+                value: '${demoPatientSources.length}',
                 label: 'sources autorisees',
               ),
             ),
@@ -291,7 +291,10 @@ class _MedicationHistorySection extends StatelessWidget {
             child: ListTile(
               leading: const CircleAvatar(
                 backgroundColor: PatientColors.brandSoft,
-                child: Icon(Icons.medication_outlined, color: PatientColors.brand),
+                child: Icon(
+                  Icons.medication_outlined,
+                  color: PatientColors.brand,
+                ),
               ),
               title: Text(medication.name),
               subtitle: Text(
@@ -375,7 +378,10 @@ class _CareHistorySection extends StatelessWidget {
             child: ListTile(
               leading: const CircleAvatar(
                 backgroundColor: PatientColors.brandSoft,
-                child: Icon(Icons.local_hospital_outlined, color: PatientColors.brand),
+                child: Icon(
+                  Icons.local_hospital_outlined,
+                  color: PatientColors.brand,
+                ),
               ),
               title: Text(encounter.physician),
               subtitle: Text(
@@ -430,7 +436,10 @@ class _AccessContentState extends State<_AccessContent> {
             onRevoke: () => _confirmRevoke(grant.grantee),
           ),
         const SizedBox(height: 20),
-        Text('Proches de confiance', style: Theme.of(context).textTheme.titleLarge),
+        Text(
+          'Proches de confiance',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
         const SizedBox(height: 6),
         const Text(
           'Un proche consulte uniquement la portée que vous choisissez.',
@@ -547,8 +556,14 @@ class _GrantAccessDialogState extends State<_GrantAccessDialog> {
               isExpanded: true,
               decoration: const InputDecoration(labelText: 'Médecin'),
               items: const [
-                DropdownMenuItem(value: 'Dr Rania Kefi', child: Text('Dr Rania Kefi')),
-                DropdownMenuItem(value: 'Dr Hatem Bouzid', child: Text('Dr Hatem Bouzid')),
+                DropdownMenuItem(
+                  value: 'Dr Rania Kefi',
+                  child: Text('Dr Rania Kefi'),
+                ),
+                DropdownMenuItem(
+                  value: 'Dr Hatem Bouzid',
+                  child: Text('Dr Hatem Bouzid'),
+                ),
               ],
               onChanged: (value) => setState(() => _physician = value!),
             ),
@@ -565,7 +580,10 @@ class _GrantAccessDialogState extends State<_GrantAccessDialog> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                DropdownMenuItem(value: 'Parcours', child: Text('Parcours uniquement')),
+                DropdownMenuItem(
+                  value: 'Parcours',
+                  child: Text('Parcours uniquement'),
+                ),
               ],
               onChanged: (value) => setState(() => _scope = value!),
             ),
@@ -584,7 +602,10 @@ class _GrantAccessDialogState extends State<_GrantAccessDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Annuler'),
+        ),
         FilledButton(
           onPressed: () => Navigator.pop(
             context,
@@ -650,7 +671,10 @@ class _AccessGrantCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.person_outline_rounded, color: PatientColors.brand),
+                const Icon(
+                  Icons.person_outline_rounded,
+                  color: PatientColors.brand,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -658,15 +682,23 @@ class _AccessGrantCard extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
-                _StatusPill(label: revoked ? 'RÉVOQUÉ' : grant.status.toUpperCase()),
+                _StatusPill(
+                  label: revoked ? 'RÉVOQUÉ' : grant.status.toUpperCase(),
+                ),
               ],
             ),
             const SizedBox(height: 10),
             Text(grant.purpose),
             const SizedBox(height: 4),
-            Text(grant.scope, style: const TextStyle(color: PatientColors.muted)),
+            Text(
+              grant.scope,
+              style: const TextStyle(color: PatientColors.muted),
+            ),
             const SizedBox(height: 4),
-            Text(grant.expiresAt, style: const TextStyle(color: PatientColors.muted)),
+            Text(
+              grant.expiresAt,
+              style: const TextStyle(color: PatientColors.muted),
+            ),
             if (active) ...[
               const SizedBox(height: 12),
               OutlinedButton.icon(
@@ -730,7 +762,10 @@ class _DelegateAccessDialogState extends State<_DelegateAccessDialog> {
               items: const [
                 DropdownMenuItem(value: 'Fils', child: Text('Fils')),
                 DropdownMenuItem(value: 'Fille', child: Text('Fille')),
-                DropdownMenuItem(value: 'Conjoint·e', child: Text('Conjoint·e')),
+                DropdownMenuItem(
+                  value: 'Conjoint·e',
+                  child: Text('Conjoint·e'),
+                ),
                 DropdownMenuItem(value: 'Aidant·e', child: Text('Aidant·e')),
               ],
               onChanged: (value) => setState(() => _relationship = value!),
@@ -745,7 +780,10 @@ class _DelegateAccessDialogState extends State<_DelegateAccessDialog> {
                   value: 'Parcours, médicaments',
                   child: Text('Parcours + médicaments'),
                 ),
-                DropdownMenuItem(value: 'Médicaments', child: Text('Médicaments uniquement')),
+                DropdownMenuItem(
+                  value: 'Médicaments',
+                  child: Text('Médicaments uniquement'),
+                ),
               ],
               onChanged: (value) => setState(() => _scope = value!),
             ),
@@ -759,7 +797,10 @@ class _DelegateAccessDialogState extends State<_DelegateAccessDialog> {
                   value: 'Sans date d’expiration',
                   child: Text('Jusqu’à révocation'),
                 ),
-                DropdownMenuItem(value: 'Expire dans 30 jours', child: Text('30 jours')),
+                DropdownMenuItem(
+                  value: 'Expire dans 30 jours',
+                  child: Text('30 jours'),
+                ),
               ],
               onChanged: (value) => setState(() => _duration = value!),
             ),
@@ -773,7 +814,10 @@ class _DelegateAccessDialogState extends State<_DelegateAccessDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Annuler'),
+        ),
         FilledButton(onPressed: _submit, child: const Text('Déléguer')),
       ],
     );
@@ -820,7 +864,10 @@ class _DelegationCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.family_restroom_rounded, color: PatientColors.brand),
+                const Icon(
+                  Icons.family_restroom_rounded,
+                  color: PatientColors.brand,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -1006,8 +1053,11 @@ class _DataRequest {
   final String source;
   final _RequestStage stage;
 
-  _DataRequest underReview() =>
-      _DataRequest(type: type, source: source, stage: _RequestStage.underReview);
+  _DataRequest underReview() => _DataRequest(
+    type: type,
+    source: source,
+    stage: _RequestStage.underReview,
+  );
 }
 
 class _DataRequestsSection extends StatefulWidget {
@@ -1151,7 +1201,10 @@ class _DataRequestDialogState extends State<_DataRequestDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Annuler'),
+        ),
         FilledButton(
           onPressed: () => Navigator.pop(
             context,
@@ -1196,11 +1249,20 @@ class _DataRequestCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 6),
-            Text(request.source, style: const TextStyle(color: PatientColors.muted)),
+            Text(
+              request.source,
+              style: const TextStyle(color: PatientColors.muted),
+            ),
             const SizedBox(height: 12),
             const _RequestStep(label: 'Demande envoyée', done: true),
-            _RequestStep(label: 'Analyse juridique et de conservation', done: reviewing),
-            const _RequestStep(label: 'Revue hôpital / gouvernance', done: false),
+            _RequestStep(
+              label: 'Analyse juridique et de conservation',
+              done: reviewing,
+            ),
+            const _RequestStep(
+              label: 'Revue hôpital / gouvernance',
+              done: false,
+            ),
             const _RequestStep(
               label: 'Décision : effacer, anonymiser, restreindre ou conserver',
               done: false,
@@ -1295,11 +1357,7 @@ class _TimelineEventCard extends StatelessWidget {
             children: [
               const Icon(Icons.circle, size: 12, color: PatientColors.brand),
               if (!isLast)
-                Container(
-                  width: 2,
-                  height: 72,
-                  color: PatientColors.brandSoft,
-                ),
+                Container(width: 2, height: 72, color: PatientColors.brandSoft),
             ],
           ),
           const SizedBox(width: 12),
@@ -1313,11 +1371,20 @@ class _TimelineEventCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(event.date, style: const TextStyle(color: PatientColors.muted)),
+                      Text(
+                        event.date,
+                        style: const TextStyle(color: PatientColors.muted),
+                      ),
                       const SizedBox(height: 4),
-                      Text(event.title, style: Theme.of(context).textTheme.titleMedium),
+                      Text(
+                        event.title,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
                       const SizedBox(height: 4),
-                      Text(event.organization, style: const TextStyle(fontWeight: FontWeight.w700)),
+                      Text(
+                        event.organization,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
                       const SizedBox(height: 8),
                       Text(event.summary),
                       const SizedBox(height: 10),
@@ -1350,7 +1417,10 @@ class _TimelineEventCard extends StatelessWidget {
           children: [
             Text(event.title, style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 8),
-            Text(event.date, style: const TextStyle(color: PatientColors.muted)),
+            Text(
+              event.date,
+              style: const TextStyle(color: PatientColors.muted),
+            ),
             const SizedBox(height: 20),
             _DetailRow(label: 'Organisation', value: event.organization),
             _DetailRow(label: 'Type', value: event.kind),
@@ -1399,7 +1469,8 @@ class _NotificationCenterPage extends StatefulWidget {
   final ValueChanged<Iterable<String>> onRead;
 
   @override
-  State<_NotificationCenterPage> createState() => _NotificationCenterPageState();
+  State<_NotificationCenterPage> createState() =>
+      _NotificationCenterPageState();
 }
 
 class _NotificationCenterPageState extends State<_NotificationCenterPage> {
@@ -1412,7 +1483,9 @@ class _NotificationCenterPageState extends State<_NotificationCenterPage> {
         .map((notification) => notification.id)
         .toList();
     final visible = demoNotifications
-        .where((notification) => !_unreadOnly || unread.contains(notification.id))
+        .where(
+          (notification) => !_unreadOnly || unread.contains(notification.id),
+        )
         .toList();
 
     return Scaffold(
@@ -1524,7 +1597,8 @@ class _NotificationCard extends StatelessWidget {
                     Row(
                       children: [
                         _StatusPill(
-                          label: _categoryLabels[notification.type] ??
+                          label:
+                              _categoryLabels[notification.type] ??
                               notification.type.toUpperCase(),
                         ),
                         const SizedBox(width: 8),

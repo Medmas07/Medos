@@ -24,9 +24,9 @@ void main() {
     await tester.pumpWidget(const PatientApp());
 
     expect(find.text('Vue autorisee active'), findsOneWidget);
-    expect(find.text('3'), findsOneWidget);
     expect(find.text('evenements autorises'), findsOneWidget);
-    expect(find.text('2'), findsOneWidget);
+    // Three encounters from three organizations (HC-005, HC-240).
+    expect(find.text('3'), findsNWidgets(2));
     expect(find.text('sources autorisees'), findsOneWidget);
     expect(find.text('MOCKED'), findsOneWidget);
   });
@@ -37,8 +37,9 @@ void main() {
     expect(find.text('Historique des médicaments'), findsOneWidget);
     expect(find.text('Coagulix'), findsOneWidget);
     expect(find.text('Tensiorel'), findsOneWidget);
-    expect(find.text('ACTIF'), findsOneWidget);
-    expect(find.text('TERMINÉ'), findsOneWidget);
+    // Both are active in HC-005: Coagulix at Hospital B, Tensiorel at the practice.
+    expect(find.text('ACTIF'), findsNWidgets(2));
+    expect(find.text('TERMINÉ'), findsNothing);
     expect(find.text('Résultats de laboratoire'), findsOneWidget);
     expect(find.text('Bilan avant traitement'), findsOneWidget);
 
@@ -48,11 +49,12 @@ void main() {
     expect(find.text('DÉMO D1'), findsOneWidget);
     expect(find.text('Hôpitaux et médecins'), findsOneWidget);
     expect(find.text('Dr Inès Chaabane'), findsOneWidget);
-    expect(find.text('Dr Youssef Gharbi'), findsOneWidget);
-    // The organization shares its subtitle with the date and specialty.
+    expect(find.text('Dr Rania Kefi'), findsOneWidget);
+    // The organization shares its subtitle with the date and specialty, and
+    // with Tensiorel, which it prescribed.
     expect(
       find.textContaining('Cabinet médical Dr Hatem Bouzid'),
-      findsOneWidget,
+      findsNWidgets(2),
     );
   });
 
@@ -227,14 +229,13 @@ void main() {
     await tester.tap(find.text('Parcours'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Consultation de suivi'), findsOneWidget);
-    expect(find.text('Hôpital Carthage'), findsOneWidget);
-    expect(find.text('Laboratoire El Amal'), findsOneWidget);
+    expect(find.text('Suivi tensionnel'), findsOneWidget);
+    expect(find.text('Consultation aux urgences'), findsOneWidget);
     expect(find.text('AUTORISÉ'), findsNWidgets(3));
 
-    await _tapVisible(tester, find.text('Consultation de suivi'));
+    await _tapVisible(tester, find.text('Suivi tensionnel'));
     expect(find.text('Organisation'), findsOneWidget);
-    expect(find.text('Hôpital Carthage'), findsNWidgets(2));
+    expect(find.text('Cabinet médical Dr Hatem Bouzid'), findsNWidgets(2));
     await tester.scrollUntilVisible(
       find.text('DÉMO D1').hitTestable(),
       100,
