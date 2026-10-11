@@ -1,25 +1,107 @@
 {
   "fictional": true,
-  "notice": "Médicaments et règle d'interaction INVENTÉS pour la démonstration. Ce n'est pas une source pharmacologique validée et cela ne doit jamais guider une décision clinique.",
+  "notice": "Médicaments et règles d'interaction INVENTÉS pour la démonstration. Ce n'est pas une source pharmacologique validée et cela ne doit jamais guider une décision clinique.",
   "medications": [
     { "code": "MED-COAGULIX", "name": "Coagulix", "therapeuticClass": "Anticoagulant (fictif)", "fictional": true },
     { "code": "MED-DOLORANE", "name": "Dolorane", "therapeuticClass": "Anti-inflammatoire (fictif)", "fictional": true },
     { "code": "MED-TENSIOREL", "name": "Tensiorel", "therapeuticClass": "Antihypertenseur (fictif)", "fictional": true },
     { "code": "MED-GLUCOREL", "name": "Glucorel", "therapeuticClass": "Antidiabétique oral (fictif)", "fictional": true },
-    { "code": "MED-BRONCHAIR", "name": "Bronchair", "therapeuticClass": "Bronchodilatateur inhalé (fictif)", "fictional": true }
+    { "code": "MED-BRONCHAIR", "name": "Bronchair", "therapeuticClass": "Bronchodilatateur inhalé (fictif)", "fictional": true },
+    { "code": "MED-FONGIVEX", "name": "Fongivex", "therapeuticClass": "Antifongique (fictif)", "fictional": true }
   ],
+  "ruleSet": {
+    "kind": "deterministic_rule_set",
+    "name": "demo-interaction-rules",
+    "version": "1.0.0",
+    "label": "Règles déterministes fictives de démonstration",
+    "validated": false,
+    "evaluatedMedicationCodes": ["MED-COAGULIX", "MED-DOLORANE", "MED-TENSIOREL", "MED-GLUCOREL", "MED-FONGIVEX"],
+    "scopeNote": "Ne couvre pas les médicaments inhalés : Bronchair n'est pas évalué. Une paire de médicaments évalués sans règle ne signifie pas que l'association est sûre."
+  },
   "interactionRules": [
+    {
+      "id": "rule-coagulix-fongivex",
+      "medicationCodes": ["MED-COAGULIX", "MED-FONGIVEX"],
+      "severity": "contraindicated",
+      "effect": "Effet anticoagulant fortement augmenté, risque hémorragique sévère.",
+      "recommendation": "Association déconseillée par cette règle fictive. Décision à valider par le clinicien."
+    },
     {
       "id": "rule-coagulix-dolorane",
       "medicationCodes": ["MED-COAGULIX", "MED-DOLORANE"],
       "severity": "major",
       "effect": "Risque hémorragique accru.",
-      "recommendation": "Envisager une alternative à Dolorane et vérifier le traitement en cours avec le prescripteur. Décision à valider par le clinicien.",
-      "source": {
-        "type": "demo_rule",
-        "label": "Règle déterministe fictive de démonstration",
-        "validated": false
-      }
+      "recommendation": "Envisager une alternative à Dolorane et vérifier le traitement en cours avec le prescripteur. Décision à valider par le clinicien."
+    },
+    {
+      "id": "rule-tensiorel-glucorel",
+      "medicationCodes": ["MED-TENSIOREL", "MED-GLUCOREL"],
+      "severity": "moderate",
+      "effect": "Signes d'hypoglycémie possiblement atténués.",
+      "recommendation": "Surveillance glycémique selon le jugement du clinicien. Décision à valider par le clinicien."
+    },
+    {
+      "id": "rule-tensiorel-fongivex",
+      "medicationCodes": ["MED-TENSIOREL", "MED-FONGIVEX"],
+      "severity": "minor",
+      "effect": "Légère augmentation de l'effet hypotenseur.",
+      "recommendation": "Aucune adaptation prévue par cette règle fictive. Décision à valider par le clinicien."
+    }
+  ],
+  "checkCases": [
+    {
+      "id": "check-a-dolorane",
+      "title": "Démo : Dolorane proposé pour Leïla, sous Coagulix prescrit à l'Hôpital B",
+      "patientId": "pat-a",
+      "proposedMedicationCode": "MED-DOLORANE",
+      "expectedOutcome": "warnings_found",
+      "expectedWarnings": [
+        { "ruleId": "rule-coagulix-dolorane", "conflictingStatementId": "med-b-leila-coagulix" }
+      ],
+      "expectedUnevaluated": []
+    },
+    {
+      "id": "check-a-fongivex",
+      "title": "Deux interactions issues de deux organisations : Fongivex proposé pour Leïla",
+      "patientId": "pat-a",
+      "proposedMedicationCode": "MED-FONGIVEX",
+      "expectedOutcome": "warnings_found",
+      "expectedWarnings": [
+        { "ruleId": "rule-coagulix-fongivex", "conflictingStatementId": "med-b-leila-coagulix" },
+        { "ruleId": "rule-tensiorel-fongivex", "conflictingStatementId": "med-pp-leila-tensiorel" }
+      ],
+      "expectedUnevaluated": []
+    },
+    {
+      "id": "check-b-tensiorel",
+      "title": "Interaction modérée : Tensiorel proposé pour Karim, sous Glucorel",
+      "patientId": "pat-b",
+      "proposedMedicationCode": "MED-TENSIOREL",
+      "expectedOutcome": "warnings_found",
+      "expectedWarnings": [
+        { "ruleId": "rule-tensiorel-glucorel", "conflictingStatementId": "med-a-karim-glucorel" }
+      ],
+      "expectedUnevaluated": []
+    },
+    {
+      "id": "check-b-dolorane",
+      "title": "Aucune interaction trouvée : Dolorane proposé pour Karim",
+      "patientId": "pat-b",
+      "proposedMedicationCode": "MED-DOLORANE",
+      "expectedOutcome": "no_warnings_found",
+      "expectedWarnings": [],
+      "expectedUnevaluated": []
+    },
+    {
+      "id": "check-c-dolorane",
+      "title": "Aucune interaction trouvée, mais Bronchair n'a pas pu être évalué : Dolorane proposé pour Nour",
+      "patientId": "pat-c",
+      "proposedMedicationCode": "MED-DOLORANE",
+      "expectedOutcome": "no_warnings_found",
+      "expectedWarnings": [],
+      "expectedUnevaluated": [
+        { "statementId": "med-pp-nour-bronchair", "reason": "not_in_rule_source" }
+      ]
     }
   ]
 }
