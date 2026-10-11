@@ -30,6 +30,7 @@ def test_reports_the_served_capabilities():
         "access_grants",
         "research_execution",
         "isolated_research_sandbox",
+        "medication_safety_check",
     )
 
 

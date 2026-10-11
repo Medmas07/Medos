@@ -22,6 +22,7 @@ def test_exposes_only_documented_hospital_node_routes():
         "/v1/patients/{patient_ref}/access-grants/{grant_ref}/revocation",
         "/v1/research-executions",
         "/v1/research-executions/{execution_id}",
+        "/v1/medication-safety-checks",
     }
 
 

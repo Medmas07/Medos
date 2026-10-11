@@ -14,6 +14,7 @@
     "name": "demo-interaction-rules",
     "version": "1.0.0",
     "label": "Règles déterministes fictives de démonstration",
+    "codeSystem": "urn:hackcure:demo:medication",
     "validated": false,
     "evaluatedMedicationCodes": ["MED-COAGULIX", "MED-DOLORANE", "MED-TENSIOREL", "MED-GLUCOREL", "MED-FONGIVEX"],
     "scopeNote": "Ne couvre pas les médicaments inhalés : Bronchair n'est pas évalué. Une paire de médicaments évalués sans règle ne signifie pas que l'association est sûre."

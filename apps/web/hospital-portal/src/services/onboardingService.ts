@@ -346,9 +346,9 @@ export function withSimulatedDecision(
  */
 export function withSimulatedNode(organization: Organization, status: NodeSummary['status']): Organization {
   const reported: Record<NodeSummary['status'], Omit<NodeSummary, 'id' | 'status' | 'simulated'>> = {
-    online: { version: '0.3.0', lastSyncAt: '2026-10-10T17:40:00+01:00', dmiState: 'connected' },
+    online: { version: '0.4.0', lastSyncAt: '2026-10-10T17:40:00+01:00', dmiState: 'connected' },
     degraded: { version: '0.2.0', lastSyncAt: '2026-10-10T09:15:00+01:00', dmiState: 'disconnected' },
-    offline: { version: '0.3.0', lastSyncAt: '2026-10-09T22:05:00+01:00', dmiState: 'connected' },
+    offline: { version: '0.4.0', lastSyncAt: '2026-10-09T22:05:00+01:00', dmiState: 'connected' },
   }
   return { ...organization, node: { id: nodeRefFor(organization.id), status, ...reported[status], simulated: true } }
 }
