@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7fbfa" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#071a17" />
+    <script>
+      // Apply the saved or system theme before first paint (design-system README, "Theming").
+      (function () {
+        var dark = window.matchMedia('(prefers-color-scheme: dark)').matches
+        var saved = null
+        try {
+          saved = window.localStorage.getItem('hc-theme')
+        } catch (e) {}
+        document.documentElement.dataset.theme =
+          saved === 'light' || saved === 'dark' ? saved : dark ? 'dark' : 'light'
+      })()
+    </script>
+    <title>Portail Hospitalier — MedOS</title>
+    <meta name="description" content="Hospital dashboard for staff and patient management (demo, fictional data, in-browser only)." />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
