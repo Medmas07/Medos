@@ -46,7 +46,10 @@ void main() {
 
     await _tapTab(tester, 'File');
     expect(find.text('File de priorité'), findsOneWidget);
-    expect(find.text('PLANNED'), findsOneWidget);
+    expect(
+      find.text('Priorités déterministes simulées (MOCKED)'),
+      findsOneWidget,
+    );
 
     await _tapTab(tester, 'Patients');
     expect(find.text('Patients autorisés'), findsOneWidget);

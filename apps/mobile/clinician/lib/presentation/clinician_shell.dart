@@ -5,6 +5,7 @@ import 'clinician_alert_center.dart';
 import 'clinician_dashboard.dart';
 import 'clinician_destination.dart';
 import 'clinician_theme.dart';
+import 'priority_queue_view.dart';
 import 'recording_consent_view.dart';
 
 enum ShellDemoState { content, loading, empty, error }
@@ -205,12 +206,7 @@ class _ContentView extends StatelessWidget {
   Widget build(BuildContext context) {
     final content = switch (destination) {
       ClinicianDestination.home => ClinicianDashboard(onNavigate: onNavigate),
-      ClinicianDestination.queue => const _PlannedContent(
-        icon: Icons.format_list_numbered_rounded,
-        title: 'File de priorité',
-        message:
-            'La file sera livrée par HC-032 et ses explications par HC-044. Aucune priorité n’est calculée ici ; une priorisation ne remplacera jamais le jugement clinique.',
-      ),
+      ClinicianDestination.queue => const PriorityQueueView(),
       ClinicianDestination.patients => const _PlannedContent(
         icon: Icons.people_rounded,
         title: 'Patients autorisés',

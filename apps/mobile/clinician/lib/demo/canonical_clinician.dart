@@ -197,14 +197,20 @@ class CanonicalQueueEntry {
     required this.patientId,
     required this.rank,
     required this.priority,
+    required this.score,
     required this.reasons,
+    required this.alertIds,
   });
 
   final String id;
   final String patientId;
   final int rank;
   final String priority;
+
+  /// Fixed-weight demonstration score; not a clinical measure.
+  final int score;
   final List<String> reasons;
+  final List<String> alertIds;
 }
 
 const demoPriorityQueue = <CanonicalQueueEntry>[
@@ -213,6 +219,8 @@ const demoPriorityQueue = <CanonicalQueueEntry>[
     patientId: 'pat-b',
     rank: 1,
     priority: 'high',
+    score: 82,
+    alertIds: ['alert-b-hba1c', 'alert-b-followup'],
     reasons: ['Résultat biologique anormal non revu', 'Suivi en retard'],
   ),
   CanonicalQueueEntry(
@@ -220,6 +228,8 @@ const demoPriorityQueue = <CanonicalQueueEntry>[
     patientId: 'pat-a',
     rank: 2,
     priority: 'medium',
+    score: 55,
+    alertIds: ['alert-a-external'],
     reasons: [
       'Nouvelle consultation externe',
       'Traitement anticoagulant actif',
@@ -230,3 +240,14 @@ const demoPriorityQueue = <CanonicalQueueEntry>[
 /// `priorityMethod.description` in `demo-data/clinician.json`.
 const demoPriorityMethodDescription =
     "Score = somme de poids fixes par type d'alerte non résolue. Méthode de démonstration, non validée cliniquement, qui ne remplace pas le jugement clinique.";
+
+CanonicalAlert demoAlertById(String alertId) =>
+    demoAlerts.firstWhere((alert) => alert.id == alertId);
+
+/// The patient's access grant active on [date], if any.
+CanonicalAccessGrant? demoActiveGrantFor(String patientId, String date) {
+  for (final grant in demoAccessGrants) {
+    if (grant.patientId == patientId && grant.isActiveOn(date)) return grant;
+  }
+  return null;
+}
