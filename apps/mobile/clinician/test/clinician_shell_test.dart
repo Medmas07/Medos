@@ -258,6 +258,106 @@ void main() {
     expect(find.text('Alerte examinée par le clinicien'), findsOneWidget);
   });
 
+  testWidgets('declining recording opens the adaptive intake', (tester) async {
+    await tester.pumpWidget(const ClinicianApp());
+    await _tapTab(tester, 'Consultation');
+    expect(find.text('Anamnèse adaptative'), findsNothing);
+
+    await _declineRecording(tester);
+
+    expect(find.text('Anamnèse adaptative'), findsOneWidget);
+    expect(find.text('Étape 1 · Motif principal'), findsOneWidget);
+    expect(find.textContaining('non validé cliniquement'), findsOneWidget);
+    final next = find.byKey(const ValueKey('intake-continue'));
+    expect(tester.widget<FilledButton>(next).onPressed, isNull);
+    expect(find.text('Choisissez une réponse pour continuer.'), findsOneWidget);
+  });
+
+  testWidgets('branches the intake and summarizes it for review', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const ClinicianApp());
+    await _tapTab(tester, 'Consultation');
+    await _declineRecording(tester);
+
+    await _answerIntake(tester, ['pain']);
+    expect(find.text('Adapté au motif « Douleur »'), findsOneWidget);
+    await _answerIntake(tester, ['knee']);
+    expect(find.text('Étape 3 · Côté'), findsOneWidget);
+    expect(find.text('Localisation paire : « Genou »'), findsOneWidget);
+    await _answerIntake(tester, ['right']);
+    await _answerIntake(tester, ['1-7d']);
+    expect(find.text('Étape 5 · Sévérité'), findsOneWidget);
+    await _answerIntake(tester, ['6']);
+    expect(find.text('Liste adaptée à « Douleur · Genou »'), findsOneWidget);
+    await _answerIntake(tester, ['swelling', 'morning-stiffness']);
+
+    expect(find.byKey(const ValueKey('intake-summary')), findsOneWidget);
+    expect(find.text('BROUILLON'), findsOneWidget);
+    expect(find.textContaining('À relire et valider'), findsOneWidget);
+    for (final answer in [
+      'Douleur',
+      'Genou',
+      'Droit',
+      '1 à 7 jours',
+      '6',
+      'Gonflement, Raideur matinale',
+    ]) {
+      expect(find.text(answer), findsOneWidget);
+    }
+  });
+
+  testWidgets('editing the complaint re-branches and skips steps', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const ClinicianApp());
+    await _tapTab(tester, 'Consultation');
+    await _declineRecording(tester);
+    for (final answer in [
+      ['pain'],
+      ['knee'],
+      ['right'],
+      ['1-7d'],
+      ['6'],
+      ['none'],
+    ]) {
+      await _answerIntake(tester, answer);
+    }
+
+    await _tapVisible(tester, find.byTooltip('Modifier : Motif principal'));
+    await _answerIntake(tester, ['fever']);
+
+    expect(find.text('Étape 3 · Sévérité'), findsOneWidget);
+    expect(find.text('Température maximale relevée ?'), findsOneWidget);
+    expect(find.text('Étapes sautées'), findsOneWidget);
+    expect(
+      find.text('Localisation : Sans objet pour le motif « Fièvre »'),
+      findsOneWidget,
+    );
+
+    await _tapVisible(tester, find.byKey(const ValueKey('intake-back')));
+    expect(find.text('Étape 2 · Durée'), findsOneWidget);
+    final kept = tester.widget<FilterChip>(
+      find.byKey(const ValueKey('intake-option-1-7d')),
+    );
+    expect(kept.selected, isTrue);
+  });
+
+  testWidgets('reviewing the recording decision discards the intake', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const ClinicianApp());
+    await _tapTab(tester, 'Consultation');
+    await _declineRecording(tester);
+    await _answerIntake(tester, ['cough']);
+
+    await _tapVisible(tester, find.text('Revoir la décision'));
+    expect(find.text('Anamnèse adaptative'), findsNothing);
+
+    await _declineRecording(tester);
+    expect(find.text('Étape 1 · Motif principal'), findsOneWidget);
+  });
+
   test('the presentation fixture matches the canonical HC-005 data', () {
     final people = _readDemoData('people.json');
     final organizations = _readDemoData('organizations.json');
@@ -426,6 +526,37 @@ Future<void> _selectDemoState(WidgetTester tester, String label) async {
   await tester.tap(find.text(label));
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 250));
+}
+
+/// Scrolls [finder] into view in either direction, then taps it.
+Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
+  if (finder.evaluate().isNotEmpty) {
+    await tester.ensureVisible(finder);
+    await tester.pumpAndSettle();
+  } else {
+    await tester.scrollUntilVisible(
+      finder.hitTestable(),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+  }
+  await tester.tap(finder);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _declineRecording(WidgetTester tester) async {
+  await _tapVisible(
+    tester,
+    find.byKey(const ValueKey('recording-consent-decline')),
+  );
+}
+
+/// Selects [optionIds] on the current intake step, then continues.
+Future<void> _answerIntake(WidgetTester tester, List<String> optionIds) async {
+  for (final id in optionIds) {
+    await _tapVisible(tester, find.byKey(ValueKey('intake-option-$id')));
+  }
+  await _tapVisible(tester, find.byKey(const ValueKey('intake-continue')));
 }
 
 Future<void> _grantRecordingConsent(WidgetTester tester) async {
