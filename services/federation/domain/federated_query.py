@@ -65,6 +65,8 @@ class NodeQuery:
     purpose: str
     requested_by: Requester
     authorization: Authorization
+    # HC-214: the Governance Node's signed authorization, under a synchronization decision.
+    signed_authorization: str | None = None
 
 
 @dataclass(frozen=True)

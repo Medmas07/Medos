@@ -34,6 +34,8 @@ def test_health_reports_the_configured_hospital():
             "medications": 1,
             "lab_reports": 1,
         },
+        # Without a Governance public key: the MOCKED fictional decisions (HC-214).
+        "synchronization_decisions": "fixture",
         "notice": SKELETON_NOTICE,
     }
 

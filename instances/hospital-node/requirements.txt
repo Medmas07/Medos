@@ -1,1 +1,3 @@
 fastapi[standard]==0.136.1
+# HC-214 (ADR-0015): Ed25519 verification of Governance-signed authorizations, adapter only.
+cryptography==50.0.2

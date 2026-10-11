@@ -21,10 +21,17 @@ class HealthResponse(BaseModel):
     organization_ref: str
     capabilities: list[str]
     clinical_records: ClinicalRecordsSummary
+    # How synchronization decisions are verified (HC-214): "signed" by the Governance
+    # Node, or "fixture" (MOCKED: fictional decisions read at startup).
+    synchronization_decisions: str
     notice: str
 
 
-def create_router(identity: NodeIdentity, repository: ClinicalRepository) -> APIRouter:
+def create_router(
+    identity: NodeIdentity,
+    repository: ClinicalRepository,
+    synchronization_decisions: str = "fixture",
+) -> APIRouter:
     router = APIRouter()
 
     @router.get("/health")
@@ -44,6 +51,7 @@ def create_router(identity: NodeIdentity, repository: ClinicalRepository) -> API
                 medications=records.medications,
                 lab_reports=records.lab_reports,
             ),
+            synchronization_decisions=synchronization_decisions,
             notice=node_status.notice,
         )
 

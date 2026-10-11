@@ -169,7 +169,9 @@ def sync_request(targets=None, scope=frozenset({ScopeItem.MEDICATIONS})):
 
 
 def authorization(
-    valid_until="2026-11-09T10:00:00+01:00", scope=(ScopeItem.MEDICATIONS,)
+    valid_until="2026-11-09T10:00:00+01:00",
+    scope=(ScopeItem.MEDICATIONS,),
+    signed_authorization=None,
 ):
     return SyncAuthorization(
         decision_ref="dec-sync-001",
@@ -177,6 +179,7 @@ def authorization(
         scope=frozenset(scope),
         purpose=SYNC_PURPOSE,
         valid_until=datetime.fromisoformat(valid_until),
+        signed_authorization=signed_authorization,
     )
 
 
@@ -249,3 +252,20 @@ def test_authorized_target_without_a_registered_node():
 
 def test_patient_grants_are_not_sent_to_governance():
     federate(FakeNodes({A: (), B: (), C: ()}))(request())
+
+
+def test_the_governance_signed_authorization_is_passed_on_unchanged():
+    nodes = FakeNodes({B: ()})
+    sync = FakeSyncChecker(authorization(signed_authorization="h.c.s"))
+
+    federate(nodes, sync=sync)(sync_request(targets=("org-hospital-b",)))
+
+    assert [query.signed_authorization for _, query in nodes.asked] == ["h.c.s"]
+
+
+def test_patient_grants_carry_no_signed_authorization():
+    nodes = FakeNodes({A: (), B: (), C: ()})
+
+    federate(nodes)(request())
+
+    assert {query.signed_authorization for _, query in nodes.asked} == {None}

@@ -6,9 +6,11 @@ outside the contract is a 400. An authorization relying on a patient grant is
 re-verified with the Hospital Node holding the grant (HC-136): withdrawn there, it is
 denied `revoked`; if that node cannot answer, the answer is a 503 and nothing is
 authorized. Every answer, with actor_ref, is recorded in the governance audit trail
-(HC-134) before it is given.
+(HC-134) before it is given. When this Node signs (HC-214, ADR-0015), an authorized
+answer carries a signed authorization the target Hospital Node verifies on its own.
 """
 
+import uuid
 from collections.abc import Callable
 from datetime import datetime
 from typing import Annotated
@@ -20,12 +22,17 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from adapters.inbound.http.problems import OPAQUE_REF, problem
 from adapters.inbound.http.synchronization_requests import Ref, ScopeField
 from application.audit import AuditTrail
+from application.federation_authorization import (
+    AuthorizationSigner,
+    signed_authorization,
+)
 from application.synchronization import (
     GrantsUnavailable,
     PatientGrantDirectory,
     SynchronizationStore,
     check_sync_authorization,
 )
+from domain.node_identity import NodeIdentity
 from domain.synchronization import ExchangeAsk, ScopeItem
 
 
@@ -53,6 +60,9 @@ def create_router(
     grants: PatientGrantDirectory,
     audit: AuditTrail,
     clock: Callable[[], datetime],
+    identity: NodeIdentity,
+    signer: AuthorizationSigner | None = None,
+    new_token_id: Callable[[], str] = lambda: str(uuid.uuid4()),
 ) -> APIRouter:
     router = APIRouter(tags=["synchronization"])
 
@@ -66,16 +76,17 @@ def create_router(
             # Malformed JSON has no field location.
             fields = {str(e["loc"][0]) for e in error.errors() if e["loc"]}
             return _invalid(fields or {"body"})
+        ask = ExchangeAsk(
+            body.requester_organization_ref,
+            body.actor_ref,
+            body.patient_ref,
+            frozenset(ScopeItem(item) for item in body.scope),
+            body.purpose,
+        )
         try:
             result = check_sync_authorization(
                 decision_ref,
-                ExchangeAsk(
-                    body.requester_organization_ref,
-                    body.actor_ref,
-                    body.patient_ref,
-                    frozenset(ScopeItem(item) for item in body.scope),
-                    body.purpose,
-                ),
+                ask,
                 store,
                 grants,
                 audit,
@@ -100,6 +111,9 @@ def create_router(
                 if result.valid_until
                 else None,
                 "checked_at": result.checked_at.isoformat(),
+                "signed_authorization": signed_authorization(
+                    result, ask, signer, identity.organization_ref, new_token_id
+                ),
             }
         )
 

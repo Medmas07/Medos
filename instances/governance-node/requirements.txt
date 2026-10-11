@@ -3,3 +3,5 @@ fastapi[standard]==0.136.1
 httpx==0.28.1
 # HC-194 (ADR-0007): the Besu ledger adapter's JSON-RPC client, outbound adapter only.
 web3==7.16.0
+# HC-214 (ADR-0015): Ed25519 signing of federation authorizations, outbound adapter only.
+cryptography==50.0.2

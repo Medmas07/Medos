@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Synchronization Authorization Check
-  version: 1.1.0
+  version: 1.2.0
   description: |
     Contract HC-144, version 1. Provided by the Governance Node. Before the
     Federation Service asks any Hospital Node on the basis of a
@@ -36,18 +36,51 @@ info:
       answer is `503 consent_unavailable` and nothing is authorized.
     - **Minimised.** The request carries opaque references only. Nothing
       clinical is sent to the Governance Node.
+    - **Signed (since 1.2.0, HC-214).** When the Governance Node signs
+      (`GOVERNANCE_FEDERATION_SIGNING=ed25519`), an `authorized` answer
+      carries `signed_authorization`: a statement of exactly what was
+      authorized, signed with the Authority's private key. The Federation
+      Service passes it unchanged to the target Hospital Nodes
+      (hospital-node-federation.v1, `signed_authorization`), and each node
+      verifies it with the Authority's public key, without asking the
+      Governance Node. It is `null` when denied, or when the Governance
+      Node does not sign. The Federation Service never creates, alters, or
+      widens it.
 
     Each Hospital Node still enforces the authorization itself
     (hospital-node-federation.v1). This check stops a query before it
     reaches any node; it does not replace the nodes' own checks.
 
-    Out of scope for v1: how a node verifies the authorization directly
-    with Governance, signed tokens, and authentication between services.
-    These remain OPEN (docs/OPEN_QUESTIONS.md).
+    Signed authorization format (1.2.0, ADR-0015): a compact JWS (RFC 7515)
+    signed with Ed25519, `alg: EdDSA` (RFC 8037). The protected header is
+    exactly `alg`, `kid`, and `typ`: `kid` is the RFC 7638 thumbprint of the
+    Authority's public key, and `typ` is `governance-authorization+jwt`.
+    The claims are exactly:
+
+    - `iss`: the Governance / Ethics Authority's organization reference;
+    - `sub`: the `decision_ref` checked;
+    - `aud`: the `target_organization_refs` authorized; a node accepts the
+      token only if its own organization is listed;
+    - `jti`: a unique token identifier;
+    - `iat`, `exp`: issue and expiry, in seconds since the epoch (UTC).
+      `exp` is the earlier of the decision's `valid_until` and five minutes
+      after the check, so that an expired decision or a withdrawn patient
+      grant stops the exchange within five minutes;
+    - `basis`: always `synchronization_decision`;
+    - `requester_organization_ref`, `actor_ref`, `patient_ref`, `scope`,
+      `purpose`: the exchange asked, exactly as in the check request. `scope`
+      is what was asked, never the wider approved scope.
+
+    Not in 1.2.0: authentication between services (who may ask this check),
+    key rotation beyond replacing the key, revocation of an issued token
+    before its `exp`, and replay detection. They remain OPEN
+    (docs/OPEN_QUESTIONS.md).
 
     Status: the Federation Service calls this contract (HC-144), and the
     Governance Node serves it (HC-132) for the synchronization decisions it
     holds in memory (contracts/api/governance/synchronization-requests.v1.yaml).
+    It signs authorized answers when started with signing on (HC-214); off
+    by default.
     Every answer, authorized or denied, is recorded with `actor_ref` in the
     Node's governance audit trail before it is given
     (contracts/api/governance/governance-audit-events.v1.yaml, HC-134);
@@ -107,6 +140,24 @@ paths:
                     purpose: "Continuité des soins : consultation de cardiologie"
                     valid_until: "2026-10-23T10:00:00+01:00"
                     checked_at: "2026-10-10T10:30:00+01:00"
+                    signed_authorization: null
+                authorizedSigned:
+                  summary: >-
+                    Fictional demo — the same check, answered by a Governance
+                    Node that signs (HC-214). The token is signed with a
+                    throwaway example key; its claims name exactly the
+                    exchange asked (scope [medications]) for Hospital B, for
+                    five minutes.
+                  value:
+                    decision_ref: dec-sync-001
+                    outcome: authorized
+                    reason: null
+                    target_organization_refs: [org-hospital-b]
+                    scope: [lab_reports, medications]
+                    purpose: "Continuité des soins : consultation de cardiologie"
+                    valid_until: "2026-10-23T10:00:00+01:00"
+                    checked_at: "2026-10-10T10:30:00+01:00"
+                    signed_authorization: eyJhbGciOiJFZERTQSIsImtpZCI6IjdzazhZcFNYaC1hWGkzNE14ck9Cd0pjTWZaaHgxZW9OdHByUFV1ckJjeFkiLCJ0eXAiOiJnb3Zlcm5hbmNlLWF1dGhvcml6YXRpb24rand0In0.eyJhY3Rvcl9yZWYiOiJjbGluLXgiLCJhdWQiOlsib3JnLWhvc3BpdGFsLWIiXSwiYmFzaXMiOiJzeW5jaHJvbml6YXRpb25fZGVjaXNpb24iLCJleHAiOjE3OTE2MjQ5MDAsImlhdCI6MTc5MTYyNDYwMCwiaXNzIjoib3JnLWdvdmVybmFuY2UiLCJqdGkiOiI0ZjZjMWQwZS04YTViLTRjM2UtOWIxYS0yZDdlNmY1YTRiM2MiLCJwYXRpZW50X3JlZiI6InBhdC1hIiwicHVycG9zZSI6IkNvbnRpbnVpdFx1MDBlOSBkZXMgc29pbnMgOiBjb25zdWx0YXRpb24gZGUgY2FyZGlvbG9naWUiLCJyZXF1ZXN0ZXJfb3JnYW5pemF0aW9uX3JlZiI6Im9yZy1ob3NwaXRhbC1hIiwic2NvcGUiOlsibWVkaWNhdGlvbnMiXSwic3ViIjoiZGVjLXN5bmMtMDAxIn0.EK3smiXiqr9cv3zSP0RIBIfLeAbwnu3eNx560QcUodFuxNKnCighbiDlMda6Y9S3ivNr2RcT66Y1wT3JO9fSBw
                 expired:
                   summary: Fictional demo — dec-sync-002 expired on 2026-03-12.
                   value:
@@ -118,6 +169,7 @@ paths:
                     purpose: null
                     valid_until: "2026-03-12T14:30:00+01:00"
                     checked_at: "2026-10-10T10:30:00+01:00"
+                    signed_authorization: null
                 grantRevoked:
                   summary: >-
                     Fictional demo — after dec-sync-001, Patient A revokes
@@ -132,6 +184,7 @@ paths:
                     purpose: null
                     valid_until: "2026-10-23T10:00:00+01:00"
                     checked_at: "2026-10-10T10:30:00+01:00"
+                    signed_authorization: null
                 rejected:
                   summary: Fictional demo — dec-sync-003 rejected sync-003.
                   value:
@@ -143,6 +196,7 @@ paths:
                     purpose: null
                     valid_until: null
                     checked_at: "2026-10-10T10:30:00+01:00"
+                    signed_authorization: null
         "400":
           description: The request does not match this contract.
           content:
@@ -209,6 +263,7 @@ components:
         - purpose
         - valid_until
         - checked_at
+        - signed_authorization
       properties:
         decision_ref:
           $ref: "#/components/schemas/OpaqueRef"
@@ -252,6 +307,14 @@ components:
         checked_at:
           type: string
           format: date-time
+        signed_authorization:
+          description: >-
+            Since 1.2.0 (HC-214). The Governance Node's signed statement of this
+            authorization, in the format described above; null when denied or
+            when the Governance Node does not sign.
+          oneOf:
+            - $ref: "#/components/schemas/SignedAuthorization"
+            - type: "null"
       allOf:
         - if:
             properties:
@@ -279,6 +342,8 @@ components:
                 maxItems: 0
               purpose:
                 type: "null"
+              signed_authorization:
+                type: "null"
 
     Scope:
       type: array
@@ -290,6 +355,15 @@ components:
     ScopeItem:
       type: string
       enum: [encounters, medications, lab_reports]
+
+    SignedAuthorization:
+      description: >-
+        A compact JWS: base64url header, claims, and Ed25519 signature,
+        separated by dots. The same constraints as `signed_authorization`
+        in hospital-node-federation.v1.yaml.
+      type: string
+      maxLength: 4096
+      pattern: '^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$'
 
     OpaqueRef:
       description: Opaque identifier. Must not contain a name or other direct identifier.
