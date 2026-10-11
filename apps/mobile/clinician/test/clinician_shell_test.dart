@@ -56,8 +56,8 @@ void main() {
     expect(find.text('PLANNED'), findsOneWidget);
 
     await _tapTab(tester, 'Consultation');
-    expect(find.text('Consentement à l’enregistrement'), findsOneWidget);
-    expect(find.text('Décision requise'), findsOneWidget);
+    expect(find.text('Espace de consultation'), findsOneWidget);
+    expect(find.text('Aucune consultation en cours'), findsOneWidget);
 
     await _tapTab(tester, 'Alertes');
     expect(find.text('Centre d’alertes'), findsOneWidget);
@@ -137,16 +137,12 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(const ClinicianApp());
-    await _tapTab(tester, 'Consultation');
+    await _openConsultation(tester);
 
     final grant = find.byKey(const ValueKey('recording-consent-grant'));
     expect(tester.widget<FilledButton>(grant).onPressed, isNull);
 
-    final confirmation = find.byType(CheckboxListTile);
-    await tester.drag(find.byType(ListView), const Offset(0, -260));
-    await tester.pumpAndSettle();
-    await tester.tap(confirmation);
-    await tester.pump();
+    await _tapVisible(tester, find.byType(CheckboxListTile));
     expect(tester.widget<FilledButton>(grant).onPressed, isNotNull);
 
     await tester.ensureVisible(grant);
@@ -158,10 +154,7 @@ void main() {
     );
     expect(find.textContaining('sans activer le microphone'), findsOneWidget);
 
-    final withdraw = find.text('Retirer le consentement');
-    await tester.ensureVisible(withdraw);
-    await tester.tap(withdraw);
-    await tester.pump();
+    await _tapVisible(tester, find.text('Retirer le consentement'));
     expect(find.text('Décision requise'), findsOneWidget);
   });
 
@@ -169,13 +162,8 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(const ClinicianApp());
-    await _tapTab(tester, 'Consultation');
-
-    final decline = find.byKey(const ValueKey('recording-consent-decline'));
-    await tester.drag(find.byType(ListView), const Offset(0, -260));
-    await tester.pumpAndSettle();
-    await tester.tap(decline);
-    await tester.pump();
+    await _openConsultation(tester);
+    await _declineRecording(tester);
 
     expect(find.text('Enregistrement bloqué'), findsOneWidget);
     expect(find.textContaining('Aucun son n’est capturé'), findsOneWidget);
@@ -221,11 +209,7 @@ void main() {
     await tester.tap(start);
     await tester.pump();
 
-    final withdraw = find.text('Retirer le consentement');
-    await tester.drag(find.byType(ListView), const Offset(0, 700));
-    await tester.pumpAndSettle();
-    await tester.tap(withdraw);
-    await tester.pump();
+    await _tapVisible(tester, find.text('Retirer le consentement'));
 
     expect(find.text('Décision requise'), findsOneWidget);
     expect(find.byKey(const ValueKey('stop-speech-demo')), findsNothing);
@@ -238,7 +222,7 @@ void main() {
     await _grantRecordingConsent(tester);
 
     final runCheck = find.byKey(const ValueKey('run-medication-check'));
-    await _scrollToBottom(tester);
+    await _scrollTo(tester, runCheck);
     await tester.tap(runCheck);
     await tester.pump();
     expect(find.text('Vérification déterministe simulée'), findsOneWidget);
@@ -254,16 +238,16 @@ void main() {
     );
     expect(find.textContaining('n’autorise ni ne bloque'), findsOneWidget);
 
-    final review = find.byKey(const ValueKey('review-medication-warning'));
-    await _scrollToBottom(tester);
-    await tester.tap(review);
-    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('review-medication-warning')),
+    );
     expect(find.text('Alerte examinée par le clinicien'), findsOneWidget);
   });
 
   testWidgets('declining recording opens the adaptive intake', (tester) async {
     await tester.pumpWidget(const ClinicianApp());
-    await _tapTab(tester, 'Consultation');
+    await _openConsultation(tester);
     expect(find.text('Anamnèse adaptative'), findsNothing);
 
     await _declineRecording(tester);
@@ -280,7 +264,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(const ClinicianApp());
-    await _tapTab(tester, 'Consultation');
+    await _openConsultation(tester);
     await _declineRecording(tester);
 
     await _answerIntake(tester, ['pain']);
@@ -296,7 +280,13 @@ void main() {
     await _answerIntake(tester, ['swelling', 'morning-stiffness']);
 
     expect(find.byKey(const ValueKey('intake-summary')), findsOneWidget);
-    expect(find.text('BROUILLON'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('intake-summary')),
+        matching: find.text('BROUILLON'),
+      ),
+      findsOneWidget,
+    );
     expect(find.textContaining('À relire et valider'), findsOneWidget);
     for (final answer in [
       'Douleur',
@@ -314,7 +304,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(const ClinicianApp());
-    await _tapTab(tester, 'Consultation');
+    await _openConsultation(tester);
     await _declineRecording(tester);
     for (final answer in [
       ['pain'],
@@ -350,7 +340,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(const ClinicianApp());
-    await _tapTab(tester, 'Consultation');
+    await _openConsultation(tester);
     await _declineRecording(tester);
     await _answerIntake(tester, ['cough']);
 
@@ -359,6 +349,127 @@ void main() {
 
     await _declineRecording(tester);
     expect(find.text('Étape 1 · Motif principal'), findsOneWidget);
+  });
+
+  testWidgets('lists the demo day appointments before a consultation', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const ClinicianApp());
+    await _tapTab(tester, 'Consultation');
+
+    expect(find.text('Aucune consultation en cours'), findsOneWidget);
+    expect(find.text('Rendez-vous du 10/10/2026'), findsOneWidget);
+    expect(find.text('Leïla Mansouri'), findsOneWidget);
+    expect(find.text('Karim Haddad'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('start-consultation-appt-a-2026-10-10')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('start-consultation-appt-b-2026-10-10')),
+      findsNothing,
+    );
+    expect(
+      find.text('Aucun scénario de démonstration pour ce rendez-vous.'),
+      findsOneWidget,
+    );
+    expect(find.text('Consentement à l’enregistrement'), findsNothing);
+  });
+
+  testWidgets('starts a consultation with its authorized context and steps', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const ClinicianApp());
+    await _openConsultation(tester);
+
+    expect(find.text('EN COURS'), findsOneWidget);
+    expect(
+      find.text(
+        '10/10/2026 · 10:30 · Douleur du genou droit et contrôle cardiologique',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Accès autorisé jusqu’au 24/10/2026 (grant-a-drx)'),
+      findsOneWidget,
+    );
+    expect(find.text('En attente de la décision du patient'), findsOneWidget);
+    expect(find.text('PLANNED · HC-040'), findsOneWidget);
+    expect(find.text('Consentement à l’enregistrement'), findsOneWidget);
+
+    final close = find.byKey(const ValueKey('close-consultation'));
+    await _scrollTo(tester, close);
+    expect(find.byKey(const ValueKey('draft-empty')), findsOneWidget);
+    expect(tester.widget<FilledButton>(close).onPressed, isNull);
+  });
+
+  testWidgets('drafts from the transcript and closes the consultation', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const ClinicianApp());
+    await _grantRecordingConsent(tester);
+    await _completeTranscript(tester);
+
+    await _scrollTo(tester, find.byKey(const ValueKey('draft-source')));
+    expect(find.text('Source : transcription simulée'), findsOneWidget);
+    final notes = find.byKey(const ValueKey('consultation-notes'));
+    await _scrollTo(tester, notes);
+    await tester.enterText(notes, 'Genou droit chaud, mobilité réduite.');
+    await _tapVisible(tester, find.byKey(const ValueKey('close-consultation')));
+
+    expect(find.text('CLÔTURÉE'), findsOneWidget);
+    expect(find.text('Consultation clôturée (démonstration)'), findsOneWidget);
+    expect(find.textContaining('Aucun dossier clinique'), findsOneWidget);
+    expect(find.text('Genou droit chaud, mobilité réduite.'), findsOneWidget);
+
+    await _tapVisible(tester, find.byKey(const ValueKey('new-consultation')));
+    expect(find.text('Aucune consultation en cours'), findsOneWidget);
+  });
+
+  testWidgets('drafts from a completed intake when recording is refused', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const ClinicianApp());
+    await _openConsultation(tester);
+    await _declineRecording(tester);
+    for (final answer in [
+      ['fever'],
+      ['lt-1d'],
+      ['not-measured'],
+      ['chills'],
+    ]) {
+      await _answerIntake(tester, answer);
+    }
+
+    await _scrollTo(tester, find.byKey(const ValueKey('draft-source')));
+    expect(find.text('Source : anamnèse adaptative'), findsOneWidget);
+    expect(find.text('Motif principal : Fièvre'), findsOneWidget);
+    expect(find.text('Symptômes associés : Frissons'), findsOneWidget);
+    final close = find.byKey(const ValueKey('close-consultation'));
+    await _scrollTo(tester, close);
+    expect(tester.widget<FilledButton>(close).onPressed, isNotNull);
+
+    await _tapVisible(tester, find.text('Revoir la décision'));
+    await _scrollTo(tester, close);
+    expect(tester.widget<FilledButton>(close).onPressed, isNull);
+  });
+
+  testWidgets('cancelling a consultation asks for confirmation', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const ClinicianApp());
+    await _openConsultation(tester);
+
+    await _tapVisible(tester, find.text('Annuler la consultation'));
+    expect(find.text('Annuler la consultation ?'), findsOneWidget);
+    await tester.tap(find.text('Continuer la consultation'));
+    await tester.pumpAndSettle();
+    expect(find.text('EN COURS'), findsOneWidget);
+
+    await _tapVisible(tester, find.text('Annuler la consultation'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Annuler'));
+    await tester.pumpAndSettle();
+    expect(find.text('Aucune consultation en cours'), findsOneWidget);
   });
 
   test('the presentation fixture matches the canonical HC-005 data', () {
@@ -533,6 +644,13 @@ Future<void> _selectDemoState(WidgetTester tester, String label) async {
 
 /// Scrolls [finder] into view in either direction, then taps it.
 Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
+  await _scrollTo(tester, finder);
+  await tester.tap(finder);
+  await tester.pumpAndSettle();
+}
+
+/// Scrolls [finder] into view in either direction.
+Future<void> _scrollTo(WidgetTester tester, Finder finder) async {
   if (finder.evaluate().isNotEmpty) {
     await tester.ensureVisible(finder);
     await tester.pumpAndSettle();
@@ -543,8 +661,15 @@ Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
       scrollable: find.byType(Scrollable).first,
     );
   }
-  await tester.tap(finder);
-  await tester.pumpAndSettle();
+}
+
+/// Opens the Consultation destination and starts Patient A's consultation.
+Future<void> _openConsultation(WidgetTester tester) async {
+  await _tapTab(tester, 'Consultation');
+  await _tapVisible(
+    tester,
+    find.byKey(ValueKey('start-consultation-$demoConsultationAppointmentId')),
+  );
 }
 
 Future<void> _declineRecording(WidgetTester tester) async {
@@ -563,18 +688,19 @@ Future<void> _answerIntake(WidgetTester tester, List<String> optionIds) async {
 }
 
 Future<void> _grantRecordingConsent(WidgetTester tester) async {
-  await _tapTab(tester, 'Consultation');
-  await tester.drag(find.byType(ListView), const Offset(0, -260));
-  await tester.pumpAndSettle();
-  await tester.tap(find.byType(CheckboxListTile));
-  await tester.pump();
-  final grant = find.byKey(const ValueKey('recording-consent-grant'));
-  await tester.ensureVisible(grant);
-  await tester.tap(grant);
-  await tester.pumpAndSettle();
+  await _openConsultation(tester);
+  await _tapVisible(tester, find.byType(CheckboxListTile));
+  await _tapVisible(
+    tester,
+    find.byKey(const ValueKey('recording-consent-grant')),
+  );
 }
 
-Future<void> _scrollToBottom(WidgetTester tester) async {
-  await tester.drag(find.byType(ListView), const Offset(0, -1200));
+/// Simulates recording, then waits for the fixture transcript.
+Future<void> _completeTranscript(WidgetTester tester) async {
+  await _tapVisible(tester, find.byKey(const ValueKey('start-speech-demo')));
+  await _scrollTo(tester, find.byKey(const ValueKey('stop-speech-demo')));
+  await tester.tap(find.byKey(const ValueKey('stop-speech-demo')));
+  await tester.pump(const Duration(milliseconds: 700));
   await tester.pumpAndSettle();
 }
