@@ -1,0 +1,9 @@
+# Tool configuration only. The builder uses the standard library; tests need
+# requirements-dev.txt.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py312"

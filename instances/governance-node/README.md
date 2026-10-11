@@ -147,7 +147,7 @@ curl -s localhost:8200/v1/hospital-approvals/dec-hospital-c
 
 Other states to show on Hospital C: `reviewer_ref: "usr-mehdi"` (its own manager) gives `403`; `findings_acknowledged: false` with no condition gives `422` with both rules; a second decision gives `409`.
 
-Not done at D2: nothing calls this API yet. The Governance Portal still records simulated decisions in the browser (HC-073), and the Federation Service's node registry still reports approvals `verified: false` without calling `getHospitalApproval`. Application submission and document upload, decision expiry or revocation, and Hospital Node configuration and package generation after approval are out of scope. Each decision recorded through the API is added to the [governance audit trail](#governance-audit-api-hc-134) and anchored in the [simulated ledger](#simulated-immutable-ledger-hc-191).
+The Hospital Node [installation package builder](../../infrastructure/packaging/hospital-node/README.md) (HC-221) calls `GET /v1/hospital-approvals/{decision_ref}` and builds a hospital's package only for an approval of that hospital. Not done at D2: the Governance Portal still records simulated decisions in the browser (HC-073), and the Federation Service's node registry still reports approvals `verified: false` without calling `getHospitalApproval`. Application submission and document upload, decision expiry or revocation, and Hospital Node configuration and package generation after approval are out of scope. Each decision recorded through the API is added to the [governance audit trail](#governance-audit-api-hc-134) and anchored in the [simulated ledger](#simulated-immutable-ledger-hc-191).
 
 ## Synchronization request API (HC-132)
 

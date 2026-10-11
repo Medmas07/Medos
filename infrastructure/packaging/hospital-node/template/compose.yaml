@@ -1,0 +1,30 @@
+# Hospital Node @NODE_REF@ (@ORGANIZATION_REF@), from its installation package (HC-221).
+#
+# Started by install.sh, which writes HOSPITAL_NODE_DATA_DIR to .env. The image comes
+# from this package, never from a registry. Each file is mounted read-only, and the
+# port is published on this host's loopback only: the Node's callers are not
+# authenticated yet.
+
+name: hospital-node-@NODE_REF@
+
+services:
+  hospital-node:
+    image: @IMAGE_REF@
+    pull_policy: never
+    read_only: true
+    # The research sandbox (HC-186) needs a temporary working directory.
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:@PORT@:@PORT@"
+    volumes:
+      - ./config/node.json:/etc/hospital-node/node.json:ro@KEY_VOLUME@
+      - ${HOSPITAL_NODE_DATA_DIR:?run install.sh --data-dir DIR}/clinical-records.json:/etc/hospital-node/data/clinical-records.json:ro
+      - ${HOSPITAL_NODE_DATA_DIR}/access.json:/etc/hospital-node/data/access.json:ro
+      - ${HOSPITAL_NODE_DATA_DIR}/governance.json:/etc/hospital-node/data/governance.json:ro
+      - ${HOSPITAL_NODE_DATA_DIR}/medication-rules.json:/etc/hospital-node/data/medication-rules.json:ro

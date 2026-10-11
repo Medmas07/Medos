@@ -16,16 +16,17 @@ export const PACKAGE_FORMAT_VERSION = '0.1-demo'
 
 export interface PackageItem {
   item: 'containerImages' | 'nodeIdentity' | 'installationHelper'
-  status: 'open' | 'planned'
+  /** `installation_package`: delivered in the HC-221 installation package, not in this manifest. */
+  status: 'open' | 'planned' | 'installation_package'
   note: string
 }
 
-/** What the product vision lists in a package but this demo package cannot hold yet. */
+/** What the product vision lists in a package but this demo manifest does not hold. */
 export const NOT_INCLUDED: readonly PackageItem[] = [
   {
     item: 'containerImages',
-    status: 'open',
-    note: "Aucune image de conteneur : le choix des conteneurs n'est pas encore décidé.",
+    status: 'installation_package',
+    note: "L'image du Hospital Node (HC-220) est livrée dans le package d'installation que l'opérateur de la plateforme construit après vérification de l'approbation par le Governance Node (HC-221), pas dans ce manifeste de démonstration.",
   },
   {
     item: 'nodeIdentity',
@@ -34,8 +35,8 @@ export const NOT_INCLUDED: readonly PackageItem[] = [
   },
   {
     item: 'installationHelper',
-    status: 'planned',
-    note: "Pas d'assistant d'installation exécutable ; voir le guide d'installation.",
+    status: 'installation_package',
+    note: "L'assistant d'installation est livré dans le package d'installation (HC-221) : il vérifie le package et vos données, puis démarre le nœud, sans jamais installer de logiciel.",
   },
 ]
 
