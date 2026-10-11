@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Governance Node Research Access Requests
-  version: 1.2.0
+  version: 1.3.0
   description: |
     Contract HC-133, version 1. The Governance / Ethics Authority's research
     access interface: a research project submits a data-access request, a
@@ -41,14 +41,26 @@ info:
     reviewer_mismatch`. With authentication off, its default,
     `reviewer_ref` is declared by the caller, not authenticated.
 
-    Not decided by this version, and OPEN: who may submit and read
-    (`submitted_by_ref` is declared by the caller, not authenticated),
+    Since 1.3.0 (HC-212, ADR-0011), with authentication required every
+    operation needs a bearer session whose role grants it:
+    `research:request` to submit, held by researchers, and
+    `governance:review` to read and decide, held by governance reviewers.
+    Without a valid session the answer is `401 authentication_required`;
+    with a role that does not grant it, `403 permission_denied`, before
+    anything is looked up. A submission whose `submitted_by_ref` is not the
+    signed-in person is `403 submitter_mismatch`. With authentication off,
+    `submitted_by_ref` is declared by the caller. The role matrix is fixed
+    fictional demo policy, not a validated access policy, and does not
+    restrict a person to their own organization's records (HC-213).
+
+    Not decided by this version, and OPEN:
     document upload and review, revoking or extending an approval, carrying the minimum cell size in the authorization check,
     and anchoring decisions in a ledger.
 
     Status: implemented by the Governance Node runtime (HC-133) over an
     in-memory store seeded from fictional demo data; requests and
-    decisions are lost on restart. Requests are not authenticated. Each
+    decisions are lost on restart. Requests are authenticated
+    only when the Node requires it (HC-211, HC-212). Each
     request received and decision recorded is added to the Node's
     governance audit trail (governance-audit-events.v1.yaml, HC-134), in
     memory as well.
@@ -57,6 +69,9 @@ paths:
     get:
       operationId: listResearchRequests
       summary: List research access requests, those under review first.
+      security:
+        - {}
+        - bearerSession: []
       parameters:
         - name: status
           in: query
@@ -103,9 +118,16 @@ paths:
                         valid_until: "2027-07-20T15:00:00+01:00"
         "400":
           $ref: "#/components/responses/InvalidRequest"
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "403":
+          $ref: "#/components/responses/PermissionDenied"
     post:
       operationId: submitResearchRequest
       summary: Submit a research access request for a governance decision.
+      security:
+        - {}
+        - bearerSession: []
       requestBody:
         required: true
         content:
@@ -164,12 +186,44 @@ paths:
                     decision: null
         "400":
           $ref: "#/components/responses/InvalidRequest"
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "403":
+          description: |
+            Authentication is required and the signed-in person's role does
+            not grant `research:request` (`permission_denied`), or
+            `submitted_by_ref` is not the signed-in person
+            (`submitter_mismatch`) (HC-212).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                permissionDenied:
+                  summary: Fictional demo — a governance reviewer cannot submit a research request.
+                  value:
+                    type: about:blank
+                    title: Permission denied
+                    status: 403
+                    detail: The role governance_reviewer does not grant research:request.
+                    code: permission_denied
+                submitterMismatch:
+                  summary: Fictional demo — signed in as usr-aymen, submitting as someone else.
+                  value:
+                    type: about:blank
+                    title: Submitter mismatch
+                    status: 403
+                    detail: submitted_by_ref usr-mehdi is not the signed-in person usr-aymen.
+                    code: submitter_mismatch
   /v1/research-requests/{request_ref}:
     parameters:
       - $ref: "#/components/parameters/RequestRef"
     get:
       operationId: getResearchRequest
       summary: Read one request with the Governance Node's checks and its decision.
+      security:
+        - {}
+        - bearerSession: []
       description: |
         The checks are evaluated when answering. They are informative once
         the request is decided; the decision is what counts.
@@ -209,6 +263,10 @@ paths:
                         detail: org-hospital-b, org-private-practice approved by the Authority.
                     eligible_organization_refs: [org-hospital-b, org-private-practice]
                     decision: null
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "403":
+          $ref: "#/components/responses/PermissionDenied"
         "404":
           $ref: "#/components/responses/RequestNotFound"
   /v1/research-requests/{request_ref}/decision:
@@ -271,8 +329,10 @@ paths:
             The reviewer may not decide: unknown here, not a governance
             reviewer, the submitter or principal investigator, or a member of
             the research organization or a participating organization.
-            With authentication required, also refused when
-            `reviewer_ref` is not the signed-in person (`reviewer_mismatch`).
+            With authentication required, also refused when the
+            signed-in person's role does not grant `governance:review`
+            (`permission_denied`, since 1.3.0) or `reviewer_ref` is not the
+            signed-in person (`reviewer_mismatch`).
           content:
             application/problem+json:
               schema:
@@ -294,6 +354,14 @@ paths:
                     status: 403
                     detail: reviewer_ref usr-mehdi is not the signed-in person usr-olfa.
                     code: reviewer_mismatch
+                permissionDenied:
+                  summary: Fictional demo — a hospital manager (usr-mehdi) signed in (HC-212).
+                  value:
+                    type: about:blank
+                    title: Permission denied
+                    status: 403
+                    detail: The role hospital_manager does not grant governance:review.
+                    code: permission_denied
         "404":
           $ref: "#/components/responses/RequestNotFound"
         "409":
@@ -368,6 +436,23 @@ components:
                 status: 401
                 detail: A bearer session is required.
                 code: authentication_required
+    PermissionDenied:
+      description: |
+        Authentication is required and the signed-in person's role does not
+        grant `governance:review` (HC-212).
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          examples:
+            permissionDenied:
+              summary: Fictional demo — a researcher (usr-aymen) signed in.
+              value:
+                type: about:blank
+                title: Permission denied
+                status: 403
+                detail: The role researcher does not grant governance:review.
+                code: permission_denied
     InvalidRequest:
       description: The request is malformed.
       content:
@@ -757,6 +842,8 @@ components:
             - reviewer_not_allowed
             - reviewer_mismatch
             - authentication_required
+            - permission_denied
+            - submitter_mismatch
             - not_under_review
             - invalid_decision
         issues:

@@ -1,9 +1,10 @@
 """contracts/api/auth/authentication.v1.yaml (HC-211, ADR-0010).
 
 Sign in with a password for a bearer session, read it, and sign out. With
-authentication required, the decision routes call `ReviewerAuthentication`: a decision
-needs a bearer session, and its reviewer_ref must be the signed-in person. Off, they
-keep HC-131's declared reviewer_ref.
+authentication required, the protected routes call `AccessControl`: they need a bearer
+session whose role grants the route's permission (HC-212), and a declared reviewer_ref
+or submitted_by_ref must be the signed-in person. Off, nothing is checked and those
+references stay declared.
 """
 
 from collections.abc import Callable
@@ -17,6 +18,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from adapters.inbound.http.problems import OPAQUE_REF, first_error, problem
+from application.access_control import authorize
 from application.authentication import (
     CredentialStore,
     PasswordHasher,
@@ -26,6 +28,7 @@ from application.authentication import (
     sign_out,
 )
 from application.hospital_approval import ReviewerDirectory
+from domain.access_control import Permission, PermissionDenied, permissions_of
 from domain.authentication import (
     AuthenticationFailed,
     NotAuthenticated,
@@ -90,35 +93,58 @@ def _session(
         return unauthenticated(str(error), invalid_token=True)
 
 
-class ReviewerAuthentication:
-    """Off (`sessions` None): the reviewer is declared. Required: it is signed in."""
+class AccessControl:
+    """Off (`sessions` None): callers are not authenticated and the references they
+    declare are trusted. Required: a route needs a session whose role grants it."""
 
     def __init__(
-        self, sessions: SessionStore | None, clock: Callable[[], datetime]
+        self,
+        sessions: SessionStore | None,
+        people: ReviewerDirectory,
+        clock: Callable[[], datetime],
     ) -> None:
         self._sessions = sessions
+        self._people = people
         self._clock = clock
 
     @property
     def mode(self) -> str:
         return "off" if self._sessions is None else "required"
 
-    def caller(self, request: Request) -> str | None | JSONResponse:
-        """The signed-in person, None when off, or the 401 to answer."""
+    def caller(
+        self, request: Request, permission: Permission
+    ) -> str | None | JSONResponse:
+        """The signed-in person, None when off, or the 401 or 403 to answer."""
         if self._sessions is None:
             return None
-        session = _session(request, self._sessions, self._clock)
-        return session if isinstance(session, JSONResponse) else session.person_ref
+        try:
+            token = _bearer_token(request)
+            if token is None:
+                return unauthenticated(
+                    "A bearer session is required.", invalid_token=False
+                )
+            person = authorize(
+                token, permission, self._sessions, self._people, self._clock
+            )
+        except NotAuthenticated as error:
+            return unauthenticated(str(error), invalid_token=True)
+        except PermissionDenied as error:
+            return problem(403, "Permission denied", "permission_denied", str(error))
+        return person.person_ref
 
     @staticmethod
-    def refuse(caller: str | None, reviewer_ref: str) -> JSONResponse | None:
-        if caller is None or caller == reviewer_ref:
+    def refuse(
+        caller: str | None, declared_ref: str, field: str = "reviewer_ref"
+    ) -> JSONResponse | None:
+        """The 403 when a declared reviewer_ref or submitted_by_ref is not the caller."""
+        if caller is None or caller == declared_ref:
             return None
+        who = "Reviewer" if field == "reviewer_ref" else "Submitter"
         return problem(
             403,
-            "Reviewer mismatch",
-            "reviewer_mismatch",
-            f"reviewer_ref {reviewer_ref} is not the signed-in person {caller}.",
+            f"{who} mismatch",
+            f"{who.lower()}_mismatch",
+            f"{field} {declared_ref} is not the signed-in person {caller}.",
         )
 
 
@@ -127,6 +153,7 @@ def _person(session: Session, person: Reviewer) -> dict:
         "person_ref": session.person_ref,
         "role": person.role,
         "organization_ref": person.organization_ref,
+        "permissions": sorted(p.value for p in permissions_of(person.role)),
         "issued_at": session.issued_at.isoformat(),
         "expires_at": session.expires_at.isoformat(),
         "notice": NOTICE,

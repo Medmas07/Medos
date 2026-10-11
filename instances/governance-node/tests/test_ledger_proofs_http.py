@@ -11,7 +11,9 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from adapters.inbound.http.authentication import AccessControl
 from adapters.inbound.http.ledger_proofs import create_router
+from adapters.outbound.fixture_reviewer_directory import FixtureReviewerDirectory
 from adapters.outbound.in_memory_audit_trail import InMemoryAuditTrail
 from adapters.outbound.simulated_audit_ledger import SimulatedAuditLedger
 from application.ledger import LedgerUnavailable
@@ -25,6 +27,10 @@ from tests.test_synchronization_http import load as load_contract
 PROOFS = load_contract("api/governance/governance-ledger-proofs.v1.yaml")
 LIST = PROOFS["paths"]["/v1/ledger/proofs"]["get"]
 DETAIL = PROOFS["paths"]["/v1/audit/events/{event_ref}/proof"]["get"]
+# Authentication off: readers are not checked.
+OPEN = AccessControl(
+    None, FixtureReviewerDirectory.load(DEMO_DATA / "people.json"), lambda: DEMO_NOW
+)
 # Anything a proof must never carry, at any depth of the answer.
 FORBIDDEN = {"patient_ref", "actor_ref", "purpose", "rationale", "scope", "data_scope"}
 
@@ -184,7 +190,7 @@ class UnavailableLedger:
 def test_an_unavailable_ledger_answers_503():
     app = FastAPI()
     trail = InMemoryAuditTrail.load(DEMO_DATA / "governance.json")
-    app.include_router(create_router(DEMO_IDENTITY, UnavailableLedger(), trail))
+    app.include_router(create_router(DEMO_IDENTITY, UnavailableLedger(), trail, OPEN))
     client = TestClient(app)
 
     for path, operation in [
@@ -216,7 +222,7 @@ def test_a_proof_whose_hash_is_not_its_payloads_is_served_as_tampered():
         [replace(p, payload_hash="0" * 64) for p in seeded.proofs()],
     )
     app = FastAPI()
-    app.include_router(create_router(DEMO_IDENTITY, forged, trail))
+    app.include_router(create_router(DEMO_IDENTITY, forged, trail, OPEN))
 
     proof = proof_of(TestClient(app), "evt-004")["proof"]
 

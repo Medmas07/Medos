@@ -7,8 +7,8 @@ from fastapi import FastAPI
 
 from adapters.inbound.http.audit_events import create_router as create_audit_router
 from adapters.inbound.http.authentication import (
+    AccessControl,
     AuthenticationPorts,
-    ReviewerAuthentication,
 )
 from adapters.inbound.http.authentication import (
     create_router as create_authentication_router,
@@ -80,9 +80,11 @@ LEDGER_RPC_ENV = "GOVERNANCE_LEDGER_RPC_URL"
 DEFAULT_LEDGER_RPC = "http://127.0.0.1:8545"
 LEDGER_KEY_FILE_ENV = "GOVERNANCE_LEDGER_KEY_FILE"
 LEDGER_CONTRACT_ENV = "GOVERNANCE_LEDGER_CONTRACT"
-# Who may decide (HC-211, ADR-0010): `off` (default) keeps the declared reviewer_ref;
-# `required` serves sign-in and makes each decision need the reviewer's bearer session,
-# against the password hashes of GOVERNANCE_CREDENTIALS (auth/.credentials.json).
+# Who may act (HC-211, ADR-0010; HC-212, ADR-0011): `off` (default) keeps declared
+# reviewer and submitter references and checks no caller; `required` serves sign-in,
+# against the password hashes of GOVERNANCE_CREDENTIALS (auth/.credentials.json), and
+# makes every route but health, policies, and the service authorization checks need a
+# bearer session whose role grants it.
 AUTH_ENV = "GOVERNANCE_AUTH"
 CREDENTIALS_ENV = "GOVERNANCE_CREDENTIALS"
 DEFAULT_CREDENTIALS = Path(__file__).resolve().parent / "auth" / ".credentials.json"
@@ -127,8 +129,9 @@ def create_app(
         # every decision recorded is anchored there. Runtime proofs lost on restart.
         ledger = SimulatedAuditLedger.load(demo_data / "governance.json", audit, clock)
     # HC-211: sessions in memory, lost on restart; sign-in failures throttled per account.
+    # HC-212: each protected route checks the signed-in person's role.
     sessions = InMemorySessionStore() if credentials is not None else None
-    auth = ReviewerAuthentication(sessions, clock)
+    auth = AccessControl(sessions, reviewers, clock)
     app = FastAPI(title="Governance Node", version=NODE_VERSION)
     app.include_router(create_health_router(identity, grants.mode, auth.mode))
     if credentials is not None and sessions is not None:
@@ -163,8 +166,8 @@ def create_app(
         )
     )
     app.include_router(create_research_authorization_router(research, audit, clock))
-    app.include_router(create_audit_router(identity, audit))
-    app.include_router(create_ledger_router(identity, ledger, audit))
+    app.include_router(create_audit_router(identity, audit, auth))
+    app.include_router(create_ledger_router(identity, ledger, audit, auth))
     app.include_router(create_policy_router(policies, clock))
     return app
 
