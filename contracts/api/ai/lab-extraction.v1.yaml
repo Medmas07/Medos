@@ -1,0 +1,454 @@
+openapi: 3.1.0
+info:
+  title: AI Services — Lab Extraction
+  version: 1.0.0
+  description: |
+    Contract HC-155, version 1. Turns the text of a laboratory report into a
+    **draft** of structured lab results for clinician review, in the shape a
+    Hospital Node keeps them (`lab_reports` in
+    contracts/federation/hospital-node-federation.v1.yaml): test, numeric
+    value, unit, the reference range printed with it, and a flag.
+
+    Boundary rules carried by this contract:
+
+    - **Advisory draft.** `advisory` is always `true` and `review_status`
+      always `pending_clinician_review`. AI Services never confirms a
+      result; a clinician confirms or corrects each one before it is used
+      or stored.
+    - **Verified against the report.** A result is kept only if its
+      `evidence.quote` is found in the report text and its `value` is
+      printed in that quote. A `reference_range` is kept only if both bounds
+      are printed in the quote. Proposed results that fail are dropped and
+      counted in `unverified_results_dropped`.
+    - **The flag is computed, never proposed by the model.** `flag` is
+      `low`, `normal`, or `high` by comparing `value` with the printed
+      `reference_range`, deterministically (`flag_basis: reference_range`).
+      Without a printed range, `flag` is `null` (`flag_basis:
+      no_reference_range`): no usual or population range is ever assumed.
+      The language model is never the source of an abnormal-value flag.
+    - **Numeric results only.** Qualitative results (for example
+      "négatif") are not extracted by this version.
+    - **Minimised references.** Requests carry opaque references, never
+      names. The caller is responsible for holding an authorization covering
+      the report it sends; with a hosted model provider, the report text is
+      sent to that provider (ADR-0006).
+
+    Known limit: verification checks that a value is printed in its quote,
+    not that it is the result rather than one of the range bounds; clinician
+    review covers this.
+
+    Not decided by this version, and OPEN: the authentication convention,
+    units normalization, and reading scanned or PDF reports (text only).
+
+    Status: implemented by AI Services (HC-155) with real model providers
+    (Claude, then a local Ollama model, ADR-0006), or a deterministic fixture
+    (MOCKED, opt-in) that only knows the demo report. Not clinically
+    validated.
+servers:
+  - url: http://localhost:8600
+    description: Local AI Services runtime (development and preview only).
+paths:
+  /v1/lab-extractions:
+    post:
+      operationId: createLabExtraction
+      summary: Extract a draft of structured lab results from a lab report's text.
+      description: |
+        Synchronous. `200` with zero or more results. An empty list means
+        nothing could be extracted and verified; it does not mean the
+        results are normal.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LabExtractionRequest"
+            examples:
+              hospitalBPanel:
+                summary: >-
+                  Fictional demo — Hospital B's pre-treatment panel for
+                  Patient A (demo-data/records/hospital-b.json,
+                  lab-b-2026-leila), as a lab report prints it.
+                value:
+                  {
+                    "patient_ref": "pat-a",
+                    "encounter_ref": "enc-b-2026-leila",
+                    "requested_by": "clin-x",
+                    "source": {
+                      "text": "Laboratoire fictif de l'Hôpital B — Bilan avant traitement\nPrélèvement : 20/05/2026 14:40\nHémoglobine : 12,6 g/dL (12,0 – 16,0)\nPlaquettes : 245 G/L (150 – 400)\nCréatinine : 11,4 mg/L (6,0 – 12,0)\nDocument fictif, aucune donnée réelle."
+                    }
+                  }
+      responses:
+        "200":
+          description: Draft lab results awaiting clinician review.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LabExtractionDraft"
+              examples:
+                fixtureHospitalB:
+                  summary: Fictional demo — the deterministic fixture (MOCKED) on the demo report.
+                  value:
+                    {
+                      "extraction_id": "3b8e1f4a-2c7d-4e9b-a1f0-6d5c8b2e7a19",
+                      "contract_version": "1.0",
+                      "patient_ref": "pat-a",
+                      "encounter_ref": "enc-b-2026-leila",
+                      "requested_by": "clin-x",
+                      "review_status": "pending_clinician_review",
+                      "advisory": true,
+                      "notice": "Draft lab results extracted by an AI assistant for clinician review. Each value is checked against the report text, and flags are computed from the reference range printed in the report, never by the model. Not clinically validated; a clinician confirms or corrects every result before it is used.",
+                      "results": [
+                        {
+                          "result_id": "result-1",
+                          "test": "Hémoglobine",
+                          "value": 12.6,
+                          "unit": "g/dL",
+                          "reference_range": {
+                            "low": 12.0,
+                            "high": 16.0
+                          },
+                          "flag": "normal",
+                          "flag_basis": "reference_range",
+                          "evidence": {
+                            "quote": "Hémoglobine : 12,6 g/dL (12,0 – 16,0)",
+                            "start": 90,
+                            "end": 127
+                          }
+                        },
+                        {
+                          "result_id": "result-2",
+                          "test": "Plaquettes",
+                          "value": 245,
+                          "unit": "G/L",
+                          "reference_range": {
+                            "low": 150,
+                            "high": 400
+                          },
+                          "flag": "normal",
+                          "flag_basis": "reference_range",
+                          "evidence": {
+                            "quote": "Plaquettes : 245 G/L (150 – 400)",
+                            "start": 128,
+                            "end": 160
+                          }
+                        },
+                        {
+                          "result_id": "result-3",
+                          "test": "Créatinine",
+                          "value": 11.4,
+                          "unit": "mg/L",
+                          "reference_range": {
+                            "low": 6.0,
+                            "high": 12.0
+                          },
+                          "flag": "normal",
+                          "flag_basis": "reference_range",
+                          "evidence": {
+                            "quote": "Créatinine : 11,4 mg/L (6,0 – 12,0)",
+                            "start": 161,
+                            "end": 196
+                          }
+                        }
+                      ],
+                      "unverified_results_dropped": 0,
+                      "uncertainty_notes": [
+                        "Deterministic demo fixture (MOCKED): no language model was called."
+                      ],
+                      "provenance": {
+                        "extractor": {
+                          "kind": "deterministic_fixture",
+                          "name": "fixture-lab-extractor",
+                          "version": "hc-155-v1"
+                        },
+                        "mocked": true,
+                        "generated_at": "2026-10-11T10:00:00+00:00"
+                      }
+                    }
+                modelHospitalB:
+                  summary: >-
+                    Fictional demo — an illustrative model extraction of the
+                    same report; model output varies from run to run.
+                  value:
+                    {
+                      "extraction_id": "7c2a9d5e-1b4f-4a8c-9e3d-0f6b2a8c4d71",
+                      "contract_version": "1.0",
+                      "patient_ref": "pat-a",
+                      "encounter_ref": "enc-b-2026-leila",
+                      "requested_by": "clin-x",
+                      "review_status": "pending_clinician_review",
+                      "advisory": true,
+                      "notice": "Draft lab results extracted by an AI assistant for clinician review. Each value is checked against the report text, and flags are computed from the reference range printed in the report, never by the model. Not clinically validated; a clinician confirms or corrects every result before it is used.",
+                      "results": [
+                        {
+                          "result_id": "result-1",
+                          "test": "Hémoglobine",
+                          "value": 12.6,
+                          "unit": "g/dL",
+                          "reference_range": {
+                            "low": 12.0,
+                            "high": 16.0
+                          },
+                          "flag": "normal",
+                          "flag_basis": "reference_range",
+                          "evidence": {
+                            "quote": "Hémoglobine : 12,6 g/dL (12,0 – 16,0)",
+                            "start": 90,
+                            "end": 127
+                          }
+                        },
+                        {
+                          "result_id": "result-2",
+                          "test": "Plaquettes",
+                          "value": 245,
+                          "unit": "G/L",
+                          "reference_range": {
+                            "low": 150,
+                            "high": 400
+                          },
+                          "flag": "normal",
+                          "flag_basis": "reference_range",
+                          "evidence": {
+                            "quote": "Plaquettes : 245 G/L (150 – 400)",
+                            "start": 128,
+                            "end": 160
+                          }
+                        },
+                        {
+                          "result_id": "result-3",
+                          "test": "Créatinine",
+                          "value": 11.4,
+                          "unit": "mg/L",
+                          "reference_range": {
+                            "low": 6.0,
+                            "high": 12.0
+                          },
+                          "flag": "normal",
+                          "flag_basis": "reference_range",
+                          "evidence": {
+                            "quote": "Créatinine : 11,4 mg/L (6,0 – 12,0)",
+                            "start": 161,
+                            "end": 196
+                          }
+                        }
+                      ],
+                      "unverified_results_dropped": 0,
+                      "uncertainty_notes": [],
+                      "provenance": {
+                        "extractor": {
+                          "kind": "model",
+                          "name": "claude-agent-sdk",
+                          "version": "claude-opus-5-5"
+                        },
+                        "mocked": false,
+                        "generated_at": "2026-10-11T10:00:00+00:00"
+                      }
+                    }
+        "400":
+          description: The request does not match this contract.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                missingText:
+                  value:
+                    type: about:blank
+                    title: Invalid lab extraction request
+                    status: 400
+                    detail: "Invalid or missing fields: source.text"
+                    code: invalid_request
+        "503":
+          description: No extractor could produce a usable draft.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                unavailable:
+                  value:
+                    type: about:blank
+                    title: Lab extraction unavailable
+                    status: 503
+                    detail: "All AI providers failed: claude-agent-sdk: unavailable; ollama: unavailable"
+                    code: extraction_unavailable
+components:
+  schemas:
+    OpaqueRef:
+      description: Opaque identifier. Must not contain a name or other direct identifier.
+      type: string
+      pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    LabExtractionRequest:
+      type: object
+      additionalProperties: false
+      required: [patient_ref, requested_by, source]
+      properties:
+        patient_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        encounter_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        requested_by:
+          $ref: "#/components/schemas/OpaqueRef"
+        source:
+          type: object
+          additionalProperties: false
+          required: [text]
+          properties:
+            text:
+              description: The lab report's text.
+              type: string
+              minLength: 1
+              maxLength: 20000
+    LabExtractionDraft:
+      type: object
+      additionalProperties: false
+      required:
+        - extraction_id
+        - contract_version
+        - patient_ref
+        - encounter_ref
+        - requested_by
+        - review_status
+        - advisory
+        - notice
+        - results
+        - unverified_results_dropped
+        - uncertainty_notes
+        - provenance
+      properties:
+        extraction_id:
+          type: string
+          format: uuid
+        contract_version:
+          const: "1.0"
+        patient_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        encounter_ref:
+          oneOf:
+            - $ref: "#/components/schemas/OpaqueRef"
+            - type: "null"
+        requested_by:
+          $ref: "#/components/schemas/OpaqueRef"
+        review_status:
+          const: pending_clinician_review
+        advisory:
+          const: true
+        notice:
+          type: string
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/LabResult"
+        unverified_results_dropped:
+          description: Proposed results that failed verification and are not shown.
+          type: integer
+          minimum: 0
+        uncertainty_notes:
+          type: array
+          items:
+            type: string
+        provenance:
+          type: object
+          additionalProperties: false
+          required: [extractor, mocked, generated_at]
+          properties:
+            extractor:
+              type: object
+              additionalProperties: false
+              required: [kind, name, version]
+              properties:
+                kind:
+                  type: string
+                  enum: [model, deterministic_fixture]
+                name:
+                  type: string
+                version:
+                  type: string
+            mocked:
+              type: boolean
+            generated_at:
+              type: string
+              format: date-time
+    LabResult:
+      type: object
+      additionalProperties: false
+      required: [result_id, test, value, unit, reference_range, flag, flag_basis, evidence]
+      properties:
+        result_id:
+          type: string
+        test:
+          type: string
+          minLength: 1
+        value:
+          type: number
+        unit:
+          type: string
+          minLength: 1
+        reference_range:
+          description: The range printed with the result in the report, or null.
+          oneOf:
+            - type: object
+              additionalProperties: false
+              required: [low, high]
+              properties:
+                low:
+                  type: number
+                high:
+                  type: number
+            - type: "null"
+        flag:
+          description: Computed from `value` and `reference_range`; null without a printed range.
+          oneOf:
+            - type: string
+              enum: [low, normal, high]
+            - type: "null"
+        flag_basis:
+          type: string
+          enum: [reference_range, no_reference_range]
+        evidence:
+          type: object
+          additionalProperties: false
+          required: [quote, start, end]
+          properties:
+            quote:
+              description: Verbatim text of the report containing the value.
+              type: string
+              minLength: 1
+            start:
+              type: integer
+              minimum: 0
+            end:
+              type: integer
+              minimum: 0
+      allOf:
+        - if:
+            properties:
+              reference_range:
+                type: "null"
+          then:
+            properties:
+              flag:
+                type: "null"
+              flag_basis:
+                const: no_reference_range
+          else:
+            properties:
+              flag:
+                type: string
+              flag_basis:
+                const: reference_range
+    Problem:
+      description: RFC 9457 problem details.
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+          enum: [invalid_request, extraction_unavailable]

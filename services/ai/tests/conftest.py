@@ -1,10 +1,12 @@
 from fastapi.testclient import TestClient
 
-from infrastructure.settings import ExtractionMode, ReviewMode, Settings
+from infrastructure.settings import ExtractionMode, LabMode, ReviewMode, Settings
 from main import create_app
 
 FIXTURE_SETTINGS = Settings(
-    extraction_mode=ExtractionMode.FIXTURE, review_mode=ReviewMode.FIXTURE
+    extraction_mode=ExtractionMode.FIXTURE,
+    review_mode=ReviewMode.FIXTURE,
+    lab_mode=LabMode.FIXTURE,
 )
 
 
