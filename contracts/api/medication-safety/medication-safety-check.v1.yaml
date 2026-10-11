@@ -35,8 +35,10 @@ info:
     pregnancy checks are not part of this version.
 
     Status: this contract has no implementation. Which component provides
-    it is OPEN (see docs/OPEN_QUESTIONS.md). Demo fixtures are HC-161 and
-    the deterministic engine is HC-162.
+    it is OPEN (see docs/OPEN_QUESTIONS.md). The demo fixtures (HC-161) are
+    in demo-data/medication-rules.json: a fictional deterministic rule set
+    and check cases whose expected results fit this contract. The
+    deterministic engine is HC-162.
 paths:
   /v1/medication-safety-checks:
     post:
