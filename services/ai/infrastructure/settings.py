@@ -16,6 +16,11 @@ class ReviewMode(StrEnum):
     FIXTURE = "fixture"  # deterministic demo rules (MOCKED), no model call
 
 
+class LabMode(StrEnum):
+    MODEL = "model"  # real providers, as for extraction
+    FIXTURE = "fixture"  # fixed results for the demo report (MOCKED), no model call
+
+
 class ProviderName(StrEnum):
     CLAUDE = "claude"
     OLLAMA = "ollama"
@@ -26,6 +31,8 @@ class Settings:
     extraction_mode: ExtractionMode = ExtractionMode.MODEL
     # HC-154: the hospital onboarding dossier review.
     review_mode: ReviewMode = ReviewMode.MODEL
+    # HC-155: lab result extraction.
+    lab_mode: LabMode = LabMode.MODEL
     providers: tuple[ProviderName, ...] = (ProviderName.CLAUDE, ProviderName.OLLAMA)
     claude_model: str = "claude-opus-5-5"
     ollama_model: str = "qwen2.5:3b"
@@ -41,6 +48,7 @@ def load_settings(env: Mapping[str, str] = os.environ) -> Settings:
             env.get("AI_EXTRACTION_MODE", defaults.extraction_mode)
         ),
         review_mode=ReviewMode(env.get("AI_REVIEW_MODE", defaults.review_mode)),
+        lab_mode=LabMode(env.get("AI_LAB_MODE", defaults.lab_mode)),
         providers=tuple(
             ProviderName(p.strip()) for p in providers.split(",") if p.strip()
         )

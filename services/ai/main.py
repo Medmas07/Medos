@@ -8,12 +8,16 @@ from adapters.inbound.http.clinical_extraction import (
 )
 from adapters.inbound.http.clinical_extraction import register_problem_handler
 from adapters.inbound.http.health import create_health_router
+from adapters.inbound.http.lab_extraction import (
+    create_router as create_lab_extraction_router,
+)
 from adapters.inbound.http.hospital_document_review import (
     create_router as create_document_review_router,
 )
 from adapters.outbound.claude_agent_sdk_provider import ClaudeAgentSdkProvider
 from adapters.outbound.fixture_document_reviewer import FixtureDocumentReviewer
 from adapters.outbound.fixture_extractor import FixtureClinicalExtractor
+from adapters.outbound.fixture_lab_extractor import FixtureLabExtractor
 from adapters.outbound.mock_ai_provider import DeterministicMockAiProvider
 from adapters.outbound.ollama_provider import OllamaAiProvider
 from application.ai_provider import AiProvider
@@ -23,7 +27,9 @@ from application.extract_clinical_information import (
 )
 from application.fallback_ai_provider import FallbackAiProvider
 from application.get_service_status import SERVICE_VERSION
+from application.extract_lab_results import ExtractLabResults, LabExtractor
 from application.model_clinical_extractor import ModelClinicalExtractor
+from application.model_lab_extractor import ModelLabExtractor
 from application.model_document_reviewer import ModelDocumentReviewer
 from application.review_hospital_documents import (
     DocumentReviewer,
@@ -31,6 +37,7 @@ from application.review_hospital_documents import (
 )
 from infrastructure.settings import (
     ExtractionMode,
+    LabMode,
     ProviderName,
     ReviewMode,
     Settings,
@@ -55,6 +62,7 @@ def create_app(settings: Settings) -> FastAPI:
     ai_provider: AiProvider
     extractor: ClinicalExtractor
     reviewer: DocumentReviewer
+    lab_extractor: LabExtractor
     model_chain = FallbackAiProvider(
         [_provider(n, settings) for n in settings.providers]
     )
@@ -73,7 +81,14 @@ def create_app(settings: Settings) -> FastAPI:
     else:
         reviewer = ModelDocumentReviewer(model_chain)
         review = "hospital-document-review:model"
-    capabilities = (extraction, review)
+    # HC-155: chosen on its own as well.
+    if settings.lab_mode is LabMode.FIXTURE:
+        lab_extractor = FixtureLabExtractor()
+        lab = "lab-extraction:mocked"
+    else:
+        lab_extractor = ModelLabExtractor(model_chain)
+        lab = "lab-extraction:model"
+    capabilities = (extraction, review, lab)
 
     app = FastAPI(title="AI Services", version=SERVICE_VERSION)
     app.include_router(create_health_router(capabilities))
@@ -87,6 +102,11 @@ def create_app(settings: Settings) -> FastAPI:
     app.include_router(
         create_document_review_router(
             ReviewHospitalDocuments(reviewer=reviewer, clock=lambda: datetime.now(UTC))
+        )
+    )
+    app.include_router(
+        create_lab_extraction_router(
+            ExtractLabResults(extractor=lab_extractor, clock=lambda: datetime.now(UTC))
         )
     )
     app.include_router(create_ai_provider_router(ai_provider))

@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-Python + FastAPI is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED (HC-150). **Real clinical extraction is IMPLEMENTED (HC-153, D3):** `POST /v1/clinical-extractions` implements the [clinical extraction contract](../../contracts/api/ai/clinical-extraction.v1.yaml) with Claude (through the Claude Agent SDK) as the primary provider and a local Ollama model as the fallback, as decided by [ADR-0006](../../docs/decisions/ADR-0006-ai-provider-strategy.md). The deterministic fixture extractor (HC-152) remains available as an explicit MOCKED mode. Extraction quality is **not clinically validated**; drafts are advisory and always pending clinician review. **LLM-assisted hospital document review is IMPLEMENTED (HC-154, D3):** `POST /v1/hospital-document-reviews` implements the [hospital document review contract](../../contracts/api/ai/hospital-document-review.v1.yaml) with the same providers; its findings are advisory and must cite the dossier. Summarization, explanation, and the other AI capabilities are PLANNED.
+Python + FastAPI is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED (HC-150). **Real clinical extraction is IMPLEMENTED (HC-153, D3):** `POST /v1/clinical-extractions` implements the [clinical extraction contract](../../contracts/api/ai/clinical-extraction.v1.yaml) with Claude (through the Claude Agent SDK) as the primary provider and a local Ollama model as the fallback, as decided by [ADR-0006](../../docs/decisions/ADR-0006-ai-provider-strategy.md). The deterministic fixture extractor (HC-152) remains available as an explicit MOCKED mode. Extraction quality is **not clinically validated**; drafts are advisory and always pending clinician review. **LLM-assisted hospital document review is IMPLEMENTED (HC-154, D3):** `POST /v1/hospital-document-reviews` implements the [hospital document review contract](../../contracts/api/ai/hospital-document-review.v1.yaml) with the same providers; its findings are advisory and must cite the dossier. **Lab extraction is IMPLEMENTED (HC-155, D3):** `POST /v1/lab-extractions` implements the [lab extraction contract](../../contracts/api/ai/lab-extraction.v1.yaml); values are verified against the report and flags are computed deterministically, never by the model. Summarization, explanation, and the other AI capabilities are PLANNED.
 
 ## Running locally
 
@@ -31,13 +31,14 @@ Configuration comes from environment variables; [`.env.example`](.env.example) l
 |---|---|---|
 | `AI_EXTRACTION_MODE` | `model` | `model` calls real providers; `fixture` returns the deterministic demo fixture (MOCKED) |
 | `AI_REVIEW_MODE` | `model` | Hospital document review (HC-154): `model` calls real providers; `fixture` applies deterministic rules (MOCKED) |
+| `AI_LAB_MODE` | `model` | Lab extraction (HC-155): `model` calls real providers; `fixture` returns fixed results for the demo report only (MOCKED) |
 | `AI_PROVIDERS` | `claude,ollama` | Provider order; the next one is tried only if one is unavailable or times out |
 | `CLAUDE_MODEL` | `claude-opus-5-5` | Claude model |
 | `OLLAMA_MODEL` | `qwen2.5:3b` | Local fallback model |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server |
 | `AI_PROVIDER_TIMEOUT_SECONDS` | `120` | Per-provider timeout |
 
-For an offline, deterministic demo: `AI_EXTRACTION_MODE=fixture AI_REVIEW_MODE=fixture fastapi dev main.py --port 8600`.
+For an offline, deterministic demo: `AI_EXTRACTION_MODE=fixture AI_REVIEW_MODE=fixture AI_LAB_MODE=fixture fastapi dev main.py --port 8600`.
 
 `GET http://localhost:8600/health` returns:
 
@@ -45,13 +46,13 @@ For an offline, deterministic demo: `AI_EXTRACTION_MODE=fixture AI_REVIEW_MODE=f
 {
   "status": "ok",
   "service": "ai-services",
-  "version": "0.4.0",
-  "capabilities": ["clinical-extraction:model", "hospital-document-review:model"],
+  "version": "0.5.0",
+  "capabilities": ["clinical-extraction:model", "hospital-document-review:model", "lab-extraction:model"],
   "notice": "Capabilities marked :model call a language model; capabilities marked :mocked return deterministic fictional fixtures. Any AI output is advisory and requires review by an accountable human."
 }
 ```
 
-In fixture mode the capabilities are `clinical-extraction:mocked` and `hospital-document-review:mocked`; each follows its own mode. The suffix and the `notice` field make the boundary visible. FastAPI's generated OpenAPI document is served at `/openapi.json`; the versioned contract under `contracts/` remains the source of truth.
+In fixture mode the capabilities are `clinical-extraction:mocked`, `hospital-document-review:mocked`, and `lab-extraction:mocked`; each follows its own mode. The suffix and the `notice` field make the boundary visible. FastAPI's generated OpenAPI document is served at `/openapi.json`; the versioned contract under `contracts/` remains the source of truth.
 
 ## Clinical extraction (HC-152 contract, HC-153 real extraction)
 
@@ -114,6 +115,35 @@ Checked live on 2026-10-10. **Claude** (`claude-opus-5-5`, about 10 s) returned 
 
 Not done: the Hospital Portal's assisted review (HC-057) still uses its SIMULATED rules and does not call this API; the Governance Node does not record these findings on applications; text extraction from uploaded files; authentication of callers; recording reviews.
 
+## Lab extraction (HC-155)
+
+`POST /v1/lab-extractions` turns a lab report's **text** into a draft of structured results for clinician review, in the shape a Hospital Node keeps them (`lab_reports` in [`hospital-node-federation.v1.yaml`](../../contracts/federation/hospital-node-federation.v1.yaml)): `test`, numeric `value`, `unit`, the `reference_range` printed with it, and a `flag`. Every draft is `advisory: true` and `pending_clinician_review`; a clinician confirms or corrects each result before it is used or stored.
+
+**The model only reads.** `ModelLabExtractor` ([`application/model_lab_extractor.py`](application/model_lab_extractor.py)) asks the provider chain, as an `extraction` task, for each numeric result's test, value, unit, printed range, and the verbatim line. It is told not to judge abnormality and never to use a usual range, and its schema has no flag field.
+
+**Verified and flagged here** ([`domain/lab_extraction.py`](domain/lab_extraction.py), applied by `ExtractLabResults` whatever the extractor):
+
+- the quote must be found in the report (exactly, or ignoring case only), and the value must be one of the numbers printed in it (a decimal comma reads as a point); otherwise the result is dropped and counted in `unverified_results_dropped`;
+- a range is kept only if both bounds are printed in the quote; otherwise the result has no range;
+- `flag` is computed: below the range `low`, above it `high`, inside it `normal` (`flag_basis: reference_range`). Without a printed range the flag is `null` (`no_reference_range`). **The model is never the source of an abnormal flag**, as the product vision requires.
+
+Numeric results only: qualitative ones ("négatif") are skipped. Known limit: verification checks that a value is printed in its quote, not that it is the result rather than one of the range bounds; clinician review covers this.
+
+**Fixture mode (MOCKED).** With `AI_LAB_MODE=fixture`, `FixtureLabExtractor` ([`adapters/outbound/fixture_lab_extractor.py`](adapters/outbound/fixture_lab_extractor.py)) returns fixed results for `DEMO_LAB_REPORT`, Hospital B's fictional pre-treatment panel for Patient A (`lab-b-2026-leila`) as a report prints it, and nothing for any other text. Its results go through the same verification and flagging.
+
+Errors: `400 invalid_request`, `503 extraction_unavailable`. Like the document review, the route parses its own body and runs the extraction in the threadpool.
+
+Demo, with the service running:
+
+```bash
+python -c "from adapters.outbound.fixture_lab_extractor import DEMO_LAB_REPORT as t; import json; print(json.dumps({'patient_ref': 'pat-a', 'requested_by': 'clin-x', 'source': {'text': t}}))" > /tmp/lab.json
+curl -s -X POST localhost:8600/v1/lab-extractions -H 'content-type: application/json' --data-binary @/tmp/lab.json
+```
+
+Checked live on 2026-10-11 with **Claude** (`claude-opus-5-5`, about 6 s) and with **Ollama** alone (`qwen2.5:3b`, 6 to 8 s). Both returned the demo panel's three seed values with their ranges, all `normal`. On a fictional control report (potassium 5,6 mmol/L (3,5 – 5,0), sodium 131 mmol/L (135 – 145), CRP 3 mg/L with no range, a qualitative albumin result), both gave potassium `high`, sodium `low`, CRP unflagged, and skipped the qualitative result; Ollama also proposed one row that failed verification and was dropped. Every answer conforms to the contract. Output varies between runs and models and is **not clinically validated**.
+
+Not done: no clinician workflow calls it yet, and nothing is stored; scanned or PDF reports, unit normalization, and qualitative results.
+
 ## AI provider port and adapters (HC-151, HC-153)
 
 Use cases reach a model only through the `AiProvider` port in [`application/ai_provider.py`](application/ai_provider.py). It sits below task-level ports such as `ClinicalExtractor`: a future model-backed extractor calls `AiProvider` and turns its output into extraction items. The port is a `typing.Protocol`, so adapters do not import or subclass anything from the application layer:
@@ -159,10 +189,10 @@ The port is internal to AI Services and is not a cross-component contract, so no
 ```text
 services/ai/
 ├── main.py                     # composition root: create_app(settings) wires providers and routes
-├── domain/                     # ServiceStatus, extraction draft and document review rules, AdvisoryOutput — stdlib only
-├── application/                # use cases, ports, ModelClinicalExtractor, ModelDocumentReviewer, FallbackAiProvider — imports only domain
+├── domain/                     # ServiceStatus, extraction draft, document review, and lab extraction rules, AdvisoryOutput — stdlib only
+├── application/                # use cases, ports, ModelClinicalExtractor, ModelDocumentReviewer, ModelLabExtractor, FallbackAiProvider — imports only domain
 ├── adapters/inbound/http/      # FastAPI routers and Pydantic models
-├── adapters/outbound/          # Claude, Ollama, and mock providers; FixtureClinicalExtractor and FixtureDocumentReviewer (MOCKED)
+├── adapters/outbound/          # Claude, Ollama, and mock providers; FixtureClinicalExtractor, FixtureDocumentReviewer, and FixtureLabExtractor (MOCKED)
 ├── infrastructure/settings.py  # environment configuration (no secrets)
 └── tests/                      # unit, HTTP/contract, provider-contract, layer-boundary, and opt-in live tests
 ```
@@ -171,7 +201,7 @@ services/ai/
 
 ## Responsibilities and owned concepts
 
-Potential extraction, summarization, document review, lab interpretation assistance, priority explanation, medication explanation, and LLM orchestration behind explicit ports. Clinical extraction (HC-153) and hospital document review (HC-154) are IMPLEMENTED with real providers; the other capabilities are PLANNED.
+Potential extraction, summarization, document review, lab interpretation assistance, priority explanation, medication explanation, and LLM orchestration behind explicit ports. Clinical extraction (HC-153), hospital document review (HC-154), and lab extraction (HC-155) are IMPLEMENTED with real providers; the other capabilities are PLANNED.
 
 ## Communication boundaries
 
@@ -183,4 +213,4 @@ No AI output automatically becomes clinical truth. AI does not autonomously diag
 
 ## Expected contracts
 
-[`clinical-extraction.v1.yaml`](../../contracts/api/ai/clinical-extraction.v1.yaml) (HC-152) and [`hospital-document-review.v1.yaml`](../../contracts/api/ai/hospital-document-review.v1.yaml) (HC-154). Explanation and model-capability contracts are PLANNED.
+[`clinical-extraction.v1.yaml`](../../contracts/api/ai/clinical-extraction.v1.yaml) (HC-152) [`hospital-document-review.v1.yaml`](../../contracts/api/ai/hospital-document-review.v1.yaml) (HC-154), and [`lab-extraction.v1.yaml`](../../contracts/api/ai/lab-extraction.v1.yaml) (HC-155). Explanation and model-capability contracts are PLANNED.

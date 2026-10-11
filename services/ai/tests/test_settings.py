@@ -2,6 +2,7 @@ import pytest
 
 from infrastructure.settings import (
     ExtractionMode,
+    LabMode,
     ProviderName,
     ReviewMode,
     Settings,
@@ -49,3 +50,10 @@ def test_the_review_mode_is_model_by_default_and_set_on_its_own():
     )
     with pytest.raises(ValueError):
         load_settings({"AI_REVIEW_MODE": "simulated"})
+
+
+def test_the_lab_mode_is_model_by_default_and_set_on_its_own():
+    assert load_settings({}).lab_mode is LabMode.MODEL
+    assert load_settings({"AI_LAB_MODE": "fixture"}).lab_mode is LabMode.FIXTURE
+    with pytest.raises(ValueError):
+        load_settings({"AI_LAB_MODE": "simulated"})
