@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../demo/canonical_clinician.dart';
 import 'clinician_labels.dart';
 import 'clinician_theme.dart';
+import 'federated_history_view.dart';
 
 /// Opens the fictional patient's detail page.
 void openPatientDetail(BuildContext context, String patientId) {
@@ -169,7 +170,7 @@ class _AuthorizedDetail extends StatelessWidget {
             ),
           ],
         ),
-        const _HistoryPlanned(),
+        _HistoryLink(patient: patient, grant: grant),
       ],
     );
   }
@@ -310,32 +311,27 @@ class _AlertRow extends StatelessWidget {
   }
 }
 
-class _HistoryPlanned extends StatelessWidget {
-  const _HistoryPlanned();
+class _HistoryLink extends StatelessWidget {
+  const _HistoryLink({required this.patient, required this.grant});
+
+  final CanonicalPatient patient;
+  final CanonicalAccessGrant grant;
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(Icons.history_rounded, color: ClinicianColors.brand),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: Text(
-                'Historique fédéré (consultations, médicaments, biologie des établissements autorisés) : livré par HC-035.',
-              ),
-            ),
-            const SizedBox(width: 8),
-            LabelTag(
-              label: 'PLANNED',
-              color: ClinicianColors.demo,
-              background: ClinicianColors.demoSoft,
-            ),
-          ],
+      child: ListTile(
+        key: const ValueKey('detail-open-history'),
+        leading: const Icon(
+          Icons.history_rounded,
+          color: ClinicianColors.brand,
         ),
+        title: const Text('Historique fédéré'),
+        subtitle: const Text(
+          'Consultations, médicaments et biologie des établissements autorisés, avec leur source (HC-035, simulé).',
+        ),
+        trailing: const Icon(Icons.chevron_right_rounded),
+        onTap: () => openFederatedHistory(context, patient, grant),
       ),
     );
   }

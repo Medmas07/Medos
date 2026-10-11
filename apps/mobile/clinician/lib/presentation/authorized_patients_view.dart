@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../demo/canonical_clinician.dart';
 import 'clinician_labels.dart';
 import 'clinician_theme.dart';
+import 'federated_history_view.dart';
 import 'patient_detail_screen.dart';
 
 /// A patient `clin-x` may see on a date, with the grant that allows it.
@@ -41,8 +42,8 @@ int daysLeft(CanonicalAccessGrant grant, String date) => DateTime.parse(
 /// Authorized patient list (HC-033, D1): the patients who granted `clin-x`
 /// scoped, temporary access, read from fictional HC-005 grants on the demo
 /// day. MOCKED: nothing is asked of a Hospital Node or the Federation, and no
-/// clinical record is loaded. Each card opens the patient detail (HC-034);
-/// the federated history is HC-035.
+/// clinical record is loaded. Each card opens the patient detail (HC-034)
+/// and the federated history (HC-035).
 class AuthorizedPatientsView extends StatelessWidget {
   const AuthorizedPatientsView({
     super.key,
@@ -107,8 +108,6 @@ class AuthorizedPatientsView extends StatelessWidget {
               patientName:
                   byId[grant.patientId]?.displayName ?? grant.patientId,
             ),
-        const SizedBox(height: 16),
-        const _RecordPlanned(),
       ],
     );
   }
@@ -241,10 +240,22 @@ class _AuthorizedPatientCard extends StatelessWidget {
               ),
               Align(
                 alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  onPressed: () => openPatientDetail(context, patient.id),
-                  icon: const Icon(Icons.person_search_outlined),
-                  label: const Text('Ouvrir la fiche'),
+                child: Wrap(
+                  spacing: 4,
+                  children: [
+                    TextButton.icon(
+                      key: ValueKey('open-history-${patient.id}'),
+                      onPressed: () =>
+                          openFederatedHistory(context, patient, grant),
+                      icon: const Icon(Icons.timeline_rounded),
+                      label: const Text('Historique fédéré'),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => openPatientDetail(context, patient.id),
+                      icon: const Icon(Icons.person_search_outlined),
+                      label: const Text('Ouvrir la fiche'),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -272,23 +283,6 @@ class _EndedGrantTile extends StatelessWidget {
       leading: const Icon(Icons.lock_clock_outlined),
       title: Text(patientName),
       subtitle: Text('$reason · aucun accès au dossier'),
-    );
-  }
-}
-
-class _RecordPlanned extends StatelessWidget {
-  const _RecordPlanned();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Card(
-      child: ListTile(
-        leading: Icon(Icons.folder_shared_outlined),
-        title: Text('Historique fédéré'),
-        subtitle: Text(
-          'PLANNED (HC-035) : « Ouvrir la fiche » affiche la fiche du patient ; son historique fédéré n’est pas encore disponible.',
-        ),
-      ),
     );
   }
 }

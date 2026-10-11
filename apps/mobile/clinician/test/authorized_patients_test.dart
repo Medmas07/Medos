@@ -129,7 +129,8 @@ void main() {
     );
 
     expect(find.text('Aucun accès expiré ou révoqué.'), findsOneWidget);
-    expect(find.text('Historique fédéré'), findsOneWidget);
+    // One history button per authorized patient (HC-035).
+    expect(find.text('Historique fédéré'), findsNWidgets(2));
     expect(find.text('Ouvrir la fiche'), findsNWidgets(2));
   });
 

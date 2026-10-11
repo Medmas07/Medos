@@ -41,7 +41,7 @@ What each step uses today. **Fixtures** means local fictional data in the produc
 | 3 | Patient App, Accès, "Accorder un accès" | `pat-a` | `grant-a-drx` | IMPLEMENTED (D1), local state only |
 | 4 | Clinician App, Accueil | `clin-x` | `people.json` | IMPLEMENTED (D1), simulated session |
 | 5 | Clinician App, Patients | `clin-x` | `grant-a-drx` | IMPLEMENTED (D1), MOCKED authorization from fixtures (HC-033) |
-| 6 | Clinician App, Patients | `clin-x` | Patient A's records | Screen PLANNED (HC-035). The Federation Service answers Patient A's federated timeline from the Hospital Nodes over HTTP (HC-141, HC-145; the nodes' data is MOCKED). |
+| 6 | Clinician App, Patients → Historique fédéré | `clin-x` | Patient A's records, `grant-a-drx` | IMPLEMENTED (D1), MOCKED answer from fixtures in the contract's shape (HC-035). The Federation Service itself answers Patient A's federated timeline from the Hospital Nodes over HTTP (HC-141, HC-145; the nodes' data is MOCKED); the app does not call it yet. |
 | 7–9 | Clinician App, Consultation | `clin-x`, `pat-a` | `script-a-2026-10-10` | MOCKED (D1): recording consent (HC-037), transcript (HC-038) |
 | 10–11 | Clinician App, Consultation | `clin-x` | extraction draft in `script-a-2026-10-10` | Screen PLANNED. The AI extractor's own transcript still differs (see `demo-data` README, known divergence). |
 | 12–14 | Clinician App, Consultation | `clin-x` | `MED-DOLORANE` vs `med-b-leila-coagulix`, `check-a-dolorane` | Screen PLANNED. The Hospital Node's deterministic check returns `check-a-dolorane` (HC-162, MOCKED rules). |
