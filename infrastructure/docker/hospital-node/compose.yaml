@@ -1,0 +1,62 @@
+# Demo Hospital Nodes as containers (HC-220, ADR-0016).
+#
+# One image, one container per hospital (ADR-0003). Each container gets only its own
+# configuration and its own fictional records, mounted read-only; no container sees
+# another hospital's records. Ports are published on loopback only, because the Node's
+# callers are not authenticated. Fictional demo data; not a production deployment.
+#
+#   docker compose -f infrastructure/docker/hospital-node/compose.yaml up --build
+#
+# Ports match the Federation registry seed, so services run on the host reach the
+# nodes at localhost:8101, 8102, and 8104 as before.
+
+name: hackcure-hospital-nodes
+
+x-hospital-node: &hospital-node
+  image: hackcure/hospital-node:dev
+  read_only: true
+  # The research sandbox (HC-186) needs a temporary working directory.
+  tmpfs:
+    - /tmp
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  restart: unless-stopped
+
+services:
+  hospital-a:
+    <<: *hospital-node
+    # Builds the shared image; the other nodes run the same one.
+    build:
+      context: ../../../instances/hospital-node
+    ports:
+      - "127.0.0.1:8101:8101"
+    volumes:
+      - ./hospital-a.json:/etc/hospital-node/node.json:ro
+      - ../../../demo-data/records/hospital-a.json:/etc/hospital-node/data/clinical-records.json:ro
+      - ../../../demo-data/access.json:/etc/hospital-node/data/access.json:ro
+      - ../../../demo-data/governance.json:/etc/hospital-node/data/governance.json:ro
+      - ../../../demo-data/medication-rules.json:/etc/hospital-node/data/medication-rules.json:ro
+
+  hospital-b:
+    <<: *hospital-node
+    ports:
+      - "127.0.0.1:8102:8102"
+    volumes:
+      - ./hospital-b.json:/etc/hospital-node/node.json:ro
+      - ../../../demo-data/records/hospital-b.json:/etc/hospital-node/data/clinical-records.json:ro
+      - ../../../demo-data/access.json:/etc/hospital-node/data/access.json:ro
+      - ../../../demo-data/governance.json:/etc/hospital-node/data/governance.json:ro
+      - ../../../demo-data/medication-rules.json:/etc/hospital-node/data/medication-rules.json:ro
+
+  private-practice:
+    <<: *hospital-node
+    ports:
+      - "127.0.0.1:8104:8104"
+    volumes:
+      - ./private-practice.json:/etc/hospital-node/node.json:ro
+      - ../../../demo-data/records/private-practice.json:/etc/hospital-node/data/clinical-records.json:ro
+      - ../../../demo-data/access.json:/etc/hospital-node/data/access.json:ro
+      - ../../../demo-data/governance.json:/etc/hospital-node/data/governance.json:ro
+      - ../../../demo-data/medication-rules.json:/etc/hospital-node/data/medication-rules.json:ro

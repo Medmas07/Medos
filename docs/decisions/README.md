@@ -27,3 +27,4 @@ Clean/Hexagonal principles are an initial project constraint and do not require 
 | [ADR-0013](ADR-0013-medos-landing-and-hospital-journey.md) | MedOS landing page as the hospital entry point, with a guided onboarding journey | Accepted |
 | [ADR-0014](ADR-0014-organization-identity.md) | Organization identity — a person acts only for their own, recognized organization | Accepted |
 | [ADR-0015](ADR-0015-signed-federation-authorization.md) | Signed federation authorization — the Governance Node signs each authorized exchange with Ed25519, and the Hospital Node verifies it on its own | Accepted |
+| [ADR-0016](ADR-0016-hospital-node-container-image.md) | Hospital Node container image — one OCI image, hospital configuration and data mounted at runtime | Accepted |

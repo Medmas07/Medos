@@ -4,6 +4,7 @@ One codebase runs as one process per hospital (ADR-0003). A missing, unreadable,
 invalid file stops startup: an instance never falls back to another hospital's identity.
 """
 
+import ipaddress
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,6 +15,10 @@ from pydantic import BaseModel, ConfigDict, Field, HttpUrl, ValidationError
 from domain.node_identity import InvalidNodeIdentity, NodeIdentity
 
 CONFIG_ENV = "HOSPITAL_NODE_CONFIG"
+# Interface `python main.py` listens on. Loopback by default; the container image
+# (HC-220) sets 0.0.0.0 so the published port reaches it.
+HOST_ENV = "HOSPITAL_NODE_HOST"
+DEFAULT_HOST = "127.0.0.1"
 
 
 class ConfigError(RuntimeError):
@@ -78,6 +83,17 @@ def config_path_from_env() -> Path:
             "for example config/hospital-a.demo.json."
         )
     return Path(value)
+
+
+def bind_host_from_env() -> str:
+    value = os.environ.get(HOST_ENV, DEFAULT_HOST).strip()
+    try:
+        ipaddress.ip_address(value)
+    except ValueError as error:
+        raise ConfigError(
+            f"{HOST_ENV} must be an IP address, for example 127.0.0.1 or 0.0.0.0."
+        ) from error
+    return value
 
 
 def load_config(path: Path) -> HospitalNodeConfig:
