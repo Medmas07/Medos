@@ -201,46 +201,6 @@ class _ContentView extends StatelessWidget {
   }
 }
 
-class _HomeContent extends StatelessWidget {
-  const _HomeContent();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Bonjour ${demoPatient.firstName}',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-        const SizedBox(height: 6),
-        const Text(
-          'Votre espace de santé autorisé, simple et transparent.',
-          style: TextStyle(color: PatientColors.muted, fontSize: 16),
-        ),
-        const SizedBox(height: 24),
-        const _PreviewCard(
-          icon: Icons.timeline_rounded,
-          title: 'Parcours médical',
-          description: 'Aperçu — fonctionnalité prévue par HC-012.',
-        ),
-        const SizedBox(height: 12),
-        const _PreviewCard(
-          icon: Icons.medication_outlined,
-          title: 'Mes médicaments',
-          description: 'Aperçu — fonctionnalité prévue par HC-014.',
-        ),
-        const SizedBox(height: 12),
-        const _PreviewCard(
-          icon: Icons.verified_user_outlined,
-          title: 'Accès et consentements',
-          description: 'Aperçu — fonctionnalité prévue par HC-017.',
-        ),
-      ],
-    );
-  }
-}
-
 class _DashboardContent extends StatelessWidget {
   const _DashboardContent();
 
@@ -583,7 +543,7 @@ class _GrantAccessDialogState extends State<_GrantAccessDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             DropdownButtonFormField<String>(
-              value: _physician,
+              initialValue: _physician,
               decoration: const InputDecoration(labelText: 'Médecin'),
               items: const [
                 DropdownMenuItem(value: 'Dr Rania Kefi', child: Text('Dr Rania Kefi')),
@@ -593,7 +553,7 @@ class _GrantAccessDialogState extends State<_GrantAccessDialog> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: _scope,
+              initialValue: _scope,
               decoration: const InputDecoration(labelText: 'Portée'),
               items: const [
                 DropdownMenuItem(
@@ -606,7 +566,7 @@ class _GrantAccessDialogState extends State<_GrantAccessDialog> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: _duration,
+              initialValue: _duration,
               decoration: const InputDecoration(labelText: 'Durée'),
               items: const [
                 DropdownMenuItem(value: '30 jours', child: Text('30 jours')),
@@ -758,7 +718,7 @@ class _DelegateAccessDialogState extends State<_DelegateAccessDialog> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: _relationship,
+              initialValue: _relationship,
               decoration: const InputDecoration(labelText: 'Lien'),
               items: const [
                 DropdownMenuItem(value: 'Fils', child: Text('Fils')),
@@ -770,7 +730,7 @@ class _DelegateAccessDialogState extends State<_DelegateAccessDialog> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: _scope,
+              initialValue: _scope,
               decoration: const InputDecoration(labelText: 'Portée'),
               items: const [
                 DropdownMenuItem(
@@ -783,7 +743,7 @@ class _DelegateAccessDialogState extends State<_DelegateAccessDialog> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: _duration,
+              initialValue: _duration,
               decoration: const InputDecoration(labelText: 'Durée'),
               items: const [
                 DropdownMenuItem(
@@ -1138,7 +1098,7 @@ class _DataRequestDialogState extends State<_DataRequestDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             DropdownButtonFormField<String>(
-              value: _type,
+              initialValue: _type,
               isExpanded: true,
               decoration: const InputDecoration(labelText: 'Type de demande'),
               items: const [
@@ -1163,7 +1123,7 @@ class _DataRequestDialogState extends State<_DataRequestDialog> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: _source,
+              initialValue: _source,
               isExpanded: true,
               decoration: const InputDecoration(labelText: 'Source concernée'),
               items: [
@@ -1418,88 +1378,6 @@ class _DetailRow extends StatelessWidget {
           const SizedBox(height: 3),
           Text(value, style: Theme.of(context).textTheme.titleMedium),
         ],
-      ),
-    );
-  }
-}
-
-class _PlannedContent extends StatelessWidget {
-  const _PlannedContent({
-    required this.icon,
-    required this.title,
-    required this.message,
-  });
-
-  final IconData icon;
-  final String title;
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            Icon(icon, size: 48, color: PatientColors.brand),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            const _StatusPill(label: 'PLANNED'),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PreviewCard extends StatelessWidget {
-  const _PreviewCard({
-    required this.icon,
-    required this.title,
-    required this.description,
-  });
-
-  final IconData icon;
-  final String title;
-  final String description;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: const BoxDecoration(
-                color: PatientColors.brandSoft,
-                borderRadius: BorderRadius.all(Radius.circular(15)),
-              ),
-              child: Icon(icon, color: PatientColors.brand),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 3),
-                  Text(description),
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_right_rounded, color: PatientColors.muted),
-          ],
-        ),
       ),
     );
   }

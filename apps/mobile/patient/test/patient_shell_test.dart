@@ -31,9 +31,7 @@ void main() {
     expect(find.text('MOCKED'), findsOneWidget);
   });
 
-  testWidgets('shows medication, laboratory, and care history', (
-    tester,
-  ) async {
+  testWidgets('shows medication, laboratory, and care history', (tester) async {
     await tester.pumpWidget(const PatientApp());
 
     expect(find.text('Historique des médicaments'), findsOneWidget);
@@ -44,15 +42,18 @@ void main() {
     expect(find.text('Résultats de laboratoire'), findsOneWidget);
     expect(find.text('Bilan avant traitement'), findsOneWidget);
 
-    await tester.tap(find.text('Bilan avant traitement'));
-    await tester.pumpAndSettle();
+    await _tapVisible(tester, find.text('Bilan avant traitement'));
     expect(find.text('Hémoglobine'), findsOneWidget);
     expect(find.text('12,6 g/dL'), findsOneWidget);
     expect(find.text('DÉMO D1'), findsOneWidget);
     expect(find.text('Hôpitaux et médecins'), findsOneWidget);
     expect(find.text('Dr Inès Chaabane'), findsOneWidget);
     expect(find.text('Dr Youssef Gharbi'), findsOneWidget);
-    expect(find.text('Cabinet médical Dr Hatem Bouzid'), findsOneWidget);
+    // The organization shares its subtitle with the date and specialty.
+    expect(
+      find.textContaining('Cabinet médical Dr Hatem Bouzid'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('shows consent grants and supports local revocation', (
@@ -67,8 +68,7 @@ void main() {
     expect(find.text('Dr Inès Chaabane'), findsOneWidget);
     expect(find.text('Révoquer cet accès'), findsOneWidget);
 
-    await tester.tap(find.text('Révoquer cet accès'));
-    await tester.pumpAndSettle();
+    await _tapVisible(tester, find.text('Révoquer cet accès'));
     expect(find.text('Révoquer cet accès ?'), findsOneWidget);
     await tester.tap(find.text('Révoquer').last);
     await tester.pumpAndSettle();
@@ -83,9 +83,14 @@ void main() {
 
     await tester.tap(find.text('Accès'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Accorder un accès'));
-    await tester.pumpAndSettle();
-    expect(find.text('Accorder un accès'), findsOneWidget);
+    await _tapVisible(tester, find.text('Accorder un accès'));
+    expect(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Accorder un accès'),
+      ),
+      findsOneWidget,
+    );
     await tester.tap(find.text('Accorder').last);
     await tester.pumpAndSettle();
 
@@ -101,7 +106,10 @@ void main() {
 
     await tester.tap(find.text('Accès'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Retirer la délégation'), 200);
+    await tester.scrollUntilVisible(
+      find.text('Retirer la délégation').hitTestable(),
+      200,
+    );
 
     expect(find.text('Proches de confiance'), findsOneWidget);
     expect(find.text('Sami Mansouri · Fils'), findsOneWidget);
@@ -113,16 +121,12 @@ void main() {
     expect(find.text('DÉLÉGUÉ'), findsOneWidget);
   });
 
-  testWidgets('delegates scoped access to a relative locally', (
-    tester,
-  ) async {
+  testWidgets('delegates scoped access to a relative locally', (tester) async {
     await tester.pumpWidget(const PatientApp());
 
     await tester.tap(find.text('Accès'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Déléguer à un proche'), 200);
-    await tester.tap(find.text('Déléguer à un proche'));
-    await tester.pumpAndSettle();
+    await _tapVisible(tester, find.text('Déléguer à un proche'));
 
     await tester.tap(find.text('Déléguer').last);
     await tester.pumpAndSettle();
@@ -146,9 +150,7 @@ void main() {
 
     await tester.tap(find.text('Accès'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Retirer la délégation'), 200);
-    await tester.tap(find.text('Retirer la délégation'));
-    await tester.pumpAndSettle();
+    await _tapVisible(tester, find.text('Retirer la délégation'));
     expect(find.text('Retirer la délégation ?'), findsOneWidget);
     await tester.tap(find.text('Retirer').last);
     await tester.pumpAndSettle();
@@ -164,11 +166,13 @@ void main() {
 
     await tester.tap(find.text('Profil'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Aucune demande en cours'), 200);
+    await tester.scrollUntilVisible(
+      find.text('Aucune demande en cours').hitTestable(),
+      200,
+    );
     expect(find.text('Mes demandes sur mes données'), findsOneWidget);
 
-    await tester.tap(find.text('Faire une demande'));
-    await tester.pumpAndSettle();
+    await _tapVisible(tester, find.text('Faire une demande'));
     expect(find.textContaining('jamais garanti'), findsOneWidget);
     await tester.tap(find.text('Envoyer la demande'));
     await tester.pumpAndSettle();
@@ -228,10 +232,17 @@ void main() {
     expect(find.text('Laboratoire El Amal'), findsOneWidget);
     expect(find.text('AUTORISÉ'), findsNWidgets(3));
 
-    await tester.tap(find.text('Consultation de suivi'));
-    await tester.pumpAndSettle();
+    await _tapVisible(tester, find.text('Consultation de suivi'));
     expect(find.text('Organisation'), findsOneWidget);
     expect(find.text('Hôpital Carthage'), findsNWidgets(2));
+    await tester.scrollUntilVisible(
+      find.text('DÉMO D1').hitTestable(),
+      100,
+      scrollable: find.descendant(
+        of: find.byType(BottomSheet),
+        matching: find.byType(Scrollable),
+      ),
+    );
     expect(find.text('DÉMO D1'), findsOneWidget);
   });
 
@@ -282,4 +293,14 @@ Future<void> _selectDemoState(WidgetTester tester, String label) async {
   await tester.tap(find.text(label));
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 250));
+}
+
+/// Scrolls [finder] until it can receive a tap, then taps it.
+///
+/// `scrollUntilVisible` alone stops at widgets laid out below the test
+/// viewport, so taps on them miss.
+Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
+  await tester.scrollUntilVisible(finder.hitTestable(), 200);
+  await tester.tap(finder);
+  await tester.pumpAndSettle();
 }
