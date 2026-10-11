@@ -20,3 +20,4 @@ Clean/Hexagonal principles are an initial project constraint and do not require 
 | [ADR-0006](ADR-0006-ai-provider-strategy.md) | AI provider strategy — Claude first, local Ollama fallback | Accepted |
 | [ADR-0007](ADR-0007-permissioned-audit-ledger.md) | Permissioned audit ledger — Hyperledger Besu (QBFT) behind `AuditLedgerPort` | Accepted |
 | [ADR-0008](ADR-0008-medication-safety-check-host.md) | The Hospital Node serves the medication safety check | Accepted |
+| [ADR-0009](ADR-0009-validated-interaction-source.md) | Validated interaction source — ONC high-priority list, matched by ingredient name | Accepted |

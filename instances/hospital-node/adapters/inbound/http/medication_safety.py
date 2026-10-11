@@ -151,7 +151,9 @@ def _wire(result: SafetyCheckResult) -> dict:
         "requested_by": request.requested_by,
         "outcome": "warnings_found" if outcome.warnings_found else "no_warnings_found",
         "review_status": "pending_clinician_review",
-        "notice": notice + (MOCKED_NOTICE if result.mocked else ""),
+        "notice": notice
+        + (MOCKED_NOTICE if result.mocked else "")
+        + (f" {rules.scope_note}" if rules.scope_note else ""),
         "warnings": [
             {
                 "warning_id": f"warning-{index}",

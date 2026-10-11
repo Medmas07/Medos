@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 import pytest
 
 from domain.medication_safety import (
@@ -146,11 +148,27 @@ def test_an_unidentified_proposed_medication_cannot_be_checked(proposed):
             {"rules": (InteractionRule("r", frozenset({"A"}), Severity.MAJOR, "x"),)},
             "two medications",
         ),
-        ({"medications": {"A": "Alpha", "B": "alpha"}, "rules": ()}, "share a name"),
+        (
+            {"medications": {"A": "Alpha", "B": "alpha"}, "rules": ()},
+            "points to two medications",
+        ),
         ({"version": " "}, "version"),
     ],
 )
 def test_an_inconsistent_rule_set_is_refused(changes, message):
-    fields = {**RULES.__dict__, **changes}
     with pytest.raises(InvalidRuleSet, match=message):
-        RuleSet(**fields)
+        replace(RULES, **changes)
+
+
+def test_synonyms_identify_a_medication_and_cannot_point_to_two():
+    rules = replace(RULES, synonyms={"alfa": "A", "St John\u2019s wort": "D"})
+
+    outcome = check_interactions(
+        rules, med("ALFA"), (statement("s-d", med("st john's wort")),)
+    )
+
+    assert [w.rule.rule_id for w in outcome.warnings] == ["r-ad"]
+    with pytest.raises(InvalidRuleSet, match="points to two medications"):
+        replace(RULES, synonyms={"gamma": "A"})
+    with pytest.raises(InvalidRuleSet, match="does not evaluate"):
+        replace(RULES, synonyms={"zeta": "Z"})

@@ -12,8 +12,9 @@ SKELETON_NOTICE = (
     "and managed without authentication. The research agent runs only a bounded installed aggregate in the "
     "HC-186 restricted child process; its source repository is MOCKED and arbitrary submitted code execution "
     "is not implemented. This is not container-grade production isolation. The medication "
-    "safety check is deterministic, but its rules are MOCKED: fictional, not a validated "
-    "source. No DMI capability. "
+    "safety check is deterministic; its rules are MOCKED fictional rules unless the "
+    "configuration selects the validated ONC high-priority list, a minimum set that is not "
+    "exhaustive. No DMI capability. "
     "Liveness only; not a production health check."
 )
 

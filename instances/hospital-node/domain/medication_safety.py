@@ -7,14 +7,15 @@ warning awaits clinician review, and finding none is not a statement that a
 prescription is safe.
 
 A medication is identified in the rule set by its code in the rule set's code system,
-otherwise by its exact name (case and accents ignored). A code and a name that point to
+otherwise by its exact name or one of the rule set's synonyms for it (case, accents,
+and apostrophe style ignored). A code and a name that point to
 different medications are ambiguous, and nothing is guessed. Only active statements are
 evaluated: a stopped medication is not current, and one whose status is unknown is
 reported, not assumed.
 """
 
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 
 
@@ -57,6 +58,7 @@ class UnevaluatedReason(Enum):
 
 
 def _folded(text: str) -> str:
+    text = text.replace("\u2019", "'")
     decomposed = unicodedata.normalize("NFD", text.strip().casefold())
     return "".join(c for c in decomposed if unicodedata.category(c) != "Mn")
 
@@ -106,15 +108,27 @@ class RuleSet:
     # Code -> name of every medication the rule set evaluates.
     medications: dict[str, str]
     rules: tuple[InteractionRule, ...]
+    # Other names -> code, for example a French INN (HC-163).
+    synonyms: dict[str, str] = field(default_factory=dict)
+    # What the rule set does not cover, shown with every result.
+    scope_note: str | None = None
 
     def __post_init__(self) -> None:
-        for field in ("name", "version", "code_system"):
-            if not getattr(self, field).strip():
-                raise InvalidRuleSet(f"{field} is required")
-        names = [_folded(n) for n in self.medications.values()]
-        if len(set(names)) != len(names):
-            raise InvalidRuleSet("two evaluated medications share a name")
-        pairs: set[frozenset[str]] = set()
+        for name in ("name", "version", "code_system"):
+            if not getattr(self, name).strip():
+                raise InvalidRuleSet(f"{name} is required")
+        if not set(self.synonyms.values()) <= self.medications.keys():
+            raise InvalidRuleSet(
+                "a synonym names a medication the rule set does not evaluate"
+            )
+        names: dict[str, str] = {}
+        for name, code in [(n, c) for c, n in self.medications.items()] + list(
+            self.synonyms.items()
+        ):
+            if names.setdefault(_folded(name), code) != code:
+                raise InvalidRuleSet(f"the name {name!r} points to two medications")
+        object.__setattr__(self, "_names", names)
+        pairs: dict[frozenset[str], InteractionRule] = {}
         for rule in self.rules:
             if len(rule.medication_codes) != 2:
                 raise InvalidRuleSet(f"{rule.rule_id} must name two medications")
@@ -124,22 +138,15 @@ class RuleSet:
                 )
             if rule.medication_codes in pairs:
                 raise InvalidRuleSet(f"{rule.rule_id} repeats a medication pair")
-            pairs.add(rule.medication_codes)
+            pairs[rule.medication_codes] = rule
+        object.__setattr__(self, "_rules_by_pair", pairs)
 
     def rule_for(self, first: str, second: str) -> InteractionRule | None:
-        pair = frozenset({first, second})
-        return next((r for r in self.rules if r.medication_codes == pair), None)
+        return self._rules_by_pair.get(frozenset({first, second}))
 
     def identify(self, medication: Medication) -> str | UnevaluatedReason:
         """The medication's code in this rule set, or why it cannot be evaluated."""
-        by_name = next(
-            (
-                code
-                for code, name in self.medications.items()
-                if _folded(name) == _folded(medication.name)
-            ),
-            None,
-        )
+        by_name = self._names.get(_folded(medication.name))
         by_code = None
         if medication.code is not None and medication.code.system == self.code_system:
             by_code = medication.code.code

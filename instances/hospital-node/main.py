@@ -20,6 +20,10 @@ from adapters.outbound.fixture_authorization_verifier import (
 )
 from adapters.outbound.fixture_clinical_repository import FixtureClinicalRepository
 from adapters.outbound.fixture_interaction_rules import FixtureInteractionRuleSource
+from adapters.outbound.validated_snapshot_rules import (
+    ONC_HIGH_PRIORITY_2012,
+    ValidatedSnapshotRuleSource,
+)
 from adapters.outbound.in_memory_access_grant_store import InMemoryAccessGrantStore
 from adapters.outbound.in_memory_audit_log import InMemoryAuditLog
 from adapters.outbound.in_memory_research_execution_store import (
@@ -62,8 +66,13 @@ def create_app(
         IsolatedResearchSandbox(research_data),
         InMemoryResearchExecutionStore(),
     )
-    # MOCKED (HC-162): fictional deterministic rules, not a validated source (HC-163).
-    rule_source = FixtureInteractionRuleSource.load(config.mock_medication_rules)
+    rule_source: FixtureInteractionRuleSource | ValidatedSnapshotRuleSource
+    if config.medication_rule_source == "onc_high_priority_2012":
+        # HC-163: the validated ONC high-priority list; real drugs only, not mocked.
+        rule_source = ValidatedSnapshotRuleSource.load(ONC_HIGH_PRIORITY_2012)
+    else:
+        # MOCKED (HC-162): fictional deterministic rules for the canonical demo.
+        rule_source = FixtureInteractionRuleSource.load(config.mock_medication_rules)
     app = FastAPI(title="Hospital Node", version=NODE_VERSION)
     app.include_router(create_health_router(config.identity, repository))
     app.include_router(
