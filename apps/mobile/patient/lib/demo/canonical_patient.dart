@@ -260,3 +260,15 @@ const demoDelegations = <CanonicalDelegation>[
     expiresAt: 'Sans date d’expiration',
   ),
 ];
+
+/// Organizations holding Patient A's records in HC-005 (`localIdentifiers`).
+const demoPatientSources = <String>[
+  'Hôpital Universitaire Bab Ennour',
+  'Hôpital Régional Oued Zitoun',
+  'Cabinet médical Dr Hatem Bouzid',
+];
+
+/// Patient notice copied from HC-005's canonical restriction request.
+const demoRestrictionNotice =
+    'Votre demande est en cours d\'analyse. Certaines données peuvent devoir '
+    'être conservées pour des obligations légales ou de soins.';

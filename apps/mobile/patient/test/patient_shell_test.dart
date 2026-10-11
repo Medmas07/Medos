@@ -157,6 +157,37 @@ void main() {
     expect(find.text('Retirer la délégation'), findsNothing);
   });
 
+  testWidgets('tracks a restriction request without promising deletion', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const PatientApp());
+
+    await tester.tap(find.text('Profil'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Aucune demande en cours'), 200);
+    expect(find.text('Mes demandes sur mes données'), findsOneWidget);
+
+    await tester.tap(find.text('Faire une demande'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('jamais garanti'), findsOneWidget);
+    await tester.tap(find.text('Envoyer la demande'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Aucune demande en cours'), findsNothing);
+    expect(find.text('Restreindre l’utilisation future'), findsOneWidget);
+    expect(find.text('Toutes mes sources'), findsOneWidget);
+    expect(find.text('SOUMISE'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pump();
+    expect(find.text('EN ANALYSE'), findsOneWidget);
+    expect(
+      find.textContaining('obligations légales ou de soins'),
+      findsOneWidget,
+    );
+    expect(find.text('Revue hôpital / gouvernance'), findsOneWidget);
+  });
+
   testWidgets('renders the federated authorized timeline fixtures', (
     tester,
   ) async {
