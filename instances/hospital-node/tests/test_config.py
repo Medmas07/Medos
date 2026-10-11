@@ -25,6 +25,7 @@ VALID = {
     "mock_clinical_records": "records/test.json",
     "mock_access_grants": "access.json",
     "mock_governance_decisions": "governance.json",
+    "mock_medication_rules": "medication-rules.json",
 }
 
 
@@ -119,3 +120,25 @@ def test_missing_file_stops_startup(tmp_path):
 def test_invalid_configuration_stops_startup(tmp_path, content):
     with pytest.raises(ConfigError, match="Invalid hospital configuration"):
         load_config(write_config(tmp_path, content))
+
+
+def test_the_medication_rule_source_defaults_to_the_demo_rules(tmp_path):
+    assert load_config(write_config(tmp_path, VALID)).medication_rule_source == (
+        "demo_fixture"
+    )
+    onc = {**VALID, "medication_rule_source": "onc_high_priority_2012"}
+    assert load_config(write_config(tmp_path, onc)).medication_rule_source == (
+        "onc_high_priority_2012"
+    )
+    with pytest.raises(ConfigError):
+        load_config(write_config(tmp_path, {**VALID, "medication_rule_source": "llm"}))
+
+
+def test_ai_explanations_are_off_unless_a_url_is_configured(tmp_path):
+    assert load_config(write_config(tmp_path, VALID)).ai_services_url is None
+    on = {**VALID, "ai_services_url": "http://localhost:8600"}
+    assert load_config(write_config(tmp_path, on)).ai_services_url.startswith(
+        "http://localhost:8600"
+    )
+    with pytest.raises(ConfigError):
+        load_config(write_config(tmp_path, {**VALID, "ai_services_url": "ftp://x"}))

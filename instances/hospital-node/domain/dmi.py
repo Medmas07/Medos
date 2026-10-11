@@ -3,25 +3,23 @@
 The values on the Node side of the DMI port (application/dmi_source.py): records in this
 Node's canonical clinical model (domain/clinical_record.py), never in the DMI's own
 format. The DMI's representations, codes, and schema stay inside the hospital-specific
-adapter (adapters/dmi/); how they map to the canonical model is HC-122.
+adapter (adapters/dmi/); how they map to the canonical model is the mapping strategy
+(HC-122, adapters/dmi/README.md).
 
 Two rules hold for every adapter:
 
 - One patient per extraction. Every record carries the ecosystem patient reference the
   Node asked for, whatever local identifier the DMI uses.
 - Nothing is dropped silently. A source entry the adapter cannot map is listed as
-  rejected, by its DMI-local reference and a reason code, never with its content.
+  rejected, by its DMI-local reference and a RejectionReason, never with its content.
 """
 
-import re
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 
 from domain.clinical_record import PatientRecords
 from domain.node_identity import is_opaque_ref
-
-_REASON = re.compile(r"^[a-z][a-z_]{0,63}$")
 
 
 class InvalidDmiExtract(ValueError):
@@ -34,6 +32,19 @@ class RecordType(Enum):
     ENCOUNTERS = "encounters"
     MEDICATIONS = "medications"
     LAB_REPORTS = "lab_reports"
+
+
+class RejectionReason(Enum):
+    """Why a source entry was not mapped (HC-122). The same codes for every adapter."""
+
+    # A field the canonical record needs is absent from the entry.
+    MISSING_FIELD = "missing_field"
+    # A field is present but the canonical model refuses it: a malformed date, a
+    # reference that is not opaque, a value of the wrong type.
+    INVALID_VALUE = "invalid_value"
+    # A local code (medication, test, encounter type, status, flag, clinician) has no
+    # entry in this hospital's mapping table. It is never passed through as is.
+    UNMAPPED_CODE = "unmapped_code"
 
 
 def _require(condition: bool, message: str) -> None:
@@ -81,16 +92,16 @@ class RejectedEntry:
 
     source_ref: str
     record_type: RecordType
-    # A short code, for example `unmapped_code` or `missing_field`; the vocabulary is
-    # the mapping strategy's (HC-122).
-    reason: str
+    reason: RejectionReason
 
     def __post_init__(self) -> None:
         _require(
             0 < len(self.source_ref) <= 128 and self.source_ref.isprintable(),
             "source_ref must be 1-128 printable characters",
         )
-        _require(bool(_REASON.fullmatch(self.reason)), "reason must be a reason code")
+        _require(
+            isinstance(self.reason, RejectionReason), "reason must be a RejectionReason"
+        )
 
 
 @dataclass(frozen=True)

@@ -1,0 +1,353 @@
+openapi: 3.1.0
+info:
+  title: AI Services — Medication Warning Explanation
+  version: 1.0.0
+  description: |
+    Contract HC-156, version 1. Puts one deterministic medication warning in
+    plain words for the clinician. It produces the `Explanation` that the
+    medication safety contract (medication-safety-check.v1.yaml,
+    `Warning.explanation`) reserves for AI Services; the `explanation` object
+    returned here is exactly that schema.
+
+    Boundary rules carried by this contract:
+
+    - **AI is never the safety source.** The warning exists because a
+      deterministic rule set or a validated source produced it
+      (`rule_source.kind` only allows `deterministic_rule_set` or
+      `validated_source`). The explanation does not decide whether there is
+      an interaction, how serious it is, or what to prescribe.
+    - **Model text is checked before it is shown.** It must name both
+      medications as given, state the warning's own severity and no other,
+      contain no dose, quantity, or frequency, give no recommendation or
+      directive (the warning carries none), and stay within 800 characters.
+      The checks are deterministic word and pattern checks: they catch these
+      faults, not every unfaithful sentence. Text
+      that fails any check is discarded: the deterministic template is returned
+      instead, and `rejected_reasons` says why. The same happens when no model
+      answers. Unchecked model text is never returned.
+    - **Advisory.** `advisory` is always `true`; the clinician decides. A
+      warning stays complete without its explanation.
+    - **Minimised.** The request carries the warning's content and an opaque
+      `requested_by`: no patient reference or medication history. With a hosted
+      model provider, the warning's content is sent to that provider (ADR-0006).
+
+    Not decided by this version, and OPEN: explanations for patients (this
+    version addresses clinicians), languages other than the warning's own, and
+    the authentication convention.
+
+    Status: implemented by AI Services (HC-156) with real model providers
+    (Claude, then a local Ollama model, ADR-0006) or the deterministic template
+    only (`template` mode). A Hospital Node configured with an AI Services
+    URL calls it for each warning of its medication safety check and attaches
+    the result as `Warning.explanation` (HC-164). Not clinically validated.
+servers:
+  - url: http://localhost:8600
+    description: Local AI Services runtime (development and preview only).
+paths:
+  /v1/medication-warning-explanations:
+    post:
+      operationId: createMedicationWarningExplanation
+      summary: Explain one deterministic medication warning to a clinician.
+      description: |
+        Synchronous. Always `200` with an explanation for a valid request:
+        model text that passed every check, or the deterministic template.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExplanationRequest"
+            examples:
+              coagulixDolorane:
+                summary: >-
+                  Fictional demo — the canonical demo rule
+                  (demo-data/medication-rules.json, rule-coagulix-dolorane):
+                  Dolorane proposed for a patient taking Coagulix.
+                value:
+                  {
+                    "requested_by": "clin-x",
+                    "warning": {
+                      "warning_id": "warning-1",
+                      "type": "drug_drug_interaction",
+                      "severity": "major",
+                      "summary": "Risque hémorragique accru.",
+                      "proposed_medication": {
+                        "name": "Dolorane",
+                        "code": null
+                      },
+                      "conflicting_medication": {
+                        "name": "Coagulix",
+                        "code": null
+                      },
+                      "rule_source": {
+                        "kind": "deterministic_rule_set",
+                        "name": "Règles fictives de démonstration",
+                        "version": "1.0",
+                        "rule_id": "rule-coagulix-dolorane",
+                        "reference": null
+                      }
+                    }
+                  }
+      responses:
+        "200":
+          description: An advisory explanation of the warning.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExplanationResult"
+              examples:
+                template:
+                  summary: Template mode — the deterministic template, no model called.
+                  value:
+                    {
+                      "explanation_id": "1f3a5c7e-9b2d-4f6a-8c0e-2d4b6f8a0c1e",
+                      "contract_version": "1.0",
+                      "warning_id": "warning-1",
+                      "advisory": true,
+                      "review_status": "pending_clinician_review",
+                      "notice": "Advisory explanation of a medication warning. The warning comes from a deterministic rule set or a validated source, never from AI; this text only puts it in words and does not change its severity. The clinician decides.",
+                      "explanation": {
+                        "text": "Interaction majeure entre Dolorane et Coagulix selon Règles fictives de démonstration (règle rule-coagulix-dolorane) : Risque hémorragique accru. La décision appartient au clinicien.",
+                        "advisory": true,
+                        "generated_by": {
+                          "kind": "deterministic_template",
+                          "name": "medication-warning-template",
+                          "version": "hc-156-v1",
+                          "mocked": false
+                        },
+                        "generated_at": "2026-10-11T10:00:00+00:00"
+                      },
+                      "rejected_reasons": [],
+                      "uncertainty_notes": []
+                    }
+                model:
+                  summary: >-
+                    Model mode — an illustrative model explanation that passed
+                    every check. Model output varies from run to run.
+                  value:
+                    {
+                      "explanation_id": "6e8c0a2b-4d6f-4a1c-9e3b-5f7d9b1c3e5a",
+                      "contract_version": "1.0",
+                      "warning_id": "warning-1",
+                      "advisory": true,
+                      "review_status": "pending_clinician_review",
+                      "notice": "Advisory explanation of a medication warning. The warning comes from a deterministic rule set or a validated source, never from AI; this text only puts it in words and does not change its severity. The clinician decides.",
+                      "explanation": {
+                        "text": "Dolorane, proposé, et Coagulix, déjà pris par le patient, interagissent selon les règles de démonstration : l'association expose à un risque hémorragique accru. Cette interaction est classée majeure par la source de règles. La décision appartient au clinicien.",
+                        "advisory": true,
+                        "generated_by": {
+                          "kind": "model",
+                          "name": "claude-agent-sdk",
+                          "version": "claude-opus-5-5",
+                          "mocked": false
+                        },
+                        "generated_at": "2026-10-11T10:00:00+00:00"
+                      },
+                      "rejected_reasons": [],
+                      "uncertainty_notes": []
+                    }
+                modelRejected:
+                  summary: >-
+                    Model mode — the model's text did not state the warning's
+                    severity, named another one, and gave a dose, so it was
+                    discarded and the template returned.
+                  value:
+                    {
+                      "explanation_id": "0c2e4a6b-8d1f-4b3c-a5e7-9f1b3d5c7e9a",
+                      "contract_version": "1.0",
+                      "warning_id": "warning-1",
+                      "advisory": true,
+                      "review_status": "pending_clinician_review",
+                      "notice": "Advisory explanation of a medication warning. The warning comes from a deterministic rule set or a validated source, never from AI; this text only puts it in words and does not change its severity. The clinician decides.",
+                      "explanation": {
+                        "text": "Interaction majeure entre Dolorane et Coagulix selon Règles fictives de démonstration (règle rule-coagulix-dolorane) : Risque hémorragique accru. La décision appartient au clinicien.",
+                        "advisory": true,
+                        "generated_by": {
+                          "kind": "deterministic_template",
+                          "name": "medication-warning-template",
+                          "version": "hc-156-v1",
+                          "mocked": false
+                        },
+                        "generated_at": "2026-10-11T10:00:00+00:00"
+                      },
+                      "rejected_reasons": [
+                        "the explanation does not state the severity major",
+                        "the explanation names a severity other than major",
+                        "the explanation contains a dose or an administration quantity"
+                      ],
+                      "uncertainty_notes": [
+                      "Deterministic template: no model text is shown."
+                    ]
+                    }
+        "400":
+          description: The request does not match this contract.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                llmSource:
+                  summary: A warning whose source is not a deterministic or validated source.
+                  value:
+                    type: about:blank
+                    title: Invalid medication warning explanation request
+                    status: 400
+                    detail: "Invalid or missing fields: warning.rule_source.kind"
+                    code: invalid_request
+components:
+  schemas:
+    OpaqueRef:
+      description: Opaque identifier. Must not contain a name or other direct identifier.
+      type: string
+      pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    Medication:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        code:
+          description: Accepted as in medication-safety-check.v1.yaml; not used.
+          type: [object, "null"]
+    ExplanationRequest:
+      type: object
+      additionalProperties: false
+      required: [requested_by, warning]
+      properties:
+        requested_by:
+          $ref: "#/components/schemas/OpaqueRef"
+        warning:
+          description: The warning's content, as medication-safety-check.v1.yaml carries it.
+          type: object
+          additionalProperties: false
+          required: [warning_id, type, severity, summary, proposed_medication, conflicting_medication, rule_source]
+          properties:
+            warning_id:
+              type: string
+              minLength: 1
+              maxLength: 500
+            type:
+              const: drug_drug_interaction
+            severity:
+              type: string
+              enum: [contraindicated, major, moderate, minor]
+            summary:
+              type: string
+              minLength: 1
+              maxLength: 500
+            proposed_medication:
+              $ref: "#/components/schemas/Medication"
+            conflicting_medication:
+              $ref: "#/components/schemas/Medication"
+            rule_source:
+              type: object
+              additionalProperties: false
+              required: [kind, name, version, rule_id]
+              properties:
+                kind:
+                  description: Allowed safety sources. An LLM is deliberately not one of them.
+                  type: string
+                  enum: [deterministic_rule_set, validated_source]
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 500
+                version:
+                  type: string
+                  minLength: 1
+                  maxLength: 500
+                rule_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 500
+                reference:
+                  type: [string, "null"]
+                  maxLength: 500
+    ExplanationResult:
+      type: object
+      additionalProperties: false
+      required: [explanation_id, contract_version, warning_id, advisory, review_status, notice, explanation, rejected_reasons, uncertainty_notes]
+      properties:
+        explanation_id:
+          type: string
+          format: uuid
+        contract_version:
+          const: "1.0"
+        warning_id:
+          type: string
+        advisory:
+          const: true
+        review_status:
+          const: pending_clinician_review
+        notice:
+          type: string
+        explanation:
+          $ref: "#/components/schemas/Explanation"
+        rejected_reasons:
+          description: Why model text was not used; empty when it was, or in template mode.
+          type: array
+          items:
+            type: string
+        uncertainty_notes:
+          type: array
+          items:
+            type: string
+    Explanation:
+      description: Plain-language explanation of a warning. Advisory; never the safety source.
+      type: object
+      additionalProperties: false
+      required:
+      - text
+      - advisory
+      - generated_by
+      - generated_at
+      properties:
+        text:
+          type: string
+          minLength: 1
+        advisory:
+          const: true
+        generated_by:
+          type: object
+          additionalProperties: false
+          required:
+          - kind
+          - name
+          - version
+          - mocked
+          properties:
+            kind:
+              type: string
+              enum:
+              - deterministic_template
+              - model
+            name:
+              type: string
+              minLength: 1
+            version:
+              type: string
+              minLength: 1
+            mocked:
+              type: boolean
+        generated_at:
+          type: string
+          format: date-time
+    Problem:
+      description: RFC 9457 problem details.
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+          enum: [invalid_request]

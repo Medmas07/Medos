@@ -1,0 +1,18 @@
+{
+  "notice": "Fictional local DMI adapter configuration for Hospital B (HR Oued Zitoun) and its fictional Zitoun SIH nightly export. Hospital-local: no other node or central service reads it. No address or credential. Not a production configuration.",
+  "export_file": "../../../demo-data/dmi/hospital-b-export.json",
+  "establishment_code": "HROZ-SFAX",
+  "mapping": {
+    "version": "2026-10-01",
+    "source_offset": "+01:00",
+    "record_ref_prefix": "dmi-b-",
+    "tables": {
+      "encounter_types": {"URG": "emergency", "CS": "consultation"},
+      "medication_codes": {"COAG5": "MED-COAGULIX"},
+      "medication_statuses": {"EN COURS": "active", "ARRET": "stopped"},
+      "lab_tests": {"HB": "Hémoglobine", "PLQ": "Plaquettes", "CREA": "Créatinine"},
+      "lab_flags": {"B": "low", "N": "normal", "H": "high"},
+      "clinicians": {"MAT-0187": "clin-ines", "MAT-0203": "clin-walid"}
+    }
+  }
+}

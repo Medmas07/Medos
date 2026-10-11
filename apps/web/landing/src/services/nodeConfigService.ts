@@ -22,6 +22,9 @@ export const NODE_CONFIG_KEYS = [
   'mock_clinical_records',
   'mock_access_grants',
   'mock_governance_decisions',
+  'mock_medication_rules',
+  'medication_rule_source',
+  'ai_services_url',
 ] as const
 
 export interface NodeConfigFile {
@@ -33,6 +36,11 @@ export interface NodeConfigFile {
   mock_clinical_records: string
   mock_access_grants: string
   mock_governance_decisions: string
+  mock_medication_rules: string
+  /** Fictional demo rules, or the validated ONC high-priority list (HC-163). */
+  medication_rule_source: 'demo_fixture' | 'onc_high_priority_2012'
+  /** AI Services URL for advisory warning explanations (HC-164); null keeps them off. */
+  ai_services_url: string | null
 }
 
 /** Local ports suggested by ADR-0003; port 8103 is reserved for Hospital C. */
@@ -104,6 +112,9 @@ export function nodeConfiguration(snapshot: OnboardingSnapshot): ConfigurationAv
         mock_clinical_records: `../../../demo-data/records/${recordFile ?? `${slug(organization.id)}.json`}`,
         mock_access_grants: '../../../demo-data/access.json',
         mock_governance_decisions: '../../../demo-data/governance.json',
+        mock_medication_rules: '../../../demo-data/medication-rules.json',
+        medication_rule_source: 'demo_fixture',
+        ai_services_url: null,
       },
       approvalDecisionRef: decision.id,
       federationBaseUrl: port === null ? null : `http://localhost:${port}`,

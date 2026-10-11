@@ -1,8 +1,9 @@
 """contracts/api/governance/governance-audit-events.v1.yaml (HC-134).
 
 Lists and reads the Governance Node's own audit trail. Filters are parsed strictly; an
-unknown, repeated, or invalid parameter is a 400 invalid_request. Readers are not
-authenticated: who may read the trail is OPEN.
+unknown, repeated, or invalid parameter is a 400 invalid_request. With authentication required (HC-211), a reader needs a bearer
+session whose role grants governance:audit (HC-212); off, readers are not
+authenticated.
 """
 
 from typing import Annotated
@@ -11,6 +12,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from adapters.inbound.http.authentication import AccessControl
 from adapters.inbound.http.problems import OPAQUE_REF, problem
 from application.audit import (
     DEFAULT_LIMIT,
@@ -20,13 +22,15 @@ from application.audit import (
     get_event,
     list_events,
 )
+from domain.access_control import Permission
 from domain.audit import AuditAction, AuditDomain, AuditEvent, AuditFilter
 from domain.node_identity import NodeIdentity
 
 NOTICE = (
     "Fictional demo governance audit trail, held in memory by the Governance Node: "
-    "events recorded at runtime are lost on restart, actors are declared, not "
-    "authenticated, and no event is anchored in a ledger."
+    "events recorded at runtime are lost on restart and actors are declared, not "
+    "authenticated. Recorded decisions are anchored in a simulated ledger (MOCKED), "
+    "not a blockchain."
 )
 
 Ref = Annotated[str, Field(pattern=OPAQUE_REF.pattern)]
@@ -74,7 +78,9 @@ def _wire(event: AuditEvent) -> dict:
     }
 
 
-def create_router(identity: NodeIdentity, trail: AuditTrail) -> APIRouter:
+def create_router(
+    identity: NodeIdentity, trail: AuditTrail, auth: AccessControl
+) -> APIRouter:
     router = APIRouter(prefix="/v1/audit/events", tags=["audit"])
 
     def envelope(**content: object) -> dict:
@@ -88,6 +94,8 @@ def create_router(identity: NodeIdentity, trail: AuditTrail) -> APIRouter:
 
     @router.get("")
     def list_audit_events(request: Request) -> JSONResponse:
+        if isinstance(caller := auth.caller(request, Permission.AUDIT), JSONResponse):
+            return caller
         params = request.query_params
         repeated = {key for key in params if len(params.getlist(key)) > 1}
         if repeated:
@@ -100,7 +108,9 @@ def create_router(identity: NodeIdentity, trail: AuditTrail) -> APIRouter:
         return JSONResponse(envelope(events=[_wire(e) for e in events]))
 
     @router.get("/{event_ref}")
-    def get_audit_event(event_ref: str) -> JSONResponse:
+    def get_audit_event(event_ref: str, request: Request) -> JSONResponse:
+        if isinstance(caller := auth.caller(request, Permission.AUDIT), JSONResponse):
+            return caller
         try:
             return JSONResponse(envelope(event=_wire(get_event(event_ref, trail))))
         except EventNotFound:

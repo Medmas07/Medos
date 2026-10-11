@@ -1,0 +1,921 @@
+{
+  "notice": "Transcription of a published expert-consensus list for the Hospital Node's deterministic medication safety engine (HC-163); no model is involved. A minimum set of contraindicated pairs, not an exhaustive interaction source. Not clinically validated by this project.",
+  "ruleSet": {
+    "kind": "validated_source",
+    "name": "onc-high-priority-ddi",
+    "version": "2012-table2/hc-163-1",
+    "codeSystem": "urn:hackcure:onc-high-priority-ddi:ingredient",
+    "citation": "Phansalkar S, Desai AA, Bell D, Yoshida E, Doole J, Czochanski M, Middleton B, Bates DW. High-priority drug-drug interactions for use in electronic health records. J Am Med Inform Assoc. 2012;19(5):735-743. doi:10.1136/amiajnl-2011-000612. PMID 22539083.",
+    "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3422823/",
+    "transcribedFrom": "Table 2, column 'Final DDI pair and suggested membership'",
+    "transcribedAt": "2026-10-11",
+    "scopeNote": "Liste ONC des interactions à haute priorité (Phansalkar et al., 2012) : un ensemble minimal d'associations contre-indiquées, non exhaustif. Une absence d'alerte ne signifie pas que l'association est sûre.",
+    "licenseNote": "Only the drug pairs (facts) and a citation are stored; no text of the article is reproduced. The article is copyright BMJ Publishing Group / Oxford University Press."
+  },
+  "ingredients": [
+    {
+      "code": "dexmethylphenidate",
+      "name": "dexmethylphenidate",
+      "synonyms": [
+        "dexméthylphénidate"
+      ]
+    },
+    {
+      "code": "dextroamphetamine",
+      "name": "dextroamphetamine",
+      "synonyms": [
+        "dexamfétamine",
+        "dexamfetamine"
+      ]
+    },
+    {
+      "code": "methylphenidate",
+      "name": "methylphenidate",
+      "synonyms": [
+        "méthylphénidate"
+      ]
+    },
+    {
+      "code": "lisdexamfetamine",
+      "name": "lisdexamfetamine",
+      "synonyms": [
+        "lisdexamfétamine"
+      ]
+    },
+    {
+      "code": "methamphetamine",
+      "name": "methamphetamine",
+      "synonyms": [
+        "métamfétamine",
+        "metamfetamine"
+      ]
+    },
+    {
+      "code": "phendimetrazine",
+      "name": "phendimetrazine",
+      "synonyms": [
+        "phendimétrazine"
+      ]
+    },
+    {
+      "code": "pseudoephedrine",
+      "name": "pseudoephedrine",
+      "synonyms": [
+        "pseudoéphédrine"
+      ]
+    },
+    {
+      "code": "amphetamine",
+      "name": "amphetamine",
+      "synonyms": [
+        "amfétamine",
+        "amfetamine"
+      ]
+    },
+    {
+      "code": "benzphetamine",
+      "name": "benzphetamine",
+      "synonyms": [
+        "benzfétamine",
+        "benzfetamine"
+      ]
+    },
+    {
+      "code": "diethylpropion",
+      "name": "diethylpropion",
+      "synonyms": [
+        "amfépramone",
+        "amfepramone"
+      ]
+    },
+    {
+      "code": "phentermine",
+      "name": "phentermine",
+      "synonyms": []
+    },
+    {
+      "code": "atomoxetine",
+      "name": "atomoxetine",
+      "synonyms": [
+        "atomoxétine"
+      ]
+    },
+    {
+      "code": "tranylcypromine",
+      "name": "tranylcypromine",
+      "synonyms": []
+    },
+    {
+      "code": "phenelzine",
+      "name": "phenelzine",
+      "synonyms": [
+        "phénelzine"
+      ]
+    },
+    {
+      "code": "isocarboxazid",
+      "name": "isocarboxazid",
+      "synonyms": [
+        "isocarboxazide"
+      ]
+    },
+    {
+      "code": "procarbazine",
+      "name": "procarbazine",
+      "synonyms": []
+    },
+    {
+      "code": "selegiline",
+      "name": "selegiline",
+      "synonyms": [
+        "sélégiline"
+      ]
+    },
+    {
+      "code": "moclobemide",
+      "name": "moclobemide",
+      "synonyms": [
+        "moclobémide"
+      ]
+    },
+    {
+      "code": "methylene blue",
+      "name": "methylene blue",
+      "synonyms": [
+        "bleu de méthylène",
+        "methylthioninium chloride",
+        "chlorure de méthylthioninium"
+      ]
+    },
+    {
+      "code": "atazanavir",
+      "name": "atazanavir",
+      "synonyms": []
+    },
+    {
+      "code": "omeprazole",
+      "name": "omeprazole",
+      "synonyms": [
+        "oméprazole"
+      ]
+    },
+    {
+      "code": "lansoprazole",
+      "name": "lansoprazole",
+      "synonyms": []
+    },
+    {
+      "code": "pantoprazole",
+      "name": "pantoprazole",
+      "synonyms": []
+    },
+    {
+      "code": "rabeprazole",
+      "name": "rabeprazole",
+      "synonyms": [
+        "rabéprazole"
+      ]
+    },
+    {
+      "code": "esomeprazole",
+      "name": "esomeprazole",
+      "synonyms": [
+        "ésoméprazole"
+      ]
+    },
+    {
+      "code": "febuxostat",
+      "name": "febuxostat",
+      "synonyms": [
+        "fébuxostat"
+      ]
+    },
+    {
+      "code": "azathioprine",
+      "name": "azathioprine",
+      "synonyms": []
+    },
+    {
+      "code": "mercaptopurine",
+      "name": "mercaptopurine",
+      "synonyms": []
+    },
+    {
+      "code": "fluoxetine",
+      "name": "fluoxetine",
+      "synonyms": [
+        "fluoxétine"
+      ]
+    },
+    {
+      "code": "paroxetine",
+      "name": "paroxetine",
+      "synonyms": [
+        "paroxétine"
+      ]
+    },
+    {
+      "code": "citalopram",
+      "name": "citalopram",
+      "synonyms": []
+    },
+    {
+      "code": "escitalopram",
+      "name": "escitalopram",
+      "synonyms": []
+    },
+    {
+      "code": "sertraline",
+      "name": "sertraline",
+      "synonyms": []
+    },
+    {
+      "code": "fluvoxamine",
+      "name": "fluvoxamine",
+      "synonyms": []
+    },
+    {
+      "code": "duloxetine",
+      "name": "duloxetine",
+      "synonyms": [
+        "duloxétine"
+      ]
+    },
+    {
+      "code": "nefazodone",
+      "name": "nefazodone",
+      "synonyms": [
+        "néfazodone"
+      ]
+    },
+    {
+      "code": "desvenlafaxine",
+      "name": "desvenlafaxine",
+      "synonyms": []
+    },
+    {
+      "code": "milnacipran",
+      "name": "milnacipran",
+      "synonyms": []
+    },
+    {
+      "code": "venlafaxine",
+      "name": "venlafaxine",
+      "synonyms": []
+    },
+    {
+      "code": "irinotecan",
+      "name": "irinotecan",
+      "synonyms": [
+        "irinotécan"
+      ]
+    },
+    {
+      "code": "ritonavir",
+      "name": "ritonavir",
+      "synonyms": []
+    },
+    {
+      "code": "nelfinavir",
+      "name": "nelfinavir",
+      "synonyms": []
+    },
+    {
+      "code": "indinavir",
+      "name": "indinavir",
+      "synonyms": []
+    },
+    {
+      "code": "saquinavir",
+      "name": "saquinavir",
+      "synonyms": []
+    },
+    {
+      "code": "amprenavir",
+      "name": "amprenavir",
+      "synonyms": []
+    },
+    {
+      "code": "darunavir",
+      "name": "darunavir",
+      "synonyms": []
+    },
+    {
+      "code": "lopinavir",
+      "name": "lopinavir",
+      "synonyms": []
+    },
+    {
+      "code": "tipranavir",
+      "name": "tipranavir",
+      "synonyms": []
+    },
+    {
+      "code": "fosamprenavir",
+      "name": "fosamprenavir",
+      "synonyms": []
+    },
+    {
+      "code": "clarithromycin",
+      "name": "clarithromycin",
+      "synonyms": [
+        "clarithromycine"
+      ]
+    },
+    {
+      "code": "erythromycin",
+      "name": "erythromycin",
+      "synonyms": [
+        "érythromycine"
+      ]
+    },
+    {
+      "code": "telithromycin",
+      "name": "telithromycin",
+      "synonyms": [
+        "télithromycine"
+      ]
+    },
+    {
+      "code": "amiodarone",
+      "name": "amiodarone",
+      "synonyms": []
+    },
+    {
+      "code": "verapamil",
+      "name": "verapamil",
+      "synonyms": [
+        "vérapamil"
+      ]
+    },
+    {
+      "code": "diltiazem",
+      "name": "diltiazem",
+      "synonyms": []
+    },
+    {
+      "code": "ketoconazole",
+      "name": "ketoconazole",
+      "synonyms": [
+        "kétoconazole"
+      ]
+    },
+    {
+      "code": "itraconazole",
+      "name": "itraconazole",
+      "synonyms": []
+    },
+    {
+      "code": "fluconazole",
+      "name": "fluconazole",
+      "synonyms": []
+    },
+    {
+      "code": "voriconazole",
+      "name": "voriconazole",
+      "synonyms": []
+    },
+    {
+      "code": "aprepitant",
+      "name": "aprepitant",
+      "synonyms": [
+        "aprépitant"
+      ]
+    },
+    {
+      "code": "cimetidine",
+      "name": "cimetidine",
+      "synonyms": [
+        "cimétidine"
+      ]
+    },
+    {
+      "code": "meperidine",
+      "name": "meperidine",
+      "synonyms": [
+        "péthidine",
+        "pethidine"
+      ]
+    },
+    {
+      "code": "methadone",
+      "name": "methadone",
+      "synonyms": [
+        "méthadone"
+      ]
+    },
+    {
+      "code": "tapentadol",
+      "name": "tapentadol",
+      "synonyms": []
+    },
+    {
+      "code": "fentanyl",
+      "name": "fentanyl",
+      "synonyms": []
+    },
+    {
+      "code": "tramadol",
+      "name": "tramadol",
+      "synonyms": []
+    },
+    {
+      "code": "dextromethorphan",
+      "name": "dextromethorphan",
+      "synonyms": [
+        "dextrométhorphane"
+      ]
+    },
+    {
+      "code": "ramelteon",
+      "name": "ramelteon",
+      "synonyms": [
+        "rameltéon"
+      ]
+    },
+    {
+      "code": "ticlopidine",
+      "name": "ticlopidine",
+      "synonyms": []
+    },
+    {
+      "code": "ciprofloxacin",
+      "name": "ciprofloxacin",
+      "synonyms": [
+        "ciprofloxacine"
+      ]
+    },
+    {
+      "code": "bosentan",
+      "name": "bosentan",
+      "synonyms": []
+    },
+    {
+      "code": "rifapentine",
+      "name": "rifapentine",
+      "synonyms": []
+    },
+    {
+      "code": "carbamazepine",
+      "name": "carbamazepine",
+      "synonyms": [
+        "carbamazépine"
+      ]
+    },
+    {
+      "code": "rifabutin",
+      "name": "rifabutin",
+      "synonyms": [
+        "rifabutine"
+      ]
+    },
+    {
+      "code": "rifampin",
+      "name": "rifampin",
+      "synonyms": [
+        "rifampicine",
+        "rifampicin"
+      ]
+    },
+    {
+      "code": "st john's wort",
+      "name": "st john's wort",
+      "synonyms": [
+        "millepertuis",
+        "hypericum perforatum"
+      ]
+    },
+    {
+      "code": "simvastatin",
+      "name": "simvastatin",
+      "synonyms": [
+        "simvastatine"
+      ]
+    },
+    {
+      "code": "lovastatin",
+      "name": "lovastatin",
+      "synonyms": [
+        "lovastatine"
+      ]
+    },
+    {
+      "code": "ergotamine",
+      "name": "ergotamine",
+      "synonyms": []
+    },
+    {
+      "code": "methylergonovine",
+      "name": "methylergonovine",
+      "synonyms": [
+        "méthylergométrine",
+        "methylergometrine"
+      ]
+    },
+    {
+      "code": "dihydroergotamine",
+      "name": "dihydroergotamine",
+      "synonyms": []
+    },
+    {
+      "code": "ergonovine",
+      "name": "ergonovine",
+      "synonyms": [
+        "ergométrine",
+        "ergometrine"
+      ]
+    },
+    {
+      "code": "tizanidine",
+      "name": "tizanidine",
+      "synonyms": []
+    },
+    {
+      "code": "mexiletine",
+      "name": "mexiletine",
+      "synonyms": [
+        "mexilétine"
+      ]
+    },
+    {
+      "code": "propafenone",
+      "name": "propafenone",
+      "synonyms": [
+        "propafénone"
+      ]
+    },
+    {
+      "code": "zileuton",
+      "name": "zileuton",
+      "synonyms": []
+    },
+    {
+      "code": "sumatriptan",
+      "name": "sumatriptan",
+      "synonyms": []
+    },
+    {
+      "code": "zolmitriptan",
+      "name": "zolmitriptan",
+      "synonyms": []
+    },
+    {
+      "code": "rizatriptan",
+      "name": "rizatriptan",
+      "synonyms": []
+    }
+  ],
+  "interactions": [
+    {
+      "id": "onc-2012-row-03",
+      "sourceRow": 3,
+      "sourcePair": "Amphetamine and derivatives–MAO inhibitors",
+      "severity": "contraindicated",
+      "summary": "Association contre-indiquée selon la liste ONC des interactions à haute priorité (Phansalkar et al., 2012) : amphétamine ou dérivé et inhibiteur de la MAO.",
+      "object": [
+        "dexmethylphenidate",
+        "dextroamphetamine",
+        "methylphenidate",
+        "lisdexamfetamine",
+        "methamphetamine",
+        "phendimetrazine",
+        "pseudoephedrine",
+        "amphetamine",
+        "benzphetamine",
+        "diethylpropion",
+        "phentermine",
+        "atomoxetine"
+      ],
+      "precipitant": [
+        "tranylcypromine",
+        "phenelzine",
+        "isocarboxazid",
+        "procarbazine",
+        "selegiline"
+      ]
+    },
+    {
+      "id": "onc-2012-row-04",
+      "sourceRow": 4,
+      "sourcePair": "Atazanavir–proton pump inhibitors",
+      "severity": "contraindicated",
+      "summary": "Association contre-indiquée selon la liste ONC des interactions à haute priorité (Phansalkar et al., 2012) : atazanavir et inhibiteur de la pompe à protons.",
+      "object": [
+        "atazanavir"
+      ],
+      "precipitant": [
+        "omeprazole",
+        "lansoprazole",
+        "pantoprazole",
+        "rabeprazole",
+        "esomeprazole"
+      ]
+    },
+    {
+      "id": "onc-2012-row-06",
+      "sourceRow": 6,
+      "sourcePair": "Febuxostat–azathioprine/mercaptopurine",
+      "severity": "contraindicated",
+      "summary": "Association contre-indiquée selon la liste ONC des interactions à haute priorité (Phansalkar et al., 2012) : fébuxostat et azathioprine ou mercaptopurine.",
+      "object": [
+        "febuxostat"
+      ],
+      "precipitant": [
+        "azathioprine",
+        "mercaptopurine"
+      ]
+    },
+    {
+      "id": "onc-2012-row-08",
+      "sourceRow": 8,
+      "sourcePair": "SSRIs–MAO inhibitors",
+      "severity": "contraindicated",
+      "summary": "Association contre-indiquée selon la liste ONC des interactions à haute priorité (Phansalkar et al., 2012) : ISRS ou apparenté et inhibiteur de la MAO.",
+      "object": [
+        "fluoxetine",
+        "paroxetine",
+        "citalopram",
+        "escitalopram",
+        "sertraline",
+        "fluvoxamine",
+        "duloxetine",
+        "nefazodone",
+        "desvenlafaxine",
+        "milnacipran",
+        "venlafaxine"
+      ],
+      "precipitant": [
+        "tranylcypromine",
+        "phenelzine",
+        "isocarboxazid",
+        "procarbazine",
+        "selegiline"
+      ]
+    },
+    {
+      "id": "onc-2012-row-11",
+      "sourceRow": 11,
+      "sourcePair": "Irinotecan–CYP3A4 inhibitors",
+      "severity": "contraindicated",
+      "summary": "Association contre-indiquée selon la liste ONC des interactions à haute priorité (Phansalkar et al., 2012) : irinotécan et inhibiteur du CYP3A4.",
+      "object": [
+        "irinotecan"
+      ],
+      "precipitant": [
+        "ritonavir",
+        "nelfinavir",
+        "atazanavir",
+        "indinavir",
+        "saquinavir",
+        "amprenavir",
+        "darunavir",
+        "lopinavir",
+        "tipranavir",
+        "fosamprenavir",
+        "clarithromycin",
+        "erythromycin",
+        "telithromycin",
+        "amiodarone",
+        "verapamil",
+        "diltiazem",
+        "ketoconazole",
+        "itraconazole",
+        "fluconazole",
+        "voriconazole",
+        "nefazodone",
+        "aprepitant",
+        "cimetidine"
+      ]
+    },
+    {
+      "id": "onc-2012-row-16",
+      "sourceRow": 16,
+      "sourcePair": "Narcotic analgesics–MAO inhibitors",
+      "severity": "contraindicated",
+      "summary": "Association contre-indiquée selon la liste ONC des interactions à haute priorité (Phansalkar et al., 2012) : analgésique opioïde ou apparenté et inhibiteur de la MAO.",
+      "object": [
+        "meperidine",
+        "methadone",
+        "tapentadol",
+        "fentanyl",
+        "tramadol",
+        "dextromethorphan"
+      ],
+      "precipitant": [
+        "tranylcypromine",
+        "phenelzine",
+        "isocarboxazid",
+        "selegiline",
+        "procarbazine"
+      ]
+    },
+    {
+      "id": "onc-2012-row-22",
+      "sourceRow": 22,
+      "sourcePair": "Ramelteon–specific CYP1A2 inhibitors",
+      "severity": "contraindicated",
+      "summary": "Association contre-indiquée selon la liste ONC des interactions à haute priorité (Phansalkar et al., 2012) : rameltéon et inhibiteur du CYP1A2.",
+      "object": [
+        "ramelteon"
+      ],
+      "precipitant": [
+        "fluvoxamine",
+        "amiodarone",
+        "ticlopidine",
+        "ciprofloxacin"
+      ]
+    },
+    {
+      "id": "onc-2012-row-23",
+      "sourceRow": 23,
+      "sourcePair": "Strong CYP3A4 inducers–protease inhibitors",
+      "severity": "contraindicated",
+      "summary": "Association contre-indiquée selon la liste ONC des interactions à haute priorité (Phansalkar et al., 2012) : inducteur puissant du CYP3A4 et inhibiteur de protéase.",
+      "object": [
+        "bosentan",
+        "rifapentine",
+        "carbamazepine",
+        "rifabutin",
+        "rifampin",
+        "st john's wort"
+      ],
+      "precipitant": [
+        "ritonavir",
+        "amprenavir",
+        "atazanavir",
+        "darunavir",
+        "fosamprenavir",
+        "indinavir",
+        "lopinavir",
+        "nelfinavir",
+        "saquinavir",
+        "tipranavir"
+      ]
+    },
+    {
+      "id": "onc-2012-row-25",
+      "sourceRow": 25,
+      "sourcePair": "HMG Co-A reductase inhibitors–CYP3A4 inhibitors",
+      "severity": "contraindicated",
+      "summary": "Association contre-indiquée selon la liste ONC des interactions à haute priorité (Phansalkar et al., 2012) : simvastatine ou lovastatine et inhibiteur du CYP3A4.",
+      "object": [
+        "simvastatin",
+        "lovastatin"
+      ],
+      "precipitant": [
+        "indinavir",
+        "saquinavir",
+        "tipranavir",
+        "ritonavir",
+        "nelfinavir",
+        "atazanavir",
+        "amprenavir",
+        "darunavir",
+        "lopinavir",
+        "clarithromycin",
+        "erythromycin",
+        "telithromycin",
+        "amiodarone",
+        "verapamil",
+        "diltiazem",
+        "ketoconazole",
+        "itraconazole",
+        "fluconazole",
+        "voriconazole",
+        "nefazodone"
+      ]
+    },
+    {
+      "id": "onc-2012-row-27",
+      "sourceRow": 27,
+      "sourcePair": "CYP3A4 inhibitors–ergot alkaloids and derivatives",
+      "severity": "contraindicated",
+      "summary": "Association contre-indiquée selon la liste ONC des interactions à haute priorité (Phansalkar et al., 2012) : inhibiteur du CYP3A4 et alcaloïde de l'ergot de seigle.",
+      "object": [
+        "indinavir",
+        "saquinavir",
+        "tipranavir",
+        "ritonavir",
+        "nelfinavir",
+        "atazanavir",
+        "amprenavir",
+        "darunavir",
+        "lopinavir",
+        "clarithromycin",
+        "erythromycin",
+        "telithromycin",
+        "ketoconazole",
+        "itraconazole",
+        "voriconazole"
+      ],
+      "precipitant": [
+        "ergotamine",
+        "methylergonovine",
+        "dihydroergotamine",
+        "ergonovine"
+      ]
+    },
+    {
+      "id": "onc-2012-row-28",
+      "sourceRow": 28,
+      "sourcePair": "Tizanidine–CYP1A2 inhibitors",
+      "severity": "contraindicated",
+      "summary": "Association contre-indiquée selon la liste ONC des interactions à haute priorité (Phansalkar et al., 2012) : tizanidine et inhibiteur du CYP1A2.",
+      "object": [
+        "tizanidine"
+      ],
+      "precipitant": [
+        "ciprofloxacin",
+        "fluvoxamine",
+        "mexiletine",
+        "propafenone",
+        "zileuton",
+        "amiodarone",
+        "ticlopidine"
+      ]
+    },
+    {
+      "id": "onc-2012-row-30",
+      "sourceRow": 30,
+      "sourcePair": "Tranylcypromine–procarbazine",
+      "severity": "contraindicated",
+      "summary": "Association contre-indiquée selon la liste ONC des interactions à haute priorité (Phansalkar et al., 2012) : tranylcypromine et procarbazine.",
+      "object": [
+        "tranylcypromine"
+      ],
+      "precipitant": [
+        "procarbazine"
+      ]
+    },
+    {
+      "id": "onc-2012-row-31",
+      "sourceRow": 31,
+      "sourcePair": "Triptans–MAO inhibitors",
+      "severity": "contraindicated",
+      "summary": "Association contre-indiquée selon la liste ONC des interactions à haute priorité (Phansalkar et al., 2012) : triptan et inhibiteur de la MAO.",
+      "object": [
+        "sumatriptan",
+        "zolmitriptan",
+        "rizatriptan"
+      ],
+      "precipitant": [
+        "tranylcypromine",
+        "phenelzine",
+        "isocarboxazid",
+        "moclobemide",
+        "methylene blue"
+      ]
+    }
+  ],
+  "excluded": [
+    {
+      "sourceRow": 20,
+      "sourcePair": "Tricyclic antidepressants (TCAs)–MAO inhibitors",
+      "reason": "Table 2 lists no TCA members; none are guessed."
+    },
+    {
+      "sourceRow": 21,
+      "sourcePair": "QT prolonging agents–QT prolonging agents",
+      "reason": "Members are deferred to the torsades.org (CredibleMeds) high-risk list, a separately licensed source."
+    }
+  ],
+  "corrections": [
+    {
+      "sourceRow": 3,
+      "printed": "Lisdexamefetamine",
+      "used": "lisdexamfetamine"
+    },
+    {
+      "sourceRow": 4,
+      "printed": "Esmoprazole",
+      "used": "esomeprazole"
+    },
+    {
+      "sourceRow": 11,
+      "printed": "Saquinavir (listed twice)",
+      "used": "saquinavir (once)"
+    },
+    {
+      "sourceRow": 25,
+      "printed": "Voreconazole",
+      "used": "voriconazole"
+    },
+    {
+      "sourceRow": 27,
+      "printed": "Voreconazole",
+      "used": "voriconazole"
+    },
+    {
+      "sourceRow": 31,
+      "printed": "Moclobamide",
+      "used": "moclobemide"
+    }
+  ],
+  "notIncluded": [
+    {
+      "sourceRow": 4,
+      "name": "dexlansoprazole",
+      "reason": "Named in the panel's considerations but absent from the final membership column; it is reported as not_in_rule_source, never assumed safe."
+    }
+  ]
+}

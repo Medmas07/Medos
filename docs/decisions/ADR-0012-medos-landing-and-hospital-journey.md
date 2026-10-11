@@ -1,4 +1,4 @@
-# ADR-0007: MedOS landing page as the hospital entry point, with a guided onboarding journey
+# ADR-0012: MedOS landing page as the hospital entry point, with a guided onboarding journey
 
 ## Status
 

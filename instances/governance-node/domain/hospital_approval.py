@@ -9,10 +9,9 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from enum import Enum
 
+from domain.access_control import Permission, permissions_of
 from domain.hospital_application import ApplicationStatus, HospitalApplication
 from domain.policy import GovernancePolicy
-
-GOVERNANCE_REVIEWER_ROLE = "governance_reviewer"
 
 
 class Outcome(str, Enum):
@@ -25,6 +24,11 @@ class Reviewer:
     person_ref: str
     role: str
     organization_ref: str
+
+    @property
+    def may_review(self) -> bool:
+        """The role grants governance review (HC-212's role matrix)."""
+        return Permission.REVIEW in permissions_of(self.role)
 
 
 @dataclass(frozen=True)
@@ -74,7 +78,7 @@ def check_reviewer(application: HospitalApplication, reviewer: Reviewer | None) 
     """An applicant never decides on its own application."""
     if reviewer is None:
         raise ReviewerNotAllowed("The reviewer is unknown to the Governance Node.")
-    if reviewer.role != GOVERNANCE_REVIEWER_ROLE:
+    if not reviewer.may_review:
         raise ReviewerNotAllowed("Only a governance reviewer may decide.")
     if reviewer.organization_ref == application.organization_ref:
         raise ReviewerNotAllowed(

@@ -34,6 +34,11 @@ ALLOWED_PROOF_FIELDS = {"eventId", "decisionId", "outcome", "decidedAt", "organi
 
 RECORD_COLLECTIONS = ("encounters", "medications", "labReports")
 
+# medication-safety-check.v1.yaml values (HC-160). An LLM is not a safety source.
+SAFETY_SOURCE_KINDS = {"deterministic_rule_set", "validated_source"}
+SEVERITIES = {"contraindicated", "major", "moderate", "minor"}
+UNEVALUATED_REASONS = {"not_in_rule_source", "ambiguous_medication", "status_unknown"}
+
 
 def load(relative: str) -> dict:
     with (ROOT / relative).open(encoding="utf-8") as handle:
@@ -125,6 +130,7 @@ def check(print_proof_hashes: bool = False) -> list[str]:
     # Each records file only holds records of its own organization, written by its own clinicians.
     records_by_patient: dict[str, set[str]] = {}
     active_meds: dict[str, set[str]] = {}
+    active_med_records: dict[str, list[dict]] = {}
     for name in (n for n in manifest["files"] if n.startswith("records/")):
         data = files[name]
         holder = data["heldBy"]
@@ -138,6 +144,64 @@ def check(print_proof_hashes: bool = False) -> list[str]:
                     errors.append(f"{name}: {record['id']} authored by {author!r} outside {holder}")
                 if collection == "medications" and record["status"] == "active":
                     active_meds.setdefault(record["patientId"], set()).add(record["medicationCode"])
+                    active_med_records.setdefault(record["patientId"], []).append(record)
+
+    # Medication interaction fixtures (HC-161): a deterministic rule set shaped for
+    # medication-safety-check.v1.yaml, and check cases whose expected result follows from
+    # the rules and the patient's active medication records in every records file.
+    medication = files["medication-rules.json"]
+    rule_set = medication["ruleSet"]
+    if rule_set["kind"] not in SAFETY_SOURCE_KINDS:
+        errors.append(f"ruleSet: kind {rule_set['kind']!r} is not a deterministic rule set or validated source")
+    if rule_set.get("validated") is not False:
+        errors.append("ruleSet: demo rules must be marked validated: false")
+    if not rule_set.get("codeSystem"):
+        errors.append("ruleSet: missing the codeSystem that identifies its medication codes")
+    evaluated = set(rule_set["evaluatedMedicationCodes"])
+    errors.extend(
+        f"ruleSet.evaluatedMedicationCodes: unknown medication code {c!r}" for c in sorted(evaluated - catalog.keys())
+    )
+    rules_by_pair: dict[frozenset[str], dict] = {}
+    for rule in medication["interactionRules"]:
+        pair = frozenset(rule["medicationCodes"])
+        if rule["severity"] not in SEVERITIES:
+            errors.append(f"{rule['id']}: unknown severity {rule['severity']!r}")
+        if len(rule["medicationCodes"]) != 2 or len(pair) != 2:
+            errors.append(f"{rule['id']}: a rule names two different medications")
+        elif not pair <= evaluated:
+            errors.append(f"{rule['id']}: names a medication the rule set does not evaluate")
+        elif pair in rules_by_pair:
+            errors.append(f"{rule['id']}: same medications as {rules_by_pair[pair]['id']}")
+        else:
+            rules_by_pair[pair] = rule
+    for case in medication["checkCases"]:
+        proposed = case["proposedMedicationCode"]
+        if proposed not in evaluated:
+            errors.append(f"{case['id']}: proposes {proposed!r}, which the rule set does not evaluate")
+            continue
+        warnings, unevaluated = set(), set()
+        for record in active_med_records.get(case["patientId"], []):
+            code = record["medicationCode"]
+            if code not in evaluated:
+                unevaluated.add((record["id"], "not_in_rule_source"))
+            elif (rule := rules_by_pair.get(frozenset({proposed, code}))) is not None:
+                warnings.add((rule["id"], record["id"]))
+        outcome = "warnings_found" if warnings else "no_warnings_found"
+        expected_warnings = {(w["ruleId"], w["conflictingStatementId"]) for w in case["expectedWarnings"]}
+        expected_unevaluated = {(u["statementId"], u["reason"]) for u in case["expectedUnevaluated"]}
+        errors.extend(
+            f"{case['id']}: unknown unevaluated reason {reason!r}"
+            for _, reason in expected_unevaluated
+            if reason not in UNEVALUATED_REASONS
+        )
+        if case["expectedOutcome"] != outcome:
+            errors.append(f"{case['id']}: expected outcome {case['expectedOutcome']!r}, the rules give {outcome!r}")
+        if expected_warnings != warnings:
+            errors.append(f"{case['id']}: expected warnings {sorted(expected_warnings)}, the rules give {sorted(warnings)}")
+        if expected_unevaluated != unevaluated:
+            errors.append(
+                f"{case['id']}: expected unevaluated {sorted(expected_unevaluated)}, the rules give {sorted(unevaluated)}"
+            )
 
     # Simulated ledger proofs: minimized payload and matching hash.
     governance = files["governance.json"]
@@ -232,6 +296,16 @@ def check(print_proof_hashes: bool = False) -> list[str]:
         for rule in files["medication-rules.json"]["interactionRules"]
     ):
         errors.append("scenario: no deterministic rule for Medication A + Medication B")
+    demo_check = next(
+        (c for c in medication["checkCases"] if c["id"] == roles.get("Medication safety check (steps 12-13)")), None
+    )
+    if (
+        demo_check is None
+        or demo_check["patientId"] != patient_a
+        or demo_check["proposedMedicationCode"] != medication_b
+        or demo_check["expectedOutcome"] != "warnings_found"
+    ):
+        errors.append("scenario: no medication check case finding the Medication B warning for Patient A")
     script = next(
         s for s in files["clinician.json"]["consultationScripts"]
         if s["id"] == roles["Consultation script (steps 7-14)"]

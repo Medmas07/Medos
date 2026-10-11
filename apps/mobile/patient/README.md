@@ -2,6 +2,10 @@
 
 ## Purpose and status
 
+HC-019 Revoke physician access is IMPLEMENTED at D1 with a confirmation step and session-local status change for a fictional grant. It is a demo interaction only; it does not revoke production authorization or update Hospital Node persistence.
+
+HC-018 Grant physician access is IMPLEMENTED at D1 with a local form for selecting a fictional physician, scope, and duration. The resulting grant exists only in session state and is visibly marked as demo behavior; it does not issue or persist production authorization.
+
 HC-017 Consent and access management is IMPLEMENTED at D1 with local fictional grants, visible scope and expiry, and a session-only revoke interaction. It is a demo UI and does not issue, persist, or enforce production consent.
 
 HC-016 Hospital and physician history is IMPLEMENTED at D1 with a local authorized-view list of fictional care encounters, source organizations, physicians, and specialties. It is presentation-only and does not expose hospital persistence.

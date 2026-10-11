@@ -7,8 +7,9 @@ invalid file stops startup: an instance never falls back to another hospital's i
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, ValidationError
 
 from domain.node_identity import InvalidNodeIdentity, NodeIdentity
 
@@ -31,6 +32,14 @@ class HospitalNodeConfig:
     # Fictional grants and Governance decisions read by the MOCKED verifier (HC-114).
     mock_access_grants: Path
     mock_governance_decisions: Path
+    # Fictional deterministic interaction rules read by the MOCKED rule source (HC-162).
+    mock_medication_rules: Path
+    # Which rules the medication safety check uses (HC-163): the fictional demo rules
+    # above, or the validated ONC high-priority snapshot bundled with the node.
+    medication_rule_source: str = "demo_fixture"
+    # AI Services base URL for advisory warning explanations (HC-164); None turns them
+    # off. Only a warning's content is sent, never a patient reference.
+    ai_services_url: str | None = None
 
 
 class _ConfigFile(BaseModel):
@@ -44,6 +53,11 @@ class _ConfigFile(BaseModel):
     mock_clinical_records: str = Field(min_length=1)
     mock_access_grants: str = Field(min_length=1)
     mock_governance_decisions: str = Field(min_length=1)
+    mock_medication_rules: str = Field(min_length=1)
+    medication_rule_source: Literal["demo_fixture", "onc_high_priority_2012"] = (
+        "demo_fixture"
+    )
+    ai_services_url: HttpUrl | None = None
 
 
 def config_path_from_env() -> Path:
@@ -76,4 +90,7 @@ def load_config(path: Path) -> HospitalNodeConfig:
         mock_governance_decisions=(
             path.parent / raw.mock_governance_decisions
         ).resolve(),
+        mock_medication_rules=(path.parent / raw.mock_medication_rules).resolve(),
+        medication_rule_source=raw.medication_rule_source,
+        ai_services_url=str(raw.ai_services_url) if raw.ai_services_url else None,
     )

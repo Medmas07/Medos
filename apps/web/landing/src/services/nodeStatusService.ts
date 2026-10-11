@@ -14,7 +14,7 @@ import { INSTALLATION_STEP_COUNT } from './onboardingService'
  * Version reported by the Hospital Node runtime (`NODE_VERSION` in
  * `instances/hospital-node/application/get_node_status.py`); a test fails if they drift.
  */
-export const LATEST_NODE_VERSION = '0.3.0'
+export const LATEST_NODE_VERSION = '0.4.0'
 
 export type IndicatorState = 'ok' | 'warning' | 'critical' | 'unknown'
 
@@ -24,7 +24,7 @@ export interface NodeIndicator {
   id: IndicatorId
   label: string
   state: IndicatorState
-  /** Short value, for example "En ligne" or "0.3.0". */
+  /** Short value, for example "En ligne" or "0.4.0". */
   value: string
   detail: string
   /** Time the value refers to, for example the last synchronization. */

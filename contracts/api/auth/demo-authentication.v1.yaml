@@ -1,0 +1,399 @@
+openapi: 3.1.0
+info:
+  title: Demo Authentication Flow
+  version: 1.0.0
+  description: |
+    Contract HC-210, version 1. Deterministic demo identities and sessions
+    at initial depth D1.
+
+    Boundary rules carried by this contract:
+
+    - **D1 Demo Scope Only.** Deterministic identities, simulated session tokens,
+      and local state. This is an explicit non-production mock; no production
+      OAuth2, OIDC, cryptographic signature verification, or password hashing is
+      claimed.
+    - **Canonical Fictional Identities Only.** All personas are drawn from the
+      canonical demo dataset (HC-005: people.json, organizations.json). No real
+      user, patient, or clinician credentials.
+    - **Explicit Scenarios.** Demonstrates nominal active sessions, expired
+      sessions (401), unauthorized roles (403), and invalid credentials for
+      resilient review across user surfaces.
+    - **Data Minimization.** Session payloads hold only opaque subject identifiers,
+      declared roles, organization references, and expiration timestamps. No
+      clinical records or sensitive data are embedded.
+
+    Status: IMPLEMENTED at initial depth D1. The real authentication
+    foundation is authentication.v1.yaml (HC-211, D2, ADR-0010).
+paths:
+  /v1/auth/demo-identities:
+    get:
+      operationId: listDemoIdentities
+      summary: List available canonical fictional demo identities.
+      responses:
+        "200":
+          description: List of demo personas with roles and organizations.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DemoIdentityList"
+              examples:
+                canonical_personas:
+                  value:
+                    fictional: true
+                    notice: "Identités fictives de démonstration (HC-005). Non destinées à la production."
+                    identities:
+                      - id: "usr-olfa"
+                        display_name: "Pr Olfa Hamdi"
+                        role: "governance_reviewer"
+                        organization_id: "org-governance"
+                        organization_name: "Autorité de Gouvernance et d'Éthique"
+                        description: "Réviseure de gouvernance habilitée à évaluer les adhésions et demandes"
+                        default_portal: "governance-portal"
+                      - id: "usr-mehdi"
+                        display_name: "Mehdi Sassi"
+                        role: "hospital_manager"
+                        organization_id: "org-hospital-c"
+                        organization_name: "Hôpital C"
+                        description: "Responsable d'établissement hospitalier en cours d'adhésion"
+                        default_portal: "hospital-portal"
+                      - id: "usr-aymen"
+                        display_name: "Dr Aymen Rezgui"
+                        role: "researcher"
+                        organization_id: "org-research-lab"
+                        organization_name: "Laboratoire de Recherche Médicale"
+                        description: "Chercheur principal soumettant des projets d'accès aux données"
+                        default_portal: "research-portal"
+                      - id: "clin-x"
+                        display_name: "Dr Youssef Gharbi"
+                        role: "physician"
+                        organization_id: "org-hospital-a"
+                        organization_name: "Hôpital Universitaire A"
+                        description: "Praticien cardiologue traitant recevant des alertes cliniques"
+                        default_portal: "clinician-app"
+                      - id: "pat-a"
+                        display_name: "Leïla Mansouri"
+                        role: "patient"
+                        organization_id: "org-hospital-a"
+                        organization_name: "Hôpital Universitaire A"
+                        description: "Patiente titulaire consultant son dossier et gérant ses consentements"
+                        default_portal: "patient-app"
+
+  /v1/auth/demo-sessions:
+    post:
+      operationId: createDemoSession
+      summary: Establish a deterministic demo session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DemoLoginRequest"
+            examples:
+              nominal_governance_login:
+                value:
+                  identity_id: "usr-olfa"
+                  scenario: "nominal"
+                  password: "demo"
+              expired_session_request:
+                value:
+                  identity_id: "usr-olfa"
+                  scenario: "expired"
+                  password: "demo"
+      responses:
+        "201":
+          description: Demo session established.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DemoSession"
+              examples:
+                active_session:
+                  value:
+                    session_id: "sess-demo-olfa-001"
+                    session_token: "demo-token-usr-olfa-active"
+                    status: "active"
+                    created_at: "2026-10-10T10:00:00+01:00"
+                    expires_at: "2026-10-10T18:00:00+01:00"
+                    identity:
+                      id: "usr-olfa"
+                      display_name: "Pr Olfa Hamdi"
+                      role: "governance_reviewer"
+                      organization_id: "org-governance"
+                      organization_name: "Autorité de Gouvernance et d'Éthique"
+                    scopes:
+                      - "governance:review"
+                      - "governance:audit"
+                      - "governance:policy"
+                    depth: "D1"
+                    fictional: true
+                    demo_notice: "AUTHENTIFICATION DÉMO D1 — Simulation déterministe. Non sécurisée pour la production."
+        "400":
+          description: Invalid request payload.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+              examples:
+                unknown_identity:
+                  value:
+                    type: "urn:hackcure:problem:invalid-demo-identity"
+                    title: "Unknown Demo Identity"
+                    status: 400
+                    detail: "The identity_id 'usr-unknown' does not exist in canonical demo fixtures."
+        "401":
+          description: Invalid demo credentials or expired simulation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+              examples:
+                invalid_password:
+                  value:
+                    type: "urn:hackcure:problem:demo-auth-failed"
+                    title: "Authentication Failed"
+                    status: 401
+                    detail: "Simulated credential mismatch for demo persona."
+
+  /v1/auth/demo-sessions/{session_id}:
+    parameters:
+      - name: session_id
+        in: path
+        required: true
+        description: Unique demo session identifier.
+        schema:
+          type: string
+    get:
+      operationId: getDemoSession
+      summary: Inspect demo session state and claims.
+      responses:
+        "200":
+          description: Session state details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DemoSession"
+              examples:
+                inspected_session:
+                  value:
+                    session_id: "sess-demo-olfa-001"
+                    session_token: "demo-token-usr-olfa-active"
+                    status: "active"
+                    created_at: "2026-10-10T10:00:00+01:00"
+                    expires_at: "2026-10-10T18:00:00+01:00"
+                    identity:
+                      id: "usr-olfa"
+                      display_name: "Pr Olfa Hamdi"
+                      role: "governance_reviewer"
+                      organization_id: "org-governance"
+                      organization_name: "Autorité de Gouvernance et d'Éthique"
+                    scopes:
+                      - "governance:review"
+                    depth: "D1"
+                    fictional: true
+                    demo_notice: "AUTHENTIFICATION DÉMO D1 — Simulation déterministe."
+        "404":
+          description: Session not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+              examples:
+                session_not_found:
+                  value:
+                    type: "urn:hackcure:problem:session-not-found"
+                    title: "Session Not Found"
+                    status: 404
+                    detail: "No demo session found with ID 'sess-demo-999'."
+    delete:
+      operationId: deleteDemoSession
+      summary: Terminate/logout an active demo session.
+      responses:
+        "204":
+          description: Demo session successfully terminated.
+
+components:
+  schemas:
+    DemoIdentity:
+      type: object
+      required:
+        - id
+        - display_name
+        - role
+        - organization_id
+        - organization_name
+        - description
+        - default_portal
+      properties:
+        id:
+          type: string
+          description: Canonical person or staff identifier.
+          example: "usr-olfa"
+        display_name:
+          type: string
+          description: Human-readable name.
+          example: "Pr Olfa Hamdi"
+        role:
+          type: string
+          enum:
+            - governance_reviewer
+            - hospital_manager
+            - researcher
+            - physician
+            - nurse
+            - patient
+            - relative
+          example: "governance_reviewer"
+        organization_id:
+          type: string
+          description: Primary associated organization identifier.
+          example: "org-governance"
+        organization_name:
+          type: string
+          description: Name of the affiliated organization.
+          example: "Autorité de Gouvernance et d'Éthique"
+        description:
+          type: string
+          description: Demo context and responsibility description.
+          example: "Réviseure de gouvernance habilitée"
+        default_portal:
+          type: string
+          description: Suggested web portal or mobile app.
+          example: "governance-portal"
+
+    DemoIdentityList:
+      type: object
+      required:
+        - fictional
+        - notice
+        - identities
+      properties:
+        fictional:
+          type: boolean
+          example: true
+        notice:
+          type: string
+          example: "Identités fictives de démonstration (HC-005)."
+        identities:
+          type: array
+          items:
+            $ref: "#/components/schemas/DemoIdentity"
+
+    DemoLoginRequest:
+      type: object
+      required:
+        - identity_id
+      properties:
+        identity_id:
+          type: string
+          description: Canonical identity identifier.
+          example: "usr-olfa"
+        scenario:
+          type: string
+          enum:
+            - nominal
+            - expired
+            - invalid_credentials
+          default: nominal
+          description: Simulated scenario for reviewable error and empty states.
+          example: "nominal"
+        password:
+          type: string
+          description: Optional demo password (any non-empty or empty accepted unless scenario is invalid_credentials).
+          example: "demo"
+
+    DemoSession:
+      type: object
+      required:
+        - session_id
+        - session_token
+        - status
+        - created_at
+        - expires_at
+        - identity
+        - scopes
+        - depth
+        - fictional
+        - demo_notice
+      properties:
+        session_id:
+          type: string
+          description: Opaque demo session reference.
+          example: "sess-demo-olfa-001"
+        session_token:
+          type: string
+          description: Deterministic bearer token for demo headers.
+          example: "demo-token-usr-olfa-active"
+        status:
+          type: string
+          enum:
+            - active
+            - expired
+            - revoked
+          example: "active"
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-10-10T10:00:00+01:00"
+        expires_at:
+          type: string
+          format: date-time
+          example: "2026-10-10T18:00:00+01:00"
+        identity:
+          type: object
+          required:
+            - id
+            - display_name
+            - role
+            - organization_id
+            - organization_name
+          properties:
+            id:
+              type: string
+              example: "usr-olfa"
+            display_name:
+              type: string
+              example: "Pr Olfa Hamdi"
+            role:
+              type: string
+              example: "governance_reviewer"
+            organization_id:
+              type: string
+              example: "org-governance"
+            organization_name:
+              type: string
+              example: "Autorité de Gouvernance et d'Éthique"
+        scopes:
+          type: array
+          items:
+            type: string
+          example: ["governance:review", "governance:audit"]
+        depth:
+          type: string
+          example: "D1"
+        fictional:
+          type: boolean
+          example: true
+        demo_notice:
+          type: string
+          example: "AUTHENTIFICATION DÉMO D1 — Simulation déterministe."
+
+    ProblemDetails:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - detail
+      properties:
+        type:
+          type: string
+          example: "urn:hackcure:problem:demo-auth-failed"
+        title:
+          type: string
+          example: "Authentication Failed"
+        status:
+          type: integer
+          example: 401
+        detail:
+          type: string
+          example: "Simulated credential mismatch."

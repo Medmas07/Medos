@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-CONFIRMED autonomous hospital-controlled boundary. Its stack (Python + FastAPI, one process per hospital from one codebase, flat layer layout that keeps `adapters/dmi/`) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED (HC-110): a FastAPI app with Clean/Hexagonal layers, pinned dependencies, and tests. Per-hospital configuration loading is IMPLEMENTED at D2 (HC-112). Its clinical repository is **MOCKED** at D2 (HC-113): fictional demo records, read-only, in memory. It serves `GET /health` (HC-111, IMPLEMENTED at D2) and the [patient history API](#patient-history-api-hc-114) (HC-114, IMPLEMENTED at D2): its side of the Federation contract, whose authorization check is **MOCKED** against fictional grants and decisions. Every query it answers or refuses is recorded in its own [audit trail](#audit-event-api-hc-116) (HC-116, IMPLEMENTED at D2), kept **in memory only** and readable through an unauthenticated API. The [access grants API](#access-grants-api-hc-115) (HC-115, IMPLEMENTED at D2) lists, records, and revokes a patient's grants on this node, which then enforces them; its grant store is **MOCKED** (in memory, seeded from fictional grants) and its callers are not authenticated. The [research execution agent](#research-execution-agent-hc-183) is IMPLEMENTED at D3 for one bounded installed aggregate; it never executes submitted source code, and demo results remain `mocked: true` because its local repository is fictional. It is expected to become a separately packaged/containerized instance; container choices remain OPEN.
+CONFIRMED autonomous hospital-controlled boundary. Its stack (Python + FastAPI, one process per hospital from one codebase, flat layer layout that keeps `adapters/dmi/`) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED (HC-110): a FastAPI app with Clean/Hexagonal layers, pinned dependencies, and tests. Per-hospital configuration loading is IMPLEMENTED at D2 (HC-112). Its clinical repository is **MOCKED** at D2 (HC-113): fictional demo records, read-only, in memory. It serves `GET /health` (HC-111, IMPLEMENTED at D2) and the [patient history API](#patient-history-api-hc-114) (HC-114, IMPLEMENTED at D2): its side of the Federation contract, whose authorization check is **MOCKED** against fictional grants and decisions. Every query it answers or refuses is recorded in its own [audit trail](#audit-event-api-hc-116) (HC-116, IMPLEMENTED at D2), kept **in memory only** and readable through an unauthenticated API. The [access grants API](#access-grants-api-hc-115) (HC-115, IMPLEMENTED at D2) lists, records, and revokes a patient's grants on this node, which then enforces them; its grant store is **MOCKED** (in memory, seeded from fictional grants) and its callers are not authenticated. The [research execution agent](#research-execution-agent-hc-183) is IMPLEMENTED at D3 for one bounded installed aggregate; it never executes submitted source code, and demo results remain `mocked: true` because its local repository is fictional. The [medication safety check](#medication-safety-check-hc-162) (HC-162, IMPLEMENTED at D2, [ADR-0008](../../docs/decisions/ADR-0008-medication-safety-check-host.md)) is a deterministic drug-drug interaction engine. By default its rules are **MOCKED** (fictional, not a validated source); the configuration can select the validated ONC high-priority list instead (HC-163, IMPLEMENTED at D3, [ADR-0009](../../docs/decisions/ADR-0009-validated-interaction-source.md)). It is expected to become a separately packaged/containerized instance; container choices remain OPEN.
 
 ## Running locally
 
@@ -33,6 +33,9 @@ One codebase runs as one process per hospital ([ADR-0003](../../docs/decisions/A
 | `mock_clinical_records` | This hospital's fictional records file for the [mock clinical repository](#mock-clinical-repository-hc-113), resolved like `storage_dir`. The demo configurations point to their own file in [`demo-data/records/`](../../demo-data/records/). |
 | `mock_access_grants` | Fictional patient access grants that seed the [access grant store](#access-grants-api-hc-115) used by the [MOCKED authorization check](#patient-history-api-hc-114), resolved like `storage_dir`. The demo configurations point to [`demo-data/access.json`](../../demo-data/access.json). |
 | `mock_governance_decisions` | Fictional Governance decisions and synchronization requests for the same check. The demo configurations point to [`demo-data/governance.json`](../../demo-data/governance.json). |
+| `mock_medication_rules` | Fictional deterministic interaction rules for the [medication safety check](#medication-safety-check-hc-162). The demo configurations point to [`demo-data/medication-rules.json`](../../demo-data/medication-rules.json). |
+| `ai_services_url` | Optional. AI Services base URL for [advisory warning explanations](#ai-explanation-layer-hc-164); absent or `null` (default) keeps them off. [`config/hospital-a.ai-explanations.json`](config/hospital-a.ai-explanations.json) is Hospital A with `http://localhost:8600`: same identity and port as its demo configuration, so run one or the other. |
+| `medication_rule_source` | Optional. `demo_fixture` (default) uses the fictional rules above; `onc_high_priority_2012` uses the [validated ONC snapshot](#validated-interaction-source-hc-163) bundled with the node. [`config/hospital-a.onc-rules.json`](config/hospital-a.onc-rules.json) is Hospital A with it: same identity and port, so run one or the other. |
 | `notice` | Optional free-text note. |
 
 The node refuses to start if the variable is unset, the file cannot be read, or any field is missing, unknown, or invalid. It never falls back to another hospital's identity.
@@ -59,7 +62,7 @@ MOCKED at D2. `application/clinical_repository.py` defines the `ClinicalReposito
 - It is read-only. Nothing is written to `storage_dir` or back to `demo-data/`.
 - Patient references are the dataset's ids (`pat-a`), as in the Federation contract; per-hospital local identifiers are not mapped.
 
-This is not real clinical storage and not a DMI integration: the [DMI port](#dmi-port-hc-120) is defined (HC-120) and a MOCKED local DMI adapter implements it (HC-121), but nothing imports records from it at runtime, and persistence is OPEN.
+This is not real clinical storage and not a DMI integration: the [DMI port](#dmi-port-hc-120) is defined (HC-120) and implemented by a MOCKED local DMI adapter (HC-121) and Hospital B's sample adapter over a simulated export (HC-123), but nothing imports records from either at runtime, and persistence is OPEN.
 
 | Node | Encounters | Medications | Lab reports |
 |---|---|---|---|
@@ -192,30 +195,97 @@ The executor reads only this node's repository through a local application port.
 
 Execution state is process-local and lost on restart. The canonical demo repository is explicitly MOCKED, so accepted and terminal responses carry `mocked: true`. The HTTP agent, authorization rules, aggregate, sandbox, suppression, and provenance behavior are implemented; the data source is not production data or storage. Cross-node aggregation and output validation live in the Research Service (HC-184/HC-185). Research audit, durable persistence, authentication, container isolation, and general code execution are not implemented.
 
+## Medication safety check (HC-162)
+
+IMPLEMENTED at D2 against [`medication-safety-check.v1.yaml`](../../contracts/api/medication-safety/medication-safety-check.v1.yaml). [ADR-0008](../../docs/decisions/ADR-0008-medication-safety-check-host.md) places the check on the Hospital Node serving the clinician. `POST /v1/medication-safety-checks` compares a proposed medication with the current medications the caller sends, and returns drug-drug interaction warnings for clinician review. **The safety source is a deterministic rule set, never a model**, and the check never blocks or approves a prescription.
+
+- **Engine** ([`domain/medication_safety.py`](domain/medication_safety.py), standard library only):
+  - A medication is identified by its code in the rule set's code system, otherwise by its exact name or one of the rule set's synonyms (case, accents, and apostrophe style ignored).
+  - A code and a name that point to different medications are `ambiguous_medication`; one the rules do not know is `not_in_rule_source`. Nothing is guessed.
+  - Only `active` statements are evaluated. A `stopped` one is not current and is skipped; an `unknown` status is reported as `status_unknown`.
+  - Warnings come out most severe first, each with its rule, the conflicting statement, and the organization it came from.
+- **Rules** come through the `InteractionRuleSource` port ([`application/check_medication_safety.py`](application/check_medication_safety.py)). By default, [`adapters/outbound/fixture_interaction_rules.py`](adapters/outbound/fixture_interaction_rules.py) reads the fictional HC-161 rule set at startup. It refuses a file that is not fictional, is marked validated, or is not a consistent deterministic rule set. Every result then says `provenance.mocked: true`, and its notice says the rules are fictional. The [validated source](#validated-interaction-source-hc-163) is the other adapter.
+- **No check is ever reported as "no warnings".** If the rules are unavailable, or they cannot identify the proposed medication, the answer is `503 safety_check_unavailable` with "No check was performed". `no_warnings_found` lists the medications that could not be evaluated, and its notice says it is not a statement of safety.
+- **Stateless:** the node does not read its own clinical repository for the check, stores nothing from the request, and does not audit it (the audit contract has no such event yet). Callers are not authenticated (demo depth). `explanation` is `null` unless the node is configured for [AI explanations](#ai-explanation-layer-hc-164).
+
+Demo (Hospital A's node, the canonical scenario of steps 12–13):
+
+```bash
+curl -s -X POST localhost:8101/v1/medication-safety-checks -H 'content-type: application/json' -d '{
+  "patient_ref": "pat-a", "requested_by": "clin-x",
+  "proposed_medication": {"name": "Dolorane", "code": null},
+  "current_medications": [
+    {"statement_ref": "med-b-leila-coagulix", "medication": {"name": "Coagulix", "code": null},
+     "status": "active", "source": {"organization_ref": "org-hospital-b"}},
+    {"statement_ref": "med-pp-leila-tensiorel", "medication": {"name": "Tensiorel", "code": null},
+     "status": "active", "source": {"organization_ref": "org-private-practice"}}]}'
+```
+
+It returns one `major` warning ("Risque hémorragique accru.", rule `rule-coagulix-dolorane`, Coagulix from `org-hospital-b`); Tensiorel gives none. Run on 2026-10-11 against a live node:
+- Bronchair for Nour came back as `not_in_rule_source` with `no_warnings_found`.
+- An unknown proposed medication gave a `503`.
+
+The tests run every HC-161 check case through the route, and each answer matches its expected result and the contract.
+
+Not done: any product calling the check, and a real medication terminology (OPEN; the demo uses the fictional `urn:hackcure:demo:medication`).
+
+### Validated interaction source (HC-163)
+
+IMPLEMENTED at D3; source and matching decided by [ADR-0009](../../docs/decisions/ADR-0009-validated-interaction-source.md). With `medication_rule_source: onc_high_priority_2012`, [`adapters/outbound/validated_snapshot_rules.py`](adapters/outbound/validated_snapshot_rules.py) reads the ONC high-priority drug–drug interaction list at startup. That list is Phansalkar et al., JAMIA 2012;19(5):735–743, doi:10.1136/amiajnl-2011-000612: a peer-reviewed expert consensus of interactions "contraindicated for concurrent use". Results are `mocked: false`, with `rule_source.kind: validated_source`, the source row as `rule_id`, and the citation as `reference`.
+
+- **Snapshot** ([`reference/onc-high-priority-ddi-2012.json`](reference/onc-high-priority-ddi-2012.json)): a hand transcription of Table 2's final membership column, checked against the table on 2026-10-11.
+  - 13 interactions over 89 ingredients become 362 `contraindicated` pairs. Each row keeps exactly the members it lists; row 25's CYP3A4 inhibitors, for example, do not include fosamprenavir.
+  - Spelling corrections of the printed table are recorded (Esmoprazole, Lisdexamefetamine, Voreconazole, Moclobamide). So are the two rows left out: TCAs + MAO inhibitors, which lists no TCA members, and QT-prolonging pairs, which defer to the separately licensed CredibleMeds list.
+  - Only the drug pairs and the citation are stored, no text of the article. A test freezes the member counts per row; a changed transcription needs a new snapshot version.
+- **Matching:** by ingredient name, the English name printed plus French and other INN synonyms (*ciprofloxacine*, *rifampicine*, *péthidine*, *millepertuis*, …). No terminology is adopted. Brand names, combinations, names with a dose, and unlisted drugs are `not_in_rule_source`, never assumed safe.
+- **Scope, stated in every answer:** the list is a **minimum** set from 2012, not exhaustive; most interactions are not in it. The notice says so, and that no warning does not mean the combination is safe. Fictional demo medicines are unknown to it: proposing one gives a `503`.
+
+Demo, run with `HOSPITAL_NODE_CONFIG=config/hospital-a.onc-rules.json python main.py` on 2026-10-11:
+- Proposing *Simvastatine* to a patient taking *Clarithromycine* (from `org-hospital-b`) and *Amlodipine* gave one `contraindicated` warning, `onc-2012-row-25`, with the citation. *Amlodipine* came back as `not_in_rule_source`, with `mocked: false`.
+- *Dolorane* (fictional) gave a `503`.
+
+Not done: a broader licensed source and a medication terminology (OPEN), and re-transcription if the list is revised.
+
+### AI explanation layer (HC-164)
+
+IMPLEMENTED at D3. When `ai_services_url` is configured, each warning gets an advisory plain-language explanation. It is added **after** the deterministic check has produced the warning, and the explanation never creates, removes, or changes one.
+
+- **How:** the `WarningExplainer` port ([`application/check_medication_safety.py`](application/check_medication_safety.py)) is implemented by [`adapters/outbound/ai_services_warning_explainer.py`](adapters/outbound/ai_services_warning_explainer.py). It calls AI Services' [`medication-warning-explanation.v1.yaml`](../../contracts/api/ai/medication-warning-explanation.v1.yaml) (HC-156) once per warning, in parallel, with a 30 s timeout. AI Services checks model text and falls back to a deterministic template itself.
+- **What leaves the hospital:** only the warning's content (severity, summary, the two medication names, the rule source) and the opaque `requested_by`. No patient reference, no other medications. With AI Services in model mode, that content goes on to the model provider (ADR-0006). This is why the layer is **off unless a hospital configures it**: whether clinical text may leave the hospital boundary is OPEN.
+- **What comes back:** the answer is kept only if it is an advisory explanation of that very warning, in the contract's shape. Anything else, an error, or a timeout means `explanation: null`; the warning is complete without it and the check still answers `200`. When at least one explanation is attached, the notice adds that explanations are advisory and never decide whether a warning exists.
+
+Run live on 2026-10-11 with `config/hospital-a.ai-explanations.json` and AI Services on port 8600, on the canonical demo (Dolorane for Patient A):
+- **Template mode:** the deterministic template's text.
+- **Model mode:** Claude's checked text ("Une interaction de sévérité majeure est signalée entre … Dolorane, et … Coagulix …"), in about 15 s.
+- **AI Services stopped:** the same `major` warning with `explanation: null`.
+
+Not done: no product shows the explanation yet, and explanations for patients are out of scope.
+
 ## Health endpoint (HC-111)
 
-`GET /health` is a liveness check. It returns `200` with the node kind, version, the configured `node_ref` and `organization_ref`, its capabilities (including `research_execution` and `isolated_research_sandbox`), the clinical repository's record counts and `mocked` flag, and a notice stating that the identity comes from fictional demo configuration, that the repository and authorization are MOCKED, that research execution is bounded, that the process sandbox is not production container isolation, that the audit trail is in memory and its readers are not authenticated, and that it is not a production health check:
+`GET /health` is a liveness check. It returns `200` with the node kind, version, the configured `node_ref` and `organization_ref`, its capabilities (including `research_execution`, `isolated_research_sandbox`, and `medication_safety_check`), the clinical repository's record counts and `mocked` flag, and a notice stating that the identity comes from fictional demo configuration, that the repository and authorization are MOCKED, that research execution is bounded, that the process sandbox is not production container isolation, that the audit trail is in memory and its readers are not authenticated, and that it is not a production health check:
 
 ```json
-{"status": "ok", "node": "hospital-node", "version": "0.3.0", "node_ref": "node-hospital-a", "organization_ref": "org-hospital-a", "capabilities": ["patient_history", "audit_events", "access_grants", "research_execution", "isolated_research_sandbox"], "clinical_records": {"mocked": true, "encounters": 3, "medications": 1, "lab_reports": 2}, "notice": "Hospital Node (HC-111 to HC-116, HC-183, HC-186). ..."}
+{"status": "ok", "node": "hospital-node", "version": "0.4.0", "node_ref": "node-hospital-a", "organization_ref": "org-hospital-a", "capabilities": ["patient_history", "audit_events", "access_grants", "research_execution", "isolated_research_sandbox", "medication_safety_check"], "clinical_records": {"mocked": true, "encounters": 3, "medications": 1, "lab_reports": 2}, "notice": "Hospital Node (HC-111 to HC-116, HC-162, HC-183, HC-186). ..."}
 ```
 
 The counts contain no patient data.
 
-It does not check storage, DMI connectivity, or Federation reachability; none exists yet. Deployment health checks are PLANNED in HC-223. Besides `/health`, the Federation, audit, access-grant, and research-execution paths, only FastAPI's generated `/openapi.json` and `/docs` are served.
+It does not check storage, DMI connectivity, or Federation reachability; none exists yet. Deployment health checks are PLANNED in HC-223. Besides `/health`, the Federation, audit, access-grant, research-execution, and medication-safety paths, only FastAPI's generated `/openapi.json` and `/docs` are served.
 
 ## Layout
 
 ```text
 instances/hospital-node/
 ├── main.py                     # composition root: loads configuration, builds the FastAPI app
-├── config/                     # fictional per-hospital demo configurations
-├── domain/                     # Node identity/status, clinical records, access/audit, and research execution values — stdlib only
-├── application/                # Hospital use cases and their repository, authorization, audit, grant, research, and DMI ports
-├── adapters/inbound/http/      # health, Federation, audit, access-grant, and research-execution routers
-├── adapters/outbound/          # fixture repositories/verifiers, installed aggregate, and in-memory stores
+├── config/                     # fictional per-hospital demo configurations; hospital-b.dmi.json is Hospital B's DMI adapter configuration
+├── domain/                     # Node identity/status, clinical records, access/audit, research execution values, and the medication interaction engine — stdlib only
+├── application/                # Hospital use cases and their repository, authorization, audit, grant, research, interaction rule, and DMI ports
+├── adapters/inbound/http/      # health, Federation, audit, access-grant, research-execution, and medication-safety routers
+├── adapters/outbound/          # fixture repositories/verifiers and interaction rules, installed aggregate, and in-memory stores
 ├── infrastructure/             # configuration loading and validation
-├── adapters/dmi/               # hospital-local DMI Adapters (port defined, HC-120; MOCKED local adapter, HC-121)
+├── reference/                  # validated reference data read at startup (the ONC interaction snapshot, HC-163)
+├── adapters/dmi/               # hospital-local DMI Adapters (port, HC-120; MOCKED local adapter, HC-121; mapping strategy, HC-122; Hospital B's adapter, HC-123)
 ├── contracts/                  # reserved for Node-local contract documents
 └── tests/                      # domain, use case, adapter, app, and layer-boundary tests
 ```
@@ -226,9 +296,14 @@ instances/hospital-node/
 
 DEFINED at D1. The Node owns `DmiSource` ([`application/dmi_source.py`](application/dmi_source.py)): `describe()` and `extract_patient(PatientIdentity)`, returning a `DmiExtract` ([`domain/dmi.py`](domain/dmi.py)) of one patient's records in this Node's canonical model plus the entries the adapter could not map. Each hospital's adapter implements it under [`adapters/dmi/`](adapters/dmi/README.md), which documents the rules every adapter keeps and the conformance check ([`tests/dmi_port_contract.py`](tests/dmi_port_contract.py)) its tests must pass.
 
-The only implementation is the **MOCKED** local DMI adapter (HC-121, D2, [`adapters/dmi/mock_local_dmi.py`](adapters/dmi/mock_local_dmi.py)): a simulated DMI built from this hospital's fictional records file and the local identifiers its organization gives patients in [`people.json`](../../demo-data/people.json). It passes the port conformance check for all three demo nodes; see the [adapter README](adapters/dmi/README.md#mock-local-dmi-adapter-hc-121).
+Two adapters implement it:
 
-Nothing calls the port at runtime yet: `main.py` does not build the adapter, no real DMI is connected, `/health` is unchanged, and the Node's records still come from the MOCKED fixture repository. When extraction runs and where its results go are OPEN. The mapping strategy (HC-122) and a sample hospital-specific adapter (HC-123) build on it. No central service implements or calls it.
+- The **MOCKED** local DMI adapter (HC-121, D2, [`adapters/dmi/mock_local_dmi.py`](adapters/dmi/mock_local_dmi.py)): a simulated DMI built from this hospital's fictional records file and the local identifiers its organization gives patients in [`people.json`](../../demo-data/people.json). It passes the port conformance check for all three demo nodes; see the [adapter README](adapters/dmi/README.md#mock-local-dmi-adapter-hc-121).
+- **Hospital B's** sample hospital-specific adapter (HC-123, D3, [`adapters/dmi/zitoun_sih_export.py`](adapters/dmi/zitoun_sih_export.py)), IMPLEMENTED against a simulated DMI: it reads the fictional nightly export of Hospital B's fictional DMI ([`demo-data/dmi/hospital-b-export.json`](../../demo-data/dmi/hospital-b-export.json)) in that DMI's own format and maps its local codes with Hospital B's mapping tables, kept in its local adapter configuration ([`config/hospital-b.dmi.json`](config/hospital-b.dmi.json)). Its extracts reproduce Hospital B's canonical fixture records; see the [adapter README](adapters/dmi/README.md#sample-hospital-specific-adapter-hospital-b-hc-123).
+
+Both follow the [mapping strategy](adapters/dmi/README.md#mapping-strategy-hc-122) (HC-122, D2): local codes map to the canonical model only through a hospital's explicit tables, and entries that cannot map are rejected with a shared reason (`missing_field`, `invalid_value`, `unmapped_code`).
+
+Nothing calls the port at runtime yet: `main.py` builds neither adapter, the Node configuration names none, no real DMI is connected, `/health` is unchanged, and the Node's records still come from the MOCKED fixture repository. When extraction runs and where its results go are OPEN. No central service implements or calls the port.
 
 ## Responsibilities and owned concepts
 
@@ -237,7 +312,7 @@ Nothing calls the port at runtime yet: `main.py` does not build the adapter, no 
 - Local storage and clinical source-data control.
 - Consent/authorization enforcement at the local boundary.
 - Local audit generation and Federation interface.
-- Per-hospital configuration loading, liveness health check, patient history API, in-memory audit trail, access grants API, and bounded research execution agent (IMPLEMENTED); clinical repository, patient-query authorization check, grant store, and research data are MOCKED; future delegations, durable storage, authenticated identity/RBAC, and events.
+- Per-hospital configuration loading, liveness health check, patient history API, in-memory audit trail, access grants API, bounded research execution agent, and deterministic medication safety check (IMPLEMENTED); clinical repository, patient-query authorization check, grant store, research data, and interaction rules are MOCKED; future delegations, durable storage, authenticated identity/RBAC, and events.
 
 ## Communication boundaries
 
@@ -252,6 +327,8 @@ The Hospital Node does not own ethics approval, global research approval, compan
 Each Hospital Node must provide [`hospital-node-federation.v1.yaml`](../../contracts/federation/hospital-node-federation.v1.yaml) (HC-140): a node descriptor and authorized, scoped patient queries that the node enforces itself. This runtime serves both operations (HC-114) with MOCKED records and MOCKED authorization, and audits every query (HC-116).
 
 It also provides [`hospital-audit-events.v1.yaml`](../../contracts/api/hospital-audit/hospital-audit-events.v1.yaml) (HC-116): its own audit trail of those queries; and [`patient-access-grants.v1.yaml`](../../contracts/api/patient-access/patient-access-grants.v1.yaml) (HC-115): the patient access grants it records and enforces.
+
+It provides [`medication-safety-check.v1.yaml`](../../contracts/api/medication-safety/medication-safety-check.v1.yaml) (HC-162, [ADR-0008](../../docs/decisions/ADR-0008-medication-safety-check-host.md)) with a deterministic engine over MOCKED fictional rules by default, or the validated ONC high-priority list (HC-163, [ADR-0009](../../docs/decisions/ADR-0009-validated-interaction-source.md)).
 
 The D1 research execution contract at [`contracts/api/research/research-node-execution.v1.yaml`](../../contracts/api/research/research-node-execution.v1.yaml) is IMPLEMENTED by the HC-183 agent for the bounded installed aggregate and extended by HC-186 with sandbox evidence. Authenticated Governance verification, general code execution, container-grade isolation, package distribution, durable state, research audit, and production disclosure review remain PLANNED or OPEN.
 

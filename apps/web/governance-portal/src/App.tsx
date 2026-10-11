@@ -17,6 +17,9 @@ import { NotificationsView } from './components/views/NotificationsView'
 import { governanceService } from './services/governanceService'
 import { notificationStore, applyReadOverrides, countNotifications, notificationRows } from './services/notificationService'
 import { reviewStore } from './services/reviewStore'
+import { authService } from './services/authService'
+import { DemoAuthModal } from './components/auth/DemoAuthModal'
+import { UnauthorizedStateView } from './components/auth/UnauthorizedStateView'
 
 type ViewId =
   | 'overview'
@@ -31,10 +34,14 @@ type ViewId =
 export default function App() {
   const [currentView, setCurrentView] = useState<ViewId>('overview')
   const [inspectedProofId, setInspectedProofId] = useState<string>('proof-003')
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+
   // Simulated decisions (HC-073) change the counts below; re-render when they do.
   useSyncExternalStore(reviewStore.subscribe, reviewStore.getSnapshot)
   // Re-render when notification read state changes (HC-200).
   useSyncExternalStore(notificationStore.subscribe, () => notificationStore.getSnapshot())
+  // HC-210: Reactive demo authentication session.
+  const session = useSyncExternalStore(authService.subscribe, authService.getSnapshot)
 
   // Sync with URL hash if present
   useEffect(() => {
@@ -174,32 +181,75 @@ export default function App() {
     },
   ]
 
+  const isAuthorized = authService.isAuthorizedForGovernance(session)
+
   return (
-    <AppShell
-      productName="Portail de Gouvernance"
-      productContext="Autorité de Gouvernance et d'Éthique Fédérée"
-      navigation={<SideNav label="Navigation principale" sections={navigationSections} />}
-      toolbar={<ThemeToggle />}
-      pageKey={currentView}
-      sidebarFooter={
-        <div className="space-y-1">
-          <div className="font-semibold text-ink">Pr Olfa Hamdi</div>
-          <div className="text-ink-muted">Réviseure de gouvernance (usr-olfa)</div>
-          <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-ink-soft">
-            <span className="size-2 rounded-full bg-success-600" />
-            <span>Nœud de Gouvernance en ligne</span>
-          </div>
-        </div>
-      }
-    >
-      {currentView === 'overview' && <OverviewView onNavigate={(v) => navigateTo(v as ViewId)} />}
-      {currentView === 'onboarding' && <HospitalOnboardingView />}
-      {currentView === 'synchronizations' && <DataSyncView />}
-      {currentView === 'research' && <ResearchRequestsView />}
-      {currentView === 'audit' && <AuditExplorerView onInspectProof={handleInspectProof} />}
-      {currentView === 'notifications' && <NotificationsView />}
-      {currentView === 'verifier' && <VerifierView initialProofId={inspectedProofId} />}
-      {currentView === 'states' && <StateShowcaseView />}
-    </AppShell>
+    <>
+      <AppShell
+        productName="Portail de Gouvernance"
+        productContext="Autorité de Gouvernance et d'Éthique Fédérée"
+        toolbar={<ThemeToggle />}
+        pageKey={currentView}
+        navigation={<SideNav label="Navigation principale" sections={navigationSections} />}
+        sidebarFooter={
+          session ? (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold text-ink">{session.identity.displayName}</span>
+                {session.status === 'expired' && <Badge tone="danger">Expirée</Badge>}
+              </div>
+              <div className="text-ink-muted">
+                {session.identity.role === 'governance_reviewer' ? 'Réviseure de gouvernance' : session.identity.role} (
+                {session.identity.id})
+              </div>
+              <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-ink-soft">
+                <span className="size-2 rounded-full bg-success-600" />
+                <span>Nœud de Gouvernance en ligne</span>
+              </div>
+              <div className="flex items-center gap-3 pt-1 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="font-medium text-brand-700 hover:underline"
+                >
+                  Changer d'identité
+                </button>
+                <button type="button" onClick={() => authService.logout()} className="font-medium text-ink-soft hover:text-ink">
+                  Déconnexion
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <div className="font-semibold text-ink">Non authentifié</div>
+              <button
+                type="button"
+                onClick={() => setIsAuthModalOpen(true)}
+                className="text-[11px] font-medium text-brand-700 hover:underline"
+              >
+                Se connecter (démo)
+              </button>
+            </div>
+          )
+        }
+      >
+        {!isAuthorized ? (
+          <UnauthorizedStateView session={session} onOpenAuthModal={() => setIsAuthModalOpen(true)} />
+        ) : (
+          <>
+            {currentView === 'overview' && <OverviewView onNavigate={(v) => navigateTo(v as ViewId)} />}
+            {currentView === 'onboarding' && <HospitalOnboardingView />}
+            {currentView === 'synchronizations' && <DataSyncView />}
+            {currentView === 'research' && <ResearchRequestsView />}
+            {currentView === 'audit' && <AuditExplorerView onInspectProof={handleInspectProof} />}
+            {currentView === 'notifications' && <NotificationsView />}
+            {currentView === 'verifier' && <VerifierView initialProofId={inspectedProofId} />}
+            {currentView === 'states' && <StateShowcaseView />}
+          </>
+        )}
+      </AppShell>
+
+      <DemoAuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+    </>
   )
 }

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Alert, Badge, Button, Card, DemoBadge, EmptyState, PageHeader } from '@hackcure/design-system'
 import {
   citationKindLabels,
@@ -14,7 +14,13 @@ import {
   type ResolvedFinding,
   type ResolvedHypothesis,
 } from '../services/sciagents'
-import type { PageId, ResearchSnapshot, SciAgentsCitation } from '../types/research'
+import {
+  getInvestigation,
+  sciAgentsIntegrationConfigured,
+  submitInvestigation,
+} from '../services/sciagentsApi'
+import { investigationProgressDisplay } from '../services/sciagentsProgress'
+import type { PageId, ResearchSnapshot, SciAgentsCitation, SciAgentsInvestigation } from '../types/research'
 
 interface SciAgentsViewProps {
   snapshot: ResearchSnapshot
@@ -27,6 +33,52 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       <dt className="text-slate-500">{label}</dt>
       <dd className="text-slate-900">{children}</dd>
     </div>
+  )
+}
+
+function ExecutionProgress({ investigation }: { investigation: SciAgentsInvestigation }) {
+  const display = investigationProgressDisplay(investigation)
+  const lastUpdate = investigation.progress?.updatedAt ?? investigation.updatedAt
+
+  return (
+    <Card
+      title="Progression de l'exécution"
+      description="Dernier état connu par l'adaptateur serveur ; actualisation par interrogation périodique à D2."
+      actions={<Badge tone={display.tone}>{investigationStatusDisplay[investigation.status].label}</Badge>}
+    >
+      <div aria-live="polite" className="space-y-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <p className="font-medium text-slate-900">{display.label}</p>
+          <p className="text-sm text-slate-500">
+            {display.percent === null ? 'Pourcentage non communiqué' : `${display.percent} %`}
+          </p>
+        </div>
+        {display.percent === null ? (
+          <div
+            role="progressbar"
+            aria-label="Progression sans estimation"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            className="h-2 overflow-hidden rounded-full bg-slate-200"
+          >
+            <div className={`h-full w-1/3 rounded-full ${investigation.status === 'running' ? 'animate-pulse bg-brand-600' : 'bg-slate-400'}`} />
+          </div>
+        ) : (
+          <div
+            role="progressbar"
+            aria-label="Progression estimée de l'investigation"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={display.percent}
+            className="h-2 overflow-hidden rounded-full bg-slate-200"
+          >
+            <div className="h-full rounded-full bg-brand-600 transition-[width]" style={{ width: `${display.percent}%` }} />
+          </div>
+        )}
+        <p className="text-sm text-slate-600">{display.detail}</p>
+        <p className="text-xs text-slate-500">Dernière mise à jour : {formatDateTime(lastUpdate)}</p>
+      </div>
+    </Card>
   )
 }
 
@@ -44,8 +96,8 @@ function Boundary() {
         <li className="rounded-xl border border-slate-200 p-3">
           <p className="font-semibold text-slate-900">2. Contrat HC-170 et adaptateur</p>
           <p className="mt-1 text-slate-600">
-            <code className="text-xs">scientific-investigation.v1</code> ; l'adaptateur serveur (HC-171) est implémenté et la
-            connexion du portail (HC-172) reste planifiée.
+            <code className="text-xs">scientific-investigation.v1</code> ; l'adaptateur serveur (HC-171) et la connexion du
+            portail (HC-172) sont implémentés à D2.
           </p>
         </li>
         <li className="rounded-xl border border-slate-200 p-3">
@@ -59,6 +111,71 @@ function Boundary() {
         Aucun dossier patient, identifiant, résultat contrôlé ni donnée brute des Hospital Nodes ne part vers SciAgents : seuls
         les deux concepts biomédicaux sont transmis par l'adaptateur.
       </p>
+    </Card>
+  )
+}
+
+function SubmitInvestigationCard({
+  snapshot,
+  onSubmitted,
+}: {
+  snapshot: ResearchSnapshot
+  onSubmitted: (investigation: SciAgentsInvestigation) => void
+}) {
+  const [projectRef, setProjectRef] = useState(snapshot.projects[0]?.project.id ?? '')
+  const [question, setQuestion] = useState('')
+  const [firstConcept, setFirstConcept] = useState('')
+  const [secondConcept, setSecondConcept] = useState('')
+  const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault()
+    setError('')
+    if (!question.trim() || !firstConcept.trim() || !secondConcept.trim()) {
+      setError('La question et les deux concepts biomédicaux sont obligatoires.')
+      return
+    }
+    setSubmitting(true)
+    try {
+      const investigation = await submitInvestigation({
+        project_ref: projectRef,
+        requested_by: snapshot.researcher.id,
+        question: question.trim(),
+        language: 'fr',
+        concepts: [{ label: firstConcept.trim() }, { label: secondConcept.trim() }],
+      })
+      onSubmitted(investigation)
+      setQuestion('')
+      setFirstConcept('')
+      setSecondConcept('')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <Card title="Nouvelle investigation" description="La question reste dans Hackcure ; seuls les deux concepts sont envoyés à SciAgents.">
+      <form className="grid gap-4" onSubmit={submit}>
+        <label className="grid gap-1 text-sm">
+          <span className="font-medium text-slate-700">Projet</span>
+          <select className="rounded-xl border border-slate-300 bg-surface p-2" value={projectRef} onChange={(e) => setProjectRef(e.target.value)}>
+            {snapshot.projects.map((summary) => <option key={summary.project.id} value={summary.project.id}>{summary.project.title}</option>)}
+          </select>
+        </label>
+        <label className="grid gap-1 text-sm">
+          <span className="font-medium text-slate-700">Question de recherche</span>
+          <textarea className="rounded-xl border border-slate-300 bg-surface p-2" rows={3} maxLength={2000} value={question} onChange={(e) => setQuestion(e.target.value)} />
+        </label>
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className="grid gap-1 text-sm"><span className="font-medium text-slate-700">Concept 1</span><input className="rounded-xl border border-slate-300 bg-surface p-2" maxLength={200} value={firstConcept} onChange={(e) => setFirstConcept(e.target.value)} /></label>
+          <label className="grid gap-1 text-sm"><span className="font-medium text-slate-700">Concept 2</span><input className="rounded-xl border border-slate-300 bg-surface p-2" maxLength={200} value={secondConcept} onChange={(e) => setSecondConcept(e.target.value)} /></label>
+        </div>
+        {error && <Alert tone="danger" title="Investigation non envoyée">{error}</Alert>}
+        <div><Button type="submit" loading={submitting} disabled={!sciAgentsIntegrationConfigured}>Soumettre à SciAgents</Button></div>
+      </form>
     </Card>
   )
 }
@@ -162,7 +279,7 @@ function InvestigationOutcome({ entry, onNavigate }: { entry: InvestigationEntry
       <Alert tone="danger" title={investigationErrorLabels[investigation.error.code]}>
         {investigation.error.message} Aucune hypothèse n'a été produite.{' '}
         {investigation.error.retryable
-          ? 'La question peut être soumise à nouveau une fois le portail connecté à SciAgents (HC-172).'
+          ? 'La question peut être soumise à nouveau lorsque SciAgents est disponible.'
           : "SciAgents a refusé la demande : la reformuler avant de la soumettre à nouveau."}
       </Alert>
     )
@@ -226,10 +343,12 @@ function InvestigationPanel({ entry, onNavigate }: { entry: InvestigationEntry; 
         recommandation, et ne deviennent jamais une donnée clinique ni une donnée versée à un dossier médical.
       </Alert>
 
+      <ExecutionProgress investigation={investigation} />
+
       <InvestigationOutcome entry={entry} onNavigate={onNavigate} />
 
       <div className="hc-stagger grid gap-6 md:grid-cols-2">
-        <Card title="Contexte transmis" description="Ce que la demande HC-170 peut porter : jamais de données brutes.">
+        <Card title="Contexte local de la fixture" description="Affiché pour la démonstration HC-102 ; aucun résultat contrôlé n'est envoyé par HC-172.">
           {entry.context.length === 0 ? (
             <p className="text-sm text-slate-500">Aucun résultat contrôlé n'accompagne la question.</p>
           ) : (
@@ -250,7 +369,7 @@ function InvestigationPanel({ entry, onNavigate }: { entry: InvestigationEntry; 
             </ul>
           )}
           <details className="mt-3 text-sm">
-            <summary className="cursor-pointer text-slate-700">Corps de la demande HC-170 (non envoyé)</summary>
+            <summary className="cursor-pointer text-slate-700">Corps HC-170 correspondant</summary>
             <pre className="mt-2 overflow-x-auto rounded-xl bg-slate-50 p-3 text-xs text-slate-800">
               {JSON.stringify(investigationRequest(entry), null, 2)}
             </pre>
@@ -265,7 +384,7 @@ function InvestigationPanel({ entry, onNavigate }: { entry: InvestigationEntry; 
             </Field>
             <Field label="Adaptateur">
               {provenance.adapter.name} {provenance.adapter.version}
-              <span className="text-slate-500"> · aucun adaptateur réel n'existe encore (HC-171)</span>
+              <span className="text-slate-500"> · frontière serveur HC-171/HC-172</span>
             </Field>
             <Field label="Origine">
               {provenance.mocked ? <DemoBadge>Fixture simulée</DemoBadge> : 'SciAgents'}
@@ -280,18 +399,34 @@ function InvestigationPanel({ entry, onNavigate }: { entry: InvestigationEntry; 
   )
 }
 
-/** SciAgents research panel (HC-102): fixture investigations from an external system, MOCKED. */
+/** SciAgents panel: HC-102 fixtures, HC-172 connection, and HC-173 execution progress. */
 export function SciAgentsView({ snapshot, onNavigate }: SciAgentsViewProps) {
-  const entries = sciAgentsOverview(snapshot)
+  const [liveInvestigations, setLiveInvestigations] = useState<SciAgentsInvestigation[]>([])
+  const [integrationError, setIntegrationError] = useState('')
+  const entries = sciAgentsOverview({ ...snapshot, investigations: [...liveInvestigations, ...snapshot.investigations] })
   const [selectedId, setSelectedId] = useState(() => entries[0]?.investigation.id ?? '')
   const entry = entries.find((e) => e.investigation.id === selectedId) ?? entries[0]
 
+  useEffect(() => {
+    const pending = liveInvestigations.find((item) => item.status === 'queued' || item.status === 'running')
+    if (!pending) return
+    const timer = window.setTimeout(() => {
+      getInvestigation(pending.id)
+        .then((updated) => {
+          setLiveInvestigations((items) => items.map((item) => item.id === updated.id ? updated : item))
+          setIntegrationError('')
+        })
+        .catch((caught: unknown) => setIntegrationError(caught instanceof Error ? caught.message : String(caught)))
+    }, 2000)
+    return () => window.clearTimeout(timer)
+  }, [liveInvestigations])
+
   const header = (
     <PageHeader
-      eyebrow="Assistance scientifique · HC-102"
+      eyebrow="Assistance scientifique · HC-102 / HC-172 / HC-173"
       title="SciAgents"
       description="Explorez les hypothèses qu'un système scientifique externe propose à partir de votre question et de vos résultats contrôlés, avec leurs preuves, contradictions et citations."
-      actions={<DemoBadge>Investigations fictives</DemoBadge>}
+      actions={<Badge tone={sciAgentsIntegrationConfigured ? 'success' : 'neutral'}>{sciAgentsIntegrationConfigured ? 'Intégration D2 configurée' : 'Intégration non configurée'}</Badge>}
     />
   )
 
@@ -314,12 +449,11 @@ export function SciAgentsView({ snapshot, onNavigate }: SciAgentsViewProps) {
     <>
       {header}
       <div className="space-y-6">
-        <Alert tone="demo" title="SciAgents simulé (D1)">
-          Les investigations affichées sont des fixtures fictives : ce portail n'envoie rien à SciAgents et n'en reçoit rien.
-          Ce ne sont pas des sorties réelles de SciAgents, et les publications citées sont inventées.
-        </Alert>
+        {!sciAgentsIntegrationConfigured && <Alert tone="warning" title="Intégration D2 non configurée">Définissez <code>VITE_SCIAGENTS_API_URL</code> vers la frontière serveur HC-172. Les fixtures ci-dessous restent explicitement simulées.</Alert>}
+        {integrationError && <Alert tone="danger" title="Actualisation interrompue">{integrationError}</Alert>}
 
         <Boundary />
+        <SubmitInvestigationCard snapshot={snapshot} onSubmitted={(investigation) => { setLiveInvestigations((items) => [investigation, ...items]); setSelectedId(investigation.id) }} />
 
         {entry ? (
           <>
@@ -340,7 +474,12 @@ export function SciAgentsView({ snapshot, onNavigate }: SciAgentsViewProps) {
                       >
                         <code className="text-xs text-slate-700">{e.investigation.id}</code>
                         <p className="mt-1 font-medium text-slate-900">{e.investigation.question}</p>
-                        <p className="text-xs text-slate-500">{e.summary.project.title}</p>
+                        <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-xs text-slate-500">{e.summary.project.title}</p>
+                          <Badge tone={investigationStatusDisplay[e.investigation.status].tone}>
+                            {investigationStatusDisplay[e.investigation.status].label}
+                          </Badge>
+                        </div>
                       </button>
                     </li>
                   ))}
@@ -353,7 +492,7 @@ export function SciAgentsView({ snapshot, onNavigate }: SciAgentsViewProps) {
           <Card>
             <EmptyState
               title="Aucune investigation"
-              description="Soumettre une question à SciAgents sera possible une fois le portail connecté (HC-172). Aucune investigation fictive n'existe pour vos projets."
+              description="Aucune investigation SciAgents n'existe pour vos projets. Utilisez le formulaire ci-dessus lorsque l'intégration D2 est configurée."
               action={
                 <Button variant="secondary" onClick={() => onNavigate('results')}>
                   Voir les résultats contrôlés

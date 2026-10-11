@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Protocol
 
 from application.audit import AUTHORITY_ORGANIZATION_REF, AuditTrail, record
+from application.ledger import AuditLedgerPort, anchor_recorded
 from domain.audit import AuditAction, AuditDomain, AuditOutcome, SubjectType
 from domain.hospital_application import ApplicationStatus, HospitalApplication
 from domain.hospital_approval import (
@@ -78,6 +79,7 @@ def decide_application(
     policies: PolicyHistory,
     audit: AuditTrail,
     clock: Callable[[], datetime],
+    ledger: AuditLedgerPort | None = None,
 ) -> HospitalApprovalDecision:
     """Decided under the governance policy in effect now, which it cites."""
     application = store.application(application_ref)
@@ -92,7 +94,7 @@ def decide_application(
         now,
     )
     store.record(decided, decision)
-    record(
+    event = record(
         audit,
         decision.decided_at,
         AuditAction.DECISION_RECORDED,
@@ -103,6 +105,8 @@ def decide_application(
         (AUTHORITY_ORGANIZATION_REF, decision.organization_ref),
         AuditOutcome(decision.outcome.value),
     )
+    # HC-191: anchored in the ledger, if any; the decision stands either way.
+    anchor_recorded(ledger, event)
     return decision
 
 

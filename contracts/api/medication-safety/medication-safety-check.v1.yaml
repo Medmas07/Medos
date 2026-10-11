@@ -14,9 +14,12 @@ info:
       `rule_source.kind` only allow `deterministic_rule_set` or
       `validated_source`.
     - **AI explanation is optional and separate.** A warning may carry an
-      `explanation` produced by AI Services (HC-164). It is advisory, it is
-      never the reason a warning exists, and the warning stays complete
-      without it.
+      `explanation` produced by AI Services. It is advisory, it is never the
+      reason a warning exists, and the warning stays complete without it.
+      AI Services produces it through
+      contracts/api/ai/medication-warning-explanation.v1.yaml (HC-156). A
+      Hospital Node attaches it after the check only when configured to
+      (HC-164); when AI Services is off or fails, `explanation` is null.
     - **The clinician decides.** The check never blocks or approves a
       prescription. `review_status` is always `pending_clinician_review`.
     - **"No warnings" is not "safe".** `outcome: no_warnings_found` only
@@ -32,9 +35,14 @@ info:
     v1 covers drug–drug interactions only. Allergy, dose, renal, and
     pregnancy checks are not part of this version.
 
-    Status: this contract has no implementation. Which component provides
-    it is OPEN (see docs/OPEN_QUESTIONS.md). Demo fixtures are HC-161 and
-    the deterministic engine is HC-162.
+    Status: implemented by each Hospital Node (HC-162, ADR-0008) with a
+    deterministic engine. By default its rules are the fictional rule set of
+    demo-data/medication-rules.json (HC-161), and results are
+    `mocked: true`. A node can instead use the validated ONC high-priority
+    list (HC-163, ADR-0009), a minimum set of contraindicated pairs, with
+    `mocked: false`. When the rules cannot
+    identify the proposed medication, no check is performed and the answer
+    is a 503. No product calls it yet.
 paths:
   /v1/medication-safety-checks:
     post:

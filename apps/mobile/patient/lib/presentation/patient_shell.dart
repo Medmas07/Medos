@@ -409,6 +409,7 @@ class _AccessContent extends StatefulWidget {
 
 class _AccessContentState extends State<_AccessContent> {
   late final Set<String> _revoked = {};
+  late final List<CanonicalAccessGrant> _grants = [...demoAccessGrants];
 
   @override
   Widget build(BuildContext context) {
@@ -424,12 +425,124 @@ class _AccessContentState extends State<_AccessContent> {
         const SizedBox(height: 18),
         const _AccessNotice(),
         const SizedBox(height: 12),
-        for (final grant in demoAccessGrants)
+        FilledButton.icon(
+          onPressed: _grantAccess,
+          icon: const Icon(Icons.person_add_alt_1_rounded),
+          label: const Text('Accorder un accès'),
+        ),
+        const SizedBox(height: 12),
+        for (final grant in _grants)
           _AccessGrantCard(
             grant: grant,
             revoked: _revoked.contains(grant.grantee),
-            onRevoke: () => setState(() => _revoked.add(grant.grantee)),
+            onRevoke: () => _confirmRevoke(grant.grantee),
           ),
+      ],
+    );
+  }
+
+  Future<void> _grantAccess() async {
+    final grant = await showDialog<CanonicalAccessGrant>(
+      context: context,
+      builder: (context) => const _GrantAccessDialog(),
+    );
+    if (grant != null) setState(() => _grants.insert(0, grant));
+  }
+
+  Future<void> _confirmRevoke(String grantee) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Révoquer cet accès ?'),
+        content: Text(
+          'La vue autorisée de $grantee sera retirée dans cette démonstration.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Révoquer'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) setState(() => _revoked.add(grantee));
+  }
+}
+
+class _GrantAccessDialog extends StatefulWidget {
+  const _GrantAccessDialog();
+
+  @override
+  State<_GrantAccessDialog> createState() => _GrantAccessDialogState();
+}
+
+class _GrantAccessDialogState extends State<_GrantAccessDialog> {
+  String _physician = 'Dr Rania Kefi';
+  String _scope = 'Parcours, médicaments, laboratoires';
+  String _duration = '30 jours';
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Accorder un accès'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<String>(
+              value: _physician,
+              decoration: const InputDecoration(labelText: 'Médecin'),
+              items: const [
+                DropdownMenuItem(value: 'Dr Rania Kefi', child: Text('Dr Rania Kefi')),
+                DropdownMenuItem(value: 'Dr Hatem Bouzid', child: Text('Dr Hatem Bouzid')),
+              ],
+              onChanged: (value) => setState(() => _physician = value!),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: _scope,
+              decoration: const InputDecoration(labelText: 'Portée'),
+              items: const [
+                DropdownMenuItem(
+                  value: 'Parcours, médicaments, laboratoires',
+                  child: Text('Parcours + médicaments + laboratoires'),
+                ),
+                DropdownMenuItem(value: 'Parcours', child: Text('Parcours uniquement')),
+              ],
+              onChanged: (value) => setState(() => _scope = value!),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: _duration,
+              decoration: const InputDecoration(labelText: 'Durée'),
+              items: const [
+                DropdownMenuItem(value: '30 jours', child: Text('30 jours')),
+                DropdownMenuItem(value: '90 jours', child: Text('90 jours')),
+              ],
+              onChanged: (value) => setState(() => _duration = value!),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+        FilledButton(
+          onPressed: () => Navigator.pop(
+            context,
+            CanonicalAccessGrant(
+              grantee: _physician,
+              purpose: 'Accès accordé depuis l’application patient',
+              scope: _scope,
+              status: 'Actif',
+              expiresAt: 'Expire dans $_duration',
+            ),
+          ),
+          child: const Text('Accorder'),
+        ),
       ],
     );
   }

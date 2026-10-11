@@ -1,0 +1,481 @@
+openapi: 3.1.0
+info:
+  title: Governance Node Ledger Proofs
+  version: 1.3.0
+  description: |
+    Contract HC-191, version 1 (1.1.0: payload hash, HC-192; 1.2.0: Besu
+    ledger, HC-194). The proofs with which the Governance /
+    Ethics Authority anchors its recorded decisions in its audit ledger,
+    behind the Governance Node's `AuditLedgerPort` (HC-190). A proof is
+    the ledger's receipt for one decision's minimized payload; the
+    decision itself stays in the governance API that recorded it, and its
+    `decision_recorded` event in governance-audit-events.v1.yaml.
+
+    Boundary rules carried by this contract:
+
+    - **Minimized payload.** A proof anchors exactly six fields: the audit
+      event reference, the decision reference, the outcome, the time
+      decided, the organizations (the Authority first), and the payload
+      version. Never a patient reference, an actor, a purpose, a
+      rationale, a data scope, a document, a diagnosis, a prescription, a
+      lab result, a FHIR resource, or any clinical content.
+    - **Decisions only.** Only `decision_recorded` events are anchored:
+      hospital approval, synchronization, and research decisions. Requests
+      received and authorization checks are not.
+    - **Append-only.** An event is anchored once; a proof is never changed
+      or removed through this API.
+    - **Hashed payload.** Each proof holds the SHA-256 hash of its payload
+      (`payload_hash`, lowercase hex) in this canonical form: a JSON object
+      with the keys `eventId`, `decisionId`, `outcome`, `decidedAt`,
+      `organizationIds`, and `version` (the payload's six fields, in the
+      field names of the demo dataset's simulated proofs), keys sorted, no
+      whitespace, non-ASCII characters unescaped, encoded as UTF-8;
+      `decidedAt` is written as served in `decided_at`. It is the hash
+      demo-data/check_fixtures.py checks. A hash makes a change evident; it
+      is not a signature and proves no author.
+    - **Verification.** `verification` is the Governance Node's own
+      recomputation when answering: `verified` when the hash is the
+      payload's and the payload is still that of the audit event it
+      anchors (governance-audit-events.v1.yaml); `tampered` when either
+      hash differs; `inconsistent` when that event is missing or is not a
+      recorded decision. It is a check by the Node that holds the proofs,
+      not an independent verification: re-hash the payload to check it.
+    - **The decision stands.** A decision is recorded whether or not the
+      ledger anchors it; a decision the ledger could not anchor has no
+      proof (`proof_not_found`) and is not retried by this version.
+
+    `simulated` says whether the proofs are held by a simulation rather
+    than a real ledger. The Governance Node runs with one of two ledgers,
+    chosen at startup, and `notice` describes the one answering:
+
+    - **Simulated (default), `simulated: true`.** A simulated immutable
+      ledger (MOCKED BLOCKCHAIN), an append-only list in the Governance
+      Node's memory, named `local-simulation`, seeded from the fictional
+      demo proofs. It is not a blockchain: no consensus, signature,
+      replication, or durability, and proofs anchored at runtime are lost
+      on restart. Hashes are computed by the Node itself and anchored
+      nowhere else.
+    - **Besu (since 1.2.0), `simulated: false`.** A permissioned
+      Hyperledger Besu (QBFT) ledger (ADR-0007): each payload, in the
+      canonical form above, is anchored by a transaction the Governance
+      Node signs, in an append-only contract that computes and keeps its
+      SHA-256 and accepts anchors from the Governance Node's account only.
+      `ledger` is `besu-qbft:` followed by the contract address, and
+      `proof_ref` is that address, a colon, and the proof's position in
+      the contract, from 0. `anchored_at` is the time of the block, in
+      UTC. The simulated seed proofs are not on it. It is independent of
+      the Governance Node only if other organizations run its validators;
+      the demo chain has a single validator, run locally.
+
+    Status: served by the Governance Node runtime (HC-191, HC-192, HC-194).
+    Since 1.3.0 (HC-212, ADR-0011), as for the audit trail, a Node
+    requiring authentication serves proofs only to a bearer session
+    whose role grants `governance:audit`, held by governance reviewers
+    (`401 authentication_required`, `403 permission_denied`); with
+    authentication off, its default, readers are not authenticated.
+paths:
+  /v1/ledger/proofs:
+    get:
+      operationId: listLedgerProofs
+      summary: List the ledger proofs, the latest anchored first.
+      security:
+        - {}
+        - bearerSession: []
+      responses:
+        "200":
+          description: Every proof, the latest anchored first. May be empty.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProofList"
+              examples:
+                seed:
+                  summary: |
+                    Fictional demo — the two simulated seed proofs, before
+                    any decision is recorded at runtime.
+                  value:
+                    node_ref: node-governance
+                    organization_ref: org-governance
+                    simulated: true
+                    notice: "MOCKED BLOCKCHAIN. Fictional demo proofs held by the Governance Node's simulated immutable ledger: an append-only list in memory, not a blockchain or a real ledger; proofs anchored at runtime are lost on restart. Each payload's SHA-256 hash is computed by the Node itself, not signed, and anchored nowhere else. Only a decision's minimized payload is anchored, never clinical content."
+                    proofs:
+                      - proof_ref: proof-004
+                        ledger: local-simulation
+                        anchored_at: "2026-07-20T15:00:04+01:00"
+                        hash_algorithm: SHA-256
+                        payload_hash: 8a978e8a05a24d2c56c464881aeb7b2b7649e7294cec62f22ce615c0fe380a2a
+                        verification: verified
+                        payload:
+                          event_ref: evt-004
+                          decision_ref: dec-rar-001
+                          outcome: approved
+                          decided_at: "2026-07-20T15:00:00+01:00"
+                          organization_refs:
+                            [
+                              org-governance,
+                              org-research-lab,
+                              org-hospital-a,
+                              org-hospital-b,
+                            ]
+                          version: 1
+                      - proof_ref: proof-003
+                        ledger: local-simulation
+                        anchored_at: "2025-12-12T14:30:05+01:00"
+                        hash_algorithm: SHA-256
+                        payload_hash: e75bbc395362bd1d52b865b691cde3d46c405477e4f7e87934cfcb138d9b5700
+                        verification: verified
+                        payload:
+                          event_ref: evt-003
+                          decision_ref: dec-sync-002
+                          outcome: approved
+                          decided_at: "2025-12-12T14:30:00+01:00"
+                          organization_refs:
+                            [org-governance, org-private-practice, org-hospital-b]
+                          version: 1
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "403":
+          $ref: "#/components/responses/PermissionDenied"
+        "503":
+          $ref: "#/components/responses/LedgerUnavailable"
+  /v1/audit/events/{event_ref}/proof:
+    get:
+      operationId: getLedgerProof
+      summary: The proof anchoring one governance audit event.
+      security:
+        - {}
+        - bearerSession: []
+      description: |
+        `event_ref` is a governance audit event
+        (governance-audit-events.v1.yaml). An unknown event is
+        `event_not_found`; a known event without proof (not a decision, a
+        seed decision the demo ledger does not hold, or a decision the
+        ledger could not anchor) is `proof_not_found`.
+      parameters:
+        - name: event_ref
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The proof.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProofResponse"
+              examples:
+                evt004:
+                  summary: Fictional demo — the research decision dec-rar-001.
+                  value:
+                    node_ref: node-governance
+                    organization_ref: org-governance
+                    simulated: true
+                    notice: "MOCKED BLOCKCHAIN. Fictional demo proofs held by the Governance Node's simulated immutable ledger: an append-only list in memory, not a blockchain or a real ledger; proofs anchored at runtime are lost on restart. Each payload's SHA-256 hash is computed by the Node itself, not signed, and anchored nowhere else. Only a decision's minimized payload is anchored, never clinical content."
+                    proof:
+                      proof_ref: proof-004
+                      ledger: local-simulation
+                      anchored_at: "2026-07-20T15:00:04+01:00"
+                      hash_algorithm: SHA-256
+                      payload_hash: 8a978e8a05a24d2c56c464881aeb7b2b7649e7294cec62f22ce615c0fe380a2a
+                      verification: verified
+                      payload:
+                        event_ref: evt-004
+                        decision_ref: dec-rar-001
+                        outcome: approved
+                        decided_at: "2026-07-20T15:00:00+01:00"
+                        organization_refs:
+                          [
+                            org-governance,
+                            org-research-lab,
+                            org-hospital-a,
+                            org-hospital-b,
+                          ]
+                        version: 1
+                anchoredAtRuntime:
+                  summary: |
+                    Fictional demo — Pr Olfa Hamdi's approval of sync-001,
+                    recorded through synchronization-requests.v1.yaml as
+                    evt-008 and anchored at once.
+                  value:
+                    node_ref: node-governance
+                    organization_ref: org-governance
+                    simulated: true
+                    notice: "MOCKED BLOCKCHAIN. Fictional demo proofs held by the Governance Node's simulated immutable ledger: an append-only list in memory, not a blockchain or a real ledger; proofs anchored at runtime are lost on restart. Each payload's SHA-256 hash is computed by the Node itself, not signed, and anchored nowhere else. Only a decision's minimized payload is anchored, never clinical content."
+                    proof:
+                      proof_ref: proof-005
+                      ledger: local-simulation
+                      anchored_at: "2026-10-10T10:00:00+01:00"
+                      hash_algorithm: SHA-256
+                      payload_hash: 44556e2cf2a5e455a3f51745a80f3b36f8adb45b45896d76d7c7a127283ad8df
+                      verification: verified
+                      payload:
+                        event_ref: evt-008
+                        decision_ref: dec-sync-001
+                        outcome: approved
+                        decided_at: "2026-10-10T10:00:00+01:00"
+                        organization_refs:
+                          [org-governance, org-hospital-a, org-hospital-b]
+                        version: 1
+                anchoredOnBesu:
+                  summary: |
+                    Fictional demo — the same approval of sync-001, with the
+                    Node started on the Besu ledger (1.2.0): the first proof of
+                    a newly deployed contract, holding the same payload hash.
+                  value:
+                    node_ref: node-governance
+                    organization_ref: org-governance
+                    simulated: false
+                    notice: "Proofs anchored by the Governance Node's ledger account in a permissioned Hyperledger Besu (QBFT) ledger (ADR-0007), which computes and keeps each payload's SHA-256; its contract cannot change or remove an anchored proof. The ledger is independent of the Governance Node only if other organizations run its validators: the demo chain has one validator, run locally. Only a decision's minimized payload is anchored, never clinical content."
+                    proof:
+                      proof_ref: "0x55F89302bBaa9a695d9e1502005e325142E4BE41:0"
+                      ledger: "besu-qbft:0x55F89302bBaa9a695d9e1502005e325142E4BE41"
+                      anchored_at: "2026-10-10T09:00:01+00:00"
+                      hash_algorithm: SHA-256
+                      payload_hash: 44556e2cf2a5e455a3f51745a80f3b36f8adb45b45896d76d7c7a127283ad8df
+                      verification: verified
+                      payload:
+                        event_ref: evt-008
+                        decision_ref: dec-sync-001
+                        outcome: approved
+                        decided_at: "2026-10-10T10:00:00+01:00"
+                        organization_refs:
+                          [org-governance, org-hospital-a, org-hospital-b]
+                        version: 1
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "403":
+          $ref: "#/components/responses/PermissionDenied"
+        "404":
+          description: No event has this reference, or the event has no proof.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                unknownEvent:
+                  value:
+                    type: about:blank
+                    title: Event not found
+                    status: 404
+                    detail: No governance audit event evt-999.
+                    code: event_not_found
+                notAnchored:
+                  summary: |
+                    Fictional demo — the request sync-001 received: not a
+                    decision, so never anchored.
+                  value:
+                    type: about:blank
+                    title: Proof not found
+                    status: 404
+                    detail: Audit event evt-007 is not anchored in the ledger.
+                    code: proof_not_found
+        "503":
+          $ref: "#/components/responses/LedgerUnavailable"
+components:
+  securitySchemes:
+    bearerSession:
+      type: http
+      scheme: bearer
+      description: >-
+        A session of authentication.v1.yaml, required only when the
+        Governance Node is started with authentication required.
+  responses:
+    AuthenticationRequired:
+      description: |
+        Authentication is required and there is no bearer session, or an
+        unknown, ended, or expired one (`WWW-Authenticate: Bearer`).
+      headers:
+        WWW-Authenticate:
+          schema:
+            type: string
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          examples:
+            missing:
+              value:
+                type: about:blank
+                title: Authentication required
+                status: 401
+                detail: A bearer session is required.
+                code: authentication_required
+    PermissionDenied:
+      description: |
+        Authentication is required and the signed-in person's role does not
+        grant `governance:audit` (HC-212).
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          examples:
+            permissionDenied:
+              summary: Fictional demo — a researcher (usr-aymen) signed in.
+              value:
+                type: about:blank
+                title: Permission denied
+                status: 403
+                detail: The role researcher does not grant governance:audit.
+                code: permission_denied
+    LedgerUnavailable:
+      description: The ledger cannot be read now. Nothing is inferred about any proof.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          examples:
+            unavailable:
+              value:
+                type: about:blank
+                title: Ledger unavailable
+                status: 503
+                detail: The audit ledger cannot be read now.
+                code: ledger_unavailable
+  schemas:
+    ProofList:
+      type: object
+      additionalProperties: false
+      required: [node_ref, organization_ref, simulated, notice, proofs]
+      properties:
+        node_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        simulated:
+          description: Whether the proofs are held by a simulation rather than a real ledger.
+          type: boolean
+        notice:
+          type: string
+        proofs:
+          type: array
+          items:
+            $ref: "#/components/schemas/Proof"
+
+    ProofResponse:
+      type: object
+      additionalProperties: false
+      required: [node_ref, organization_ref, simulated, notice, proof]
+      properties:
+        node_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        simulated:
+          type: boolean
+        notice:
+          type: string
+        proof:
+          $ref: "#/components/schemas/Proof"
+
+    Proof:
+      type: object
+      additionalProperties: false
+      required:
+        - proof_ref
+        - ledger
+        - anchored_at
+        - hash_algorithm
+        - payload_hash
+        - verification
+        - payload
+      properties:
+        proof_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        ledger:
+          description: |
+            The ledger holding the proof, as the Node's ledger adapter names
+            it: `local-simulation` for the simulated ledger, or
+            `besu-qbft:<contract address>` for the Besu ledger (1.2.0).
+          $ref: "#/components/schemas/OpaqueRef"
+        anchored_at:
+          type: string
+          format: date-time
+        hash_algorithm:
+          type: string
+          const: SHA-256
+        payload_hash:
+          description: |
+            The hash the ledger holds for the payload, over its canonical
+            form (see the description). Since 1.1.0.
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+        verification:
+          description: |
+            The Governance Node's recomputation of the hash when answering
+            (see the description). Since 1.1.0.
+          type: string
+          enum: [verified, tampered, inconsistent]
+        payload:
+          $ref: "#/components/schemas/ProofPayload"
+
+    ProofPayload:
+      description: |
+        The anchored payload, exactly these six fields. Version 1 of the
+        payload's shape.
+      type: object
+      additionalProperties: false
+      required:
+        - event_ref
+        - decision_ref
+        - outcome
+        - decided_at
+        - organization_refs
+        - version
+      properties:
+        event_ref:
+          type: string
+          pattern: "^evt-[A-Za-z0-9._:-]{1,124}$"
+        decision_ref:
+          $ref: "#/components/schemas/Ref"
+        outcome:
+          type: string
+          enum: [approved, rejected]
+        decided_at:
+          type: string
+          format: date-time
+        organization_refs:
+          description: The Authority first, then the organizations the decision concerns.
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/Ref"
+        version:
+          type: integer
+          const: 1
+
+    Ref:
+      description: |
+        A reference as given by the caller of the governance API concerned:
+        opaque, never a name or other direct identifier.
+      type: string
+      minLength: 1
+      maxLength: 128
+
+    OpaqueRef:
+      description: Opaque identifier. Must not contain a name or other direct identifier.
+      type: string
+      pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+
+    Problem:
+      description: RFC 9457 problem details.
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+          enum:
+            - event_not_found
+            - proof_not_found
+            - ledger_unavailable
+            - authentication_required
+            - permission_denied
