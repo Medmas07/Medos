@@ -18,6 +18,7 @@ from adapters.inbound.http.research_executions import (
 from adapters.outbound.fixture_authorization_verifier import (
     FixtureAuthorizationVerifier,
 )
+from adapters.outbound.ai_services_warning_explainer import AiServicesWarningExplainer
 from adapters.outbound.fixture_clinical_repository import FixtureClinicalRepository
 from adapters.outbound.fixture_interaction_rules import FixtureInteractionRuleSource
 from adapters.outbound.validated_snapshot_rules import (
@@ -88,7 +89,16 @@ def create_app(
     )
     app.include_router(create_research_executions_router(research_agent, clock))
     app.include_router(
-        create_medication_safety_router(CheckMedicationSafety(rule_source, clock))
+        create_medication_safety_router(
+            CheckMedicationSafety(
+                rule_source,
+                clock,
+                # HC-164: advisory explanations, only when this hospital opts in.
+                explainer=AiServicesWarningExplainer(config.ai_services_url)
+                if config.ai_services_url
+                else None,
+            )
+        )
     )
     return app
 

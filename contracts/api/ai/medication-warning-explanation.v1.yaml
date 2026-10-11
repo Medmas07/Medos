@@ -37,9 +37,9 @@ info:
 
     Status: implemented by AI Services (HC-156) with real model providers
     (Claude, then a local Ollama model, ADR-0006) or the deterministic template
-    only (`template` mode). No medication safety engine exists yet (HC-162), so
-    nothing attaches these explanations to warnings (HC-164). Not clinically
-    validated.
+    only (`template` mode). A Hospital Node configured with an AI Services
+    URL calls it for each warning of its medication safety check and attaches
+    the result as `Warning.explanation` (HC-164). Not clinically validated.
 servers:
   - url: http://localhost:8600
     description: Local AI Services runtime (development and preview only).
