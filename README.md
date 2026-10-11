@@ -4,6 +4,10 @@
 
 MedOS connects hospitals, patients, clinicians, researchers, and an independent Governance / Ethics Authority without building one central clinical database. Each hospital keeps its clinical data in its own Hospital Node; access is granted explicitly (who, what, why, for how long); research follows Compute-to-Data; AI assists accountable humans. It integrates existing hospital systems (DMI/HIS) rather than replacing them.
 
+![MedOS federated architecture: Hospital Nodes A, B, and C keep their local DMI, data, consent, and audit; the Governance and Ethics Node authorizes; a federation layer serves the Patient App, the Clinician App, and the research platform, which uses SciAgents](assets/architecture-overview.png)
+
+*The target architecture, as described in the [product vision](docs/product/FEDERATED_HEALTHCARE_ECOSYSTEM.md): data stays in the hospitals, governance, consent, and audit apply to every access, and computation goes to the data.*
+
 This is a two-day hackathon repository. Every component below exists in code, mostly at demo depth over **fictional data only**. Nothing is production-ready, and no clinical, security, or deployment capability is VALIDATED. Read the [current status](docs/CURRENT_STATUS.md) before relying on any capability, and never infer implementation from a README or plan.
 
 Before coding, follow the [agent startup checklist](docs/AGENT_STARTUP_CHECKLIST.md).
@@ -49,6 +53,10 @@ The [canonical product vision](docs/product/FEDERATED_HEALTHCARE_ECOSYSTEM.md) d
 - Clean / Hexagonal Architecture in every backend; components communicate through the versioned contracts in [`contracts/`](contracts/README.md).
 
 Technical choices are recorded as [ADRs](docs/decisions/README.md).
+
+![Component map: the web portals, the shared AI, SciAgents, and Notification capabilities, the Research and Federation runtimes, the Governance runtime, and the Hospital Node with its clinical repository, with the calls between them](assets/component-map.png)
+
+*How the code is wired, generated from the repository with [GitDiagram](https://gitdiagram.com/ahm30-1/hackcure). Dotted arrows are the intended flows; as the table above says, the portals do not call the backends yet. Its "Hospital portal" box is the onboarding journey, now in `apps/web/landing/`; the Patient and Clinician Apps are not shown.*
 
 ## Running things
 
