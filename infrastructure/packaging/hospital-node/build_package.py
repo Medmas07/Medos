@@ -56,6 +56,7 @@ DATA_FILES = [
 ]
 PUBLIC_KEY_FILE = "governance-public-key.pem"
 IMAGE_ARCHIVE = "images/hospital-node.tar"
+SCRIPTS = ("install.sh", "check-runtime.sh")
 
 NOT_INCLUDED = [
     {
@@ -75,8 +76,8 @@ NOT_INCLUDED = [
     },
     {
         "item": "container_runtime",
-        "reason": "Never installed by the helper. It stops with instructions when Docker is "
-        "missing; fuller runtime detection is HC-222.",
+        "reason": "Never installed by the helper. check-runtime.sh (HC-222) reports what is "
+        "missing or incompatible, with instructions for the host's administrator.",
     },
     {
         "item": "health_checks",
@@ -106,6 +107,9 @@ class Image:
     # digest (classic store) as the image ID; the helper accepts either.
     accepted_ids: tuple[str, ...]
     archive: Path
+    # The platform the image runs on, from its configuration, e.g. linux and amd64.
+    os: str
+    architecture: str
 
 
 Fetch = Callable[[str, dict[str, str]], tuple[int, bytes]]
@@ -217,6 +221,7 @@ def read_image_archive(path: Path, reference: str) -> Image:
     entry = next((e for e in manifest if reference in (e.get("RepoTags") or [])), None)
     if entry is None:
         raise PackageError(f"{path} does not contain {reference}.")
+    platform = _image_platform(path, entry["Config"])
     config = Path(entry["Config"]).name.removesuffix(".json")
     accepted = [f"sha256:{config}"]
     for item in (index or {}).get("manifests", []):
@@ -226,7 +231,22 @@ def read_image_archive(path: Path, reference: str) -> Image:
     for image_id in accepted:
         if not re.fullmatch(r"sha256:[0-9a-f]{64}", image_id):
             raise PackageError(f"{path}: {image_id!r} is not an image digest.")
-    return Image(reference, tuple(dict.fromkeys(accepted)), path)
+    return Image(reference, tuple(dict.fromkeys(accepted)), path, *platform)
+
+
+def _image_platform(path: Path, config_name: str) -> tuple[str, str]:
+    # check-runtime.sh compares it with the daemon's platform (HC-222).
+    try:
+        with tarfile.open(path) as archive:
+            config = json.load(archive.extractfile(config_name))
+    except (OSError, KeyError, ValueError, tarfile.TarError, TypeError) as error:
+        raise PackageError(
+            f"{path}: cannot read the image configuration: {error}"
+        ) from error
+    platform = (config.get("os"), config.get("architecture"))
+    if not all(isinstance(v, str) and re.fullmatch(r"[a-z0-9]+", v) for v in platform):
+        raise PackageError(f"{path}: the image configuration names no platform.")
+    return platform
 
 
 def render(name: str, values: dict[str, str]) -> bytes:
@@ -267,6 +287,8 @@ def build_files(
         "IMAGE_REF": image.reference,
         "IMAGE_IDS": " ".join(image.accepted_ids),
         "IMAGE_ARCHIVE": IMAGE_ARCHIVE,
+        "IMAGE_OS": image.os,
+        "IMAGE_ARCH": image.architecture,
         "DATA_FILES": " ".join(DATA_FILES),
         "KEY_VOLUME": key_volume,
     }
@@ -274,6 +296,7 @@ def build_files(
         "config/node.json": _json(node_config),
         "compose.yaml": render("compose.yaml", values),
         "install.sh": render("install.sh", values),
+        "check-runtime.sh": render("check-runtime.sh", values),
         "README.md": render("README.md", values),
         IMAGE_ARCHIVE: image.archive.read_bytes(),
     }
@@ -307,6 +330,7 @@ def build_files(
         "image": {
             "reference": image.reference,
             "accepted_ids": list(image.accepted_ids),
+            "platform": f"{image.os}/{image.architecture}",
             "archive": IMAGE_ARCHIVE,
             "registry": None,
         },
@@ -348,7 +372,7 @@ def write_package(
                 for name in sorted(directories | {root}):
                     tar.addfile(_info(name, 0, 0o755, mtime, tarfile.DIRTYPE))
                 for name, content in sorted(files.items()):
-                    mode = 0o755 if name == "install.sh" else 0o644
+                    mode = 0o755 if name in SCRIPTS else 0o644
                     info = _info(
                         f"{root}/{name}", len(content), mode, mtime, tarfile.REGTYPE
                     )
