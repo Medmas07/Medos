@@ -410,6 +410,8 @@ class _AccessContent extends StatefulWidget {
 class _AccessContentState extends State<_AccessContent> {
   late final Set<String> _revoked = {};
   late final List<CanonicalAccessGrant> _grants = [...demoAccessGrants];
+  late final Set<String> _withdrawnDelegations = {};
+  late final List<CanonicalDelegation> _delegations = [...demoDelegations];
 
   @override
   Widget build(BuildContext context) {
@@ -437,8 +439,65 @@ class _AccessContentState extends State<_AccessContent> {
             revoked: _revoked.contains(grant.grantee),
             onRevoke: () => _confirmRevoke(grant.grantee),
           ),
+        const SizedBox(height: 20),
+        Text('Proches de confiance', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 6),
+        const Text(
+          'Un proche consulte uniquement la portée que vous choisissez.',
+          style: TextStyle(color: PatientColors.muted),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: _delegateAccess,
+          icon: const Icon(Icons.family_restroom_rounded),
+          label: const Text('Déléguer à un proche'),
+        ),
+        const SizedBox(height: 12),
+        for (final delegation in _delegations)
+          _DelegationCard(
+            delegation: delegation,
+            withdrawn: _withdrawnDelegations.contains(delegation.delegate),
+            onWithdraw: () => _confirmWithdraw(delegation.delegate),
+          ),
       ],
     );
+  }
+
+  Future<void> _delegateAccess() async {
+    final delegation = await showDialog<CanonicalDelegation>(
+      context: context,
+      builder: (context) => const _DelegateAccessDialog(),
+    );
+    if (delegation == null) return;
+    setState(() {
+      _withdrawnDelegations.remove(delegation.delegate);
+      _delegations
+        ..removeWhere((d) => d.delegate == delegation.delegate)
+        ..insert(0, delegation);
+    });
+  }
+
+  Future<void> _confirmWithdraw(String delegate) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Retirer la délégation ?'),
+        content: Text(
+          '$delegate ne verra plus votre vue autorisée dans cette démonstration.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Retirer'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) setState(() => _withdrawnDelegations.add(delegate));
   }
 
   Future<void> _grantAccess() async {
@@ -618,6 +677,181 @@ class _AccessGrantCard extends StatelessWidget {
                 onPressed: onRevoke,
                 icon: const Icon(Icons.block_outlined),
                 label: const Text('Révoquer cet accès'),
+              ),
+            ],
+            const Align(
+              alignment: Alignment.centerRight,
+              child: _StatusPill(label: 'DÉMO D1'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DelegateAccessDialog extends StatefulWidget {
+  const _DelegateAccessDialog();
+
+  @override
+  State<_DelegateAccessDialog> createState() => _DelegateAccessDialogState();
+}
+
+class _DelegateAccessDialogState extends State<_DelegateAccessDialog> {
+  final _name = TextEditingController();
+  String _relationship = 'Fils';
+  String _scope = 'Parcours, médicaments';
+  String _duration = 'Sans date d’expiration';
+  bool _canManageGrants = false;
+  String? _nameError;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Déléguer à un proche'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _name,
+              decoration: InputDecoration(
+                labelText: 'Nom du proche',
+                errorText: _nameError,
+              ),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: _relationship,
+              decoration: const InputDecoration(labelText: 'Lien'),
+              items: const [
+                DropdownMenuItem(value: 'Fils', child: Text('Fils')),
+                DropdownMenuItem(value: 'Fille', child: Text('Fille')),
+                DropdownMenuItem(value: 'Conjoint·e', child: Text('Conjoint·e')),
+                DropdownMenuItem(value: 'Aidant·e', child: Text('Aidant·e')),
+              ],
+              onChanged: (value) => setState(() => _relationship = value!),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: _scope,
+              decoration: const InputDecoration(labelText: 'Portée'),
+              items: const [
+                DropdownMenuItem(
+                  value: 'Parcours, médicaments',
+                  child: Text('Parcours + médicaments'),
+                ),
+                DropdownMenuItem(value: 'Médicaments', child: Text('Médicaments uniquement')),
+              ],
+              onChanged: (value) => setState(() => _scope = value!),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: _duration,
+              decoration: const InputDecoration(labelText: 'Durée'),
+              items: const [
+                DropdownMenuItem(
+                  value: 'Sans date d’expiration',
+                  child: Text('Jusqu’à révocation'),
+                ),
+                DropdownMenuItem(value: 'Expire dans 30 jours', child: Text('30 jours')),
+              ],
+              onChanged: (value) => setState(() => _duration = value!),
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: _canManageGrants,
+              title: const Text('Peut gérer mes accès'),
+              onChanged: (value) => setState(() => _canManageGrants = value),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+        FilledButton(onPressed: _submit, child: const Text('Déléguer')),
+      ],
+    );
+  }
+
+  void _submit() {
+    final name = _name.text.trim();
+    if (name.isEmpty) {
+      setState(() => _nameError = 'Indiquez le nom du proche.');
+      return;
+    }
+    Navigator.pop(
+      context,
+      CanonicalDelegation(
+        delegate: name,
+        relationship: _relationship,
+        scope: _scope,
+        canManageGrants: _canManageGrants,
+        grantedAt: 'Déléguée pendant cette session',
+        expiresAt: _duration,
+      ),
+    );
+  }
+}
+
+class _DelegationCard extends StatelessWidget {
+  const _DelegationCard({
+    required this.delegation,
+    required this.withdrawn,
+    required this.onWithdraw,
+  });
+
+  final CanonicalDelegation delegation;
+  final bool withdrawn;
+  final VoidCallback onWithdraw;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.family_restroom_rounded, color: PatientColors.brand),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '${delegation.delegate} · ${delegation.relationship}',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                _StatusPill(label: withdrawn ? 'RETIRÉ' : 'DÉLÉGUÉ'),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(delegation.scope),
+            const SizedBox(height: 4),
+            Text(
+              delegation.canManageGrants
+                  ? 'Peut gérer vos accès'
+                  : 'Lecture seule — ne peut pas gérer vos accès',
+              style: const TextStyle(color: PatientColors.muted),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${delegation.grantedAt} · ${delegation.expiresAt}',
+              style: const TextStyle(color: PatientColors.muted),
+            ),
+            if (!withdrawn) ...[
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: onWithdraw,
+                icon: const Icon(Icons.person_remove_outlined),
+                label: const Text('Retirer la délégation'),
               ),
             ],
             const Align(

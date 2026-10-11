@@ -231,3 +231,32 @@ const demoAccessGrants = <CanonicalAccessGrant>[
     expiresAt: 'Expiré le 20 août 2026',
   ),
 ];
+
+class CanonicalDelegation {
+  const CanonicalDelegation({
+    required this.delegate,
+    required this.relationship,
+    required this.scope,
+    required this.canManageGrants,
+    required this.grantedAt,
+    required this.expiresAt,
+  });
+
+  final String delegate;
+  final String relationship;
+  final String scope;
+  final bool canManageGrants;
+  final String grantedAt;
+  final String expiresAt;
+}
+
+const demoDelegations = <CanonicalDelegation>[
+  CanonicalDelegation(
+    delegate: 'Sami Mansouri',
+    relationship: 'Fils',
+    scope: 'Parcours, médicaments',
+    canManageGrants: false,
+    grantedAt: 'Déléguée le 1 juin 2026',
+    expiresAt: 'Sans date d’expiration',
+  ),
+];

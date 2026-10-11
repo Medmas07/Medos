@@ -31,6 +31,11 @@ void main() {
     expect(find.text('MOCKED'), findsOneWidget);
   });
 
+  testWidgets('shows medication, laboratory, and care history', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const PatientApp());
+
     expect(find.text('Historique des médicaments'), findsOneWidget);
     expect(find.text('Coagulix'), findsOneWidget);
     expect(find.text('Tensiorel'), findsOneWidget);
@@ -57,7 +62,7 @@ void main() {
 
     await tester.tap(find.text('Accès'));
     await tester.pumpAndSettle();
-    expect(find.text('Mes accès'), findsOneWidget);
+    expect(find.text('Mes accès'), findsNWidgets(2));
     expect(find.text('Dr Youssef Gharbi'), findsOneWidget);
     expect(find.text('Dr Inès Chaabane'), findsOneWidget);
     expect(find.text('Révoquer cet accès'), findsOneWidget);
@@ -86,7 +91,70 @@ void main() {
 
     expect(find.text('Dr Rania Kefi'), findsOneWidget);
     expect(find.text('Expire dans 30 jours'), findsOneWidget);
-    expect(find.text('DÉMO D1'), findsNWidgets(3));
+    expect(find.text('DÉMO D1'), findsNWidgets(4));
+  });
+
+  testWidgets('shows the canonical delegation to a trusted relative', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const PatientApp());
+
+    await tester.tap(find.text('Accès'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Retirer la délégation'), 200);
+
+    expect(find.text('Proches de confiance'), findsOneWidget);
+    expect(find.text('Sami Mansouri · Fils'), findsOneWidget);
+    expect(find.text('Parcours, médicaments'), findsNWidgets(2));
+    expect(
+      find.text('Lecture seule — ne peut pas gérer vos accès'),
+      findsOneWidget,
+    );
+    expect(find.text('DÉLÉGUÉ'), findsOneWidget);
+  });
+
+  testWidgets('delegates scoped access to a relative locally', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const PatientApp());
+
+    await tester.tap(find.text('Accès'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Déléguer à un proche'), 200);
+    await tester.tap(find.text('Déléguer à un proche'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Déléguer').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Indiquez le nom du proche.'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'Amel Mansouri');
+    await tester.tap(find.text('Déléguer').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Amel Mansouri · Fils'), findsOneWidget);
+    expect(
+      find.text('Déléguée pendant cette session · Sans date d’expiration'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('withdraws a relative delegation after confirmation', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const PatientApp());
+
+    await tester.tap(find.text('Accès'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Retirer la délégation'), 200);
+    await tester.tap(find.text('Retirer la délégation'));
+    await tester.pumpAndSettle();
+    expect(find.text('Retirer la délégation ?'), findsOneWidget);
+    await tester.tap(find.text('Retirer').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('RETIRÉ'), findsOneWidget);
+    expect(find.text('Retirer la délégation'), findsNothing);
   });
 
   testWidgets('renders the federated authorized timeline fixtures', (
@@ -118,7 +186,7 @@ void main() {
 
     await tester.tap(find.text('Accès'));
     await tester.pumpAndSettle();
-    expect(find.text('Consentements et accès'), findsOneWidget);
+    expect(find.text('Proches de confiance'), findsOneWidget);
 
     await tester.tap(find.text('Profil'));
     await tester.pumpAndSettle();
