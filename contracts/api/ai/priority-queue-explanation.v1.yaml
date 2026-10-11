@@ -1,0 +1,398 @@
+openapi: 3.1.0
+info:
+  title: AI Services — Priority Queue Explanation
+  version: 1.0.0
+  description: |
+    Contract HC-157, version 1. Puts one entry of a clinician's priority queue
+    in plain words: why the patient sits at this rank, with this priority,
+    given the factors the priority method used (product vision, section 19:
+    Patient events -> Priority Engine -> Clinician Queue).
+
+    Boundary rules carried by this contract:
+
+    - **AI never ranks the queue.** The rank, priority, and score come from a
+      deterministic priority method (`method.kind` only allows
+      `deterministic_rule_set` or `deterministic_mock`). The explanation does
+      not set or change them, does not assess urgency, and is not a triage
+      mechanism. Critical triage never relies on it.
+    - **Model text is checked before it is shown.** It must cite every factor
+      by its position (`[F1]`, `[F2]`, ...) and no other, state the entry's own priority
+      ("priorité haute", "high priority", ...) and no other, contain no
+      number the entry does not hold, claim no urgency, interpret no clinical
+      condition (no diagnosis, "suggests", "poorly controlled", ...), give no
+      directive (recommend, should, see first, call, ...), and stay within
+      800 characters. Words that the entry's own labels or method description
+      contain are not counted against it. The checks are deterministic word and
+      pattern checks: they catch these faults, not every unfaithful sentence.
+      Text that fails any check is discarded: the deterministic template is
+      returned instead, and `rejected_reasons` says why. The same happens when
+      no model answers. Unchecked model text is never returned. Citations are
+      removed from the returned text.
+    - **Advisory.** `advisory` is always `true`; the clinician decides. A
+      queue entry stays complete without its explanation.
+    - **Minimised.** The request carries the entry's rank, priority, score,
+      factor labels and severities, and the method; no patient reference, no
+      lab value, no record. Factor labels should be short reasons, not
+      clinical detail. Factor ids are not sent to the model, which sees factors
+      only by position: an id may carry meaning. With a hosted model provider,
+      the rest of this content is sent to that provider (ADR-0006).
+
+    Not decided by this version, and OPEN: explaining a whole queue or the
+    order between two entries, explanations for patients, languages other than
+    the labels' own, and the authentication convention.
+
+    Status: implemented by AI Services (HC-157) with real model providers
+    (Claude, then a local Ollama model, ADR-0006) or the deterministic template
+    only (`template` mode). No Priority Engine exists yet: the only queue is
+    the fictional, deterministic, MOCKED one of demo-data/clinician.json, and
+    no clinician product calls this API (HC-032, HC-044). Not clinically
+    validated.
+servers:
+  - url: http://localhost:8600
+    description: Local AI Services runtime (development and preview only).
+paths:
+  /v1/priority-queue-explanations:
+    post:
+      operationId: createPriorityQueueExplanation
+      summary: Explain one priority queue entry to a clinician.
+      description: |
+        Synchronous. Always `200` with an explanation for a valid request:
+        model text that passed every check, or the deterministic template.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExplanationRequest"
+            examples:
+              demoQueueFirstEntry:
+                summary: >-
+                  Fictional demo — the first entry of Dr X's MOCKED queue
+                  (demo-data/clinician.json, queue-clin-x-1), without its
+                  patient reference.
+                value:
+                  {
+                    "requested_by": "clin-x",
+                    "entry": {
+                      "entry_id": "queue-clin-x-1",
+                      "rank": 1,
+                      "priority": "high",
+                      "score": 82,
+                      "factors": [
+                        {
+                          "factor_id": "alert-b-hba1c",
+                          "type": "abnormal_lab",
+                          "label": "Résultat biologique anormal non revu",
+                          "severity": "high",
+                          "weight": null
+                        },
+                        {
+                          "factor_id": "alert-b-followup",
+                          "type": "missed_follow_up",
+                          "label": "Suivi en retard",
+                          "severity": "medium",
+                          "weight": null
+                        }
+                      ],
+                      "method": {
+                        "kind": "deterministic_mock",
+                        "name": "Priorité fictive de démonstration",
+                        "version": "1.0",
+                        "description": "Score = somme de poids fixes par type d'alerte non résolue. Méthode de démonstration, non validée cliniquement, qui ne remplace pas le jugement clinique."
+                      }
+                    }
+                  }
+      responses:
+        "200":
+          description: An advisory explanation of the entry.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExplanationResult"
+              examples:
+                template:
+                  summary: Template mode — the deterministic template, no model called.
+                  value:
+                    {
+                      "explanation_id": "3b5d7f91-2c4e-4a6b-8d0f-1e3a5c7b9d2f",
+                      "contract_version": "1.0",
+                      "entry_id": "queue-clin-x-1",
+                      "advisory": true,
+                      "review_status": "pending_clinician_review",
+                      "notice": "Advisory explanation of a priority queue entry. The rank and the priority come from a deterministic priority method, never from AI; this text only puts them in words and changes neither. It is not a clinical triage. The clinician decides.",
+                      "explanation": {
+                        "text": "Priorité haute, rang 1 dans la file, score 82, selon la méthode « Priorité fictive de démonstration » (version 1.0, simulée), à partir de : Résultat biologique anormal non revu (sévérité haute) ; Suivi en retard (sévérité moyenne). Ce classement n'est pas un triage clinique. La décision appartient au clinicien.",
+                        "advisory": true,
+                        "generated_by": {
+                          "kind": "deterministic_template",
+                          "name": "priority-queue-template",
+                          "version": "hc-157-v1",
+                          "mocked": false
+                        },
+                        "generated_at": "2026-10-11T10:00:00+00:00"
+                      },
+                      "rejected_reasons": [],
+                      "uncertainty_notes": []
+                    }
+                model:
+                  summary: >-
+                    Model mode — an illustrative model explanation that passed
+                    every check, its citations removed. Model output varies
+                    from run to run.
+                  value:
+                    {
+                      "explanation_id": "8a0c2e4f-6b8d-4f1a-9c3e-5d7f9b1d3f5a",
+                      "contract_version": "1.0",
+                      "entry_id": "queue-clin-x-1",
+                      "advisory": true,
+                      "review_status": "pending_clinician_review",
+                      "notice": "Advisory explanation of a priority queue entry. The rank and the priority come from a deterministic priority method, never from AI; this text only puts them in words and changes neither. It is not a clinical triage. The clinician decides.",
+                      "explanation": {
+                        "text": "Ce patient est en priorité haute, au rang 1 de la file avec un score de 82, pour deux raisons : un résultat biologique anormal qui n'a pas encore été revu, de sévérité haute, et un suivi en retard, de sévérité moyenne. Ce classement vient d'une méthode de démonstration simulée ; ce n'est pas un triage clinique. La décision appartient au clinicien.",
+                        "advisory": true,
+                        "generated_by": {
+                          "kind": "model",
+                          "name": "claude-agent-sdk",
+                          "version": "claude-opus-5-5",
+                          "mocked": false
+                        },
+                        "generated_at": "2026-10-11T10:00:00+00:00"
+                      },
+                      "rejected_reasons": [],
+                      "uncertainty_notes": []
+                    }
+                modelRejected:
+                  summary: >-
+                    Model mode — the model's text gave another priority,
+                    invented a lab value, read a diagnosis into the factors,
+                    and claimed urgency, so it was discarded and the template
+                    returned.
+                  value:
+                    {
+                      "explanation_id": "5c7e9a1b-3d5f-4b7c-8e0a-2f4b6d8f0a1c",
+                      "contract_version": "1.0",
+                      "entry_id": "queue-clin-x-1",
+                      "advisory": true,
+                      "review_status": "pending_clinician_review",
+                      "notice": "Advisory explanation of a priority queue entry. The rank and the priority come from a deterministic priority method, never from AI; this text only puts them in words and changes neither. It is not a clinical triage. The clinician decides.",
+                      "explanation": {
+                        "text": "Priorité haute, rang 1 dans la file, score 82, selon la méthode « Priorité fictive de démonstration » (version 1.0, simulée), à partir de : Résultat biologique anormal non revu (sévérité haute) ; Suivi en retard (sévérité moyenne). Ce classement n'est pas un triage clinique. La décision appartient au clinicien.",
+                        "advisory": true,
+                        "generated_by": {
+                          "kind": "deterministic_template",
+                          "name": "priority-queue-template",
+                          "version": "hc-157-v1",
+                          "mocked": false
+                        },
+                        "generated_at": "2026-10-11T10:00:00+00:00"
+                      },
+                      "rejected_reasons": [
+                        "the explanation does not state the priority high",
+                        "the explanation names a priority other than high",
+                        "the explanation contains a number that is not in the entry: 8.9",
+                        "the explanation claims an urgency the method did not assess",
+                        "the explanation interprets the patient's condition"
+                      ],
+                      "uncertainty_notes": [
+                        "Deterministic template: no model text is shown."
+                      ]
+                    }
+        "400":
+          description: The request does not match this contract.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                modelRanked:
+                  summary: An entry whose priority method is not deterministic.
+                  value:
+                    type: about:blank
+                    title: Invalid priority queue explanation request
+                    status: 400
+                    detail: "Invalid or missing fields: entry.method.kind"
+                    code: invalid_request
+components:
+  schemas:
+    OpaqueRef:
+      description: Opaque identifier. Must not contain a name or other direct identifier.
+      type: string
+      pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    Level:
+      type: string
+      enum: [high, medium, low]
+    Number:
+      type: number
+      minimum: 0
+      maximum: 1000000
+    ExplanationRequest:
+      type: object
+      additionalProperties: false
+      required: [requested_by, entry]
+      properties:
+        requested_by:
+          $ref: "#/components/schemas/OpaqueRef"
+        entry:
+          description: One queue entry, as the priority method produced it, without a patient reference.
+          type: object
+          additionalProperties: false
+          required: [entry_id, rank, priority, factors, method]
+          properties:
+            entry_id:
+              $ref: "#/components/schemas/OpaqueRef"
+            rank:
+              description: Position in the clinician's queue, 1 first.
+              type: integer
+              minimum: 1
+            priority:
+              $ref: "#/components/schemas/Level"
+            score:
+              description: The method's score, if it computes one.
+              oneOf:
+                - $ref: "#/components/schemas/Number"
+                - type: "null"
+            factors:
+              description: Why the method ranked the entry; factor ids are unique.
+              type: array
+              minItems: 1
+              maxItems: 10
+              items:
+                $ref: "#/components/schemas/Factor"
+            method:
+              type: object
+              additionalProperties: false
+              required: [kind, name, version]
+              properties:
+                kind:
+                  description: Allowed priority methods. A model is deliberately not one of them.
+                  type: string
+                  enum: [deterministic_rule_set, deterministic_mock]
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                version:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                description:
+                  type: [string, "null"]
+                  maxLength: 500
+    Factor:
+      type: object
+      additionalProperties: false
+      required: [factor_id, type, label, severity]
+      properties:
+        factor_id:
+          $ref: "#/components/schemas/OpaqueRef"
+        type:
+          description: The patient events of the product vision (section 19), plus patient context.
+          type: string
+          enum:
+            - abnormal_lab
+            - possible_drug_interaction
+            - missed_follow_up
+            - patient_deterioration
+            - new_external_consultation
+            - unresolved_alert
+            - patient_context
+        label:
+          description: A short reason, as the method states it; not clinical detail.
+          type: string
+          minLength: 1
+          maxLength: 200
+        severity:
+          $ref: "#/components/schemas/Level"
+        weight:
+          description: The factor's weight in the score, if the method uses weights.
+          oneOf:
+            - $ref: "#/components/schemas/Number"
+            - type: "null"
+    ExplanationResult:
+      type: object
+      additionalProperties: false
+      required: [explanation_id, contract_version, entry_id, advisory, review_status, notice, explanation, rejected_reasons, uncertainty_notes]
+      properties:
+        explanation_id:
+          type: string
+          format: uuid
+        contract_version:
+          const: "1.0"
+        entry_id:
+          type: string
+        advisory:
+          const: true
+        review_status:
+          const: pending_clinician_review
+        notice:
+          type: string
+        explanation:
+          $ref: "#/components/schemas/Explanation"
+        rejected_reasons:
+          description: Why model text was not used; empty when it was, or in template mode.
+          type: array
+          items:
+            type: string
+        uncertainty_notes:
+          type: array
+          items:
+            type: string
+    Explanation:
+      description: >-
+        Plain-language explanation of a queue entry. Advisory; never the source
+        of the rank or the priority. The same shape as the medication safety
+        contract's Explanation.
+      type: object
+      additionalProperties: false
+      required:
+      - text
+      - advisory
+      - generated_by
+      - generated_at
+      properties:
+        text:
+          type: string
+          minLength: 1
+        advisory:
+          const: true
+        generated_by:
+          type: object
+          additionalProperties: false
+          required:
+          - kind
+          - name
+          - version
+          - mocked
+          properties:
+            kind:
+              type: string
+              enum:
+              - deterministic_template
+              - model
+            name:
+              type: string
+              minLength: 1
+            version:
+              type: string
+              minLength: 1
+            mocked:
+              type: boolean
+        generated_at:
+          type: string
+          format: date-time
+    Problem:
+      description: RFC 9457 problem details.
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+          enum: [invalid_request]

@@ -68,3 +68,12 @@ def test_the_explanation_mode_is_model_by_default_and_set_on_its_own():
     )
     with pytest.raises(ValueError):
         load_settings({"AI_EXPLANATION_MODE": "fixture"})
+
+
+def test_the_priority_explanation_mode_is_model_by_default_and_set_on_its_own():
+    assert load_settings({}).priority_explanation_mode is ExplanationMode.MODEL
+    settings = load_settings({"AI_PRIORITY_EXPLANATION_MODE": "template"})
+    assert settings.priority_explanation_mode is ExplanationMode.TEMPLATE
+    assert settings.explanation_mode is ExplanationMode.MODEL
+    with pytest.raises(ValueError):
+        load_settings({"AI_PRIORITY_EXPLANATION_MODE": "fixture"})

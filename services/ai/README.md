@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-Python + FastAPI is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED (HC-150). **Real clinical extraction is IMPLEMENTED (HC-153, D3):** `POST /v1/clinical-extractions` implements the [clinical extraction contract](../../contracts/api/ai/clinical-extraction.v1.yaml) with Claude (through the Claude Agent SDK) as the primary provider and a local Ollama model as the fallback, as decided by [ADR-0006](../../docs/decisions/ADR-0006-ai-provider-strategy.md). The deterministic fixture extractor (HC-152) remains available as an explicit MOCKED mode. Extraction quality is **not clinically validated**; drafts are advisory and always pending clinician review. **LLM-assisted hospital document review is IMPLEMENTED (HC-154, D3):** `POST /v1/hospital-document-reviews` implements the [hospital document review contract](../../contracts/api/ai/hospital-document-review.v1.yaml) with the same providers; its findings are advisory and must cite the dossier. **Lab extraction is IMPLEMENTED (HC-155, D3):** `POST /v1/lab-extractions` implements the [lab extraction contract](../../contracts/api/ai/lab-extraction.v1.yaml); values are verified against the report and flags are computed deterministically, never by the model. **Medication warning explanation is IMPLEMENTED (HC-156, D3):** `POST /v1/medication-warning-explanations` implements the [medication warning explanation contract](../../contracts/api/ai/medication-warning-explanation.v1.yaml); model text is shown only if it passes deterministic checks, otherwise a template is. Summarization and the other AI capabilities are PLANNED.
+Python + FastAPI is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED (HC-150). **Real clinical extraction is IMPLEMENTED (HC-153, D3):** `POST /v1/clinical-extractions` implements the [clinical extraction contract](../../contracts/api/ai/clinical-extraction.v1.yaml) with Claude (through the Claude Agent SDK) as the primary provider and a local Ollama model as the fallback, as decided by [ADR-0006](../../docs/decisions/ADR-0006-ai-provider-strategy.md). The deterministic fixture extractor (HC-152) remains available as an explicit MOCKED mode. Extraction quality is **not clinically validated**; drafts are advisory and always pending clinician review. **LLM-assisted hospital document review is IMPLEMENTED (HC-154, D3):** `POST /v1/hospital-document-reviews` implements the [hospital document review contract](../../contracts/api/ai/hospital-document-review.v1.yaml) with the same providers; its findings are advisory and must cite the dossier. **Lab extraction is IMPLEMENTED (HC-155, D3):** `POST /v1/lab-extractions` implements the [lab extraction contract](../../contracts/api/ai/lab-extraction.v1.yaml); values are verified against the report and flags are computed deterministically, never by the model. **Medication warning explanation is IMPLEMENTED (HC-156, D3):** `POST /v1/medication-warning-explanations` implements the [medication warning explanation contract](../../contracts/api/ai/medication-warning-explanation.v1.yaml); model text is shown only if it passes deterministic checks, otherwise a template is. **Priority queue explanation is IMPLEMENTED (HC-157, D3):** `POST /v1/priority-queue-explanations` implements the [priority queue explanation contract](../../contracts/api/ai/priority-queue-explanation.v1.yaml); it puts a deterministic queue entry in words, never ranks, and its model text is checked the same way. Summarization and the other AI capabilities are PLANNED.
 
 ## Running locally
 
@@ -33,13 +33,14 @@ Configuration comes from environment variables; [`.env.example`](.env.example) l
 | `AI_REVIEW_MODE` | `model` | Hospital document review (HC-154): `model` calls real providers; `fixture` applies deterministic rules (MOCKED) |
 | `AI_LAB_MODE` | `model` | Lab extraction (HC-155): `model` calls real providers; `fixture` returns fixed results for the demo report only (MOCKED) |
 | `AI_EXPLANATION_MODE` | `model` | Medication warning explanation (HC-156): `model` calls real providers and checks their text, falling back to the template; `template` uses only the deterministic template |
+| `AI_PRIORITY_EXPLANATION_MODE` | `model` | Priority queue explanation (HC-157): the same two modes, set on their own |
 | `AI_PROVIDERS` | `claude,ollama` | Provider order; the next one is tried only if one is unavailable or times out |
 | `CLAUDE_MODEL` | `claude-opus-5-5` | Claude model |
 | `OLLAMA_MODEL` | `qwen2.5:3b` | Local fallback model |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server |
 | `AI_PROVIDER_TIMEOUT_SECONDS` | `120` | Per-provider timeout |
 
-For an offline, deterministic demo: `AI_EXTRACTION_MODE=fixture AI_REVIEW_MODE=fixture AI_LAB_MODE=fixture AI_EXPLANATION_MODE=template fastapi dev main.py --port 8600`.
+For an offline, deterministic demo: `AI_EXTRACTION_MODE=fixture AI_REVIEW_MODE=fixture AI_LAB_MODE=fixture AI_EXPLANATION_MODE=template AI_PRIORITY_EXPLANATION_MODE=template fastapi dev main.py --port 8600`.
 
 `GET http://localhost:8600/health` returns:
 
@@ -47,13 +48,13 @@ For an offline, deterministic demo: `AI_EXTRACTION_MODE=fixture AI_REVIEW_MODE=f
 {
   "status": "ok",
   "service": "ai-services",
-  "version": "0.6.0",
-  "capabilities": ["clinical-extraction:model", "hospital-document-review:model", "lab-extraction:model", "medication-warning-explanation:model"],
+  "version": "0.7.0",
+  "capabilities": ["clinical-extraction:model", "hospital-document-review:model", "lab-extraction:model", "medication-warning-explanation:model", "priority-queue-explanation:model"],
   "notice": "Capabilities marked :model call a language model; capabilities marked :mocked return deterministic fictional fixtures. Any AI output is advisory and requires review by an accountable human."
 }
 ```
 
-In fixture mode the capabilities are `clinical-extraction:mocked`, `hospital-document-review:mocked`, and `lab-extraction:mocked`, and the explanation is `medication-warning-explanation:template`: a deterministic template is not a mock of the model, but it calls none. Each capability follows its own mode. The suffix and the `notice` field make the boundary visible. FastAPI's generated OpenAPI document is served at `/openapi.json`; the versioned contract under `contracts/` remains the source of truth.
+In fixture mode the capabilities are `clinical-extraction:mocked`, `hospital-document-review:mocked`, and `lab-extraction:mocked`, and the explanations are `medication-warning-explanation:template` and `priority-queue-explanation:template`: a deterministic template is not a mock of the model, but it calls none. Each capability follows its own mode. The suffix and the `notice` field make the boundary visible. FastAPI's generated OpenAPI document is served at `/openapi.json`; the versioned contract under `contracts/` remains the source of truth.
 
 ## Clinical extraction (HC-152 contract, HC-153 real extraction)
 
@@ -179,6 +180,39 @@ Checked live on 2026-10-11 with the warning as `major` and as `moderate`. **Clau
 
 Not done: no medication safety engine exists (HC-162), so nothing produces warnings or attaches these explanations to them (HC-164); explanations for patients; languages other than the warning's own.
 
+## Priority queue explanation (HC-157)
+
+`POST /v1/priority-queue-explanations` puts **one entry of a clinician's priority queue** in plain words: why the patient sits at this rank with this priority, given the factors the priority method used (product vision, section 19). **AI never ranks the queue:** the entry's `method.kind` can only be `deterministic_rule_set` or `deterministic_mock`, and the explanation does not set or change the rank, priority, or score, assess urgency, or triage. Critical triage must never rely on it. The `explanation` object has the same shape as the medication one.
+
+**Input.** The entry as the method produced it: rank, priority (`high`, `medium`, `low`), optional score, 1 to 10 factors (id, type, short label, severity, optional weight), and the method; plus an opaque `requested_by`. No patient reference. **Factor ids are not sent to the model**: it sees factors as `F1`, `F2`, ... by position, because an id can carry meaning. An early live run had the demo id `alert-b-hba1c` turned into "sucre dans le sang persistant", which no factor says.
+
+**Model text is checked before it is shown** ([`domain/priority_explanation.py`](domain/priority_explanation.py), applied by `ExplainPriorityEntry`):
+
+- it cites every factor as `[F1]`, `[F2]`, ... and no other; citations are removed from the returned text;
+- it states the entry's own priority ("priorité haute", "high priority", ...) and names no other. A factor's severity ("sévérité haute") is not a priority;
+- every number in it is in the entry (rank, score, weights, number of factors, or the labels and method);
+- it claims no urgency (urgent, critique, immédiat, vital, ...), interprets no condition (diagnostic, suggère, probable, mal contrôlé, aggravation, ...), and gives no directive (recommander, devrait, il faut, voir ... en premier, appeler, should, ...). Words that the entry's own labels or method description contain are allowed;
+- it is at most 800 characters.
+
+Text that fails any check is **discarded** and the deterministic template is returned, with `rejected_reasons`; the same happens when no model answers. The template restates the entry: *"Priorité haute, rang 1 dans la file, score 82, selon la méthode « Priorité fictive de démonstration » (version 1.0, simulée), à partir de : Résultat biologique anormal non revu (sévérité haute) ; Suivi en retard (sévérité moyenne). Ce classement n'est pas un triage clinique. La décision appartient au clinicien."* These are word and pattern checks: they catch these faults, not every unfaithful sentence. They cannot tell, for example, whether a model guessed the patient's sex; the prompt asks for "le patient".
+
+`ModelPriorityExplainer` ([`application/model_priority_explainer.py`](application/model_priority_explainer.py)) sends the entry as an `explanation` task. `AI_PRIORITY_EXPLANATION_MODE=template` uses `TemplatePriorityExplainer` and calls no model. An entry whose method is anything else (for example `llm`) is a `400`, as is an unknown priority or factor type, a duplicate factor, or a patient reference.
+
+Demo, with the service running, on the first entry of Dr X's fictional MOCKED queue ([`demo-data/clinician.json`](../../demo-data/clinician.json), `queue-clin-x-1`):
+
+```bash
+curl -s -X POST localhost:8600/v1/priority-queue-explanations -H 'content-type: application/json' -d '{
+  "requested_by": "clin-x", "entry": {"entry_id": "queue-clin-x-1", "rank": 1, "priority": "high", "score": 82,
+  "factors": [
+    {"factor_id": "alert-b-hba1c", "type": "abnormal_lab", "label": "Résultat biologique anormal non revu", "severity": "high"},
+    {"factor_id": "alert-b-followup", "type": "missed_follow_up", "label": "Suivi en retard", "severity": "medium"}],
+  "method": {"kind": "deterministic_mock", "name": "Priorité fictive de démonstration", "version": "1.0"}}}'
+```
+
+Checked live on 2026-10-11 on both demo queue entries (`queue-clin-x-1`, high; `queue-clin-x-2`, medium, with "Traitement anticoagulant actif" as a `patient_context` factor). **Claude** (`claude-opus-5-5`, 7 to 9 s) explained both faithfully and passed every check. **Ollama** alone (`qwen2.5:3b`, 3 to 4 s) had the high entry replaced by the template in each of five runs, for giving the follow-up factor its own "priorité moyenne". Its medium-entry text passed, but it was loosely worded ("alerte de contexte important pour la prise en charge"). The checks are not a quality bar. Output varies between runs and models and is **not clinically validated**.
+
+Not done: no Priority Engine exists, and no clinician product calls this API (HC-032, HC-044); explaining a whole queue or the order of two entries; explanations for patients.
+
 ## AI provider port and adapters (HC-151, HC-153)
 
 Use cases reach a model only through the `AiProvider` port in [`application/ai_provider.py`](application/ai_provider.py). It sits below task-level ports such as `ClinicalExtractor`: a future model-backed extractor calls `AiProvider` and turns its output into extraction items. The port is a `typing.Protocol`, so adapters do not import or subclass anything from the application layer:
@@ -224,8 +258,8 @@ The port is internal to AI Services and is not a cross-component contract, so no
 ```text
 services/ai/
 ├── main.py                     # composition root: create_app(settings) wires providers and routes
-├── domain/                     # ServiceStatus, extraction, document review, lab extraction, and medication explanation rules, AdvisoryOutput — stdlib only
-├── application/                # use cases, ports, model-backed extractors, reviewer, and explainer, FallbackAiProvider — imports only domain
+├── domain/                     # ServiceStatus, extraction, document review, lab extraction, medication and priority explanation rules, AdvisoryOutput — stdlib only
+├── application/                # use cases, ports, model-backed extractors, reviewer, and explainers, FallbackAiProvider — imports only domain
 ├── adapters/inbound/http/      # FastAPI routers and Pydantic models
 ├── adapters/outbound/          # Claude, Ollama, and mock providers; FixtureClinicalExtractor, FixtureDocumentReviewer, and FixtureLabExtractor (MOCKED)
 ├── infrastructure/settings.py  # environment configuration (no secrets)
@@ -236,7 +270,7 @@ services/ai/
 
 ## Responsibilities and owned concepts
 
-Potential extraction, summarization, document review, lab interpretation assistance, priority explanation, medication explanation, and LLM orchestration behind explicit ports. Clinical extraction (HC-153), hospital document review (HC-154), lab extraction (HC-155), and medication warning explanation (HC-156) are IMPLEMENTED with real providers; the other capabilities are PLANNED.
+Potential extraction, summarization, document review, lab interpretation assistance, priority explanation, medication explanation, and LLM orchestration behind explicit ports. Clinical extraction (HC-153), hospital document review (HC-154), lab extraction (HC-155), medication warning explanation (HC-156), and priority queue explanation (HC-157) are IMPLEMENTED with real providers; the other capabilities are PLANNED.
 
 ## Communication boundaries
 
@@ -248,4 +282,4 @@ No AI output automatically becomes clinical truth. AI does not autonomously diag
 
 ## Expected contracts
 
-[`clinical-extraction.v1.yaml`](../../contracts/api/ai/clinical-extraction.v1.yaml) (HC-152) [`hospital-document-review.v1.yaml`](../../contracts/api/ai/hospital-document-review.v1.yaml) (HC-154), [`lab-extraction.v1.yaml`](../../contracts/api/ai/lab-extraction.v1.yaml) (HC-155), and [`medication-warning-explanation.v1.yaml`](../../contracts/api/ai/medication-warning-explanation.v1.yaml) (HC-156). Model-capability contracts are PLANNED.
+[`clinical-extraction.v1.yaml`](../../contracts/api/ai/clinical-extraction.v1.yaml) (HC-152) [`hospital-document-review.v1.yaml`](../../contracts/api/ai/hospital-document-review.v1.yaml) (HC-154), [`lab-extraction.v1.yaml`](../../contracts/api/ai/lab-extraction.v1.yaml) (HC-155), [`medication-warning-explanation.v1.yaml`](../../contracts/api/ai/medication-warning-explanation.v1.yaml) (HC-156), and [`priority-queue-explanation.v1.yaml`](../../contracts/api/ai/priority-queue-explanation.v1.yaml) (HC-157). Model-capability contracts are PLANNED.

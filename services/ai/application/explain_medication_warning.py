@@ -12,10 +12,9 @@ from datetime import datetime
 from typing import Protocol
 from uuid import uuid4
 
+from application.explanation import ExplanationUnavailable, ProposedExplanation
+from domain.explanation import Explanation, GeneratedBy, GeneratorKind
 from domain.medication_explanation import (
-    Explanation,
-    GeneratedBy,
-    GeneratorKind,
     MedicationWarning,
     guardrail_problems,
     template_text,
@@ -27,17 +26,6 @@ TEMPLATE = GeneratedBy(
     version="hc-156-v1",
     mocked=False,
 )
-
-
-@dataclass(frozen=True)
-class ProposedExplanation:
-    text: str
-    generated_by: GeneratedBy
-    uncertainty_notes: tuple[str, ...] = ()
-
-
-class ExplanationUnavailable(Exception):
-    """The explainer could not answer; the template is used instead."""
 
 
 class WarningExplainer(Protocol):

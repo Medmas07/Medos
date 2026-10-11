@@ -11,10 +11,10 @@ and the deterministic template below is returned instead.
 """
 
 import re
-import unicodedata
 from dataclasses import dataclass
-from datetime import datetime
 from enum import Enum
+
+from domain.explanation import plain
 
 MAX_EXPLANATION_LENGTH = 800
 
@@ -55,11 +55,6 @@ class SafetySourceKind(Enum):
     VALIDATED_SOURCE = "validated_source"
 
 
-class GeneratorKind(Enum):
-    MODEL = "model"
-    DETERMINISTIC_TEMPLATE = "deterministic_template"
-
-
 # Whole words naming each severity, in French and English, matched without accents.
 # Text naming another severity than the warning's contradicts the rule source. Whole
 # words, so "majoration du risque" does not read as "major".
@@ -82,12 +77,6 @@ SEVERITY_LABELS_FR = {
 def _require(condition: bool, message: str) -> None:
     if not condition:
         raise InvalidWarning(message)
-
-
-def _plain(text: str) -> str:
-    """Lower case without accents, for term matching."""
-    decomposed = unicodedata.normalize("NFD", text.lower())
-    return "".join(c for c in decomposed if unicodedata.category(c) != "Mn")
 
 
 @dataclass(frozen=True)
@@ -126,28 +115,10 @@ class MedicationWarning:
             )
 
 
-@dataclass(frozen=True)
-class GeneratedBy:
-    kind: GeneratorKind
-    name: str
-    version: str
-    mocked: bool
-
-
-@dataclass(frozen=True)
-class Explanation:
-    """The medication contract's `Explanation`: advisory, never the safety source."""
-
-    text: str
-    generated_by: GeneratedBy
-    generated_at: datetime
-    advisory: bool = True
-
-
 def guardrail_problems(text: str, warning: MedicationWarning) -> list[str]:
     """Why a proposed explanation cannot be shown; empty when it can."""
     problems = []
-    plain = _plain(text)
+    folded = plain(text)
     if not text.strip():
         return ["the explanation is empty"]
     if len(text) > MAX_EXPLANATION_LENGTH:
@@ -155,21 +126,21 @@ def guardrail_problems(text: str, warning: MedicationWarning) -> list[str]:
             f"the explanation is longer than {MAX_EXPLANATION_LENGTH} characters"
         )
     for medication in (warning.proposed_medication, warning.conflicting_medication):
-        if _plain(medication.strip()) not in plain:
+        if plain(medication.strip()) not in folded:
             problems.append(f"the explanation does not name {medication.strip()}")
-    if not SEVERITY_TERMS[warning.severity].search(plain):
+    if not SEVERITY_TERMS[warning.severity].search(folded):
         problems.append(
             f"the explanation does not state the severity {warning.severity.value}"
         )
     for severity, pattern in SEVERITY_TERMS.items():
-        if severity is not warning.severity and pattern.search(plain):
+        if severity is not warning.severity and pattern.search(folded):
             problems.append(
                 f"the explanation names a severity other than {warning.severity.value}"
             )
             break
     if _DOSE.search(text):
         problems.append("the explanation contains a dose or an administration quantity")
-    if _DIRECTIVE.search(plain):
+    if _DIRECTIVE.search(folded):
         problems.append("the explanation tells the clinician what to do")
     return problems
 

@@ -11,6 +11,9 @@ from adapters.inbound.http.health import create_health_router
 from adapters.inbound.http.medication_explanation import (
     create_router as create_medication_explanation_router,
 )
+from adapters.inbound.http.priority_explanation import (
+    create_router as create_priority_explanation_router,
+)
 from adapters.inbound.http.lab_extraction import (
     create_router as create_lab_extraction_router,
 )
@@ -35,9 +38,15 @@ from application.explain_medication_warning import (
     TemplateExplainer,
     WarningExplainer,
 )
+from application.explain_priority_entry import (
+    ExplainPriorityEntry,
+    PriorityExplainer,
+    TemplatePriorityExplainer,
+)
 from application.extract_lab_results import ExtractLabResults, LabExtractor
 from application.model_clinical_extractor import ModelClinicalExtractor
 from application.model_lab_extractor import ModelLabExtractor
+from application.model_priority_explainer import ModelPriorityExplainer
 from application.model_warning_explainer import ModelWarningExplainer
 from application.model_document_reviewer import ModelDocumentReviewer
 from application.review_hospital_documents import (
@@ -74,6 +83,7 @@ def create_app(settings: Settings) -> FastAPI:
     reviewer: DocumentReviewer
     lab_extractor: LabExtractor
     explainer: WarningExplainer
+    priority_explainer: PriorityExplainer
     model_chain = FallbackAiProvider(
         [_provider(n, settings) for n in settings.providers]
     )
@@ -106,7 +116,14 @@ def create_app(settings: Settings) -> FastAPI:
     else:
         explainer = ModelWarningExplainer(model_chain)
         explanation = "medication-warning-explanation:model"
-    capabilities = (extraction, review, lab, explanation)
+    # HC-157: chosen on its own as well.
+    if settings.priority_explanation_mode is ExplanationMode.TEMPLATE:
+        priority_explainer = TemplatePriorityExplainer()
+        priority = "priority-queue-explanation:template"
+    else:
+        priority_explainer = ModelPriorityExplainer(model_chain)
+        priority = "priority-queue-explanation:model"
+    capabilities = (extraction, review, lab, explanation, priority)
 
     app = FastAPI(title="AI Services", version=SERVICE_VERSION)
     app.include_router(create_health_router(capabilities))
@@ -131,6 +148,13 @@ def create_app(settings: Settings) -> FastAPI:
         create_medication_explanation_router(
             ExplainMedicationWarning(
                 explainer=explainer, clock=lambda: datetime.now(UTC)
+            )
+        )
+    )
+    app.include_router(
+        create_priority_explanation_router(
+            ExplainPriorityEntry(
+                explainer=priority_explainer, clock=lambda: datetime.now(UTC)
             )
         )
     )

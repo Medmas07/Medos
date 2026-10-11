@@ -13,7 +13,8 @@ from application.model_warning_explainer import (
     OUTPUT_SCHEMA,
     ModelWarningExplainer,
 )
-from domain.medication_explanation import GeneratorKind, template_text
+from domain.explanation import GeneratorKind
+from domain.medication_explanation import template_text
 from tests.test_medication_explanation_domain import GOOD, WARNING
 from tests.test_model_clinical_extractor import FIXED_TIME, ScriptedProvider
 
