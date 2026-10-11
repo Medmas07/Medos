@@ -41,6 +41,9 @@ from adapters.outbound.http_patient_grants import (
     load_hospital_nodes,
 )
 from adapters.outbound.in_memory_hospital_applications import SeedError
+from adapters.outbound.fixture_organization_directory import (
+    FixtureOrganizationDirectory,
+)
 from adapters.outbound.fixture_reviewer_directory import FixtureReviewerDirectory
 from adapters.outbound.in_memory_hospital_applications import (
     InMemoryHospitalApplicationStore,
@@ -84,7 +87,8 @@ LEDGER_CONTRACT_ENV = "GOVERNANCE_LEDGER_CONTRACT"
 # reviewer and submitter references and checks no caller; `required` serves sign-in,
 # against the password hashes of GOVERNANCE_CREDENTIALS (auth/.credentials.json), and
 # makes every route but health, policies, and the service authorization checks need a
-# bearer session whose role grants it.
+# bearer session whose role grants it (HC-213, ADR-0012: held at a recognized
+# organization, and submitting for that organization only).
 AUTH_ENV = "GOVERNANCE_AUTH"
 CREDENTIALS_ENV = "GOVERNANCE_CREDENTIALS"
 DEFAULT_CREDENTIALS = Path(__file__).resolve().parent / "auth" / ".credentials.json"
@@ -130,8 +134,10 @@ def create_app(
         ledger = SimulatedAuditLedger.load(demo_data / "governance.json", audit, clock)
     # HC-211: sessions in memory, lost on restart; sign-in failures throttled per account.
     # HC-212: each protected route checks the signed-in person's role.
+    # HC-213: and their organization, from the fictional institutions the Node knows.
     sessions = InMemorySessionStore() if credentials is not None else None
-    auth = AccessControl(sessions, reviewers, clock)
+    organizations = FixtureOrganizationDirectory.load(demo_data / "organizations.json")
+    auth = AccessControl(sessions, reviewers, organizations, identity, clock)
     app = FastAPI(title="Governance Node", version=NODE_VERSION)
     app.include_router(create_health_router(identity, grants.mode, auth.mode))
     if credentials is not None and sessions is not None:

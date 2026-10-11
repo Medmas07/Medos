@@ -295,7 +295,7 @@ def test_permission_is_checked_before_anything_is_looked_up(client):
 @pytest.mark.parametrize(
     ("operation_id", "person_ref"),
     [
-        ("submitSynchronizationRequest", "usr-mehdi"),
+        ("submitSynchronizationRequest", "clin-ines"),
         ("submitResearchRequest", "usr-aymen"),
     ],
 )

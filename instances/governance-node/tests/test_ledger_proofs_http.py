@@ -13,6 +13,9 @@ from fastapi.testclient import TestClient
 
 from adapters.inbound.http.authentication import AccessControl
 from adapters.inbound.http.ledger_proofs import create_router
+from adapters.outbound.fixture_organization_directory import (
+    FixtureOrganizationDirectory,
+)
 from adapters.outbound.fixture_reviewer_directory import FixtureReviewerDirectory
 from adapters.outbound.in_memory_audit_trail import InMemoryAuditTrail
 from adapters.outbound.simulated_audit_ledger import SimulatedAuditLedger
@@ -29,7 +32,11 @@ LIST = PROOFS["paths"]["/v1/ledger/proofs"]["get"]
 DETAIL = PROOFS["paths"]["/v1/audit/events/{event_ref}/proof"]["get"]
 # Authentication off: readers are not checked.
 OPEN = AccessControl(
-    None, FixtureReviewerDirectory.load(DEMO_DATA / "people.json"), lambda: DEMO_NOW
+    None,
+    FixtureReviewerDirectory.load(DEMO_DATA / "people.json"),
+    FixtureOrganizationDirectory.load(DEMO_DATA / "organizations.json"),
+    DEMO_IDENTITY,
+    lambda: DEMO_NOW,
 )
 # Anything a proof must never carry, at any depth of the answer.
 FORBIDDEN = {"patient_ref", "actor_ref", "purpose", "rationale", "scope", "data_scope"}

@@ -2,8 +2,9 @@
 
 Sign in with a password for a bearer session, read it, and sign out. With
 authentication required, the protected routes call `AccessControl`: they need a bearer
-session whose role grants the route's permission (HC-212), and a declared reviewer_ref
-or submitted_by_ref must be the signed-in person. Off, nothing is checked and those
+session whose role grants the route's permission (HC-212) and is held at a recognized
+organization (HC-213); a declared reviewer_ref or submitted_by_ref must be the signed-in
+person, and a submission's organization theirs. Off, nothing is checked and those
 references stay declared.
 """
 
@@ -18,7 +19,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from adapters.inbound.http.problems import OPAQUE_REF, first_error, problem
-from application.access_control import authorize
+from application.access_control import OrganizationDirectory, authorize
 from application.authentication import (
     CredentialStore,
     PasswordHasher,
@@ -36,6 +37,12 @@ from domain.authentication import (
     SignInThrottle,
 )
 from domain.hospital_approval import Reviewer
+from domain.node_identity import NodeIdentity
+from domain.organization_identity import (
+    AffiliationNotRecognized,
+    OrganizationMismatch,
+    check_acts_for,
+)
 
 NOTICE = (
     "Sessions are held in memory by the Governance Node and end when it restarts. "
@@ -95,16 +102,21 @@ def _session(
 
 class AccessControl:
     """Off (`sessions` None): callers are not authenticated and the references they
-    declare are trusted. Required: a route needs a session whose role grants it."""
+    declare are trusted. Required: a route needs a session whose role grants it, held
+    at a recognized organization."""
 
     def __init__(
         self,
         sessions: SessionStore | None,
         people: ReviewerDirectory,
+        organizations: OrganizationDirectory,
+        identity: NodeIdentity,
         clock: Callable[[], datetime],
     ) -> None:
         self._sessions = sessions
         self._people = people
+        self._organizations = organizations
+        self._identity = identity
         self._clock = clock
 
     @property
@@ -113,7 +125,7 @@ class AccessControl:
 
     def caller(
         self, request: Request, permission: Permission
-    ) -> str | None | JSONResponse:
+    ) -> Reviewer | None | JSONResponse:
         """The signed-in person, None when off, or the 401 or 403 to answer."""
         if self._sessions is None:
             return None
@@ -124,28 +136,50 @@ class AccessControl:
                     "A bearer session is required.", invalid_token=False
                 )
             person = authorize(
-                token, permission, self._sessions, self._people, self._clock
+                token,
+                permission,
+                self._sessions,
+                self._people,
+                self._organizations,
+                self._identity.organization_ref,
+                self._clock,
             )
         except NotAuthenticated as error:
             return unauthenticated(str(error), invalid_token=True)
-        except PermissionDenied as error:
+        except (PermissionDenied, AffiliationNotRecognized) as error:
             return problem(403, "Permission denied", "permission_denied", str(error))
-        return person.person_ref
+        return person
 
     @staticmethod
     def refuse(
-        caller: str | None, declared_ref: str, field: str = "reviewer_ref"
+        caller: Reviewer | None, declared_ref: str, field: str = "reviewer_ref"
     ) -> JSONResponse | None:
         """The 403 when a declared reviewer_ref or submitted_by_ref is not the caller."""
-        if caller is None or caller == declared_ref:
+        if caller is None or caller.person_ref == declared_ref:
             return None
         who = "Reviewer" if field == "reviewer_ref" else "Submitter"
         return problem(
             403,
             f"{who} mismatch",
             f"{who.lower()}_mismatch",
-            f"{field} {declared_ref} is not the signed-in person {caller}.",
+            f"{field} {declared_ref} is not the signed-in person {caller.person_ref}.",
         )
+
+    @staticmethod
+    def refuse_organization(
+        caller: Reviewer | None, declared_ref: str, field: str
+    ) -> JSONResponse | None:
+        """The 403 when a submission names another organization than the caller's
+        (HC-213)."""
+        if caller is None:
+            return None
+        try:
+            check_acts_for(caller, declared_ref, field)
+        except OrganizationMismatch as error:
+            return problem(
+                403, "Organization mismatch", "organization_mismatch", str(error)
+            )
+        return None
 
 
 def _person(session: Session, person: Reviewer) -> dict:

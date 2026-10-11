@@ -4,8 +4,8 @@ Submits, lists, and reads research access requests, and records a reviewer's dec
 Requests are parsed strictly; anything outside the contract is a 400 invalid_request.
 With authentication required (HC-211), every operation needs a bearer session whose
 role grants it (HC-212): research:request to submit, governance:review to read and
-decide; submitted_by_ref and reviewer_ref must be the signed-in person. Off, both are
-declared.
+decide; submitted_by_ref and reviewer_ref must be the signed-in person, and
+research_organization_ref their organization (HC-213). Off, all three are declared.
 """
 
 from collections.abc import Callable
@@ -254,6 +254,11 @@ def create_router(
         except ValidationError as error:
             return _invalid(first_error(error))
         refused = auth.refuse(caller, body.submitted_by_ref, "submitted_by_ref")
+        if refused is not None:
+            return refused
+        refused = auth.refuse_organization(
+            caller, body.research_organization_ref, "research_organization_ref"
+        )
         if refused is not None:
             return refused
 

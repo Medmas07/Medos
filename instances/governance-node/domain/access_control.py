@@ -3,7 +3,7 @@
 A fixed role-to-permission matrix, denying by default: a role absent from it, or a
 permission it does not list, grants nothing. Roles are those of the fictional demo
 people (demo-data/people.json); patients and relatives never act here. Which
-organization a person may act for is HC-213's subject, not this one's.
+organization a person may act for is domain/organization_identity.py's (HC-213).
 """
 
 from enum import Enum
