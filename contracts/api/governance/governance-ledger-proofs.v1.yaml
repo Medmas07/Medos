@@ -1,9 +1,10 @@
 openapi: 3.1.0
 info:
   title: Governance Node Ledger Proofs
-  version: 1.1.0
+  version: 1.2.0
   description: |
-    Contract HC-191, version 1 (1.1.0: payload hash, HC-192). The proofs with which the Governance /
+    Contract HC-191, version 1 (1.1.0: payload hash, HC-192; 1.2.0: Besu
+    ledger, HC-194). The proofs with which the Governance /
     Ethics Authority anchors its recorded decisions in its audit ledger,
     behind the Governance Node's `AuditLedgerPort` (HC-190). A proof is
     the ledger's receipt for one decision's minimized payload; the
@@ -44,17 +45,30 @@ info:
       proof (`proof_not_found`) and is not retried by this version.
 
     `simulated` says whether the proofs are held by a simulation rather
-    than a real ledger. It is `true` in this version: the only ledger is
-    a simulated immutable ledger (MOCKED BLOCKCHAIN), an append-only list
-    in the Governance Node's memory, named `local-simulation`. It is not a
-    blockchain: no consensus, signature, replication, or durability, and
-    proofs anchored at runtime are lost on restart. Hashes are computed by
-    the Node itself and anchored nowhere else. A real permissioned ledger
-    (HC-194) is PLANNED; ledger technology is OPEN.
+    than a real ledger. The Governance Node runs with one of two ledgers,
+    chosen at startup, and `notice` describes the one answering:
 
-    Status: served by the Governance Node runtime (HC-191, HC-192), seeded from
-    the fictional simulated proofs of the demo dataset. Readers are not
-    authenticated; who may read proofs is OPEN.
+    - **Simulated (default), `simulated: true`.** A simulated immutable
+      ledger (MOCKED BLOCKCHAIN), an append-only list in the Governance
+      Node's memory, named `local-simulation`, seeded from the fictional
+      demo proofs. It is not a blockchain: no consensus, signature,
+      replication, or durability, and proofs anchored at runtime are lost
+      on restart. Hashes are computed by the Node itself and anchored
+      nowhere else.
+    - **Besu (since 1.2.0), `simulated: false`.** A permissioned
+      Hyperledger Besu (QBFT) ledger (ADR-0007): each payload, in the
+      canonical form above, is anchored by a transaction the Governance
+      Node signs, in an append-only contract that computes and keeps its
+      SHA-256 and accepts anchors from the Governance Node's account only.
+      `ledger` is `besu-qbft:` followed by the contract address, and
+      `proof_ref` is that address, a colon, and the proof's position in
+      the contract, from 0. `anchored_at` is the time of the block, in
+      UTC. The simulated seed proofs are not on it. It is independent of
+      the Governance Node only if other organizations run its validators;
+      the demo chain has a single validator, run locally.
+
+    Status: served by the Governance Node runtime (HC-191, HC-192, HC-194).
+    Readers are not authenticated; who may read proofs is OPEN.
 paths:
   /v1/ledger/proofs:
     get:
@@ -189,6 +203,31 @@ paths:
                         organization_refs:
                           [org-governance, org-hospital-a, org-hospital-b]
                         version: 1
+                anchoredOnBesu:
+                  summary: |
+                    Fictional demo — the same approval of sync-001, with the
+                    Node started on the Besu ledger (1.2.0): the first proof of
+                    a newly deployed contract, holding the same payload hash.
+                  value:
+                    node_ref: node-governance
+                    organization_ref: org-governance
+                    simulated: false
+                    notice: "Proofs anchored by the Governance Node's ledger account in a permissioned Hyperledger Besu (QBFT) ledger (ADR-0007), which computes and keeps each payload's SHA-256; its contract cannot change or remove an anchored proof. The ledger is independent of the Governance Node only if other organizations run its validators: the demo chain has one validator, run locally. Only a decision's minimized payload is anchored, never clinical content."
+                    proof:
+                      proof_ref: "0x55F89302bBaa9a695d9e1502005e325142E4BE41:0"
+                      ledger: "besu-qbft:0x55F89302bBaa9a695d9e1502005e325142E4BE41"
+                      anchored_at: "2026-10-10T09:00:01+00:00"
+                      hash_algorithm: SHA-256
+                      payload_hash: 44556e2cf2a5e455a3f51745a80f3b36f8adb45b45896d76d7c7a127283ad8df
+                      verification: verified
+                      payload:
+                        event_ref: evt-008
+                        decision_ref: dec-sync-001
+                        outcome: approved
+                        decided_at: "2026-10-10T10:00:00+01:00"
+                        organization_refs:
+                          [org-governance, org-hospital-a, org-hospital-b]
+                        version: 1
         "404":
           description: No event has this reference, or the event has no proof.
           content:
@@ -284,7 +323,8 @@ components:
         ledger:
           description: |
             The ledger holding the proof, as the Node's ledger adapter names
-            it: `local-simulation` for the simulated ledger.
+            it: `local-simulation` for the simulated ledger, or
+            `besu-qbft:<contract address>` for the Besu ledger (1.2.0).
           $ref: "#/components/schemas/OpaqueRef"
         anchored_at:
           type: string

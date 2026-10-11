@@ -1,9 +1,10 @@
-"""contracts/api/governance/governance-ledger-proofs.v1.yaml (HC-191, HC-192).
+"""contracts/api/governance/governance-ledger-proofs.v1.yaml (HC-191, HC-192, HC-194).
 
-Reads the proofs the Governance Node anchored in its audit ledger: today the simulated
-ledger only (MOCKED), so every answer says `simulated: true`. Each proof is served with
-its payload's hash and the Node's verification of that hash against its audit trail.
-Readers are not authenticated, as for the audit trail.
+Reads the proofs the Governance Node anchored in its audit ledger: the simulated ledger
+(MOCKED, `simulated: true`) by default, or the Besu ledger (`simulated: false`), each
+with its own notice. Each proof is served with its payload's hash and the Node's
+verification of that hash against its audit trail. Readers are not authenticated, as
+for the audit trail.
 """
 
 from fastapi import APIRouter
@@ -22,12 +23,20 @@ from application.ledger import (
 from domain.ledger import LedgerProof
 from domain.node_identity import NodeIdentity
 
-NOTICE = (
+SIMULATED_NOTICE = (
     "MOCKED BLOCKCHAIN. Fictional demo proofs held by the Governance Node's simulated "
     "immutable ledger: an append-only list in memory, not a blockchain or a real "
     "ledger; proofs anchored at runtime are lost on restart. Each payload's SHA-256 "
     "hash is computed by the Node itself, not signed, and anchored nowhere else. Only a "
     "decision's minimized payload is anchored, never clinical content."
+)
+LEDGER_NOTICE = (
+    "Proofs anchored by the Governance Node's ledger account in a permissioned "
+    "Hyperledger Besu (QBFT) ledger (ADR-0007), which computes and keeps each "
+    "payload's SHA-256; its contract cannot change or remove an anchored proof. The "
+    "ledger is independent of the Governance Node only if other organizations run its "
+    "validators: the demo chain has one validator, run locally. Only a decision's "
+    "minimized payload is anchored, never clinical content."
 )
 
 
@@ -70,7 +79,7 @@ def create_router(
             "node_ref": identity.node_ref,
             "organization_ref": identity.organization_ref,
             "simulated": ledger.simulated,
-            "notice": NOTICE,
+            "notice": SIMULATED_NOTICE if ledger.simulated else LEDGER_NOTICE,
             **content,
         }
 

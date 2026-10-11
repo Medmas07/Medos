@@ -38,3 +38,6 @@ Thumbs.db
 tmp/
 # Local checkout used only to inspect the external SciAgents API; never vendor it here.
 /integrations/sciagents/sci-agents/
+
+# Local Besu dev chain of the Governance Node ledger (HC-194): keys and chain data.
+/instances/governance-node/ledger/.chain/

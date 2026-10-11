@@ -1,5 +1,9 @@
 -r requirements.txt
+# HC-194: an in-process EVM for the Besu ledger adapter's tests. Not `eth-tester[py-evm]`,
+# whose pysha3 extra needs a C compiler on Windows; web3 hashes with pycryptodome.
+eth-tester==0.13.0b1
 jsonschema==4.26.0
+py-evm==0.12.1b1
 pytest==8.4.2
 pyyaml==6.0.3
 ruff==0.14.0

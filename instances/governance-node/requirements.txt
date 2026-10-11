@@ -1,3 +1,5 @@
 fastapi[standard]==0.136.1
 # HC-136: the Hospital Nodes access grants API (already installed by fastapi[standard]).
 httpx==0.28.1
+# HC-194 (ADR-0007): the Besu ledger adapter's JSON-RPC client, outbound adapter only.
+web3==7.16.0

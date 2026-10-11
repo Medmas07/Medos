@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-CONFIRMED Governance / Ethics Authority boundary. Its stack (Python + FastAPI, one process) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED at D2 (HC-130): a FastAPI app with Clean/Hexagonal layers, pinned dependencies, tests, and a liveness `GET /health`. The [hospital approval API](#hospital-approval-api-hc-131) is IMPLEMENTED at D2 (HC-131), over applications and decisions held **in memory**, seeded from fictional demo data: decisions are lost on restart, and the reviewer is declared, not authenticated. The [synchronization request API](#synchronization-request-api-hc-132) and the synchronization authorization check the Federation Service calls are IMPLEMENTED at D2 (HC-132), in memory the same way; patient grants are checked against fictional demo grants (**MOCKED**). The [research access request API](#research-access-request-api-hc-133) and the research authorization check the Research Service calls are IMPLEMENTED at D2 (HC-133), in memory the same way. The [governance audit API](#governance-audit-api-hc-134) is IMPLEMENTED at D2 (HC-134): the Node records the requests it receives, the decisions it records, and every authorization check it answers in its own minimized audit trail, in memory the same way. The [governance policy engine](#governance-policy-engine-hc-135) is IMPLEMENTED at D3 (HC-135): the Authority's review rules are a versioned, effective-dated policy, read from fictional data at startup; every review and decision applies the version in effect and every decision cites it. The policy is a fictional demo policy, not a validated legal or ethical framework, and new versions are published by editing the data and restarting. [Consent policy evaluation](#consent-policy-evaluation-hc-136) is IMPLEMENTED at D3 (HC-136): a synchronization's patient grant is evaluated against the grants of the Hospital Node holding it, over real HTTP, when reviewing and again before each exchange; a grant revoked there stops the authorization. The demo Hospital Nodes' grant stores are themselves MOCKED. The [`AuditLedgerPort`](#audit-ledger-port-hc-190) is defined (HC-190, D1) and the [simulated immutable ledger](#simulated-immutable-ledger-hc-191) behind it is IMPLEMENTED at D2 (HC-191): every decision recorded is anchored as a minimized proof, served by a read-only proofs API. [Ledger event hashing](#ledger-event-hashing-hc-192) is IMPLEMENTED at D2 (HC-192): each proof holds its payload's SHA-256 hash, the one the demo data's proofs use, and is served with the Node's verification of that hash against its audit trail. The ledger is **MOCKED**: an append-only list in memory, not a blockchain. There is no persistence and no authentication. It is not deployed.
+CONFIRMED Governance / Ethics Authority boundary. Its stack (Python + FastAPI, one process) is CONFIRMED by [ADR-0003](../../docs/decisions/ADR-0003-backend-runtime-strategy.md). The runtime skeleton is IMPLEMENTED at D2 (HC-130): a FastAPI app with Clean/Hexagonal layers, pinned dependencies, tests, and a liveness `GET /health`. The [hospital approval API](#hospital-approval-api-hc-131) is IMPLEMENTED at D2 (HC-131), over applications and decisions held **in memory**, seeded from fictional demo data: decisions are lost on restart, and the reviewer is declared, not authenticated. The [synchronization request API](#synchronization-request-api-hc-132) and the synchronization authorization check the Federation Service calls are IMPLEMENTED at D2 (HC-132), in memory the same way; patient grants are checked against fictional demo grants (**MOCKED**). The [research access request API](#research-access-request-api-hc-133) and the research authorization check the Research Service calls are IMPLEMENTED at D2 (HC-133), in memory the same way. The [governance audit API](#governance-audit-api-hc-134) is IMPLEMENTED at D2 (HC-134): the Node records the requests it receives, the decisions it records, and every authorization check it answers in its own minimized audit trail, in memory the same way. The [governance policy engine](#governance-policy-engine-hc-135) is IMPLEMENTED at D3 (HC-135): the Authority's review rules are a versioned, effective-dated policy, read from fictional data at startup; every review and decision applies the version in effect and every decision cites it. The policy is a fictional demo policy, not a validated legal or ethical framework, and new versions are published by editing the data and restarting. [Consent policy evaluation](#consent-policy-evaluation-hc-136) is IMPLEMENTED at D3 (HC-136): a synchronization's patient grant is evaluated against the grants of the Hospital Node holding it, over real HTTP, when reviewing and again before each exchange; a grant revoked there stops the authorization. The demo Hospital Nodes' grant stores are themselves MOCKED. The [`AuditLedgerPort`](#audit-ledger-port-hc-190) is defined (HC-190, D1) and the [simulated immutable ledger](#simulated-immutable-ledger-hc-191) behind it is IMPLEMENTED at D2 (HC-191): every decision recorded is anchored as a minimized proof, served by a read-only proofs API. [Ledger event hashing](#ledger-event-hashing-hc-192) is IMPLEMENTED at D2 (HC-192): each proof holds its payload's SHA-256 hash, the one the demo data's proofs use, and is served with the Node's verification of that hash against its audit trail. That default ledger is **MOCKED**: an append-only list in memory, not a blockchain. The [Besu permissioned ledger adapter](#besu-permissioned-ledger-hc-194) is IMPLEMENTED at D4 (HC-194, [ADR-0007](../../docs/decisions/ADR-0007-permissioned-audit-ledger.md)), opt-in: decisions are anchored in a Hyperledger Besu (QBFT) contract instead. It is tested against the compiled contract in an in-process EVM, but not VALIDATED against a running Besu node. There is no persistence and no authentication. It is not deployed.
 
 ## Running locally
 
@@ -21,6 +21,8 @@ From this directory (POSIX shell; on Windows activate with `.venv\Scripts\activa
 `python main.py` listens on `127.0.0.1:8200`, the ADR-0003 port that the Federation Service already calls (`FEDERATION_GOVERNANCE_URL`). `fastapi dev` and `fastapi run` need `--port 8200`. At startup the Node reads its fictional seed data from the repository's [`demo-data/`](../../demo-data/README.md); set `GOVERNANCE_NODE_DEMO_DATA` to another directory with the same files to change it. A seed file not marked `"fictional": true`, unreadable, or inconsistent stops startup.
 
 Patient grants (HC-136) are asked of the Hospital Nodes listed in [`hospital-nodes.demo.json`](hospital-nodes.demo.json) (Hospital A `8101`, Hospital B `8102`, private practice `8104`); set `GOVERNANCE_HOSPITAL_NODES` to another directory file. Without those nodes running, consent checks fail as unavailable. `GOVERNANCE_GRANTS=fixture` reads the fictional `access.json` instead (**MOCKED**, for demos without Hospital Nodes); any value other than `http` (default) or `fixture` stops startup.
+
+Decisions are anchored in the MOCKED simulated ledger by default. `GOVERNANCE_LEDGER=besu` anchors them on a Besu chain instead (see [Besu permissioned ledger](#besu-permissioned-ledger-hc-194)); any value other than `simulated` (default) or `besu` stops startup.
 
 ## Runtime skeleton (HC-130)
 
@@ -58,6 +60,10 @@ adapters/outbound/in_memory_research.py               # store, seeded from gover
 adapters/outbound/in_memory_audit_trail.py            # trail, seeded from governance.json
 adapters/outbound/fixture_policies.py                 # policy versions, read from governance.json
 adapters/outbound/simulated_audit_ledger.py           # HC-191 MOCKED ledger, seeded from governance.json
+adapters/outbound/besu_audit_ledger.py                # HC-194 Besu (QBFT) ledger, opt-in (ADR-0007)
+ledger/AuditAnchor.sol, AuditAnchor.json              # HC-194 anchoring contract and its compiled artifact
+ledger/compile_contract.py                            # recompiles the artifact after a contract change
+ledger/qbft-config.json, dev_chain.py                 # local single-validator Besu chain (not yet run)
 tests/                                    # domain, use case, adapter, HTTP, and layer-boundary tests
 ```
 
@@ -380,7 +386,7 @@ Not done at D3: authenticated node-to-node calls, node discovery from the Federa
 
 ## Audit ledger port (HC-190)
 
-IMPLEMENTED at D1, as a boundary. [`application/ledger.py`](application/ledger.py) owns the OPTIONAL `AuditLedgerPort` through which a ledger adapter anchors governance proofs. Its only adapter is the [simulated immutable ledger](#simulated-immutable-ledger-hc-191) (HC-191, MOCKED); no real ledger implements it.
+IMPLEMENTED at D1, as a boundary. [`application/ledger.py`](application/ledger.py) owns the OPTIONAL `AuditLedgerPort` through which a ledger adapter anchors governance proofs. Two adapters implement it: the [simulated immutable ledger](#simulated-immutable-ledger-hc-191) (HC-191, MOCKED, default) and the [Besu permissioned ledger](#besu-permissioned-ledger-hc-194) (HC-194, opt-in).
 
 **What may be anchored** ([`domain/ledger.py`](domain/ledger.py)): `proof_payload` turns a `decision_recorded` audit event into a `ProofPayload` of six fields only: the event reference, the decision reference, the outcome, the time decided, the organizations (the Authority first), and the payload version (`1`). These are the fields the demo ledger proofs of [`demo-data/governance.json`](../../demo-data/governance.json) anchor, and the seed events `evt-003` and `evt-004` give exactly those payloads. The actor is not anchored. The type has no field for a patient reference, a purpose, a rationale, a data scope, or clinical content, so none can reach a ledger through it. Requests received and authorization checks are not anchorable (`NotAnchorable`).
 
@@ -393,7 +399,7 @@ IMPLEMENTED at D1, as a boundary. [`application/ledger.py`](application/ledger.p
 
 **Use cases:** `anchor_decision` anchors a recorded decision once: anchoring it again returns its proof, and the same event with another payload is a `ProofConflict`. `anchor_recorded` is what the decision use cases call after recording a decision (HC-191): the decision stands whatever happens, and a ledger that is unavailable leaves it unanchored. `get_proof` raises `ProofNotFound` for an event without proof; `list_proofs` lists them, the latest anchored first. They are tested against a test double that stays in `tests/` (`test_ledger.py`, `test_ledger_use_cases.py`); the layer test keeps any ledger library out of `domain/` and `application/`.
 
-Not done: a real permissioned ledger (HC-194; the technology is OPEN, see the [HC-193 evaluation](../../docs/research/2026-10-11-permissioned-ledger-evaluation.md)), and signatures.
+Not done: signatures beyond the Besu ledger's transactions.
 
 ## Simulated immutable ledger (HC-191)
 
@@ -424,7 +430,7 @@ curl -s localhost:8200/v1/audit/events/evt-008/proof
 
 Other states to show: `evt-007` (a request received) and `evt-001` (a seed decision without a demo proof) give `404 proof_not_found`; `evt-999` gives `404 event_not_found`; a second decision on `sync-001` gives `409` and anchors nothing; after a restart only `proof-003` and `proof-004` remain.
 
-Not done at D2: a real permissioned ledger (HC-193, HC-194), signatures, durability, retrying an unanchored decision, anchoring the policy version, and the Governance Portal reading these proofs (its proof explorer, HC-080, still shows the MOCKED BLOCKCHAIN fixtures).
+Not done at D2 in this adapter: signatures, durability (see the [Besu ledger](#besu-permissioned-ledger-hc-194) for both), retrying an unanchored decision, anchoring the policy version, and the Governance Portal reading these proofs (its proof explorer, HC-080, still shows the MOCKED BLOCKCHAIN fixtures).
 
 ## Ledger event hashing (HC-192)
 
@@ -450,7 +456,39 @@ The proofs API (contract 1.1.0) serves `hash_algorithm`, `payload_hash`, and `ve
 curl -s localhost:8200/v1/audit/events/evt-008/proof
 ```
 
-Not done at D2: signatures, anchoring hashes in a ledger outside the Node (HC-194), hash chaining between proofs, and the Governance Portal reading these hashes (its proof explorer, HC-080, re-hashes the fixtures in the browser and escapes non-ASCII characters, unlike this form; they agree on the ASCII-only demo data).
+Not done at D2: signatures, hash chaining between proofs, and the Governance Portal reading these hashes (its proof explorer, HC-080, re-hashes the fixtures in the browser and escapes non-ASCII characters, unlike this form; they agree on the ASCII-only demo data).
+
+## Besu permissioned ledger (HC-194)
+
+IMPLEMENTED at D4, opt-in, **not VALIDATED against a running Besu node**. [ADR-0007](../../docs/decisions/ADR-0007-permissioned-audit-ledger.md) records the decision: trust model B (validators co-operated by independent organizations, as a target) and Hyperledger Besu with QBFT. [`adapters/outbound/besu_audit_ledger.py`](adapters/outbound/besu_audit_ledger.py) implements the unchanged `AuditLedgerPort` with `web3`, with `simulated: false`.
+
+**Contract** ([`ledger/AuditAnchor.sol`](ledger/AuditAnchor.sol)): append-only. `anchor(eventRef, payload)` is accepted only from the account that deployed the contract (the Governance Node's ledger account) and only once per event. The contract computes the payload's SHA-256 and keeps the payload, the hash, and the block time. The payload is the [six-field canonical form](#ledger-event-hashing-hc-192), so a reader of the chain can recompute the hash without the Node. Nothing else is anchored: no actor, patient reference, purpose, rationale, scope, or clinical content. [`ledger/AuditAnchor.json`](ledger/AuditAnchor.json) is the committed compiled artifact (solc 0.8.26, EVM Berlin). It records its source's SHA-256, which a test compares with the source. Recompile it with [`ledger/compile_contract.py`](ledger/compile_contract.py) after changing the contract.
+
+**Anchoring.** As with the simulated ledger, each decision recorded is anchored at once by `anchor_recorded`. The adapter signs a transaction with the ledger account's key and waits for its block, for up to 15 seconds. It then reads the proof back from the chain. The proof's `ledger` is `besu-qbft:<contract address>`, its `proof_ref` is `<contract address>:<position>`, its `anchored_at` is the block time in UTC, and its `payload_hash` is the one the chain computed. The same payload again returns the same proof. Another payload for an event already anchored is a `ProofConflict`, so the decision stands unanchored. An unreachable node, a timeout, or a refused transaction (for example, a contract owned by another account) is `LedgerUnavailable`: the decision stands unanchored at once, because the client does not retry. Reading proofs then answers `503 ledger_unavailable`. The proofs API serves `simulated: false` and a notice saying the ledger is independent of the Governance Node only if other organizations run its validators.
+
+**Configuration** (environment):
+
+| Variable | Meaning |
+|---|---|
+| `GOVERNANCE_LEDGER` | `besu` to use this adapter; `simulated` by default. |
+| `GOVERNANCE_LEDGER_RPC_URL` | The Besu node's JSON-RPC, `http://127.0.0.1:8545` by default. |
+| `GOVERNANCE_LEDGER_KEY_FILE` | Required: a file holding the ledger account's private key (hex). Never commit it. |
+| `GOVERNANCE_LEDGER_CONTRACT` | Optional: an `AuditAnchor` contract already deployed by that account. If it is not set, the Node deploys a new contract at startup, so its proofs start empty, like its in-memory audit trail; earlier contracts stay on the chain, unread. |
+
+A missing key file, or a failed deployment, stops startup. The simulated seed proofs are not on the chain, so the seed decisions have no proof there (`404 proof_not_found`).
+
+**Local chain** ([`ledger/dev_chain.py`](ledger/dev_chain.py), **not yet run**): with the Besu distribution (26.x, Java 21) on PATH, `python ledger/dev_chain.py` generates, on first run, a ledger account key and a single-validator QBFT genesis from [`ledger/qbft-config.json`](ledger/qbft-config.json) into the gitignored `ledger/.chain/`. It then serves JSON-RPC on `127.0.0.1:8545`, with zero gas price and peer-to-peer off. Then:
+
+```bash
+GOVERNANCE_GRANTS=fixture GOVERNANCE_LEDGER=besu \
+  GOVERNANCE_LEDGER_KEY_FILE=ledger/.chain/anchor.key python main.py
+# Approve sync-001 as in the synchronization demo, then:
+curl -s localhost:8200/v1/audit/events/evt-008/proof   # simulated: false, besu-qbft:0x...
+```
+
+**Tests.** [`tests/test_besu_audit_ledger.py`](tests/test_besu_audit_ledger.py) runs the adapter and the compiled contract in py-evm through eth-tester, an in-process EVM: anchoring, reading back, conflicts, order, a contract owned by another account, an unreachable node, startup errors, and a decision recorded through the API, checked against the contract's `anchoredOnBesu` example. This checks the adapter and the contract, not Besu's consensus, RPC, or genesis. `test_live_besu_deploys_anchors_and_reads_back` runs against a real chain when `GOVERNANCE_LEDGER_LIVE_RPC` and `GOVERNANCE_LEDGER_LIVE_KEY_FILE` are set; it has not been run.
+
+Not done at D4: validation against a running Besu node; validators run by other organizations (the demo chain has one validator, run locally, so it gives **no assurance independent of the Governance Node**); validator onboarding and node permissioning; key management beyond a local file; asynchronous anchoring and retry; who may read the chain; and the Governance Portal reading these proofs.
 
 ## Responsibilities and owned concepts
 
@@ -459,7 +497,7 @@ Not done at D2: signatures, anchoring hashes in a ledger outside the Node (HC-19
 - Governance audit, served by the [governance audit API](#governance-audit-api-hc-134) (HC-134).
 - Policy evaluation, served by the [governance policy engine](#governance-policy-engine-hc-135) (HC-135).
 - Consent policy evaluation, served by [consent policy evaluation](#consent-policy-evaluation-hc-136) (HC-136): the Node evaluates grants held by the Hospital Nodes; it records none.
-- OPTIONAL ledger adapter behind the application-owned [`AuditLedgerPort`](#audit-ledger-port-hc-190) (HC-190); only the [simulated immutable ledger](#simulated-immutable-ledger-hc-191) exists (HC-191, MOCKED), no blockchain adapter.
+- OPTIONAL ledger adapters behind the application-owned [`AuditLedgerPort`](#audit-ledger-port-hc-190) (HC-190): the [simulated immutable ledger](#simulated-immutable-ledger-hc-191) (HC-191, MOCKED, default) and the [Besu permissioned ledger](#besu-permissioned-ledger-hc-194) (HC-194, opt-in, not VALIDATED against a running node).
 
 ## Communication boundaries
 
