@@ -23,6 +23,7 @@ from pydantic import (
 from adapters.inbound.http.problems import OPAQUE_REF, first_error, problem
 from application.audit import AuditTrail
 from application.hospital_approval import HospitalApplicationStore, ReviewerDirectory
+from application.ledger import AuditLedgerPort
 from application.research import (
     RequestNotFound,
     RequestView,
@@ -214,6 +215,7 @@ def create_router(
     policies: PolicyHistory,
     audit: AuditTrail,
     clock: Callable[[], datetime],
+    ledger: AuditLedgerPort,
 ) -> APIRouter:
     router = APIRouter(prefix="/v1/research-requests", tags=["research"])
 
@@ -302,6 +304,7 @@ def create_router(
                 policies,
                 audit,
                 clock,
+                ledger,
             )
         except RequestNotFound:
             return _not_found(request_ref)

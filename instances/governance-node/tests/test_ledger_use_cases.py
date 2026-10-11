@@ -7,7 +7,9 @@ from application.ledger import (
     ProofConflict,
     ProofNotFound,
     anchor_decision,
+    anchor_recorded,
     get_proof,
+    list_proofs,
 )
 from domain.audit import AuditAction, AuditOutcome, SubjectType
 from domain.ledger import LedgerProof, NotAnchorable
@@ -22,24 +24,29 @@ class FakeAuditLedger:
 
     def __init__(self, available: bool = True) -> None:
         self.available = available
-        self.proofs: dict[str, LedgerProof] = {}
+        self.anchored: dict[str, LedgerProof] = {}
 
     def anchor(self, payload):
         if not self.available:
             raise LedgerUnavailable("down")
         proof = LedgerProof(
-            proof_ref=f"proof-{len(self.proofs) + 1:03d}",
+            proof_ref=f"proof-{len(self.anchored) + 1:03d}",
             payload=payload,
             ledger="test-double",
             anchored_at=DEMO_NOW + timedelta(seconds=5),
         )
-        self.proofs[payload.event_ref] = proof
+        self.anchored[payload.event_ref] = proof
         return proof
 
     def proof(self, event_ref):
         if not self.available:
             raise LedgerUnavailable("down")
-        return self.proofs.get(event_ref)
+        return self.anchored.get(event_ref)
+
+    def proofs(self):
+        if not self.available:
+            raise LedgerUnavailable("down")
+        return list(self.anchored.values())
 
 
 def test_a_recorded_decision_is_anchored_with_its_minimized_payload():
@@ -57,7 +64,7 @@ def test_anchoring_the_same_decision_again_returns_its_proof():
     first = anchor_decision(ledger, decision_event())
 
     assert anchor_decision(ledger, decision_event()) == first
-    assert len(ledger.proofs) == 1
+    assert len(ledger.anchored) == 1
 
 
 def test_an_event_anchored_with_another_payload_is_a_conflict():
@@ -79,7 +86,7 @@ def test_an_event_other_than_a_decision_is_not_anchored():
 
     with pytest.raises(NotAnchorable):
         anchor_decision(ledger, request)
-    assert ledger.proofs == {}
+    assert ledger.anchored == {}
 
 
 def test_an_unavailable_ledger_anchors_nothing():
@@ -87,9 +94,33 @@ def test_an_unavailable_ledger_anchors_nothing():
 
     with pytest.raises(LedgerUnavailable):
         anchor_decision(ledger, decision_event())
-    assert ledger.proofs == {}
+    assert ledger.anchored == {}
 
 
 def test_an_event_without_proof_is_not_found():
     with pytest.raises(ProofNotFound):
         get_proof("evt-001", FakeAuditLedger())
+
+
+def test_proofs_are_listed_the_latest_anchored_first():
+    ledger = FakeAuditLedger()
+    anchor_decision(ledger, decision_event())
+    anchor_decision(ledger, decision_event(event_ref="evt-043"))
+
+    assert [p.proof_ref for p in list_proofs(ledger)] == ["proof-002", "proof-001"]
+
+
+def test_a_decision_just_recorded_is_anchored():
+    ledger = FakeAuditLedger()
+
+    proof = anchor_recorded(ledger, decision_event())
+
+    assert proof == get_proof("evt-042", ledger)
+
+
+def test_a_decision_stands_unanchored_without_a_ledger_or_when_it_is_unavailable():
+    assert anchor_recorded(None, decision_event()) is None
+
+    ledger = FakeAuditLedger(available=False)
+    assert anchor_recorded(ledger, decision_event()) is None
+    assert ledger.anchored == {}

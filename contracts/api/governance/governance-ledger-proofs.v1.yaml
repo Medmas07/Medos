@@ -1,0 +1,324 @@
+openapi: 3.1.0
+info:
+  title: Governance Node Ledger Proofs
+  version: 1.0.0
+  description: |
+    Contract HC-191, version 1. The proofs with which the Governance /
+    Ethics Authority anchors its recorded decisions in its audit ledger,
+    behind the Governance Node's `AuditLedgerPort` (HC-190). A proof is
+    the ledger's receipt for one decision's minimized payload; the
+    decision itself stays in the governance API that recorded it, and its
+    `decision_recorded` event in governance-audit-events.v1.yaml.
+
+    Boundary rules carried by this contract:
+
+    - **Minimized payload.** A proof anchors exactly six fields: the audit
+      event reference, the decision reference, the outcome, the time
+      decided, the organizations (the Authority first), and the payload
+      version. Never a patient reference, an actor, a purpose, a
+      rationale, a data scope, a document, a diagnosis, a prescription, a
+      lab result, a FHIR resource, or any clinical content.
+    - **Decisions only.** Only `decision_recorded` events are anchored:
+      hospital approval, synchronization, and research decisions. Requests
+      received and authorization checks are not.
+    - **Append-only.** An event is anchored once; a proof is never changed
+      or removed through this API.
+    - **The decision stands.** A decision is recorded whether or not the
+      ledger anchors it; a decision the ledger could not anchor has no
+      proof (`proof_not_found`) and is not retried by this version.
+
+    `simulated` says whether the proofs are held by a simulation rather
+    than a real ledger. It is `true` in this version: the only ledger is
+    a simulated immutable ledger (MOCKED BLOCKCHAIN), an append-only list
+    in the Governance Node's memory, named `local-simulation`. It is not a
+    blockchain: no consensus, signature, replication, or durability, and
+    proofs anchored at runtime are lost on restart. Payload hashing
+    (HC-192) and a real permissioned ledger (HC-194) are PLANNED; ledger
+    technology is OPEN.
+
+    Status: served by the Governance Node runtime (HC-191), seeded from
+    the fictional simulated proofs of the demo dataset. Readers are not
+    authenticated; who may read proofs is OPEN.
+paths:
+  /v1/ledger/proofs:
+    get:
+      operationId: listLedgerProofs
+      summary: List the ledger proofs, the latest anchored first.
+      responses:
+        "200":
+          description: Every proof, the latest anchored first. May be empty.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProofList"
+              examples:
+                seed:
+                  summary: |
+                    Fictional demo — the two simulated seed proofs, before
+                    any decision is recorded at runtime.
+                  value:
+                    node_ref: node-governance
+                    organization_ref: org-governance
+                    simulated: true
+                    notice: "MOCKED BLOCKCHAIN. Fictional demo proofs held by the Governance Node's simulated immutable ledger: an append-only list in memory, not a blockchain or a real ledger; proofs anchored at runtime are lost on restart and payloads are not hashed. Only a decision's minimized payload is anchored, never clinical content."
+                    proofs:
+                      - proof_ref: proof-004
+                        ledger: local-simulation
+                        anchored_at: "2026-07-20T15:00:04+01:00"
+                        payload:
+                          event_ref: evt-004
+                          decision_ref: dec-rar-001
+                          outcome: approved
+                          decided_at: "2026-07-20T15:00:00+01:00"
+                          organization_refs:
+                            [
+                              org-governance,
+                              org-research-lab,
+                              org-hospital-a,
+                              org-hospital-b,
+                            ]
+                          version: 1
+                      - proof_ref: proof-003
+                        ledger: local-simulation
+                        anchored_at: "2025-12-12T14:30:05+01:00"
+                        payload:
+                          event_ref: evt-003
+                          decision_ref: dec-sync-002
+                          outcome: approved
+                          decided_at: "2025-12-12T14:30:00+01:00"
+                          organization_refs:
+                            [org-governance, org-private-practice, org-hospital-b]
+                          version: 1
+        "503":
+          $ref: "#/components/responses/LedgerUnavailable"
+  /v1/audit/events/{event_ref}/proof:
+    get:
+      operationId: getLedgerProof
+      summary: The proof anchoring one governance audit event.
+      description: |
+        `event_ref` is a governance audit event
+        (governance-audit-events.v1.yaml). An unknown event is
+        `event_not_found`; a known event without proof (not a decision, a
+        seed decision the demo ledger does not hold, or a decision the
+        ledger could not anchor) is `proof_not_found`.
+      parameters:
+        - name: event_ref
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The proof.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProofResponse"
+              examples:
+                evt004:
+                  summary: Fictional demo — the research decision dec-rar-001.
+                  value:
+                    node_ref: node-governance
+                    organization_ref: org-governance
+                    simulated: true
+                    notice: "MOCKED BLOCKCHAIN. Fictional demo proofs held by the Governance Node's simulated immutable ledger: an append-only list in memory, not a blockchain or a real ledger; proofs anchored at runtime are lost on restart and payloads are not hashed. Only a decision's minimized payload is anchored, never clinical content."
+                    proof:
+                      proof_ref: proof-004
+                      ledger: local-simulation
+                      anchored_at: "2026-07-20T15:00:04+01:00"
+                      payload:
+                        event_ref: evt-004
+                        decision_ref: dec-rar-001
+                        outcome: approved
+                        decided_at: "2026-07-20T15:00:00+01:00"
+                        organization_refs:
+                          [
+                            org-governance,
+                            org-research-lab,
+                            org-hospital-a,
+                            org-hospital-b,
+                          ]
+                        version: 1
+                anchoredAtRuntime:
+                  summary: |
+                    Fictional demo — Pr Olfa Hamdi's approval of sync-001,
+                    recorded through synchronization-requests.v1.yaml as
+                    evt-008 and anchored at once.
+                  value:
+                    node_ref: node-governance
+                    organization_ref: org-governance
+                    simulated: true
+                    notice: "MOCKED BLOCKCHAIN. Fictional demo proofs held by the Governance Node's simulated immutable ledger: an append-only list in memory, not a blockchain or a real ledger; proofs anchored at runtime are lost on restart and payloads are not hashed. Only a decision's minimized payload is anchored, never clinical content."
+                    proof:
+                      proof_ref: proof-005
+                      ledger: local-simulation
+                      anchored_at: "2026-10-10T10:00:00+01:00"
+                      payload:
+                        event_ref: evt-008
+                        decision_ref: dec-sync-001
+                        outcome: approved
+                        decided_at: "2026-10-10T10:00:00+01:00"
+                        organization_refs:
+                          [org-governance, org-hospital-a, org-hospital-b]
+                        version: 1
+        "404":
+          description: No event has this reference, or the event has no proof.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                unknownEvent:
+                  value:
+                    type: about:blank
+                    title: Event not found
+                    status: 404
+                    detail: No governance audit event evt-999.
+                    code: event_not_found
+                notAnchored:
+                  summary: |
+                    Fictional demo — the request sync-001 received: not a
+                    decision, so never anchored.
+                  value:
+                    type: about:blank
+                    title: Proof not found
+                    status: 404
+                    detail: Audit event evt-007 is not anchored in the ledger.
+                    code: proof_not_found
+        "503":
+          $ref: "#/components/responses/LedgerUnavailable"
+components:
+  responses:
+    LedgerUnavailable:
+      description: The ledger cannot be read now. Nothing is inferred about any proof.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          examples:
+            unavailable:
+              value:
+                type: about:blank
+                title: Ledger unavailable
+                status: 503
+                detail: The audit ledger cannot be read now.
+                code: ledger_unavailable
+  schemas:
+    ProofList:
+      type: object
+      additionalProperties: false
+      required: [node_ref, organization_ref, simulated, notice, proofs]
+      properties:
+        node_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        simulated:
+          description: Whether the proofs are held by a simulation rather than a real ledger.
+          type: boolean
+        notice:
+          type: string
+        proofs:
+          type: array
+          items:
+            $ref: "#/components/schemas/Proof"
+
+    ProofResponse:
+      type: object
+      additionalProperties: false
+      required: [node_ref, organization_ref, simulated, notice, proof]
+      properties:
+        node_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        organization_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        simulated:
+          type: boolean
+        notice:
+          type: string
+        proof:
+          $ref: "#/components/schemas/Proof"
+
+    Proof:
+      type: object
+      additionalProperties: false
+      required: [proof_ref, ledger, anchored_at, payload]
+      properties:
+        proof_ref:
+          $ref: "#/components/schemas/OpaqueRef"
+        ledger:
+          description: |
+            The ledger holding the proof, as the Node's ledger adapter names
+            it: `local-simulation` for the simulated ledger.
+          $ref: "#/components/schemas/OpaqueRef"
+        anchored_at:
+          type: string
+          format: date-time
+        payload:
+          $ref: "#/components/schemas/ProofPayload"
+
+    ProofPayload:
+      description: |
+        The anchored payload, exactly these six fields. Version 1 of the
+        payload's shape.
+      type: object
+      additionalProperties: false
+      required:
+        - event_ref
+        - decision_ref
+        - outcome
+        - decided_at
+        - organization_refs
+        - version
+      properties:
+        event_ref:
+          type: string
+          pattern: "^evt-[A-Za-z0-9._:-]{1,124}$"
+        decision_ref:
+          $ref: "#/components/schemas/Ref"
+        outcome:
+          type: string
+          enum: [approved, rejected]
+        decided_at:
+          type: string
+          format: date-time
+        organization_refs:
+          description: The Authority first, then the organizations the decision concerns.
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/Ref"
+        version:
+          type: integer
+          const: 1
+
+    Ref:
+      description: |
+        A reference as given by the caller of the governance API concerned:
+        opaque, never a name or other direct identifier.
+      type: string
+      minLength: 1
+      maxLength: 128
+
+    OpaqueRef:
+      description: Opaque identifier. Must not contain a name or other direct identifier.
+      type: string
+      pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+
+    Problem:
+      description: RFC 9457 problem details.
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+          enum: [event_not_found, proof_not_found, ledger_unavailable]

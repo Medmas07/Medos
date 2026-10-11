@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Governance Node Audit Events
-  version: 1.0.0
+  version: 1.0.1
   description: |
     Contract HC-134, version 1. The audit trail the Governance / Ethics
     Authority keeps of its own governance actions: requests it receives,
@@ -29,9 +29,11 @@ info:
       nothing.
     - **Append-only.** Events are never changed or removed through this
       API.
-    - **Not a ledger.** No event is anchored in a ledger by this version.
-      An Immutable Audit Ledger is OPTIONAL and would sit behind the
-      Governance Node's `AuditLedgerPort`, with minimized proofs only.
+    - **Not a ledger.** This API serves no proof. Each
+      `decision_recorded` event is anchored, as a minimized payload, behind
+      the Governance Node's `AuditLedgerPort`; its proof is served by
+      governance-ledger-proofs.v1.yaml (HC-191, a simulated ledger, MOCKED).
+      Other events are not anchored. (1.0.1: wording only.)
 
     `durable` says whether events survive a restart of the node. It is
     `false` while persistence is OPEN.
@@ -96,7 +98,7 @@ paths:
                     node_ref: node-governance
                     organization_ref: org-governance
                     durable: false
-                    notice: "Fictional demo governance audit trail, held in memory by the Governance Node: events recorded at runtime are lost on restart, actors are declared, not authenticated, and no event is anchored in a ledger."
+                    notice: "Fictional demo governance audit trail, held in memory by the Governance Node: events recorded at runtime are lost on restart and actors are declared, not authenticated. Recorded decisions are anchored in a simulated ledger (MOCKED), not a blockchain."
                     events:
                       - event_ref: evt-007
                         recorded_at: "2026-10-10T09:05:00+01:00"
@@ -165,7 +167,7 @@ paths:
                     node_ref: node-governance
                     organization_ref: org-governance
                     durable: false
-                    notice: "Fictional demo governance audit trail, held in memory by the Governance Node: events recorded at runtime are lost on restart, actors are declared, not authenticated, and no event is anchored in a ledger."
+                    notice: "Fictional demo governance audit trail, held in memory by the Governance Node: events recorded at runtime are lost on restart and actors are declared, not authenticated. Recorded decisions are anchored in a simulated ledger (MOCKED), not a blockchain."
                     events:
                       - event_ref: evt-008
                         recorded_at: "2026-10-10T10:00:00+01:00"
@@ -183,7 +185,7 @@ paths:
                     node_ref: node-governance
                     organization_ref: org-governance
                     durable: false
-                    notice: "Fictional demo governance audit trail, held in memory by the Governance Node: events recorded at runtime are lost on restart, actors are declared, not authenticated, and no event is anchored in a ledger."
+                    notice: "Fictional demo governance audit trail, held in memory by the Governance Node: events recorded at runtime are lost on restart and actors are declared, not authenticated. Recorded decisions are anchored in a simulated ledger (MOCKED), not a blockchain."
                     events: []
         "400":
           description: A filter does not match this contract, or is repeated or unknown.
@@ -223,7 +225,7 @@ paths:
                     node_ref: node-governance
                     organization_ref: org-governance
                     durable: false
-                    notice: "Fictional demo governance audit trail, held in memory by the Governance Node: events recorded at runtime are lost on restart, actors are declared, not authenticated, and no event is anchored in a ledger."
+                    notice: "Fictional demo governance audit trail, held in memory by the Governance Node: events recorded at runtime are lost on restart and actors are declared, not authenticated. Recorded decisions are anchored in a simulated ledger (MOCKED), not a blockchain."
                     event:
                       event_ref: evt-004
                       recorded_at: "2026-07-20T15:00:00+01:00"

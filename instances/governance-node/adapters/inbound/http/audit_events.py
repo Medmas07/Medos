@@ -25,8 +25,9 @@ from domain.node_identity import NodeIdentity
 
 NOTICE = (
     "Fictional demo governance audit trail, held in memory by the Governance Node: "
-    "events recorded at runtime are lost on restart, actors are declared, not "
-    "authenticated, and no event is anchored in a ledger."
+    "events recorded at runtime are lost on restart and actors are declared, not "
+    "authenticated. Recorded decisions are anchored in a simulated ledger (MOCKED), "
+    "not a blockchain."
 )
 
 Ref = Annotated[str, Field(pattern=OPAQUE_REF.pattern)]
