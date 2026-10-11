@@ -1,61 +1,22 @@
-import { useEffect, useRef, useState } from 'react'
-import {
-  AppShell,
-  Badge,
-  Button,
-  DemoBanner,
-  ErrorState,
-  LoadingState,
-  SideNav,
-  type SideNavItem,
-  type SideNavSection,
-} from '@hackcure/design-system'
-import { stepStatusDisplay } from './presentation'
-import {
-  DEMO_MANAGER_ID,
-  DEMO_ORGANIZATION_ID,
-  loadOnboardingSnapshot,
-  scenarioFromSearch,
-  STEP_DEFINITIONS,
-  type DemoScenario,
-  type StepSection,
-} from './services/onboardingService'
-import type { OnboardingSnapshot, StepId } from './types/onboarding'
-import { AgreementsView } from './views/AgreementsView'
-import { AutomatedReviewView } from './views/AutomatedReviewView'
-import { DecisionView } from './views/DecisionView'
-import { DmiView } from './views/DmiView'
-import { DocumentsView } from './views/DocumentsView'
-import { HumanReviewView } from './views/HumanReviewView'
-import { InstallationView } from './views/InstallationView'
-import { NodeConfigurationView } from './views/NodeConfigurationView'
-import { NodeDownloadView } from './views/NodeDownloadView'
-import { NodeStatusView } from './views/NodeStatusView'
-import { OverviewView } from './views/OverviewView'
-import { ProfileView } from './views/ProfileView'
-import { RegistrationView } from './views/RegistrationView'
-import { TechnicalView } from './views/TechnicalView'
-import { ClinicianAlertsView } from './views/ClinicianAlertsView'
+import { useEffect, useState } from 'react'
+import { AppShell, Badge, SideNav, ThemeToggle, type SideNavItem } from '@hackcure/design-system'
+import { HOSPITAL } from './services/hospital'
+import { loadPatients, type Patient } from './services/patientService'
+import { loadStaff, type StaffMember } from './services/staffService'
+import { PatientsView } from './views/PatientsView'
+import { StaffView } from './views/StaffView'
 
-type ViewId = 'overview' | 'clinician-alerts' | StepId
-
-const VIEW_IDS: readonly string[] = ['overview', 'clinician-alerts', ...STEP_DEFINITIONS.map((d) => d.id)]
+type ViewId = 'personnel' | 'patients'
 
 function viewFromHash(): ViewId {
-  const hash = window.location.hash.replace('#', '')
-  return VIEW_IDS.includes(hash) ? (hash as ViewId) : 'overview'
+  return window.location.hash === '#patients' ? 'patients' : 'personnel'
 }
-
-type LoadState =
-  | { kind: 'loading' }
-  | { kind: 'error'; message: string }
-  | { kind: 'ready'; snapshot: OnboardingSnapshot }
 
 export default function App() {
   const [currentView, setCurrentView] = useState<ViewId>(viewFromHash)
-  const [load, setLoad] = useState<LoadState>({ kind: 'loading' })
-  // Incremented by "Réessayer" to reload the snapshot.
-  const [attempt, setAttempt] = useState(0)
+  // Fictional fixtures; local changes live in memory only and reset on reload.
+  const [staff, setStaff] = useState<StaffMember[]>(loadStaff)
+  const [patients, setPatients] = useState<Patient[]>(loadPatients)
 
   useEffect(() => {
     const handleHashChange = () => setCurrentView(viewFromHash())
@@ -63,226 +24,44 @@ export default function App() {
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [])
 
-  useEffect(() => {
-    let cancelled = false
-    loadOnboardingSnapshot(DEMO_ORGANIZATION_ID, DEMO_MANAGER_ID, {
-      scenario: scenarioFromSearch(window.location.search),
-    })
-      .then((snapshot) => !cancelled && setLoad({ kind: 'ready', snapshot }))
-      .catch(
-        (error: unknown) =>
-          !cancelled &&
-          setLoad({ kind: 'error', message: error instanceof Error ? error.message : String(error) }),
-      )
-    return () => {
-      cancelled = true
-    }
-  }, [attempt])
-
-  const retry = () => {
-    setLoad({ kind: 'loading' })
-    setAttempt((n) => n + 1)
-  }
-
-  // Failure scenarios fail the first matching submission once per page load.
-  const usedFailures = useRef(new Set<DemoScenario>())
-  const failureOnce = (scenario: DemoScenario) => () => {
-    if (scenarioFromSearch(window.location.search) !== scenario || usedFailures.current.has(scenario)) return false
-    usedFailures.current.add(scenario)
-    return true
-  }
-
-  const navigateTo = (view: ViewId) => {
-    setCurrentView(view)
-    window.location.assign(`#${view}`)
-  }
-
-  const snapshot = load.kind === 'ready' ? load.snapshot : null
-
-  const navItem = (view: ViewId, label: string, badge?: SideNavItem['badge']): SideNavItem => ({
+  const navItem = (view: ViewId, label: string, count: number): SideNavItem => ({
     label,
     href: `#${view}`,
     current: currentView === view,
-    badge,
-    onClick: (e) => {
-      e.preventDefault()
-      navigateTo(view)
-    },
+    badge: <Badge>{count}</Badge>,
   })
-
-  const stepItems = (section: StepSection): SideNavItem[] =>
-    STEP_DEFINITIONS.filter((d) => d.section === section).map((def) => {
-      const step = snapshot?.steps.find((s) => s.id === def.id)
-      const badge =
-        step && (step.status === 'attention' || step.status === 'in_progress' || step.status === 'rejected') ? (
-          <Badge tone={stepStatusDisplay[step.status].tone} dot>
-            {stepStatusDisplay[step.status].label}
-          </Badge>
-        ) : undefined
-      return navItem(def.id, def.navLabel, badge)
-    })
-
-  const navigationSections: SideNavSection[] = [
-    { items: [navItem('overview', 'Tableau de bord')] },
-    { title: "Parcours d'adhésion", items: stepItems('onboarding') },
-    { title: 'Hospital Node', items: stepItems('node') },
-    { title: 'HC-203 · Notifications', items: [navItem('clinician-alerts', '⚡ Alertes clinicien')] },
-  ]
-
-  const renderContent = () => {
-    if (load.kind === 'loading') return <LoadingState label="Chargement du dossier d'adhésion…" />
-    if (load.kind === 'error') {
-      return (
-        <ErrorState
-          title="Dossier d'adhésion indisponible"
-          description={load.message}
-          action={<Button variant="secondary" onClick={retry}>Réessayer</Button>}
-        />
-      )
-    }
-    if (currentView === 'overview') {
-      return <OverviewView snapshot={load.snapshot} onNavigate={navigateTo} />
-    }
-    if (currentView === 'registration') {
-      return (
-        <RegistrationView
-          snapshot={load.snapshot}
-          consumeSimulatedFailure={failureOnce('registration-failure')}
-          // Local state only: a reload returns to the fixture snapshot.
-          onRegistered={(snapshot) => setLoad({ kind: 'ready', snapshot })}
-          onNavigate={navigateTo}
-        />
-      )
-    }
-    if (currentView === 'profile') {
-      return (
-        <ProfileView
-          snapshot={load.snapshot}
-          consumeSimulatedFailure={failureOnce('profile-failure')}
-          onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
-          onNavigate={navigateTo}
-        />
-      )
-    }
-    if (currentView === 'documents') {
-      return (
-        <DocumentsView
-          snapshot={load.snapshot}
-          consumeSimulatedFailure={failureOnce('document-failure')}
-          onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
-          onNavigate={navigateTo}
-        />
-      )
-    }
-    if (currentView === 'agreements') {
-      return (
-        <AgreementsView
-          snapshot={load.snapshot}
-          consumeSimulatedFailure={failureOnce('agreement-failure')}
-          onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
-          onNavigate={navigateTo}
-        />
-      )
-    }
-    if (currentView === 'technical') {
-      return (
-        <TechnicalView
-          snapshot={load.snapshot}
-          consumeSimulatedFailure={failureOnce('technical-failure')}
-          onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
-          onNavigate={navigateTo}
-        />
-      )
-    }
-    if (currentView === 'dmi') {
-      return (
-        <DmiView
-          snapshot={load.snapshot}
-          consumeSimulatedFailure={failureOnce('dmi-failure')}
-          onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
-          onNavigate={navigateTo}
-        />
-      )
-    }
-    if (currentView === 'automated-review') {
-      return (
-        <AutomatedReviewView
-          snapshot={load.snapshot}
-          consumeSimulatedFailure={failureOnce('submission-failure')}
-          onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
-          onNavigate={navigateTo}
-        />
-      )
-    }
-    if (currentView === 'human-review') {
-      return (
-        <HumanReviewView
-          snapshot={load.snapshot}
-          consumeSimulatedFailure={failureOnce('refresh-failure')}
-          onNavigate={navigateTo}
-        />
-      )
-    }
-    if (currentView === 'decision') {
-      return <DecisionView snapshot={load.snapshot} onNavigate={navigateTo} />
-    }
-    if (currentView === 'node-configuration') {
-      return <NodeConfigurationView snapshot={load.snapshot} onNavigate={navigateTo} />
-    }
-    if (currentView === 'node-download') {
-      return (
-        <NodeDownloadView
-          snapshot={load.snapshot}
-          consumeSimulatedFailure={failureOnce('download-failure')}
-          onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
-          onNavigate={navigateTo}
-        />
-      )
-    }
-    if (currentView === 'node-installation') {
-      return (
-        <InstallationView
-          snapshot={load.snapshot}
-          onUpdated={(snapshot) => setLoad({ kind: 'ready', snapshot })}
-          onNavigate={navigateTo}
-        />
-      )
-    }
-    if (currentView === 'clinician-alerts') {
-      return <ClinicianAlertsView />
-    }
-    return (
-      <NodeStatusView
-        snapshot={load.snapshot}
-        consumeSimulatedFailure={failureOnce('node-status-failure')}
-        onNavigate={navigateTo}
-      />
-    )
-  }
 
   return (
     <AppShell
       productName="Portail Hospitalier"
-      productContext={snapshot?.organization.name ?? 'Adhésion des établissements'}
-      banner={
-        <DemoBanner>
-          Démonstration D1 : données fictives (HC-005), service d'adhésion et identité simulés. Aucune
-          connexion à un DMI ni à une base hospitalière.
-        </DemoBanner>
+      productContext={HOSPITAL.name}
+      navigation={
+        <SideNav
+          label="Navigation principale"
+          sections={[
+            {
+              items: [
+                navItem('personnel', 'Gestion du personnel', staff.filter((s) => s.status === 'active').length),
+                navItem('patients', 'Gestion des patients', patients.length),
+              ],
+            },
+          ]}
+        />
       }
-      navigation={<SideNav label="Navigation principale" sections={navigationSections} />}
+      toolbar={<ThemeToggle />}
+      pageKey={currentView}
       sidebarFooter={
-        snapshot && (
-          <div className="space-y-1">
-            <div className="font-semibold text-slate-800">
-              {snapshot.manager.firstName} {snapshot.manager.lastName}
-            </div>
-            <div className="text-slate-500">Responsable d'établissement (identité simulée)</div>
-          </div>
-        )
+        <div className="space-y-1">
+          <div className="font-semibold text-ink">{HOSPITAL.shortName}</div>
+          <div className="text-ink-muted">Données fictives, conservées en mémoire</div>
+        </div>
       }
     >
-      {renderContent()}
+      {currentView === 'personnel' ? (
+        <StaffView staff={staff} onChange={setStaff} />
+      ) : (
+        <PatientsView patients={patients} onChange={setPatients} />
+      )}
     </AppShell>
   )
 }

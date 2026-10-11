@@ -224,7 +224,7 @@ export function ResearchRequestsView() {
                   {selectedProject?.title ?? selectedReq.projectId}
                 </h3>
                 {selectedProject?.summary && (
-                  <p className="mt-1 text-xs text-slate-600 bg-slate-50 p-2.5 rounded-md">
+                  <p className="mt-1 text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl">
                     {selectedProject.summary}
                   </p>
                 )}
@@ -282,9 +282,9 @@ export function ResearchRequestsView() {
               </div>
 
               {/* Ethical constraints summary */}
-              <div className="rounded-lg bg-sky-50/80 border border-sky-100 p-2.5 text-xs">
-                <div className="font-semibold text-sky-900">Garanties d'Architecture Compute-to-Data :</div>
-                <ul className="mt-1 list-disc space-y-0.5 pl-4 text-sky-800 text-[11px]">
+              <div className="rounded-xl bg-info-50/80 border border-info-100 p-2.5 text-xs">
+                <div className="font-semibold text-info-800">Garanties d'Architecture Compute-to-Data :</div>
+                <ul className="mt-1 list-disc space-y-0.5 pl-4 text-info-800 text-[11px]">
                   <li>Exécution dans l'environnement étanche du nœud hospitalier.</li>
                   <li>Interdiction d'export des données individuelles brutes.</li>
                   <li>Agrégation minimale k &ge; 10 individus par cellule.</li>
@@ -294,9 +294,9 @@ export function ResearchRequestsView() {
               {/* Decision or pending status */}
               {decision ? (
                 <div
-                  className={`rounded-md border p-3 text-xs ${decision.outcome === 'approved'
-                    ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                    : 'border-rose-200 bg-rose-50 text-rose-800'
+                  className={`rounded-xl border p-3 text-xs ${decision.outcome === 'approved'
+                    ? 'border-success-200 bg-success-50 text-success-800'
+                    : 'border-danger-200 bg-danger-50 text-danger-800'
                     }`}
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -317,7 +317,7 @@ export function ResearchRequestsView() {
                     </div>
                   )}
                   {decision.validUntil && (
-                    <div className="mt-2 border-t border-emerald-200/60 pt-1 text-[11px] opacity-80">
+                    <div className="mt-2 border-t border-success-200/60 pt-1 text-[11px] opacity-80">
                       Valide jusqu'au : {new Date(decision.validUntil).toLocaleDateString('fr-TN')}
                     </div>
                   )}
@@ -339,7 +339,7 @@ export function ResearchRequestsView() {
                   reviewerName={governanceService.getPersonName(REVIEWER_ID)}
                 />
               ) : (
-                <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
                   Aucune décision n'est associée à cette demande.
                 </div>
               )}

@@ -292,7 +292,7 @@ function PopulationForm({
             </p>
           )}
 
-          <div className="rounded-md bg-slate-50 p-4">
+          <div className="rounded-xl bg-slate-50 p-4">
             <h2 className="mb-2 text-sm font-semibold text-slate-900">Critères appliqués par chaque Hospital Node</h2>
             {Object.keys(preview).length > 0 ? (
               <CriteriaList criteria={preview} />

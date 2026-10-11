@@ -130,8 +130,8 @@ export function ProofExplorer({ onInspectProof }: ProofExplorerProps) {
                       type="button"
                       aria-pressed={isSelected}
                       onClick={() => setSelectedId(r.proof.id)}
-                      className={`grid w-full grid-cols-1 gap-2 rounded-md border p-3 text-left text-xs transition-colors sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_auto] sm:items-center ${
-                        isSelected ? 'border-brand-600 bg-brand-50' : 'border-slate-200 bg-white hover:bg-slate-50'
+                      className={`grid w-full grid-cols-1 gap-2 rounded-xl border p-3 text-left text-xs transition-colors sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_auto] sm:items-center ${
+                        isSelected ? 'border-brand-600 bg-brand-50' : 'border-slate-200 bg-surface hover:bg-brand-50/60'
                       }`}
                     >
                       <span className="min-w-0">
@@ -199,7 +199,7 @@ function ProofDetail({
     },
   ]
   return (
-    <div className="space-y-3 rounded-md border border-slate-200 bg-slate-50 p-4 text-xs">
+    <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="font-semibold text-slate-900">
           {proof.id} — {eventTitle(proof.auditEventId)}
@@ -262,7 +262,7 @@ function ProofDetail({
 
       <div>
         <div className="font-medium text-slate-700">Payload ancré (métadonnées minimisées, jamais de donnée médicale)</div>
-        <pre className="mt-1 overflow-x-auto rounded border border-slate-200 bg-white p-3 font-mono text-slate-800">
+        <pre className="mt-1 overflow-x-auto rounded border border-slate-200 bg-surface p-3 font-mono text-slate-800">
           {JSON.stringify(proof.anchoredPayload, null, 2)}
         </pre>
       </div>

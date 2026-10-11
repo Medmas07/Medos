@@ -13,12 +13,12 @@ export interface AlertProps {
 }
 
 const alertTones: Record<Tone, { frame: string; icon: string }> = {
-  neutral: { frame: 'border-slate-200 bg-white', icon: 'text-slate-500' },
-  info: { frame: 'border-info-200 bg-info-50', icon: 'text-info-600' },
-  success: { frame: 'border-success-200 bg-success-50', icon: 'text-success-600' },
-  warning: { frame: 'border-warning-200 bg-warning-50', icon: 'text-warning-600' },
-  danger: { frame: 'border-danger-200 bg-danger-50', icon: 'text-danger-600' },
-  demo: { frame: 'border-demo-200 bg-demo-50', icon: 'text-demo-600' },
+  neutral: { frame: 'border-line bg-surface', icon: 'bg-surface-muted text-ink-muted' },
+  info: { frame: 'border-info-200 bg-info-50', icon: 'bg-info-100 text-info-700' },
+  success: { frame: 'border-success-200 bg-success-50', icon: 'bg-success-100 text-success-700' },
+  warning: { frame: 'border-warning-200 bg-warning-50', icon: 'bg-warning-100 text-warning-700' },
+  danger: { frame: 'border-danger-200 bg-danger-50', icon: 'bg-danger-100 text-danger-700' },
+  demo: { frame: 'border-demo-200 bg-demo-50', icon: 'bg-demo-100 text-demo-700' },
 }
 
 /**
@@ -30,12 +30,14 @@ export function Alert({ tone = 'info', title, children, actions, className }: Al
   return (
     <div
       role={tone === 'warning' || tone === 'danger' ? 'alert' : 'status'}
-      className={cx('flex gap-3 rounded-lg border p-4', styles.frame, className)}
+      className={cx('flex gap-3 rounded-2xl border p-4', styles.frame, className)}
     >
-      <ToneIcon tone={tone} className={cx('mt-0.5 size-5 shrink-0', styles.icon)} />
-      <div className="min-w-0 flex-1">
-        <p className="font-semibold text-slate-900">{title}</p>
-        {children && <div className="mt-1 text-slate-700">{children}</div>}
+      <span className={cx('grid size-8 shrink-0 place-items-center rounded-xl', styles.icon)}>
+        <ToneIcon tone={tone} className="size-[18px]" />
+      </span>
+      <div className="min-w-0 flex-1 pt-1">
+        <p className="font-semibold text-ink">{title}</p>
+        {children && <div className="mt-1 text-ink-soft">{children}</div>}
         {actions && <div className="mt-3 flex flex-wrap gap-2">{actions}</div>}
       </div>
     </div>

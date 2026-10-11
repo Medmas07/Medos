@@ -57,7 +57,7 @@ info:
     declared by the caller. The role matrix is fixed fictional demo policy,
     not a validated access policy.
 
-    Since 1.5.0 (HC-213, ADR-0012), with authentication required the
+    Since 1.5.0 (HC-213, ADR-0014), with authentication required the
     signed-in person's role must also be held at an organization the
     Governance Node recognizes for it (a governance reviewer at the
     Authority the Node runs for, a hospital manager or physician at a

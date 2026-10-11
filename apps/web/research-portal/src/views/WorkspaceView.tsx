@@ -189,7 +189,7 @@ function CellView({ cell, index, context, progress, busy, onChange, onRun, onRem
   const live = running ? cellRunDisplay.running : queued ? cellRunDisplay.queued : null
 
   return (
-    <li className="rounded-lg border border-slate-200 bg-white">
+    <li className="rounded-lg border border-slate-200 bg-surface">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-3 py-2">
         <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
           <span>{label}</span>
@@ -222,7 +222,7 @@ function CellView({ cell, index, context, progress, busy, onChange, onRun, onRem
             readOnly={busy}
             spellCheck={false}
             rows={Math.max(3, cell.source.split('\n').length + 1)}
-            className={`w-full resize-y rounded-md border border-slate-300 bg-slate-50 p-3 text-sm text-slate-900 focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20 focus:outline-none ${
+            className={`w-full resize-y rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm text-slate-900 focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20 focus:outline-none ${
               cell.type === 'code' ? 'font-mono whitespace-pre' : ''
             }`}
           />
@@ -479,7 +479,7 @@ export function WorkspaceView({ snapshot, consumeSimulatedFailure, onUpdated, on
           />
         )}
 
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="hc-stagger grid gap-6 lg:grid-cols-3">
           <div className="min-w-0 lg:col-span-2">
             <Card
               title={notebook.title}

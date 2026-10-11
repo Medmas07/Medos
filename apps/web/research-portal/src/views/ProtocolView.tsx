@@ -250,7 +250,10 @@ function DocumentRow({
               aria-valuenow={state.percent}
               className="h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-slate-200"
             >
-              <div className="h-full bg-brand-600 transition-[width]" style={{ width: `${state.percent}%` }} />
+              <div
+                className="h-full origin-left bg-brand-600 transition-transform duration-300 ease-(--ease-out)"
+                style={{ transform: `scaleX(${state.percent / 100})` }}
+              />
             </div>
           </div>
         )}

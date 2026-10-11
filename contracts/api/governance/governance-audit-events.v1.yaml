@@ -46,7 +46,7 @@ info:
     session whose role grants `governance:audit`, held by governance
     reviewers (`401 authentication_required`, `403 permission_denied`);
     with authentication off, its default, readers are not
-    authenticated. Since 1.1.1 (HC-213, ADR-0012), wording only: `403 permission_denied` also
+    authenticated. Since 1.1.1 (HC-213, ADR-0014), wording only: `403 permission_denied` also
     answers a governance reviewer whose organization is not the Authority the
     Node runs for.
     Reading is not itself audited. Retention is OPEN.

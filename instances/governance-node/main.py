@@ -87,7 +87,7 @@ LEDGER_CONTRACT_ENV = "GOVERNANCE_LEDGER_CONTRACT"
 # reviewer and submitter references and checks no caller; `required` serves sign-in,
 # against the password hashes of GOVERNANCE_CREDENTIALS (auth/.credentials.json), and
 # makes every route but health, policies, and the service authorization checks need a
-# bearer session whose role grants it (HC-213, ADR-0012: held at a recognized
+# bearer session whose role grants it (HC-213, ADR-0014: held at a recognized
 # organization, and submitting for that organization only).
 AUTH_ENV = "GOVERNANCE_AUTH"
 CREDENTIALS_ENV = "GOVERNANCE_CREDENTIALS"

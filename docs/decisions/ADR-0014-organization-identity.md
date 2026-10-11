@@ -1,4 +1,4 @@
-# ADR-0012: Organization identity — a person acts only for their own, recognized organization
+# ADR-0014: Organization identity — a person acts only for their own, recognized organization
 
 ## Status
 

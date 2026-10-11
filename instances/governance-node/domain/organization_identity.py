@@ -1,4 +1,4 @@
-"""Which organization a person acts for at the Governance Node (HC-213, ADR-0012).
+"""Which organization a person acts for at the Governance Node (HC-213, ADR-0014).
 
 The Authority keeps the identity of the institutions it governs: each has a type. A
 person's role is held at their organization, and only fits some types of organization:

@@ -113,17 +113,17 @@ export function HospitalOnboardingView() {
 
       {/* KPI & Summary Banner */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-l-4 border-l-amber-500">
+        <Card className="border-l-4 border-l-warning-600">
           <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
             Dossiers en attente
           </div>
           <div className="mt-2 text-2xl font-bold text-slate-900">{pendingApps.length}</div>
-          <p className="mt-1 text-xs text-amber-700 font-medium">
+          <p className="mt-1 text-xs text-warning-700 font-medium">
             Examen humain requis par l'Autorité
           </p>
         </Card>
 
-        <Card className="border-l-4 border-l-rose-500">
+        <Card className="border-l-4 border-l-danger-600">
           <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
             Pièces manquantes
           </div>
@@ -133,7 +133,7 @@ export function HospitalOnboardingView() {
           </p>
         </Card>
 
-        <Card className="border-l-4 border-l-sky-500">
+        <Card className="border-l-4 border-l-info-600">
           <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
             Alertes IA Consultatives
           </div>
@@ -143,7 +143,7 @@ export function HospitalOnboardingView() {
           </p>
         </Card>
 
-        <Card className="border-l-4 border-l-emerald-500">
+        <Card className="border-l-4 border-l-success-600">
           <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
             Réviseur habilité
           </div>
@@ -261,7 +261,7 @@ export function HospitalOnboardingView() {
                       <div className="flex items-center gap-1">
                         <DemoBadge>Consultative</DemoBadge>
                         {aiStep.findings.length > 0 && (
-                          <span className="text-xs font-semibold text-amber-700">
+                          <span className="text-xs font-semibold text-warning-700">
                             ({aiStep.findings.length} obs.)
                           </span>
                         )}
@@ -339,7 +339,7 @@ export function HospitalOnboardingView() {
                   </h4>
                   <div className="mt-2 space-y-2">
                     {selectedApp.reviewSteps.map((step, idx) => (
-                      <div key={idx} className="rounded-md border border-slate-200 bg-slate-50 p-2.5 text-xs">
+                      <div key={idx} className="rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs">
                         <div className="flex items-center justify-between">
                           <span className="font-semibold text-slate-800">
                             {step.step === 'completeness_check' && '1. Contrôle de complétude documentaire'}
@@ -349,7 +349,7 @@ export function HospitalOnboardingView() {
                           {step.advisory && <DemoBadge>IA Advisory</DemoBadge>}
                         </div>
                         {step.findings.length > 0 ? (
-                          <ul className="mt-1.5 list-disc space-y-1 pl-4 text-amber-900">
+                          <ul className="mt-1.5 list-disc space-y-1 pl-4 text-warning-800">
                             {step.findings.map((f, fi) => (
                               <li key={fi}>{f}</li>
                             ))}
@@ -375,7 +375,7 @@ export function HospitalOnboardingView() {
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-600">
                     Questionnaire Technique du Nœud Local
                   </h4>
-                  <dl className="mt-2 grid grid-cols-2 gap-2 rounded-md bg-slate-50 p-3 text-xs">
+                  <dl className="mt-2 grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-3 text-xs">
                     <div>
                       <dt className="text-slate-500">Système DMI :</dt>
                       <dd className="font-medium text-slate-800">{selectedApp.technicalQuestionnaire.dmiSystem}</dd>
@@ -439,7 +439,7 @@ export function HospitalOnboardingView() {
               {/* Decision Section */}
               {selectedDecision ? (
                 <div
-                  className={`rounded-md border p-3 text-xs ${
+                  className={`rounded-xl border p-3 text-xs ${
                     selectedDecision.outcome === 'approved'
                       ? 'border-success-200 bg-success-50'
                       : 'border-danger-200 bg-danger-50'
@@ -483,7 +483,7 @@ export function HospitalOnboardingView() {
                   reviewerName={governanceService.getPersonName(REVIEWER_ID)}
                 />
               ) : (
-                <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
                   Aucune décision n’est associée à ce dossier.
                 </div>
               )}

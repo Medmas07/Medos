@@ -173,7 +173,7 @@ function ReadyConfiguration({
           </div>
         }
       >
-        <pre className="overflow-x-auto rounded-md bg-slate-900 p-4 text-xs leading-relaxed text-slate-100">
+        <pre className="overflow-x-auto hc-chrome rounded-xl bg-chrome p-4 text-xs leading-relaxed text-ink">
           <code>{configFileJson(file)}</code>
         </pre>
       </Card>

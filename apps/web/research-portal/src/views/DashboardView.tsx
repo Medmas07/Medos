@@ -6,6 +6,8 @@ import {
   DemoBadge,
   EmptyState,
   PageHeader,
+  StatCard,
+  StatGroup,
   Table,
   type TableColumn,
 } from '@hackcure/design-system'
@@ -41,16 +43,6 @@ const markerTones = {
   danger: 'bg-danger-600',
   demo: 'bg-demo-600',
 } as const
-
-function Metric({ label, value, hint }: { label: string; value: string; hint: string }) {
-  return (
-    <Card>
-      <p className="text-slate-600">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-slate-900">{value}</p>
-      <p className="mt-1 text-xs text-slate-500">{hint}</p>
-    </Card>
-  )
-}
 
 function stepDetail(step: LifecycleStep): string {
   if (step.reason) return stepReasonLabels[step.reason]
@@ -247,28 +239,28 @@ export function DashboardView({ snapshot, onNavigate }: DashboardViewProps) {
     <>
       {header}
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric
+      <StatGroup className="mb-6">
+        <StatCard
           label="Projets"
-          value={String(metrics.projects)}
+          value={metrics.projects}
           hint={`${metrics.requestsUnderReview} demande(s) en revue par la gouvernance`}
         />
-        <Metric
+        <StatCard
           label="Autorisations valides"
-          value={String(metrics.validAuthorizations)}
+          value={metrics.validAuthorizations}
           hint={nextExpiry ? `Prochaine échéance le ${formatDate(nextExpiry)}` : 'Aucune autorisation en cours'}
         />
-        <Metric
+        <StatCard
           label="Exécutions terminées"
           value={`${metrics.completedJobs} / ${metrics.jobs}`}
           hint="Exécutions Compute-to-Data simulées"
         />
-        <Metric
+        <StatCard
           label="Résultats contrôlés"
-          value={String(metrics.releasedResults)}
+          value={metrics.releasedResults}
           hint="Agrégats ayant passé le contrôle de divulgation"
         />
-      </div>
+      </StatGroup>
 
       {alerts.map(({ summary, state, daysLeft }) => (
         <Alert
@@ -286,7 +278,7 @@ export function DashboardView({ snapshot, onNavigate }: DashboardViewProps) {
         <h2 id="projects-progress" className="mb-3 text-base">
           Suivi des projets
         </h2>
-        <div className="space-y-4">
+        <div className="hc-stagger space-y-4">
           {dashboard.projects.map((progress) => (
             <ProjectCard key={progress.summary.project.id} progress={progress} onNavigate={onNavigate} />
           ))}

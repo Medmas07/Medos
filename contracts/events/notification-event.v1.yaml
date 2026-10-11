@@ -1,8 +1,13 @@
 openapi: 3.1.0
 info:
   title: Notification Event Contract
-  version: 1.0.0
+  version: 1.1.0
   description: |
+    Version 1.1.0 (HC-204) adds the `sent` delivery status: the provider (for
+    the push channel, the push server) accepted the message, and nothing
+    confirms that the device received it. Mobile push is real Web Push to the
+    devices registered through contracts/api/notifications/push-subscriptions.v1.yaml.
+
     Contract HC-201, version 1. The asynchronous cross-component notification
     event and delivery envelope contract for the Federated Healthcare Ecosystem.
 
@@ -214,7 +219,9 @@ paths:
                 $ref: "#/components/schemas/NotificationEventStatus"
               examples:
                 delivered:
-                  summary: Successfully delivered event across requested channels.
+                  summary: >-
+                    Delivered in the app; the push was accepted by the push
+                    server (sent), device receipt unconfirmed.
                   value:
                     event_id: evt-notif-001
                     status: processed
@@ -224,8 +231,23 @@ paths:
                         status: delivered
                         dispatched_at: "2026-10-10T09:00:02+01:00"
                       - channel: push
-                        status: delivered
+                        status: sent
                         dispatched_at: "2026-10-10T09:00:03+01:00"
+                    fictional: true
+                pushNotRegistered:
+                  summary: The recipient has no registered device, so the push failed.
+                  value:
+                    event_id: evt-notif-001
+                    status: processed
+                    received_at: "2026-10-10T09:00:00+01:00"
+                    deliveries:
+                      - channel: in_app
+                        status: delivered
+                        dispatched_at: "2026-10-10T09:00:02+01:00"
+                      - channel: push
+                        status: failed
+                        dispatched_at: "2026-10-10T09:00:02+01:00"
+                        failure_reason: push_subscription_not_registered
                     fictional: true
         "404":
           description: Event ID not found.
@@ -533,9 +555,12 @@ components:
           $ref: "#/components/schemas/Channel"
         status:
           type: string
-          description: Delivery state for this channel.
+          description: >-
+            Delivery state for this channel. `sent`: accepted by the provider
+            (for push, the push server), device receipt unconfirmed (1.1.0).
           enum:
             - pending
+            - sent
             - delivered
             - failed
             - suppressed
@@ -547,8 +572,12 @@ components:
           example: "2026-10-10T09:00:02+01:00"
         failure_reason:
           type: string
-          description: Error explanation if status is failed.
-          example: push_token_unregistered
+          description: >-
+            Error explanation if status is failed. For push:
+            push_subscription_not_registered, push_endpoint_gone,
+            push_rate_limited, push_server_rejected (joined with + when devices
+            failed differently).
+          example: push_subscription_not_registered
 
     Problem:
       type: object

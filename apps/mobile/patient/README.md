@@ -41,6 +41,8 @@ It is not the clinical source of record, a Governance decision maker, or a guara
 
 PLANNED patient-view, timeline, medication, consent/access-grant, request-status, and notification contracts.
 
+Push is ready on the server side (HC-204, [ADR-0012](../../../docs/decisions/ADR-0012-mobile-push-provider.md)). The app has not implemented it yet. To receive pushes, it needs a UnifiedPush connector that registers the device's endpoint and RFC 8291 keys through [`push-subscriptions.v1.yaml`](../../../contracts/api/notifications/push-subscriptions.v1.yaml), decrypts each message, and opens the notification it names in the app. Messages never carry clinical text.
+
 ## Structure
 
 - `lib/app/`: Flutter composition root.

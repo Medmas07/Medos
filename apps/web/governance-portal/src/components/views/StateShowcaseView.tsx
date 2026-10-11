@@ -20,7 +20,7 @@ export function StateShowcaseView() {
         title="Démonstrateur d'États Résilients de l'Interface"
         description="Vérification des états d'attente (Loading), d'absence de données (Empty) et de rupture de service (Error) imposés par les critères d'acceptation HC-070."
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
               variant={activeState === 'normal' ? 'primary' : 'secondary'}
@@ -63,7 +63,7 @@ export function StateShowcaseView() {
       >
         {activeState === 'normal' && (
           <div className="space-y-3 py-6 text-center">
-            <div className="inline-flex size-12 items-center justify-center rounded-full bg-success-50 text-success-600 font-bold">
+            <div className="inline-flex size-12 items-center justify-center rounded-full bg-success-50 text-success-700 font-bold">
               ✓
             </div>
             <h3 className="font-semibold text-slate-900">Fonctionnement Nominal (D1 Fixtures)</h3>

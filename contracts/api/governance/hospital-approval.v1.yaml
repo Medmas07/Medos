@@ -47,7 +47,7 @@ info:
     session the answer is `401 authentication_required`; with a role that
     does not grant it, `403 permission_denied`, before anything is looked
     up. The role matrix is fixed fictional demo policy, not a validated
-    access policy. Since 1.3.1 (HC-213, ADR-0012), wording only: `403 permission_denied` also
+    access policy. Since 1.3.1 (HC-213, ADR-0014), wording only: `403 permission_denied` also
     answers a governance reviewer whose organization is not the Authority the
     Node runs for.
 

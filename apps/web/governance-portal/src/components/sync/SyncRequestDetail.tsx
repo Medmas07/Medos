@@ -97,7 +97,7 @@ export function SyncRequestDetail({ request, reviewForm }: SyncRequestDetailProp
           <span>1. Finalité Clinique Déclarée</span>
           <span className="font-normal lowercase text-slate-400">soumis le {formattedSubmittedAt}</span>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
           <p className="text-sm font-medium text-slate-900">« {request.purpose} »</p>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-600">
             <span className="font-medium text-slate-700">Classification :</span>
@@ -115,7 +115,7 @@ export function SyncRequestDetail({ request, reviewForm }: SyncRequestDetailProp
         </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {/* Établissement demandeur (source de la requête) */}
-          <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-xs">
+          <div className="rounded-xl border border-slate-200 bg-surface p-3 shadow-card">
             <div className="flex items-center justify-between text-xs">
               <span className="font-medium text-slate-500">Établissement Demandeur</span>
               <Badge tone="neutral">Consommateur du flux</Badge>
@@ -144,7 +144,7 @@ export function SyncRequestDetail({ request, reviewForm }: SyncRequestDetailProp
           </div>
 
           {/* Établissement cible (détenteur des données sources) */}
-          <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-xs">
+          <div className="rounded-xl border border-slate-200 bg-surface p-3 shadow-card">
             <div className="flex items-center justify-between text-xs">
               <span className="font-medium text-slate-500">Détenteur des Données</span>
               <Badge tone="info">Hôpital Cible</Badge>
@@ -173,7 +173,7 @@ export function SyncRequestDetail({ request, reviewForm }: SyncRequestDetailProp
           </div>
         </div>
 
-        <div className="rounded bg-sky-50 p-2 text-xs text-sky-800">
+        <div className="rounded bg-info-50 p-2 text-xs text-info-800">
           <span className="font-semibold">Invariant d'architecture :</span> Les données médicales restent sous la garde exclusive du nœud de l’établissement cible ({tgtOrg?.shortName ?? 'Cible'}). Aucun transfert massif ni stockage centralisé n’est effectué.
         </div>
       </section>
@@ -185,7 +185,7 @@ export function SyncRequestDetail({ request, reviewForm }: SyncRequestDetailProp
         </div>
 
         {patient ? (
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <span className="text-sm font-semibold text-slate-900">
@@ -213,7 +213,7 @@ export function SyncRequestDetail({ request, reviewForm }: SyncRequestDetailProp
               return (
                 <div
                   key={scopeKey}
-                  className="rounded-md border border-slate-200 bg-white p-2 text-xs shadow-2xs"
+                  className="rounded-xl border border-slate-200 bg-surface p-2 text-xs shadow-card"
                 >
                   <div className="flex items-center gap-2">
                     <Badge tone="neutral">{scopeKey}</Badge>
@@ -234,7 +234,7 @@ export function SyncRequestDetail({ request, reviewForm }: SyncRequestDetailProp
         <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
           4. Durée & Fenêtre Temporelle d'Accès
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-slate-200 bg-white p-3 text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-surface p-3 text-xs">
           <div>
             <div className="text-slate-500">Durée demandée :</div>
             <div className="text-sm font-semibold text-slate-900">
@@ -259,7 +259,7 @@ export function SyncRequestDetail({ request, reviewForm }: SyncRequestDetailProp
         </div>
 
         {/* État du consentement */}
-        <div className="rounded-lg border border-slate-200 bg-white p-3 text-xs">
+        <div className="rounded-xl border border-slate-200 bg-surface p-3 text-xs">
           <div className="flex items-center justify-between">
             <span className="font-medium text-slate-700">Régime d'autorisation légale :</span>
             <Badge
@@ -278,10 +278,10 @@ export function SyncRequestDetail({ request, reviewForm }: SyncRequestDetailProp
           </div>
 
           {request.consent.basis === 'patient_grant' && grant && (
-            <div className="mt-3 space-y-1.5 rounded border border-emerald-100 bg-emerald-50/60 p-2 text-slate-700">
+            <div className="mt-3 space-y-1.5 rounded border border-success-100 bg-success-50/60 p-2 text-slate-700">
               <div className="flex items-center justify-between">
                 <span className="font-medium">Jeton de consentement patient :</span>
-                <span className="font-mono text-emerald-900">{grant.id}</span>
+                <span className="font-mono text-success-800">{grant.id}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span>Médecin bénéficiaire désigné :</span>
@@ -295,11 +295,11 @@ export function SyncRequestDetail({ request, reviewForm }: SyncRequestDetailProp
                 <span>Jusqu'au {new Date(grant.expiresAt).toLocaleDateString('fr-TN')}</span>
               </div>
               {grantScopeMismatch.length > 0 ? (
-                <div className="mt-1 font-semibold text-amber-700">
+                <div className="mt-1 font-semibold text-warning-700">
                   Attention : périmètre hors mandat ({grantScopeMismatch.join(', ')})
                 </div>
               ) : (
-                <div className="mt-1 text-[11px] text-emerald-700">
+                <div className="mt-1 text-[11px] text-success-700">
                   ✓ Le périmètre demandé est intégralement couvert par l'accord actif de la patiente.
                 </div>
               )}
@@ -313,7 +313,7 @@ export function SyncRequestDetail({ request, reviewForm }: SyncRequestDetailProp
           )}
 
           {request.consent.basis === 'none' && (
-            <div className="mt-2 rounded border border-rose-200 bg-rose-50 p-2 text-rose-800">
+            <div className="mt-2 rounded border border-danger-200 bg-danger-50 p-2 text-danger-800">
               <span className="font-semibold">Violation des règles de gouvernance :</span> Aucune preuve de consentement n'est attachée à cette demande. Conformément à la charte fédérée, les flux inter-hospitaliers sans consentement explicite du patient sont formellement prohibés.
             </div>
           )}
@@ -322,9 +322,9 @@ export function SyncRequestDetail({ request, reviewForm }: SyncRequestDetailProp
         {/* Décision d'arbitrage */}
         {decision ? (
           <div
-            className={`rounded-lg border p-4 text-xs ${decision.outcome === 'approved'
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
-              : 'border-rose-200 bg-rose-50 text-rose-900'
+            className={`rounded-xl border p-4 text-xs ${decision.outcome === 'approved'
+              ? 'border-success-200 bg-success-50 text-success-800'
+              : 'border-danger-200 bg-danger-50 text-danger-800'
               }`}
           >
             <div className="flex items-center justify-between">
@@ -351,7 +351,7 @@ export function SyncRequestDetail({ request, reviewForm }: SyncRequestDetailProp
             )}
 
             {proof && (
-              <div className="mt-3 flex items-center justify-between border-t border-emerald-200/60 pt-2 font-mono text-[11px]">
+              <div className="mt-3 flex items-center justify-between border-t border-success-200/60 pt-2 font-mono text-[11px]">
                 <span className="text-slate-600">Preuve cryptographique ancrée :</span>
                 <span className="truncate max-w-xs">{proof.hash}</span>
               </div>

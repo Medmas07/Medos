@@ -3,6 +3,9 @@
 
 export type { Tone } from './tone'
 
+export { setThemePreference, THEME_STORAGE_KEY, useTheme } from './theme'
+export type { ResolvedTheme, ThemePreference } from './theme'
+
 export { Alert } from './components/Alert'
 export type { AlertProps } from './components/Alert'
 
@@ -32,6 +35,15 @@ export type {
   SideNavProps,
   SideNavSection,
 } from './components/Navigation'
+
+export { Skeleton } from './components/Skeleton'
+export type { SkeletonProps } from './components/Skeleton'
+
+export { StatCard, StatGroup } from './components/StatCard'
+export type { StatCardProps, StatGroupProps } from './components/StatCard'
+
+export { ThemeToggle } from './components/ThemeToggle'
+export type { ThemeToggleProps } from './components/ThemeToggle'
 
 export { EmptyState, ErrorState, LoadingState, Spinner } from './components/States'
 export type {

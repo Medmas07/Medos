@@ -955,7 +955,7 @@ BETTER CLINICAL / RESEARCH DECISIONS
 ```text
 apps/
 ├── web/
-│   ├── hospital-portal/
+│   ├── landing/            (MedOS landing page + Hospital Portal)
 │   ├── governance-portal/
 │   └── research-portal/
 │

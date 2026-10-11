@@ -15,10 +15,14 @@ import {
   PageHeader,
   SelectField,
   SideNav,
+  Skeleton,
   Spinner,
+  StatCard,
+  StatGroup,
   Table,
   TextareaField,
   TextField,
+  ThemeToggle,
   Timeline,
 } from '../src'
 import type { TableColumn, Tone } from '../src'
@@ -82,6 +86,7 @@ export function App() {
         />
       }
       sidebarFooter={<DemoBadge>Placeholder content</DemoBadge>}
+      toolbar={<ThemeToggle labels={{ system: 'System theme', light: 'Light theme', dark: 'Dark theme' }} label="Theme" />}
     >
       <div className="mx-auto max-w-5xl">
         <PageHeader
@@ -122,7 +127,7 @@ function Section({
   return (
     <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-6">
       <h2 id={`${id}-title`}>{title}</h2>
-      <p className="mb-4 text-slate-600">{description}</p>
+      <p className="mb-4 text-ink-soft">{description}</p>
       {children}
     </section>
   )
@@ -133,7 +138,7 @@ function TypographySection() {
     <Section
       id="typography"
       title="Typography"
-      description="System font stack; headings are styled globally by theme.css."
+      description="Bricolage Grotesque for everything, with optical sizing for large headings and figures; headings are styled globally by theme.css."
     >
       <Card>
         <div className="space-y-3">
@@ -145,7 +150,7 @@ function TypographySection() {
             Body text is 14px with a 24px line height, sized for dense review screens. Use{' '}
             <code>code</code> for identifiers such as <code>SR-0101</code>.
           </p>
-          <p className="text-xs text-slate-500">Small text for hints, metadata, and captions.</p>
+          <p className="text-xs text-ink-muted">Small text for hints, metadata, and captions.</p>
         </div>
       </Card>
     </Section>
@@ -155,16 +160,33 @@ function TypographySection() {
 const swatchGroups: { name: string; note: string; swatches: { step: string; className: string }[] }[] = [
   {
     name: 'brand',
-    note: 'Primary actions, current navigation, focus',
+    note: 'Mint #A7E3D4 = 300. 700 text on white, 800 solid fill, 300 highlights',
     swatches: [
       { step: '50', className: 'bg-brand-50' },
       { step: '100', className: 'bg-brand-100' },
       { step: '200', className: 'bg-brand-200' },
+      { step: '300', className: 'bg-brand-300' },
+      { step: '400', className: 'bg-brand-400' },
       { step: '500', className: 'bg-brand-500' },
       { step: '600', className: 'bg-brand-600' },
       { step: '700', className: 'bg-brand-700' },
       { step: '800', className: 'bg-brand-800' },
       { step: '900', className: 'bg-brand-900' },
+      { step: '950', className: 'bg-brand-950' },
+    ],
+  },
+  {
+    name: 'neutrals',
+    note: 'paper, surface, surface-muted, line, line-strong, ink-muted, ink-soft, ink (flip per theme)',
+    swatches: [
+      { step: 'paper', className: 'bg-paper' },
+      { step: 'surface', className: 'bg-surface' },
+      { step: 'muted', className: 'bg-surface-muted' },
+      { step: 'line', className: 'bg-line' },
+      { step: 'strong', className: 'bg-line-strong' },
+      { step: 'ink-m', className: 'bg-ink-muted' },
+      { step: 'ink-s', className: 'bg-ink-soft' },
+      { step: 'ink', className: 'bg-ink' },
     ],
   },
   ...(
@@ -187,25 +209,25 @@ function ColorsSection() {
     <Section
       id="colors"
       title="Colors"
-      description="Brand and status tones are design tokens (CSS custom properties). Neutrals use Tailwind's slate scale."
+      description="Brand, neutral, and status tones are CSS custom properties with light and dark values. Toggle the theme in the sidebar to compare."
     >
       <Card>
         <div className="space-y-4">
           {swatchGroups.map((group) => (
             <div key={group.name} className="grid gap-2 sm:grid-cols-[10rem_1fr] sm:items-center">
               <div>
-                <p className="font-medium text-slate-900">
+                <p className="font-medium text-ink">
                   <code>{group.name}</code>
                 </p>
-                <p className="text-xs text-slate-500">{group.note}</p>
+                <p className="text-xs text-ink-muted">{group.note}</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 {group.swatches.map((swatch) => (
                   <div key={swatch.step} className="text-center">
                     <div
-                      className={`h-10 w-14 rounded-md ring-1 ring-slate-900/10 ring-inset ${swatch.className}`}
+                      className={`h-10 w-14 rounded-md ring-1 ring-ink/10 ring-inset ${swatch.className}`}
                     />
-                    <span className="text-xs text-slate-500">{swatch.step}</span>
+                    <span className="text-xs text-ink-muted">{swatch.step}</span>
                   </div>
                 ))}
               </div>
@@ -239,9 +261,9 @@ function SpacingSection() {
         <ul className="space-y-2">
           {spacingSteps.map((step) => (
             <li key={step.token} className="flex items-center gap-4">
-              <code className="w-8 text-right text-slate-500">{step.token}</code>
+              <code className="w-8 text-right text-ink-muted">{step.token}</code>
               <span className={`h-4 rounded-sm bg-brand-500 ${step.className}`} />
-              <span className="text-xs text-slate-500">{step.px}px</span>
+              <span className="text-xs text-ink-muted">{step.px}px</span>
             </li>
           ))}
         </ul>
@@ -376,20 +398,26 @@ function CardsSection() {
       title="Cards"
       description="Group related content. Optional header actions and footer."
     >
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card title="Pending approvals" description="Awaiting a governance decision">
-          <p className="text-3xl font-semibold text-slate-900">3</p>
+      <StatGroup className="mb-4">
+        <StatCard label="Pending approvals" value={3} hint="Awaiting a governance decision" badge={<Badge tone="warning" dot>Review</Badge>} onClick={() => undefined} />
+        <StatCard label="Hospital Nodes" value={12} hint="10 online · 2 offline" tone="success" />
+        <StatCard label="Ledger proofs" value={48} hint="Simulated anchoring" badge={<DemoBadge>Simulated</DemoBadge>} />
+        <StatCard label="Loading figure" value="-" hint="Skeleton while data loads" loading />
+      </StatGroup>
+      <div className="hc-stagger grid gap-4 md:grid-cols-3">
+        <Card title="Pending approvals" description="Awaiting a governance decision" interactive>
+          <p className="tabular font-display text-4xl text-ink">3</p>
         </Card>
         <Card
           title="Hospital Node"
           description="Hospital A"
           actions={<Badge tone="success" dot>Online</Badge>}
-          footer={<span className="text-xs text-slate-500">Last check 2 minutes ago (simulated)</span>}
+          footer={<span className="text-xs text-ink-muted">Last check 2 minutes ago (simulated)</span>}
         >
-          <p className="text-slate-600">Version 0.1.0 · DMI adapter: mocked</p>
+          <p className="text-ink-soft">Version 0.1.0 · DMI adapter: mocked</p>
         </Card>
         <Card>
-          <p className="text-slate-600">A card without a header is a plain surface.</p>
+          <p className="text-ink-soft">A card without a header is a plain surface.</p>
         </Card>
       </div>
     </Section>
@@ -576,7 +604,14 @@ function StatesSection() {
           <ErrorState description="Try again in a moment." />
         </Card>
       </div>
-      <p className="mt-4 flex items-center gap-2 text-slate-600">
+      <Card title="Skeleton loading" description='LoadingState variant="skeleton" sketches the page while keeping a status label.' className="mt-4">
+        <LoadingState variant="skeleton" label="Loading page…" />
+      </Card>
+      <div className="mt-4 flex flex-wrap gap-3">
+        <Skeleton className="h-4 w-48" />
+        <Skeleton className="h-4 w-24" />
+      </div>
+      <p className="mt-4 flex items-center gap-2 text-ink-soft">
         <Spinner size="sm" className="text-brand-600" /> Inline spinner for compact pending states.
       </p>
     </Section>

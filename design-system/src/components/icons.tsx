@@ -93,3 +93,53 @@ export function ToneIcon({ tone, className }: IconProps & { tone: Tone }) {
       return <InfoIcon className={className} />
   }
 }
+
+export function SunIcon({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <circle cx="10" cy="10" r="3.25" />
+      <path d="M10 2.75v1.5M10 15.75v1.5M2.75 10h1.5M15.75 10h1.5M4.87 4.87l1.06 1.06M14.07 14.07l1.06 1.06M4.87 15.13l1.06-1.06M14.07 5.93l1.06-1.06" />
+    </Svg>
+  )
+}
+
+export function MoonIcon({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <path d="M16.25 11.6A6.5 6.5 0 1 1 8.4 3.75a5.25 5.25 0 0 0 7.85 7.85Z" />
+    </Svg>
+  )
+}
+
+export function MonitorIcon({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <rect x="2.75" y="3.75" width="14.5" height="9.5" rx="1.5" />
+      <path d="M7.5 16.25h5M10 13.25v3" />
+    </Svg>
+  )
+}
+
+export function MenuIcon({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <path d="M3.5 6h13M3.5 10h13M3.5 14h13" />
+    </Svg>
+  )
+}
+
+export function CloseIcon({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <path d="m5 5 10 10M15 5 5 15" />
+    </Svg>
+  )
+}
+
+export function ArrowRightIcon({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <path d="M4 10h12M11 5l5 5-5 5" />
+    </Svg>
+  )
+}

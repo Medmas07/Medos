@@ -2,8 +2,8 @@ import { useEffect, useState, useSyncExternalStore } from 'react'
 import {
   AppShell,
   Badge,
-  DemoBanner,
   SideNav,
+  ThemeToggle,
   type SideNavSection,
 } from '@hackcure/design-system'
 import { OverviewView } from './components/views/OverviewView'
@@ -19,7 +19,6 @@ import { notificationStore, applyReadOverrides, countNotifications, notification
 import { reviewStore } from './services/reviewStore'
 import { authService } from './services/authService'
 import { DemoAuthModal } from './components/auth/DemoAuthModal'
-import { DemoSessionBanner } from './components/auth/DemoSessionBanner'
 import { UnauthorizedStateView } from './components/auth/UnauthorizedStateView'
 
 type ViewId =
@@ -189,48 +188,46 @@ export default function App() {
       <AppShell
         productName="Portail de Gouvernance"
         productContext="Autorité de Gouvernance et d'Éthique Fédérée"
-        banner={
-          <div>
-            <DemoSessionBanner session={session} onOpenAuthModal={() => setIsAuthModalOpen(true)} />
-            <DemoBanner>
-              Démonstration D1. Données fictives (HC-005) & preuves de registre simulées. Aucun accès direct aux bases hospitalières.
-            </DemoBanner>
-          </div>
-        }
+        toolbar={<ThemeToggle />}
+        pageKey={currentView}
         navigation={<SideNav label="Navigation principale" sections={navigationSections} />}
         sidebarFooter={
           session ? (
             <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-800">{session.identity.displayName}</span>
-                <Badge
-                  tone={session.identity.role === 'governance_reviewer' ? 'success' : 'warning'}
-                  dot={session.identity.role === 'governance_reviewer'}
-                >
-                  {session.identity.role === 'governance_reviewer' ? 'Réviseure' : session.identity.role}
-                </Badge>
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold text-ink">{session.identity.displayName}</span>
+                {session.status === 'expired' && <Badge tone="danger">Expirée</Badge>}
               </div>
-              <div className="text-slate-500">{session.identity.organizationName}</div>
-              <div className="flex items-center justify-between pt-1 text-[11px] text-slate-600">
-                <span className="font-mono">{session.identity.id}</span>
+              <div className="text-ink-muted">
+                {session.identity.role === 'governance_reviewer' ? 'Réviseure de gouvernance' : session.identity.role} (
+                {session.identity.id})
+              </div>
+              <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-ink-soft">
+                <span className="size-2 rounded-full bg-success-600" />
+                <span>Nœud de Gouvernance en ligne</span>
+              </div>
+              <div className="flex items-center gap-3 pt-1 text-[11px]">
                 <button
                   type="button"
                   onClick={() => setIsAuthModalOpen(true)}
                   className="font-medium text-brand-700 hover:underline"
                 >
-                  Changer de rôle…
+                  Changer d'identité
+                </button>
+                <button type="button" onClick={() => authService.logout()} className="font-medium text-ink-soft hover:text-ink">
+                  Déconnexion
                 </button>
               </div>
             </div>
           ) : (
             <div className="space-y-1">
-              <div className="font-semibold text-slate-500">Non authentifié</div>
+              <div className="font-semibold text-ink">Non authentifié</div>
               <button
                 type="button"
                 onClick={() => setIsAuthModalOpen(true)}
-                className="text-xs font-medium text-brand-700 hover:underline"
+                className="text-[11px] font-medium text-brand-700 hover:underline"
               >
-                Se connecter (Démo)…
+                Se connecter (démo)
               </button>
             </div>
           )

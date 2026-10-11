@@ -27,7 +27,7 @@ These questions are OPEN. Do not answer them through implementation without the 
 - Which research execution sandbox, package policy, isolation controls, and output-disclosure process are required?
 - SciAgents' inspected API exposes open `/hypotheses` HTTP endpoints and SSE progress, accepts exactly two keywords, and reports no calibrated confidence. Hosting, rate limits, service authentication, and the supported biomedical vocabulary remain OPEN. The [HC-170 contract](../contracts/api/sciagents/scientific-investigation.v1.yaml) is repository-side; HC-171 must normalize the observed inline/queued behavior and must not expose the open upstream API to browsers.
 - Would a future decision to send controlled-result summaries to the external SciAgents system require its own Governance authorization or data-processing agreement beyond the research project's approval? HC-170 v1.1 currently forbids that content and sends only two non-identifying concept labels upstream.
-- Which notification providers and delivery protocols will be used?
+- Which email and SMS providers will be used? Mobile push is decided by [ADR-0012](decisions/ADR-0012-mobile-push-provider.md) (UnifiedPush / Web Push). Who may register a device for a recipient, and where push subscriptions are stored, are OPEN.
 - Which container runtime, deployment providers, hosting topology, observability stack, and disaster-recovery approach are appropriate?
 - Which actual DMI/HIS systems, interfaces, schemas, mappings, and local installation constraints apply to each participating hospital?
 - Is IoT required; if so, which hardware, embedded framework, protocol, and security constraints apply?
