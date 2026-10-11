@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../demo/canonical_consultation.dart';
+import 'adaptive_intake_view.dart';
 import 'clinician_theme.dart';
+import 'medication_interaction_warning.dart';
 
 enum RecordingConsentState { awaitingDecision, granted, declined }
 
@@ -322,7 +324,7 @@ class _DecisionCard extends StatelessWidget {
                 Text(
                   granted
                       ? 'La démonstration peut continuer sans activer le microphone de l’appareil.'
-                      : 'Le refus est respecté. Aucun son n’est capturé et la consultation peut continuer sans enregistrement.',
+                      : 'Le refus est respecté. Aucun son n’est capturé et la consultation continue avec l’anamnèse adaptative.',
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 14),
@@ -336,15 +338,18 @@ class _DecisionCard extends StatelessWidget {
             ),
           ),
         ),
+        const SizedBox(height: 12),
         if (granted) ...[
-          const SizedBox(height: 12),
           _SpeechToTextCard(
             state: speechState,
             onStart: onStartRecording,
             onStop: onStopRecording,
             onRestart: onRestartTranscript,
           ),
-        ],
+          const SizedBox(height: 12),
+          const MedicationInteractionWarningView(),
+        ] else
+          const AdaptiveIntakeView(),
       ],
     );
   }
@@ -590,7 +595,7 @@ class _DemoBoundaryCard extends StatelessWidget {
         SizedBox(width: 8),
         Expanded(
           child: Text(
-            'MOCKED D1 · Consentement et transcription restent uniquement dans l’écran. Aucun microphone, audio, stockage, contrat API ou consentement juridiquement opposable.',
+            'MOCKED D1 · Consentement, transcription et anamnèse restent uniquement dans l’écran. Aucun microphone, audio, stockage, contrat API ou consentement juridiquement opposable.',
             style: TextStyle(color: ClinicianColors.demo, height: 1.4),
           ),
         ),

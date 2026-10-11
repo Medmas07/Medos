@@ -1,6 +1,6 @@
 # Hospital Node installation package (HC-221)
 
-IMPLEMENTED at D3 and checked locally with Docker Desktop 29.1 (Linux engine) and a running Governance Node. Not signed, not published, and not a production release.
+IMPLEMENTED at D3 and checked locally with Docker Desktop 29.1 (Linux engine) and a running Governance Node. Its [container runtime check](#container-runtime-check-hc-222) (HC-222) is IMPLEMENTED at D3 and checked on Docker Desktop 29.4. Not signed, not published, and not a production release.
 
 After the Governance / Ethics Authority approves a hospital, the platform operator builds that hospital's installation package with [`build_package.py`](build_package.py). The hospital runs its Node from the package on a host it controls. The package follows the product vision's §7 ([installation and distribution](../../../docs/product/FEDERATED_HEALTHCARE_ECOSYSTEM.md#7-hospital-node-installation-and-distribution)) and reuses the HC-220 image and container layout ([ADR-0016](../../../docs/decisions/ADR-0016-hospital-node-container-image.md)).
 
@@ -32,7 +32,7 @@ There is no offline override; the builder never decides approval itself. With [a
 **Inputs.**
 
 - `--node-config`: the hospital's configuration in the container layout, such as the [demo container configurations](../../docker/hospital-node/). The builder refuses a configuration whose files are not where the package's `compose.yaml` mounts them.
-- `--image-archive`: the output of `docker save`. The builder reads the image IDs from it without Docker.
+- `--image-archive`: the output of `docker save`. The builder reads the image IDs and the image's platform (for example `linux/amd64`) from it without Docker, and refuses an image whose configuration names no platform.
 - `--governance-public-key` (optional): the Governance Node's signing public key ([HC-214](../../../instances/hospital-node/README.md#signed-synchronization-authorizations-hc-214)). It is shipped as bootstrap trust material, and the Node then verifies signed synchronization authorizations. A private key is refused.
 
 **Reproducible.** Entries are sorted, owners and times are fixed, so the same inputs at the same time give the same bytes.
@@ -46,6 +46,7 @@ There is no offline override; the builder never decides approval itself. With [a
 | `config/node.json` | The Node configuration (configuration template filled for this hospital), and optionally `config/governance-public-key.pem`. |
 | `images/hospital-node.tar` | The image itself. There is no registry, so the package carries it (about 73 MB). |
 | `install.sh` | The installation helper (POSIX `sh`). |
+| `check-runtime.sh` | The [container runtime check](#container-runtime-check-hc-222) (POSIX `sh`), run alone or by `install.sh`. |
 | `README.md` | Instructions for the hospital. |
 | `SHA256SUMS` | The checksum of every other file. |
 
@@ -61,23 +62,39 @@ On the hospital's host, after extracting the archive: `./install.sh --data-dir D
 
 1. Checks every file against `SHA256SUMS` (exit code `1` if one changed).
 2. Checks that the data directory has the four data files (exit code `2`). `--verify-only` stops here and needs no Docker.
-3. Checks that Docker Engine with the Compose plugin is installed and its daemon answers. If not, it prints instructions and exits with code `3`. **It never installs software** and never asks for administrator rights.
+3. Runs [`check-runtime.sh`](#container-runtime-check-hc-222). If the host cannot run the Node, it shows what is missing and exits with code `3`. **It never installs software** and never asks for administrator rights.
 4. Loads the image from the package and checks that its ID is one the manifest names.
 5. Writes `.env` (the data directory, the only local configuration) and runs `docker compose up -d`.
 6. Fails with exit code `4` if the Node stops or restarts within 8 seconds, for example on another organization's records. It then shows the Node's log and removes the container. This is a startup check, not a health check (HC-223).
 
 On Windows, the helper runs from Git Bash or WSL; there is no PowerShell helper. With Git Bash, extract the archive from its own directory (`tar -xzf node-hospital-a-package.tar.gz`), because GNU tar reads `C:` as a host name.
 
+## Container runtime check (HC-222)
+
+`./check-runtime.sh`, from the extracted package, tells the hospital whether its host can run the Node, before anything is started. It only reads: it never installs, starts, or configures software, never uses `sudo`, and changes no file. It exits with `0` when the host is ready and `3` when it is not. Each check prints `[ok]`, `[warning]`, or `[missing]`, and every `[missing]` line says what the host's administrator should do.
+
+| Check | Ready when | Otherwise |
+|---|---|---|
+| Docker client | `docker` is on `PATH` | Missing, with the installation page for this host's system (Linux, macOS, Windows). Podman or nerdctl found instead are named, but they were not tested. |
+| Podman behind `docker` | — | A warning only: Podman's `docker` command may work, but only Docker was tested ([ADR-0016](../../../docs/decisions/ADR-0016-hospital-node-container-image.md)). |
+| Compose | `docker compose` (the plugin) reports version 2 or later | Missing or too old. A standalone `docker-compose` alone is reported, because `install.sh` calls the plugin. |
+| Daemon | `docker info` answers | Permission denied: the administrator can grant access to the daemon (the `docker` group is equivalent to root) or set up rootless Docker. Any other error is shown with a hint to start Docker. |
+| Platform | The daemon runs containers of the image's OS and architecture, recorded in the manifest's `image.platform` | Windows containers: switch Docker Desktop to Linux containers. Another architecture (for example `arm64` for an `amd64` image): ask the platform operator for a package built for it; emulation was not tested. |
+
+It also reports the Engine version and whether the daemon is rootless. It does not check versions beyond Compose 2, free ports, disk space, or memory, and it is not a health check (HC-223).
+
 ## Checked
 
-`pytest` (25 tests, no Docker and no Governance Node needed) checks the following:
+`pytest` (40 tests, no Docker and no Governance Node needed) checks the following:
 
 - the package contents, and that none of the hospital's records are in it;
 - the manifest and the checksums;
 - that two builds give the same bytes;
 - every approval refusal, and the bearer session;
 - configuration and image archive refusals, and the public key;
-- the helper's `--verify-only` checks: a changed file and missing data are refused.
+- the helper's `--verify-only` checks: a changed file and missing data are refused;
+- the image platform read from the archive, and an image without one refused;
+- the runtime check against a stand-in `docker` on a `PATH` that holds nothing else: a ready host, a rootless daemon, Podman behind `docker`, and each blocking case above; and that `install.sh` then starts nothing.
 
 The tests that run the helper are skipped where there is no POSIX shell.
 
@@ -88,11 +105,17 @@ By hand, with the Governance Node running (`python main.py`) and Docker Desktop 
 - Hospital B's package, built with a Governance public key, reports `"synchronization_decisions": "signed"` in `/health`. Hospital A and Hospital B ran side by side.
 - Without Docker on `PATH`, the helper stops with exit code `3` and instructions. With Hospital B's records under Hospital A's package, it stops with exit code `4`, shows the Node's own refusal, and leaves no container.
 
+HC-222 by hand on Windows 11 with Git Bash, Docker CLI 29.4.3, and Compose 5.1.4, with a package built from a real `docker save` archive (its manifest records `linux/amd64`):
+
+- With Docker Desktop stopped, `check-runtime.sh` reports the client and Compose as ready and the daemon as missing, with Docker's own error, and exits with `3`. `install.sh` then stops with exit code `3` before writing `.env` or starting anything.
+- With Docker Desktop running (Engine 29.4.3, `linux/x86_64`, rootful), every check passes, `install.sh` installs Hospital A, and `/health` answers on `127.0.0.1:8101`.
+
+Windows containers, another architecture, permission denied, a missing or old Compose, and Podman were checked only against the stand-in `docker`.
+
 ## Not done at D3
 
 - Signing the package or the image, and an image registry (OPEN).
 - Updates and uninstall beyond `docker compose down`.
-- Runtime detection beyond "Docker is there" (HC-222).
 - Deployment health checks (HC-223).
 - Registering the Node with the Federation registry, which stays the platform operator's step through the registry API.
 - Building packages from the Hospital Portal. Its download page still assembles the HC-061 demo manifest in the browser and points to this package for the image and the helper.
