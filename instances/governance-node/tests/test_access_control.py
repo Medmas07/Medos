@@ -2,6 +2,7 @@
 
 import pytest
 
+from adapters.outbound.in_memory_audit_trail import InMemoryAuditTrail
 from adapters.outbound.in_memory_sessions import InMemorySessionStore
 from application.access_control import authorize
 from application.authentication import _key
@@ -11,6 +12,7 @@ from domain.access_control import (
     check_permission,
     permissions_of,
 )
+from domain.audit import AuditAction, AuditDomain, AuditOutcome, SubjectType
 from domain.authentication import NotAuthenticated, Session
 from domain.hospital_approval import Reviewer
 from domain.organization_identity import (
@@ -105,6 +107,7 @@ def signed_in(*person_refs: str) -> InMemorySessionStore:
 
 def test_authorize_returns_the_signed_in_person_when_their_role_grants_it():
     sessions = signed_in("usr-olfa")
+    trail = InMemoryAuditTrail([])
 
     person = authorize(
         "token-usr-olfa",
@@ -114,9 +117,12 @@ def test_authorize_returns_the_signed_in_person_when_their_role_grants_it():
         KNOWN,
         AUTHORITY,
         lambda: DEMO_NOW,
+        trail,
     )
 
     assert person == OLFA
+    # Access granted is not an event.
+    assert trail.events() == []
 
 
 def test_authorize_refuses_a_role_without_the_permission():
@@ -131,6 +137,7 @@ def test_authorize_refuses_a_role_without_the_permission():
             KNOWN,
             AUTHORITY,
             lambda: DEMO_NOW,
+            InMemoryAuditTrail([]),
         )
 
 
@@ -144,6 +151,7 @@ def test_authorize_needs_a_valid_session_first():
             KNOWN,
             AUTHORITY,
             lambda: DEMO_NOW,
+            InMemoryAuditTrail([]),
         )
 
 
@@ -157,6 +165,7 @@ def test_authorize_refuses_a_session_whose_person_is_no_longer_known():
             KNOWN,
             AUTHORITY,
             lambda: DEMO_NOW,
+            InMemoryAuditTrail([]),
         )
 
 
@@ -172,6 +181,7 @@ def test_authorize_refuses_a_person_whose_organization_is_not_recognized():
             Organizations(),
             AUTHORITY,
             lambda: DEMO_NOW,
+            InMemoryAuditTrail([]),
         )
 
 
@@ -186,4 +196,69 @@ def test_authorize_checks_the_role_before_the_organization():
             Organizations(),
             AUTHORITY,
             lambda: DEMO_NOW,
+            InMemoryAuditTrail([]),
         )
+
+
+# HC-215: refusals of a signed-in person are audited; a missing session is not.
+
+
+def denied_events(trail: InMemoryAuditTrail) -> list:
+    return [(e.action, e.actor_ref, e.subject_ref, e.reason) for e in trail.events()]
+
+
+@pytest.mark.parametrize(
+    ("person", "organizations"),
+    [(AYMEN, KNOWN), (OLFA, Organizations())],
+    ids=["role", "organization"],
+)
+def test_a_refusal_is_recorded_without_the_request(person, organizations):
+    trail = InMemoryAuditTrail([])
+
+    with pytest.raises((PermissionDenied, AffiliationNotRecognized)):
+        authorize(
+            f"token-{person.person_ref}",
+            Permission.REVIEW,
+            signed_in(person.person_ref),
+            People(person),
+            organizations,
+            AUTHORITY,
+            lambda: DEMO_NOW,
+            trail,
+        )
+
+    [event] = trail.events()
+    assert (event.action, event.domain, event.subject_type, event.outcome) == (
+        AuditAction.ACCESS_DENIED,
+        AuditDomain.SECURITY,
+        SubjectType.PERMISSION,
+        AuditOutcome.DENIED,
+    )
+    assert (event.actor_ref, event.subject_ref, event.reason) == (
+        person.person_ref,
+        "governance:review",
+        "permission_denied",
+    )
+    assert event.recorded_at == DEMO_NOW
+    assert event.organization_refs == tuple(
+        dict.fromkeys((AUTHORITY, person.organization_ref))
+    )
+
+
+def test_no_session_is_not_recorded():
+    # Nobody is known: recording it would let anyone grow the trail.
+    trail = InMemoryAuditTrail([])
+
+    with pytest.raises(NotAuthenticated):
+        authorize(
+            "token-usr-olfa",
+            Permission.REVIEW,
+            signed_in(),
+            People(OLFA),
+            KNOWN,
+            AUTHORITY,
+            lambda: DEMO_NOW,
+            trail,
+        )
+
+    assert denied_events(trail) == []

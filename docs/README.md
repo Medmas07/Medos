@@ -36,6 +36,7 @@ Avoid ambiguous present tense. For example, say “The Patient timeline is PLANN
 - [Architecture](architecture.md): technical boundaries and current architecture status.
 - [Current status](CURRENT_STATUS.md): what is and is not implemented.
 - [Open questions](OPEN_QUESTIONS.md): unresolved technology and architecture decisions.
+- [Security audit and threat model](security/threat-model.md): trust boundaries, STRIDE threats, and findings (HC-215); not an independent review.
 - [Glossary](GLOSSARY.md): repository-specific terminology.
 - [Planning](planning/backlog.md): backlog, [milestones](planning/milestones.md), [demo](planning/demo-scenario.md), and [dependencies](planning/dependency-map.md).
 - [ADRs](decisions/README.md): consequential accepted decisions and template.

@@ -3,6 +3,11 @@
 The Governance Node authenticates the people who act on it, from its own credentials.
 A session token is random, given to the caller once, and kept here only as its
 SHA-256 digest, so a store's contents cannot be replayed as tokens.
+
+Sign-ins are audited (HC-215): each success, and each refusal that counts against a
+known account, the one that locks it named `account_locked`. Refusals for an unknown
+person or a locked account are not recorded, so no caller can grow the trail without
+bound; the throttle already limits the others to five per account per lockout.
 """
 
 import hashlib
@@ -12,7 +17,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
+from application.audit import AuditTrail, record
 from application.hospital_approval import ReviewerDirectory
+from domain.audit import AuditAction, AuditDomain, AuditOutcome, SubjectType
 from domain.authentication import (
     AuthenticationFailed,
     NotAuthenticated,
@@ -63,6 +70,8 @@ def sign_in(
     sessions: SessionStore,
     throttle: SignInThrottle,
     clock: Callable[[], datetime],
+    trail: AuditTrail,
+    authority_ref: str,
     new_token: Callable[[], str] = _new_token,
 ) -> SignedIn:
     now = clock()
@@ -71,13 +80,35 @@ def sign_in(
     # Verify even when the answer is already known, so every failure takes as long.
     verified = hasher.verify(password, None if locked else encoded)
     person = people.reviewer(person_ref)
+    organizations = (authority_ref,) + ((person.organization_ref,) if person else ())
+
+    def audit(action: AuditAction, reason: str | None = None) -> None:
+        record(
+            trail,
+            now,
+            action,
+            AuditDomain.SECURITY,
+            person_ref,
+            SubjectType.PERSON,
+            person_ref,
+            organizations,
+            AuditOutcome.DENIED if reason else None,
+            reason,
+        )
+
     if locked or not verified or person is None:
         if encoded is not None and not locked:
-            throttle.failed(person_ref, now)
+            locks = throttle.failed(person_ref, now)
+            audit(
+                AuditAction.SIGN_IN_REFUSED,
+                "account_locked" if locks else "invalid_credentials",
+            )
         raise AuthenticationFailed()
     throttle.succeeded(person_ref)
     token = new_token()
     session = Session.start(person_ref, now)
+    # No audit, no session.
+    audit(AuditAction.SIGNED_IN)
     sessions.add(_key(token), session)
     return SignedIn(token, session, person)
 

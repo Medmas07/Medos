@@ -253,11 +253,19 @@ def create_router(
             body = NewRequestBody.model_validate_json(await request.body())
         except ValidationError as error:
             return _invalid(first_error(error))
-        refused = auth.refuse(caller, body.submitted_by_ref, "submitted_by_ref")
+        refused = auth.refuse(
+            caller,
+            Permission.REQUEST_RESEARCH,
+            body.submitted_by_ref,
+            "submitted_by_ref",
+        )
         if refused is not None:
             return refused
         refused = auth.refuse_organization(
-            caller, body.research_organization_ref, "research_organization_ref"
+            caller,
+            Permission.REQUEST_RESEARCH,
+            body.research_organization_ref,
+            "research_organization_ref",
         )
         if refused is not None:
             return refused
@@ -310,7 +318,9 @@ def create_router(
             body = DecisionBody.model_validate_json(await request.body())
         except ValidationError as error:
             return _invalid(first_error(error))
-        if (refused := auth.refuse(caller, body.reviewer_ref)) is not None:
+        if (
+            refused := auth.refuse(caller, Permission.REVIEW, body.reviewer_ref)
+        ) is not None:
             return refused
         draft = ResearchDecisionDraft(
             outcome=Outcome(body.outcome),

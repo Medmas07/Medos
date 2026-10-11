@@ -146,9 +146,10 @@ def create_app(
     # HC-211: sessions in memory, lost on restart; sign-in failures throttled per account.
     # HC-212: each protected route checks the signed-in person's role.
     # HC-213: and their organization, from the fictional institutions the Node knows.
+    # HC-215: sign-ins and refusals of signed-in people are recorded in the audit trail.
     sessions = InMemorySessionStore() if credentials is not None else None
     organizations = FixtureOrganizationDirectory.load(demo_data / "organizations.json")
-    auth = AccessControl(sessions, reviewers, organizations, identity, clock)
+    auth = AccessControl(sessions, reviewers, organizations, identity, clock, audit)
     app = FastAPI(title="Governance Node", version=NODE_VERSION)
     app.include_router(
         create_health_router(
@@ -159,7 +160,9 @@ def create_app(
         ports = AuthenticationPorts(
             credentials, hasher or ScryptPasswordHasher(), sessions, SignInThrottle()
         )
-        app.include_router(create_authentication_router(ports, reviewers, clock))
+        app.include_router(
+            create_authentication_router(ports, reviewers, clock, audit, identity)
+        )
     app.include_router(
         create_hospital_approval_router(
             applications, reviewers, policies, audit, clock, ledger, auth

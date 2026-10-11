@@ -72,6 +72,59 @@ def test_invalid_events(changes):
         replace(DECISION, **changes)
 
 
+SIGNED_IN = AuditEvent(
+    event_ref="evt-010",
+    recorded_at=DEMO_NOW,
+    action=AuditAction.SIGNED_IN,
+    domain=AuditDomain.SECURITY,
+    actor_ref="usr-olfa",
+    subject_type=SubjectType.PERSON,
+    subject_ref="usr-olfa",
+    outcome=None,
+    reason=None,
+    organization_refs=("org-governance",),
+)
+ACCESS_DENIED = replace(
+    SIGNED_IN,
+    action=AuditAction.ACCESS_DENIED,
+    actor_ref="usr-aymen",
+    subject_type=SubjectType.PERMISSION,
+    subject_ref="governance:audit",
+    outcome=AuditOutcome.DENIED,
+    reason="permission_denied",
+)
+
+
+def test_valid_security_events():
+    refused = replace(
+        SIGNED_IN,
+        action=AuditAction.SIGN_IN_REFUSED,
+        outcome=AuditOutcome.DENIED,
+        reason="account_locked",
+    )
+    assert refused.reason == "account_locked"
+    assert ACCESS_DENIED.subject_ref == "governance:audit"
+
+
+@pytest.mark.parametrize(
+    ("event", "changes"),
+    [
+        # Security actions belong to the security domain, and only they do.
+        (SIGNED_IN, {"domain": AuditDomain.SYNCHRONIZATION}),
+        (DECISION, {"domain": AuditDomain.SECURITY}),
+        # A sign-in concerns a person; a denial a permission, with its reason.
+        (SIGNED_IN, {"subject_type": SubjectType.DECISION}),
+        (SIGNED_IN, {"outcome": AuditOutcome.DENIED, "reason": "x"}),
+        (ACCESS_DENIED, {"subject_type": SubjectType.PERSON}),
+        (ACCESS_DENIED, {"reason": None}),
+        (ACCESS_DENIED, {"outcome": AuditOutcome.REJECTED}),
+    ],
+)
+def test_invalid_security_events(event, changes):
+    with pytest.raises(InvalidAuditEvent):
+        replace(event, **changes)
+
+
 @pytest.mark.parametrize("reason", [None, "Expired", "expired; drop"])
 def test_a_denied_check_needs_a_reason_code(reason):
     with pytest.raises(InvalidAuditEvent):

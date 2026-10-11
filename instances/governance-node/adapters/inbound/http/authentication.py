@@ -5,7 +5,7 @@ authentication required, the protected routes call `AccessControl`: they need a 
 session whose role grants the route's permission (HC-212) and is held at a recognized
 organization (HC-213); a declared reviewer_ref or submitted_by_ref must be the signed-in
 person, and a submission's organization theirs. Off, nothing is checked and those
-references stay declared.
+references stay declared. Sign-ins and every 403 are audited (HC-215).
 """
 
 from collections.abc import Callable
@@ -19,7 +19,12 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from adapters.inbound.http.problems import OPAQUE_REF, first_error, problem
-from application.access_control import OrganizationDirectory, authorize
+from application.access_control import (
+    OrganizationDirectory,
+    authorize,
+    record_denial,
+)
+from application.audit import AuditTrail
 from application.authentication import (
     CredentialStore,
     PasswordHasher,
@@ -112,12 +117,14 @@ class AccessControl:
         organizations: OrganizationDirectory,
         identity: NodeIdentity,
         clock: Callable[[], datetime],
+        trail: AuditTrail,
     ) -> None:
         self._sessions = sessions
         self._people = people
         self._organizations = organizations
         self._identity = identity
         self._clock = clock
+        self._trail = trail
 
     @property
     def mode(self) -> str:
@@ -143,6 +150,7 @@ class AccessControl:
                 self._organizations,
                 self._identity.organization_ref,
                 self._clock,
+                self._trail,
             )
         except NotAuthenticated as error:
             return unauthenticated(str(error), invalid_token=True)
@@ -150,14 +158,29 @@ class AccessControl:
             return problem(403, "Permission denied", "permission_denied", str(error))
         return person
 
-    @staticmethod
+    def _deny(self, caller: Reviewer, permission: Permission, code: str) -> None:
+        record_denial(
+            self._trail,
+            self._clock(),
+            caller,
+            permission,
+            code,
+            self._identity.organization_ref,
+        )
+
     def refuse(
-        caller: Reviewer | None, declared_ref: str, field: str = "reviewer_ref"
+        self,
+        caller: Reviewer | None,
+        permission: Permission,
+        declared_ref: str,
+        field: str = "reviewer_ref",
     ) -> JSONResponse | None:
-        """The 403 when a declared reviewer_ref or submitted_by_ref is not the caller."""
+        """The 403 when a declared reviewer_ref or submitted_by_ref is not the caller;
+        audited."""
         if caller is None or caller.person_ref == declared_ref:
             return None
         who = "Reviewer" if field == "reviewer_ref" else "Submitter"
+        self._deny(caller, permission, f"{who.lower()}_mismatch")
         return problem(
             403,
             f"{who} mismatch",
@@ -165,17 +188,21 @@ class AccessControl:
             f"{field} {declared_ref} is not the signed-in person {caller.person_ref}.",
         )
 
-    @staticmethod
     def refuse_organization(
-        caller: Reviewer | None, declared_ref: str, field: str
+        self,
+        caller: Reviewer | None,
+        permission: Permission,
+        declared_ref: str,
+        field: str,
     ) -> JSONResponse | None:
         """The 403 when a submission names another organization than the caller's
-        (HC-213)."""
+        (HC-213); audited."""
         if caller is None:
             return None
         try:
             check_acts_for(caller, declared_ref, field)
         except OrganizationMismatch as error:
+            self._deny(caller, permission, "organization_mismatch")
             return problem(
                 403, "Organization mismatch", "organization_mismatch", str(error)
             )
@@ -198,6 +225,8 @@ def create_router(
     ports: AuthenticationPorts,
     people: ReviewerDirectory,
     clock: Callable[[], datetime],
+    trail: AuditTrail,
+    identity: NodeIdentity,
 ) -> APIRouter:
     router = APIRouter(tags=["authentication"])
 
@@ -220,6 +249,8 @@ def create_router(
                 ports.sessions,
                 ports.throttle,
                 clock,
+                trail,
+                identity.organization_ref,
             )
         except AuthenticationFailed:
             return problem(

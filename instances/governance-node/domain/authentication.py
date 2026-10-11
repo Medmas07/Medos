@@ -53,13 +53,16 @@ class SignInThrottle:
         attempts = self._accounts.get(person_ref)
         return bool(attempts and attempts.locked_until and now < attempts.locked_until)
 
-    def failed(self, person_ref: str, now: datetime) -> None:
+    def failed(self, person_ref: str, now: datetime) -> bool:
+        """Count a failure; True when it locks the account."""
         attempts = self._accounts.setdefault(person_ref, _Attempts())
         if attempts.locked_until and now >= attempts.locked_until:
             attempts.failures, attempts.locked_until = 0, None
         attempts.failures += 1
         if attempts.failures >= MAX_FAILURES:
             attempts.locked_until = now + LOCKOUT
+            return True
+        return False
 
     def succeeded(self, person_ref: str) -> None:
         self._accounts.pop(person_ref, None)
